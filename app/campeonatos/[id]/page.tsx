@@ -26,6 +26,7 @@ import {
   Star,
   LockKeyhole,
   CheckCircle2,
+  CircleDollarSign,
 } from 'lucide-react'
 import Draggable from 'react-draggable'
 
@@ -676,51 +677,34 @@ export default function Page() {
         throw new Error('Senha incorreta. Confira sua senha e tente novamente.')
       }
 
-      if (valorVagaCompra > 0) {
-        const { data: sessionData } = await supabase.auth.getSession()
-        const token = sessionData.session?.access_token
+      const rpcName = valorVagaCompra > 0
+        ? 'fn_comprar_vaga_campeonato'
+        : 'fn_inscrever_equipe_em_campeonato'
 
-        if (!token) {
-          throw new Error('Sessão expirada. Faça login novamente.')
-        }
+      const rpcPayload = valorVagaCompra > 0
+        ? {
+            p_campeonato_id: id,
+            p_equipe_id: equipeCompraId,
+            p_user_id: usuarioAtual.id,
+            p_valor: valorVagaCompra,
+          }
+        : {
+            p_campeonato_id: id,
+            p_grupo_id: null,
+            p_equipe_id: equipeCompraId,
+            p_equipe_avulsa_id: null,
+            p_seed: null,
+            p_tipo_origem: 'oficial',
+            p_status: 'ativa',
+            p_observacoes: 'Inscrição gratuita pelo painel de compra',
+            p_alocar_em_slot: true,
+          }
 
-        const res = await fetch('/api/wallet/pagar', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            tipo: 'vaga_campeonato',
-            campeonatoId: id,
-            equipeId: equipeCompraId,
-            valor: valorVagaCompra,
-            descricao: `Compra de vaga - ${camp?.nome || 'Campeonato'} | ${equipeSelecionadaCompra.nome}`,
-          }),
-        })
+      const { error } = await supabase.rpc(rpcName, rpcPayload as any)
 
-        const json = await res.json().catch(() => ({}))
-
-        if (!res.ok) {
-          throw new Error(json?.error || json?.details || 'Erro ao comprar vaga com saldo da carteira.')
-        }
-      } else {
-        const { error } = await supabase.rpc('fn_inscrever_equipe_em_campeonato', {
-          p_campeonato_id: id,
-          p_grupo_id: null,
-          p_equipe_id: equipeCompraId,
-          p_equipe_avulsa_id: null,
-          p_seed: null,
-          p_tipo_origem: 'oficial',
-          p_status: 'ativa',
-          p_observacoes: 'Inscrição gratuita pelo painel de compra',
-          p_alocar_em_slot: true,
-        } as any)
-
-        if (error) {
-          logErroSupabase('Erro ao registrar vaga gratuita', error)
-          throw error
-        }
+      if (error) {
+        logErroSupabase('Erro ao comprar vaga com carteira', error)
+        throw error
       }
 
       const { data: inscricaoData } = await supabase
@@ -1389,6 +1373,14 @@ export default function Page() {
                     onChange={(valor: string) => salvarAlteracao('status', valor)}
                     compact
                   />
+
+                  <button
+                    type="button"
+                    onClick={abrirConfirmacaoCompra}
+                    className="inline-flex h-8 items-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-wide text-white transition hover:bg-[#1d4ed8]"
+                  >
+                    <CircleDollarSign size={13} /> Inscrever-se
+                  </button>
 
                   <button
                     type="button"

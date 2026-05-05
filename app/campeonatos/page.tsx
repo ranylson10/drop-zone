@@ -560,6 +560,10 @@ export default function ListaCampeonatos() {
  {getPaisFlag(camp.regiao)}
  </span>
 
+ <span className="shrink-0 border border-[#2563eb] bg-[#2563eb] px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">
+ Inscrever
+ </span>
+
  <ChevronRight size={16} className="shrink-0 text-zinc-300" />
  </Link>
  )
@@ -568,7 +572,7 @@ export default function ListaCampeonatos() {
 
  <div className="hidden overflow-x-auto px-3 pb-3 md:block">
  <div className="min-w-[1120px]">
- <div className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_80px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+ <div className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_140px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
  <div>Campeonato</div>
  <div>Tipo</div>
  <div>Produtora</div>
@@ -588,7 +592,7 @@ export default function ListaCampeonatos() {
  <Link
  key={camp.id}
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_80px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
+ className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_140px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
  >
  <div className="flex min-w-0 items-center gap-3">
  <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100">
@@ -639,8 +643,9 @@ export default function ListaCampeonatos() {
  </div>
 
  <div className="flex justify-end">
- <span className="inline-flex h-8 w-8 items-center justify-center border border-zinc-300 text-zinc-500 transition hover:border-[#2563eb] hover:text-[#2563eb] hover:bg-zinc-50">
- <ChevronRight size={16} />
+ <span className="inline-flex h-9 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#1d4ed8]">
+ Inscrever-se
+ <ChevronRight size={14} />
  </span>
  </div>
  </Link>
