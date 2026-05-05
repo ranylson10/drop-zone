@@ -406,6 +406,7 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
           return {
             id: `avulso-only:${avulso.id}`,
             campeonato_id: avulso.campeonato_id,
+            campeonato_equipe_id: null,
             equipe_id: avulso.equipe_id,
             equipe_avulsa_id: avulso.equipe_avulsa_id,
             perfil_jogo_id: null,
