@@ -4,11 +4,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-images: {
+
+  images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "uyivmievsgkbojplplbz.supabase.co",
+        hostname: "uyivmievsgkbojplpblz.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",
       },
