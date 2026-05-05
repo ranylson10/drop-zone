@@ -1,69 +1,93 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminTabs from '../components/AdminTabs'
 import {
- CheckCircle2,
+ AlertTriangle,
+ Gavel,
  Loader2,
  Search,
  ShieldCheck,
- Slash,
- XCircle,
 } from 'lucide-react'
 
-type AdminEvento = {
+type CasoModeracao = {
  id: string
- user_id: string
- nome_exibicao: string | null
+ tipo_caso:
+ | 'denuncia'
+ | 'disputa'
+ | 'contestacao'
+ | 'prova'
+ | 'punicao'
+ | 'analise_produtora'
+ | 'analise_admin_evento'
+ origem_tipo:
+ | 'apostado'
+ | 'campeonato'
+ | 'produtora'
+ | 'administrador_evento'
+ | 'usuario'
+ | 'outro'
+ origem_id: string | null
+ titulo: string
  descricao: string | null
- status: 'pendente' | 'aprovado' | 'recusado' | 'suspenso'
- taxa_padrao: number | null
- aprovado_por: string | null
- aprovado_em: string | null
- motivo_recusa: string | null
- suspenso_em: string | null
+ status:
+ | 'aberto'
+ | 'em_analise'
+ | 'aguardando_resposta'
+ | 'resolvido'
+ | 'recusado'
+ | 'arquivado'
+ aberto_por: string | null
+ responsavel_user_id: string | null
+ resolvido_por: string | null
+ resolvido_em: string | null
  created_at: string | null
-}
-
-type AdminTipo = {
- administrador_evento_id: string
- tipo_evento: string
+ updated_at: string | null
 }
 
 type ProfileMap = Record<string, { nome_exibicao: string | null }>
 
 const statusOptions = [
  'todos',
- 'pendente',
- 'aprovado',
+ 'aberto',
+ 'em_analise',
+ 'aguardando_resposta',
+ 'resolvido',
  'recusado',
- 'suspenso',
+ 'arquivado',
 ] as const
 
-const tipoLabels: Record<string, string> = {
- apostado: 'Apostados',
- confronto: 'Confronto',
- diario: 'Diário',
- xtreino: 'Xtreino',
- copa: 'Copa',
- liga: 'Liga',
+const tipoCasoLabels: Record<string, string> = {
+ denuncia: 'Denúncia',
+ disputa: 'Disputa',
+ contestacao: 'Contestação',
+ prova: 'Prova',
+ punicao: 'Punição',
+ analise_produtora: 'Análise de produtora',
+ analise_admin_evento: 'Análise de admin de evento',
 }
 
-function AdminAdministradoresContent() {
+const origemLabels: Record<string, string> = {
+ apostado: 'Apostado',
+ campeonato: 'Campeonato',
+ produtora: 'Produtora',
+ administrador_evento: 'Administrador de evento',
+ usuario: 'Usuário',
+ outro: 'Outro',
+}
+
+function AdminModeracaoContent() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
  const [loading, setLoading] = useState(true)
  const [autorizado, setAutorizado] = useState(false)
- const [salvandoId, setSalvandoId] = useState<string | null>(null)
- const [administradores, setAdministradores] = useState<AdminEvento[]>([])
- const [tipos, setTipos] = useState<AdminTipo[]>([])
+ const [casos, setCasos] = useState<CasoModeracao[]>([])
  const [profilesById, setProfilesById] = useState<ProfileMap>({})
  const [busca, setBusca] = useState('')
- const [taxas, setTaxas] = useState<Record<string, string>>({})
 
  const filtroStatus = searchParams.get('status') || 'todos'
 
@@ -106,30 +130,26 @@ function AdminAdministradoresContent() {
  }
 
  const { data, error } = await supabase
- .from('administradores_evento')
+ .from('moderacao_casos')
  .select('*')
  .order('created_at', { ascending: false })
 
  if (error) throw error
 
- const lista = (data || []) as AdminEvento[]
- setAdministradores(lista)
- setTaxas(
- Object.fromEntries(
- lista.map((item) => [item.id, String(item.taxa_padrao ?? 0)])
- )
- )
-
- const { data: tiposData, error: tiposError } = await supabase
- .from('administradores_evento_tipos')
- .select('administrador_evento_id, tipo_evento')
-
- if (tiposError) throw tiposError
- setTipos((tiposData || []) as AdminTipo[])
+ const lista = (data || []) as CasoModeracao[]
+ setCasos(lista)
 
  const ids = Array.from(
- new Set(lista.map((item) => item.user_id).filter(Boolean))
+ new Set(
+ lista
+ .flatMap((item) => [
+ item.aberto_por,
+ item.responsavel_user_id,
+ item.resolvido_por,
+ ])
+ .filter(Boolean)
  )
+ ) as string[]
 
  if (ids.length > 0) {
  const { data: perfis } = await supabase
@@ -146,7 +166,7 @@ function AdminAdministradoresContent() {
  setProfilesById({})
  }
  } catch (error) {
- console.error('Erro ao carregar admins de evento:', error)
+ console.error('Erro ao carregar casos de moderação:', error)
  setAutorizado(false)
  } finally {
  setLoading(false)
@@ -157,122 +177,46 @@ function AdminAdministradoresContent() {
  carregar()
  }, [])
 
- async function atualizarAdministrador(
- administradorId: string,
- payload: Partial<AdminEvento> & Record<string, unknown>
- ) {
- try {
- setSalvandoId(administradorId)
-
- const { error } = await supabase
- .from('administradores_evento')
- .update(payload)
- .eq('id', administradorId)
-
- if (error) throw error
-
- await carregar()
- } catch (error: any) {
- console.error('Erro ao atualizar admin de evento:', error)
- alert(error?.message || 'Erro ao atualizar administrador de evento.')
- } finally {
- setSalvandoId(null)
- }
- }
-
- async function aprovar(administradorId: string) {
- const {
- data: { user },
- } = await supabase.auth.getUser()
-
- if (!user) return
-
- const taxa = Number(taxas[administradorId] ?? 0)
-
- if (!Number.isFinite(taxa)) {
- alert('Informe uma taxa válida antes de aprovar.')
- return
- }
-
- if (taxa <= 0) {
- alert('Defina uma taxa maior que 0% antes de aprovar.')
- return
- }
-
- await atualizarAdministrador(administradorId, {
- status: 'aprovado',
- aprovado_por: user.id,
- aprovado_em: new Date().toISOString(),
- motivo_recusa: null,
- suspenso_em: null,
- taxa_padrao: taxa,
- })
- }
-
- async function recusar(administradorId: string) {
- const motivo = window.prompt('Motivo da recusa:')
- if (motivo === null) return
-
- await atualizarAdministrador(administradorId, {
- status: 'recusado',
- motivo_recusa: motivo.trim() || 'Recusado pela administração do site.',
- })
- }
-
- async function suspender(administradorId: string) {
- await atualizarAdministrador(administradorId, {
- status: 'suspenso',
- suspenso_em: new Date().toISOString(),
- })
- }
-
- const tiposPorAdmin = useMemo(() => {
- const mapa: Record<string, string[]> = {}
-
- tipos.forEach((item) => {
- if (!mapa[item.administrador_evento_id]) {
- mapa[item.administrador_evento_id] = []
- }
- mapa[item.administrador_evento_id].push(item.tipo_evento)
- })
-
- return mapa
- }, [tipos])
-
  const listaFiltrada = useMemo(() => {
  const termo = busca.trim().toLowerCase()
 
- return administradores.filter((item) => {
+ return casos.filter((item) => {
  const matchStatus =
  filtroStatus === 'todos' || item.status === filtroStatus
 
- const nomePerfil = profilesById[item.user_id]?.nome_exibicao || ''
- const tiposTexto = (tiposPorAdmin[item.id] || []).join(' ')
+ const abertoPor =
+ (item.aberto_por && profilesById[item.aberto_por]?.nome_exibicao) || ''
+ const responsavel =
+ (item.responsavel_user_id &&
+ profilesById[item.responsavel_user_id]?.nome_exibicao) ||
+ ''
 
  const matchBusca =
  !termo ||
- item.nome_exibicao?.toLowerCase().includes(termo) ||
+ item.titulo?.toLowerCase().includes(termo) ||
  item.descricao?.toLowerCase().includes(termo) ||
- nomePerfil.toLowerCase().includes(termo) ||
- item.user_id.toLowerCase().includes(termo) ||
- tiposTexto.toLowerCase().includes(termo)
+ item.tipo_caso?.toLowerCase().includes(termo) ||
+ item.origem_tipo?.toLowerCase().includes(termo) ||
+ abertoPor.toLowerCase().includes(termo) ||
+ responsavel.toLowerCase().includes(termo) ||
+ item.origem_id?.toLowerCase().includes(termo)
 
  return matchStatus && !!matchBusca
  })
- }, [administradores, busca, filtroStatus, profilesById, tiposPorAdmin])
+ }, [busca, casos, filtroStatus, profilesById])
 
  const resumo = useMemo(() => {
  return {
- pendente: administradores.filter((item) => item.status === 'pendente')
- .length,
- aprovado: administradores.filter((item) => item.status === 'aprovado')
- .length,
- recusado: administradores.filter((item) => item.status === 'recusado')
- .length,
- suspenso: administradores.filter((item) => item.status === 'suspenso')
- .length,
+ aberto: casos.filter((item) => item.status === 'aberto').length,
+ em_analise: casos.filter((item) => item.status === 'em_analise').length,
+ aguardando_resposta: casos.filter(
+ (item) => item.status === 'aguardando_resposta'
+ ).length,
+ resolvido: casos.filter((item) => item.status === 'resolvido').length,
+ recusado: casos.filter((item) => item.status === 'recusado').length,
+ arquivado: casos.filter((item) => item.status === 'arquivado').length,
  }
- }, [administradores])
+ }, [casos])
 
  if (loading) {
  return (
@@ -312,33 +256,51 @@ function AdminAdministradoresContent() {
  Painel do site
  </p>
  <h1 className="mt-2 text-3xl font-semibold uppercase text-[#142340]">
- Administradores de evento
+ Moderação
  </h1>
  <p className="mt-2 text-sm text-zinc-500">
- Aprove, recuse, suspenda e defina a taxa padrão dos admins que vão
- operar apostados, diários, copas, ligas e confrontos.
+ Acompanhe denúncias, disputas, contestações e análises internas da
+ plataforma.
  </p>
  </div>
 
  <AdminTabs />
  </div>
 
- <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+ <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
  <div className="border border-zinc-200 bg-white p-4">
  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Pendentes
+ Abertos
  </p>
  <div className="mt-3 text-3xl font-semibold text-[#142340]">
- {resumo.pendente}
+ {resumo.aberto}
  </div>
  </div>
 
  <div className="border border-zinc-200 bg-white p-4">
  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Aprovados
+ Em análise
  </p>
  <div className="mt-3 text-3xl font-semibold text-[#142340]">
- {resumo.aprovado}
+ {resumo.em_analise}
+ </div>
+ </div>
+
+ <div className="border border-zinc-200 bg-white p-4">
+ <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+ Aguardando resposta
+ </p>
+ <div className="mt-3 text-3xl font-semibold text-[#142340]">
+ {resumo.aguardando_resposta}
+ </div>
+ </div>
+
+ <div className="border border-zinc-200 bg-white p-4">
+ <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+ Resolvidos
+ </p>
+ <div className="mt-3 text-3xl font-semibold text-[#142340]">
+ {resumo.resolvido}
  </div>
  </div>
 
@@ -353,10 +315,10 @@ function AdminAdministradoresContent() {
 
  <div className="border border-zinc-200 bg-white p-4">
  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Suspensos
+ Arquivados
  </p>
  <div className="mt-3 text-3xl font-semibold text-[#142340]">
- {resumo.suspenso}
+ {resumo.arquivado}
  </div>
  </div>
  </section>
@@ -371,7 +333,7 @@ function AdminAdministradoresContent() {
  <input
  value={busca}
  onChange={(e) => setBusca(e.target.value)}
- placeholder="Buscar por nome, descrição, user id ou tipo de evento"
+ placeholder="Buscar por título, descrição, tipo, origem ou usuário"
  className="w-full border border-zinc-200 bg-[#f7f7f7] py-3 pl-10 pr-3 text-sm text-[#142340] outline-none transition focus:border-[#2563eb]"
  />
  </div>
@@ -386,8 +348,8 @@ function AdminAdministradoresContent() {
  onClick={() => {
  const url =
  status === 'todos'
- ? '/admin/administradores'
- : `/admin/administradores?status=${status}`
+ ? '/admin/moderacao'
+ : `/admin/moderacao?status=${status}`
 
  router.push(url)
  }}
@@ -408,85 +370,73 @@ function AdminAdministradoresContent() {
  <div className="grid gap-4">
  {listaFiltrada.length === 0 ? (
  <div className="border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
- Nenhum administrador encontrado nesse filtro.
+ Nenhum caso de moderação encontrado nesse filtro.
  </div>
  ) : (
  listaFiltrada.map((item) => {
- const dono =
- profilesById[item.user_id]?.nome_exibicao || 'Usuário sem nome'
- const tiposDoAdmin = tiposPorAdmin[item.id] || []
- const salvando = salvandoId === item.id
+ const abertoPor =
+ (item.aberto_por && profilesById[item.aberto_por]?.nome_exibicao) ||
+ 'Não identificado'
+
+ const responsavel =
+ (item.responsavel_user_id &&
+ profilesById[item.responsavel_user_id]?.nome_exibicao) ||
+ 'Não atribuído'
 
  return (
- <div
+ <Link
  key={item.id}
- className="border border-zinc-200 bg-[#f7f7f7] p-5"
+ href={`/admin/moderacao/${item.id}`}
+ className="block border border-zinc-200 bg-[#f7f7f7] p-5 transition hover:border-[#2563eb]"
  >
  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
  <div className="space-y-4">
  <div>
  <div className="flex flex-wrap items-center gap-2">
  <h2 className="text-lg font-semibold uppercase text-[#142340]">
- {item.nome_exibicao || dono}
+ {item.titulo}
  </h2>
  <span className="border border-zinc-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2563eb]">
- {item.status}
+ {item.status.replaceAll('_', ' ')}
  </span>
  </div>
 
  <p className="mt-2 text-sm text-zinc-500">
- Perfil: {dono}
+ {tipoCasoLabels[item.tipo_caso] || item.tipo_caso} •{' '}
+ {origemLabels[item.origem_tipo] || item.origem_tipo}
  </p>
+
+ {item.origem_id ? (
  <p className="mt-1 break-all text-xs text-zinc-500">
- User ID: {item.user_id}
+ Origem ID: {item.origem_id}
  </p>
+ ) : null}
  </div>
 
  {item.descricao ? (
- <p className="max-w-3xl text-sm leading-6 text-zinc-600">
+ <p className="max-w-4xl text-sm leading-6 text-zinc-600">
  {item.descricao}
  </p>
  ) : (
  <p className="text-sm text-zinc-500">
- Sem descrição enviada.
+ Sem descrição informada.
  </p>
  )}
 
- <div>
- <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Tipos de evento selecionados
- </p>
-
- <div className="mt-2 flex flex-wrap gap-2">
- {tiposDoAdmin.length > 0 ? (
- tiposDoAdmin.map((tipo) => (
- <span
- key={tipo}
- className="border border-zinc-200 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600"
- >
- {tipoLabels[tipo] || tipo}
+ <div className="flex flex-wrap gap-4 text-sm text-zinc-500">
+ <span>
+ <strong className="text-[#142340]">Aberto por:</strong>{' '}
+ {abertoPor}
  </span>
- ))
- ) : (
- <span className="text-sm text-zinc-500">
- Nenhum tipo informado.
+ <span>
+ <strong className="text-[#142340]">Responsável:</strong>{' '}
+ {responsavel}
  </span>
- )}
  </div>
  </div>
 
- {item.motivo_recusa ? (
- <div className="border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-200">
- <span className="font-semibold uppercase tracking-[0.18em]">
- Motivo da recusa:
- </span>{' '}
- {item.motivo_recusa}
- </div>
- ) : null}
- </div>
-
- <div className="w-full max-w-md space-y-4 border border-zinc-200 bg-white p-4">
- <div className="grid grid-cols-2 gap-4 text-sm text-zinc-600">
+ <div className="w-full max-w-sm space-y-4 border border-zinc-200 bg-white p-4">
+ <div className="grid grid-cols-1 gap-4 text-sm text-zinc-600">
  <div>
  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
  Criado em
@@ -500,88 +450,76 @@ function AdminAdministradoresContent() {
 
  <div>
  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Aprovado em
+ Última atualização
  </p>
  <p className="mt-2">
- {item.aprovado_em
- ? new Date(item.aprovado_em).toLocaleString(
- 'pt-BR'
- )
+ {item.updated_at
+ ? new Date(item.updated_at).toLocaleString('pt-BR')
  : '-'}
  </p>
  </div>
- </div>
 
- <div>
- <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
- Taxa padrão do admin (%)
- </label>
- <input
- value={taxas[item.id] ?? ''}
- onChange={(e) =>
- setTaxas((prev) => ({
- ...prev,
- [item.id]: e.target.value,
- }))
- }
- type="number"
- min="0.01"
- step="0.01"
- className="mt-2 w-full border border-zinc-200 bg-[#f7f7f7] px-3 py-3 text-sm text-[#142340] outline-none transition focus:border-[#2563eb]"
- />
- </div>
-
- <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
- <button
- disabled={salvando}
- onClick={() => aprovar(item.id)}
- className="inline-flex items-center justify-center gap-2 bg-[#2563eb] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#142340] transition hover:bg-[#1d4ed8] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
- >
- <CheckCircle2 size={14} />
- Aprovar
- </button>
-
- <button
- disabled={salvando}
- onClick={() => recusar(item.id)}
- className="inline-flex items-center justify-center gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-red-200 transition hover:border-red-400 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
- >
- <XCircle size={14} />
- Recusar
- </button>
-
- <button
- disabled={salvando}
- onClick={() => suspender(item.id)}
- className="inline-flex items-center justify-center gap-2 border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-yellow-100 transition hover:border-yellow-400 hover:bg-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-50"
- >
- <Slash size={14} />
- Suspender
- </button>
- </div>
-
- {salvando ? (
  <div className="inline-flex items-center gap-2 text-xs text-zinc-500">
- <Loader2 size={14} className="animate-spin" />
- Salvando alterações...
- </div>
- ) : null}
+ <Gavel size={14} />
+ Abrir detalhe do caso
  </div>
  </div>
  </div>
+ </div>
+ </Link>
  )
  })
  )}
+ </div>
+ </section>
+
+ <section className="grid gap-4 xl:grid-cols-2">
+ <div className="border border-zinc-200 bg-white p-5">
+ <div className="flex items-start gap-3">
+ <AlertTriangle className="mt-0.5 text-[#2563eb]" size={18} />
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2563eb]">
+ Uso recomendado
+ </p>
+ <h3 className="mt-2 text-lg font-semibold uppercase text-[#142340]">
+ Centralize disputas aqui
+ </h3>
+ <p className="mt-2 text-sm leading-6 text-zinc-500">
+ Use essa área para tratar contestação de resultado, denúncias
+ contra produtoras, admins de evento, apostados e eventos do
+ site.
+ </p>
+ </div>
+ </div>
+ </div>
+
+ <div className="border border-zinc-200 bg-white p-5">
+ <div className="flex items-start gap-3">
+ <Gavel className="mt-0.5 text-[#2563eb]" size={18} />
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#2563eb]">
+ Próximo passo
+ </p>
+ <h3 className="mt-2 text-lg font-semibold uppercase text-[#142340]">
+ Abrir casos pelo usuário
+ </h3>
+ <p className="mt-2 text-sm leading-6 text-zinc-500">
+ Depois dessa tela admin, o próximo bloco ideal é permitir que o
+ usuário abra casos de moderação nos apostados e campeonatos em
+ que ele participou.
+ </p>
+ </div>
+ </div>
  </div>
  </section>
  </div>
  )
 }
 
-export default function AdminAdministradoresPage() {
+export default function AdminModeracaoPage() {
  return (
-  <Suspense fallback={<div className="p-6 text-sm font-bold text-zinc-400">Carregando...</div>}>
-   <AdminAdministradoresContent />
+  <Suspense fallback={<main className="min-h-screen bg-[#f6f8fb] p-6 text-sm font-bold text-slate-600">Carregando...</main>}>
+   <AdminModeracaoContent />
   </Suspense>
  )
 }
