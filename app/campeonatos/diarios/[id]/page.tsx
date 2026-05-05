@@ -889,39 +889,56 @@ export default function CampeonatoDiarioDetalhePage() {
         <ArrowLeft size={14} /> Voltar
       </Link>
 
-      <div className={`relative mb-4 overflow-hidden border border-zinc-200 border-l-4 bg-white ${visual.borderStrong}`}>
-        <div className="absolute inset-0">
-          {campeonato.banner_url ? (
-            <img
-              src={campeonato.banner_url}
-              alt={campeonato.nome}
-              className="h-full w-full object-cover opacity-70"
-            />
-          ) : (
-            <div className="h-full w-full bg-zinc-100" />
-          )}
-          <div className="absolute inset-0 bg-white/65" />
-        </div>
+      <div className="mb-4 overflow-hidden border border-sky-900/20 bg-gradient-to-r from-sky-700 via-blue-700 to-sky-900 text-white shadow-sm">
+        <div className="flex flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            {campeonato.logo_url ? (
+              <img
+                src={campeonato.logo_url}
+                alt="Logo"
+                className="h-16 w-16 shrink-0 border border-white/30 bg-white object-cover"
+              />
+            ) : (
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center border border-white/30 bg-white/15 text-xl font-bold text-white">
+                {String(campeonato.nome || 'D').charAt(0).toUpperCase()}
+              </div>
+            )}
 
-        <div className="relative z-10 flex items-center gap-3 px-4 py-4">
-          {campeonato.logo_url ? (
-            <img
-              src={campeonato.logo_url}
-              alt="Logo"
-              className="h-12 w-12 border border-zinc-200 bg-white object-cover"
-            />
-          ) : (
-            <div className={`flex h-12 w-12 items-center justify-center border border-zinc-200 bg-white text-sm font-semibold ${visual.text}`}>
-              {String(campeonato.nome || 'D').charAt(0).toUpperCase()}
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center border border-white/25 bg-white/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-white">
+                  Diário por horários
+                </span>
+                <span className="inline-flex items-center border border-white/25 bg-white/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                  Mobile
+                </span>
+              </div>
+              <h1 className="truncate text-3xl font-semibold uppercase tracking-tight text-white md:text-4xl">
+                {campeonato.nome}
+              </h1>
             </div>
-          )}
-
-          <div>
-            <div className={`mb-1 text-[9px] font-medium uppercase tracking-[0.18em] ${visual.text}`}>
-              Diário por horários
-            </div>
-            <h1 className={`text-2xl font-semibold uppercase ${visual.text}`}>{campeonato.nome}</h1>
           </div>
+
+          {grupoAtivo && resumoGrupo ? (
+            <div className="grid grid-cols-2 gap-3 text-white sm:grid-cols-4 md:min-w-[620px]">
+              <div className="border-l border-white/20 pl-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">Horário</div>
+                <div className="mt-1 text-xl font-semibold">{formatarHora(grupoAtivo.horario_inicio)}</div>
+              </div>
+              <div className="border-l border-white/20 pl-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">Slots</div>
+                <div className="mt-1 text-xl font-semibold">{resumoGrupo.ocupados} / {resumoGrupo.totalSlots}</div>
+              </div>
+              <div className="border-l border-white/20 pl-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">Premiação</div>
+                <div className="mt-1 text-xl font-semibold">{moeda(resumoGrupo.premiacao)}</div>
+              </div>
+              <div className="border-l border-white/20 pl-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">Inscrição</div>
+                <div className="mt-1 text-xl font-semibold">{moeda(resumoGrupo.inscricao)}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -952,13 +969,6 @@ export default function CampeonatoDiarioDetalhePage() {
 
       {grupoAtivo && resumoGrupo ? (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-            <CardInfo icon={<Grid3X3 size={16} />} label="Slots" value={String(resumoGrupo.totalSlots)} />
-            <CardInfo icon={<Users size={16} />} label="Ocupados" value={`${resumoGrupo.ocupados} / ${resumoGrupo.totalSlots}`} />
-            <CardInfo icon={<Trophy size={16} />} label="Premiação" value={moeda(resumoGrupo.premiacao)} />
-            <CardInfo icon={<Users size={16} />} label="Inscrição" value={moeda(resumoGrupo.inscricao)} />
-          </div>
-
           <div className="grid gap-3 lg:grid-cols-[285px_minmax(0,1fr)]">
             <section className="border border-zinc-200 bg-white p-3">
               <div className="mb-3 border-b border-zinc-200 pb-2">
