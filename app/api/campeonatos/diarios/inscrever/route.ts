@@ -111,18 +111,13 @@ export async function POST(req: Request) {
               ? item.perfis_jogo[0]
               : item.perfis_jogo
 
-            return (
-              perfilJogo?.user_id === user.id &&
-              ['dono', 'admin', 'manager', 'capitao'].includes(
-                String(item.tipo || '').toLowerCase()
-              )
-            )
+            return perfilJogo?.user_id === user.id
           })
       }
 
       if (!podeGerenciarLine) {
         return NextResponse.json(
-          { error: 'Você não pode inscrever essa line.' },
+          { error: 'Você não faz parte dessa line/equipe.' },
           { status: 403 }
         )
       }
@@ -162,17 +157,12 @@ export async function POST(req: Request) {
             ? item.perfis_jogo[0]
             : item.perfis_jogo
 
-          return (
-            perfilJogo?.user_id === user.id &&
-            ['dono', 'admin', 'manager', 'capitao'].includes(
-              String(item.tipo || '').toLowerCase()
-            )
-          )
+          return perfilJogo?.user_id === user.id
         })
 
       if (!podeGerenciar) {
         return NextResponse.json(
-          { error: 'Você não pode inscrever essa equipe.' },
+          { error: 'Você não faz parte dessa equipe.' },
           { status: 403 }
         )
       }

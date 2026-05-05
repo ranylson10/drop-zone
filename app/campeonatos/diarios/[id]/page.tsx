@@ -731,6 +731,80 @@ export default function CampeonatoDiarioDetalhePage() {
     setLineSelecionadaId('')
   }
 
+
+  async function carregarParticipantesDoUsuario(userId: string) {
+    const [equipesDonoRes, membrosRes] = await Promise.all([
+      supabase
+        .from('equipes')
+        .select('id, nome, logo_url')
+        .eq('criado_por', userId)
+        .order('nome', { ascending: true }),
+      supabase
+        .from('membros_equipe')
+        .select('equipe_id, tipo, ativo, perfis_jogo:perfil_jogo_id ( id, user_id )')
+        .eq('ativo', true),
+    ])
+
+    if (equipesDonoRes.error) throw equipesDonoRes.error
+    if (membrosRes.error) throw membrosRes.error
+
+    const equipeIdsPermitidos = new Set<string>()
+
+    ;((equipesDonoRes.data || []) as any[]).forEach((item) => {
+      if (item?.id) equipeIdsPermitidos.add(String(item.id))
+    })
+
+    ;((membrosRes.data || []) as any[]).forEach((item) => {
+      const perfilJogo = Array.isArray(item.perfis_jogo)
+        ? item.perfis_jogo[0]
+        : item.perfis_jogo
+
+      if (perfilJogo?.user_id === userId && item.equipe_id) {
+        equipeIdsPermitidos.add(String(item.equipe_id))
+      }
+    })
+
+    const equipeIds = Array.from(equipeIdsPermitidos)
+
+    const equipesPermitidasRes = equipeIds.length > 0
+      ? await supabase
+          .from('equipes')
+          .select('id, nome, logo_url')
+          .in('id', equipeIds)
+          .order('nome', { ascending: true })
+      : { data: [], error: null as any }
+
+    if (equipesPermitidasRes.error) throw equipesPermitidasRes.error
+
+    const [linesCriadasRes, linesEquipesRes] = await Promise.all([
+      supabase
+        .from('lines')
+        .select('id, nome, logo_url, equipe_id, plataforma, ativa')
+        .eq('created_by', userId)
+        .eq('ativa', true)
+        .order('nome', { ascending: true }),
+      equipeIds.length > 0
+        ? supabase
+            .from('lines')
+            .select('id, nome, logo_url, equipe_id, plataforma, ativa')
+            .in('equipe_id', equipeIds)
+            .eq('ativa', true)
+            .order('nome', { ascending: true })
+        : Promise.resolve({ data: [], error: null as any }),
+    ])
+
+    if (linesCriadasRes.error) throw linesCriadasRes.error
+    if (linesEquipesRes.error) throw linesEquipesRes.error
+
+    const linesMapLocal = new Map<string, Line>()
+    ;([...(linesCriadasRes.data || []), ...(linesEquipesRes.data || [])] as Line[]).forEach((line) => {
+      if (line?.id) linesMapLocal.set(String(line.id), line)
+    })
+
+    setEquipesDisponiveis((equipesPermitidasRes.data || []) as EquipeOficial[])
+    setLinesDisponiveis(Array.from(linesMapLocal.values()))
+  }
+
   async function carregar() {
     if (!campeonatoId) return
 
@@ -738,6 +812,9 @@ export default function CampeonatoDiarioDetalhePage() {
     setErro('')
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const userAtual = sessionData.session?.user || null
+
       const [
         campeonatoRes,
         gruposRes,
@@ -746,7 +823,6 @@ export default function CampeonatoDiarioDetalhePage() {
         jogosRes,
         resultadosJogosRes,
         resultadosMvpRes,
-        equipesDisponiveisRes,
       ] = await Promise.all([
         supabase.from('campeonatos').select('id, nome, banner_url, logo_url').eq('id', campeonatoId).single(),
         supabase
@@ -777,7 +853,6 @@ export default function CampeonatoDiarioDetalhePage() {
           .from('resultados_mvp')
           .select('id, campeonato_id, jogo_id, grupo_id, equipe_id, equipe_avulsa_id, perfil_jogo_id, jogador_campeonato_id, nick_snapshot, uid_jogo_snapshot, abates, dano, assistencias, revives')
           .eq('campeonato_id', campeonatoId),
-        supabase.from('equipes').select('id, nome, logo_url').order('nome', { ascending: true }),
       ])
 
       if (campeonatoRes.error) throw campeonatoRes.error
@@ -787,7 +862,6 @@ export default function CampeonatoDiarioDetalhePage() {
       if (jogosRes.error) throw jogosRes.error
       if (resultadosJogosRes.error) throw resultadosJogosRes.error
       if (resultadosMvpRes.error) throw resultadosMvpRes.error
-      if (equipesDisponiveisRes.error) throw equipesDisponiveisRes.error
 
       const campeonatoEquipesRows = (campeonatoEquipesRes.data || []) as CampeonatoEquipe[]
 
@@ -795,7 +869,7 @@ export default function CampeonatoDiarioDetalhePage() {
       const equipeAvulsaIds = Array.from(new Set(campeonatoEquipesRows.map((row) => String(row.equipe_avulsa_id || '').trim()).filter(Boolean)))
       const lineIds = Array.from(new Set(campeonatoEquipesRows.map((row) => String(row.line_id || '').trim()).filter(Boolean)))
 
-      const [equipesOficiaisRes, equipesAvulsasRes, linesRes, minhasLinesRes] = await Promise.all([
+      const [equipesOficiaisRes, equipesAvulsasRes, linesRes] = await Promise.all([
         equipeIds.length > 0
           ? supabase.from('equipes').select('id, nome, logo_url').in('id', equipeIds)
           : Promise.resolve({ data: [], error: null as any }),
@@ -805,13 +879,11 @@ export default function CampeonatoDiarioDetalhePage() {
         lineIds.length > 0
           ? supabase.from('lines').select('id, nome, logo_url, equipe_id, plataforma, ativa').in('id', lineIds)
           : Promise.resolve({ data: [], error: null as any }),
-        supabase.from('lines').select('id, nome, logo_url, equipe_id, plataforma, ativa').eq('ativa', true).order('nome', { ascending: true }),
       ])
 
       if (equipesOficiaisRes.error) throw equipesOficiaisRes.error
       if (equipesAvulsasRes.error) throw equipesAvulsasRes.error
       if (linesRes.error) throw linesRes.error
-      if (minhasLinesRes.error) throw minhasLinesRes.error
 
       setCampeonato(campeonatoRes.data as Campeonato)
       setGrupos((gruposRes.data || []) as Grupo[])
@@ -823,8 +895,12 @@ export default function CampeonatoDiarioDetalhePage() {
       setJogos((jogosRes.data || []) as Jogo[])
       setResultadosJogos((resultadosJogosRes.data || []) as ResultadoJogo[])
       setResultadosMvp((resultadosMvpRes.data || []) as ResultadoMvp[])
-      setEquipesDisponiveis((equipesDisponiveisRes.data || []) as EquipeOficial[])
-      setLinesDisponiveis((minhasLinesRes.data || []) as Line[])
+      if (userAtual?.id) {
+        await carregarParticipantesDoUsuario(userAtual.id)
+      } else {
+        setEquipesDisponiveis([])
+        setLinesDisponiveis([])
+      }
 
       if ((gruposRes.data || []).length > 0) {
         setGrupoId((atual) => atual || (gruposRes.data || [])[0].id)
@@ -927,27 +1003,24 @@ export default function CampeonatoDiarioDetalhePage() {
         return
       }
 
-      const valor = Number(resumoGrupo.inscricao || 0)
-
-      if (tipoParticipanteSlot === 'line') {
-        const { error } = await supabase.rpc('reservar_inscricao_grupo_diario_line', {
-          p_campeonato_id: campeonatoId,
-          p_grupo_id: grupoAtivo.id,
-          p_line_id: participanteId,
-          p_user_id: user.id,
-          p_valor: valor,
-        })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.rpc('reservar_inscricao_grupo_diario', {
-          p_campeonato_id: campeonatoId,
-          p_grupo_id: grupoAtivo.id,
-          p_equipe_id: participanteId,
-          p_user_id: user.id,
-          p_valor: valor,
-        })
-        if (error) throw error
+      const payload = {
+        campeonatoId,
+        grupoId: grupoAtivo.id,
+        equipeId: tipoParticipanteSlot === 'equipe' ? participanteId : undefined,
+        lineId: tipoParticipanteSlot === 'line' ? participanteId : undefined,
       }
+
+      const res = await fetch('/api/campeonatos/diarios/inscrever', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Erro ao comprar vaga com saldo da carteira.')
 
       setSlotModal(null)
       setEquipeSelecionadaId('')
@@ -1469,7 +1542,7 @@ export default function CampeonatoDiarioDetalhePage() {
                   onChange={(e) => setEquipeSelecionadaId(e.target.value)}
                   className="h-10 w-full border border-zinc-200 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-sky-500"
                 >
-                  <option value="">Selecione uma equipe</option>
+                  <option value="">{equipesDisponiveis.length > 0 ? 'Selecione uma equipe' : 'Nenhuma equipe vinculada ao seu usuário'}</option>
                   {equipesDisponiveis.map((equipe) => (
                     <option key={equipe.id} value={equipe.id}>
                       {equipe.nome}
@@ -1482,7 +1555,7 @@ export default function CampeonatoDiarioDetalhePage() {
                   onChange={(e) => setLineSelecionadaId(e.target.value)}
                   className="h-10 w-full border border-zinc-200 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-sky-500"
                 >
-                  <option value="">Selecione uma line</option>
+                  <option value="">{linesDisponiveis.length > 0 ? 'Selecione uma line' : 'Nenhuma line vinculada ao seu usuário'}</option>
                   {linesDisponiveis.map((line) => (
                     <option key={line.id} value={line.id}>
                       {line.nome}
