@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LEALT - Escrow completo dos apostados + taxa automática do site
 
-## Getting Started
+## O que cria
 
-First, run the development server:
+- `lealt_taxas_operacionais`: configura taxa dos apostados.
+- `lealt_apostados_escrow`: guarda valor retido por usuário/confronto/lado.
+- `lealt_site_receitas`: registra a receita do site.
+- Funções seguras para reter, reembolsar, finalizar e consultar resumo.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Fluxo
+
+1. Usuário deposita saldo via Pix.
+2. Ao entrar no apostado, chama `lealt_apostado_reter_saldo`.
+3. O valor sai de `saldo` e vai para `saldo_retido`.
+4. Ao finalizar, chama `lealt_apostado_finalizar_com_escrow`.
+5. O sistema calcula taxa do site, paga vencedor e registra receita.
+6. Se cancelar, chama `lealt_apostado_reembolsar_confronto`.
+
+## Exemplo
+
+Aposta 1x1:
+- Lado A: R$ 5
+- Lado B: R$ 5
+- Total: R$ 10
+- Taxa 10%: R$ 1
+- Prêmio vencedor: R$ 9
+
+## RPCs para frontend
+
+Entrar:
+
+```ts
+await supabase.rpc('lealt_apostado_reter_saldo', {
+  p_confronto_id: confrontoId,
+  p_user_id: user.id,
+  p_lado: 'a',
+  p_valor: 5
+})
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Finalizar:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```ts
+await supabase.rpc('lealt_apostado_finalizar_com_escrow', {
+  p_confronto_id: confrontoId,
+  p_vencedor_lado: 'a',
+  p_rake_percent: null
+})
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Reembolsar:
 
-## Learn More
+```ts
+await supabase.rpc('lealt_apostado_reembolsar_confronto', {
+  p_confronto_id: confrontoId,
+  p_motivo: 'Cancelado pela moderação'
+})
+```
 
-To learn more about Next.js, take a look at the following resources:
+Resumo:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```ts
+await supabase.rpc('lealt_apostado_resumo_escrow', {
+  p_confronto_id: confrontoId
+})
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Segurança
 
-## Deploy on Vercel
+- Usuário comum só retém saldo dele mesmo.
+- Só admin/moderador do confronto finaliza/reembolsa.
+- Antifraude bloqueia antes da retenção/finalização.
+- Tudo gera auditoria.
+- Frontend não altera `wallet_saldo` direto.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Observação
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Apostados envolvendo dinheiro real podem depender de regras legais e regulatórias. Valide isso antes de operar publicamente.

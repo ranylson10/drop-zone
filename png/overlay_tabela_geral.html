@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1" />
+  <title>Overlay Tabela PNG - Dinâmica</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../theme.css">
+  <script src="../overlay_config.js"></script>
+
+  <style>
+    :root{
+      --stage-w: 1920px;
+      --stage-h: 1080px;
+
+      --table-x: 50%;
+      --table-y: 30px;
+      --table-w: 1100px;
+      --table-h: 1000px;
+      --table-shift-x: -50%;
+
+      --row-h: 96px;
+      --row-gap: 10px;
+      --cell-gap: 8px;
+      --col-gap: 0px;
+
+      --header-row-h: 28px;
+      --header-gap-bottom: 8px;
+
+      --title-x: 50%;
+      --title-y: 0px;
+      --title-w: 800px;
+      --title-h: 100px;
+
+      --title-font: "Anton","Impact","Arial Black",sans-serif;
+      --title-size: 0px;
+      --title-weight: 700;
+      --title-color: #606060;
+      --title-align: center;
+
+      --row-bg-image: none;
+      --row-bg-fit: cover;
+      --row-bg-pos-x: center;
+      --row-bg-pos-y: center;
+      --row-bg-opacity: 1;
+
+      --top-art-x: 0px;
+      --top-art-y: 0px;
+      --top-art-w: 0px;
+      --top-art-h: 0px;
+      --top-art-fit: contain;
+      --top-art-opacity: 1;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      width:var(--stage-w);
+      height:var(--stage-h);
+      margin:0;
+      overflow:hidden;
+      background:transparent;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
+
+    body{
+      font-family:"Oswald","Segoe UI",Arial,sans-serif;
+    }
+
+    .stage{
+      position:relative;
+      width:var(--stage-w);
+      height:var(--stage-h);
+      overflow:hidden;
+      background:transparent;
+    }
+
+    .top-art{
+      position:absolute;
+      left:var(--top-art-x);
+      top:var(--top-art-y);
+      width:var(--top-art-w);
+      height:var(--top-art-h);
+      object-fit:var(--top-art-fit);
+      opacity:var(--top-art-opacity);
+      display:none;
+      pointer-events:none;
+      z-index:1;
+    }
+
+    .wrap{
+      position:absolute;
+      left:var(--table-x);
+      top:var(--table-y);
+      width:var(--table-w);
+      height:var(--table-h);
+      transform:translateX(var(--table-shift-x));
+      z-index:2;
+      pointer-events:none;
+    }
+
+    .title{
+      position:absolute;
+      left:var(--title-x);
+      top:var(--title-y);
+      width:var(--title-w);
+      height:var(--title-h);
+      transform:translateX(-50%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-transform:uppercase;
+      color:var(--title-color);
+      font-family:var(--title-font);
+      font-size:var(--title-size);
+      font-weight:var(--title-weight);
+      text-align:var(--title-align);
+      letter-spacing:.03em;
+      line-height:1;
+      z-index:3;
+      pointer-events:none;
+      white-space:nowrap;
+      overflow:hidden;
+    }
+
+    .board{
+      position:absolute;
+      inset:0;
+      display:flex;
+      gap:var(--col-gap);
+      align-items:flex-start;
+      justify-content:space-between;
+    }
+
+    .board.mode-single{
+      gap:0;
+    }
+
+    .board.mode-single .block{
+      width:100%;
+    }
+
+    .board.mode-double .block{
+      width:calc((100% - var(--col-gap)) / 2);
+    }
+
+    .block{
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      gap:0;
+      min-width:0;
+    }
+
+    .headers{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      margin-bottom:var(--header-gap-bottom);
+    }
+
+    .headers.is-hidden{
+      display:none;
+    }
+
+    .header-row{
+      position:relative;
+      display:grid;
+      align-items:end;
+      min-width:0;
+      height:var(--header-row-h);
+    }
+
+    .header-cell{
+      position:relative;
+      min-width:0;
+      overflow:hidden;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      height:100%;
+    }
+
+    .header-txt{
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      color:var(--header-color, #606060);
+      font-family:var(--header-font, "Oswald","Segoe UI",Arial,sans-serif);
+      font-size:var(--header-size, 18px);
+      font-weight:var(--header-weight, 600);
+      text-align:var(--header-align, center);
+    }
+
+    .rows{
+      display:flex;
+      flex-direction:column;
+      gap:var(--row-gap);
+      min-width:0;
+    }
+
+    .row{
+      position:relative;
+      display:grid;
+      align-items:center;
+      min-width:0;
+      height:var(--row-h);
+    }
+
+    .row::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-image:var(--row-bg-image);
+      background-repeat:no-repeat;
+      background-size:var(--row-bg-fit);
+      background-position:var(--row-bg-pos-x) var(--row-bg-pos-y);
+      opacity:var(--row-bg-opacity);
+      pointer-events:none;
+      z-index:0;
+    }
+
+    .cell{
+      position:relative;
+      z-index:1;
+      min-width:0;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      transform:skewX(var(--cell-tilt, 0deg));
+      background:var(--cell-bg, transparent);
+      border-radius:var(--cell-radius, 0px);
+      padding:0 var(--cell-padding, 0px);
+    }
+
+    .cell-inner{
+      width:100%;
+      max-width:100%;
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:inherit;
+      gap:var(--cell-item-gap, 0px);
+      transform:skewX(calc(var(--cell-tilt, 0deg) * -1));
+      overflow:hidden;
+    }
+
+    .cell.text .txt,
+    .cell.number .txt{
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1;
+      text-transform:uppercase;
+      color:var(--cell-color, #fff);
+      font-family:var(--cell-font, "Oswald","Segoe UI",Arial,sans-serif);
+      font-size:var(--cell-font-size, 24px);
+      font-weight:var(--cell-font-weight, 500);
+      text-align:var(--cell-align, center);
+    }
+
+    .cell.image .img-wrap{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .cell.image img{
+      width:100%;
+      height:100%;
+      object-fit:var(--cell-image-fit, contain);
+      object-position:var(--cell-image-align-x, center) var(--cell-image-align-y, center);
+      opacity:var(--cell-image-opacity, 1);
+      display:block;
+    }
+
+    .debug{
+      position:absolute;
+      left:20px;
+      bottom:20px;
+      max-width:860px;
+      padding:10px 14px;
+      background:rgba(0,0,0,.72);
+      color:#fff;
+      font:14px/1.4 monospace;
+      border-radius:10px;
+      z-index:99;
+      display:none;
+      white-space:pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <img id="topArt" class="top-art" alt="Arte topo">
+
+    <div class="wrap" id="wrap">
+      <div class="title" id="title"></div>
+
+      <div class="board mode-single" id="board">
+        <div class="block" id="blockL">
+          <div class="headers" id="headersL"></div>
+          <div class="rows" id="rowsL"></div>
+        </div>
+
+        <div class="block" id="blockR">
+          <div class="headers" id="headersR"></div>
+          <div class="rows" id="rowsR"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="debug" id="debug"></div>
+  </div>
+
+  <script>
+    const CFG = window.OVERLAY_CFG || {};
+    const API_KEY = CFG.API_KEY || "";
+    const SHEET_ID = CFG.SHEET_ID || "";
+
+    // CORRIGIDO: limitado apenas ao bloco real da overlay
+    const CONFIG_RANGE = "CONFIG!A3:O85";
+
+    const wrap = document.getElementById("wrap");
+    const titleEl = document.getElementById("title");
+    const boardEl = document.getElementById("board");
+    const rowsL = document.getElementById("rowsL");
+    const rowsR = document.getElementById("rowsR");
+    const headersL = document.getElementById("headersL");
+    const headersR = document.getElementById("headersR");
+    const topArt = document.getElementById("topArt");
+    const debugEl = document.getElementById("debug");
+
+    function safeText(v){
+      return String(v ?? "").trim();
+    }
+
+    function normalizeHeader(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toUpperCase();
+    }
+
+    function normalizeKey(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase();
+    }
+
+    function toBool(v, fallback = false){
+      const s = safeText(v).toLowerCase();
+      if (["1","true","sim","yes"].includes(s)) return true;
+      if (["0","false","nao","não","no"].includes(s)) return false;
+      return fallback;
+    }
+
+    function toNumber(v, fallback = 0){
+      const s = safeText(v).replace(",", ".");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function isNumericLike(v){
+      const s = safeText(v).replace(",", ".");
+      return s !== "" && !isNaN(Number(s));
+    }
+
+    function parseMeasure(value, fallback = "", percentWhenFraction = false){
+      const s = safeText(value);
+      if (!s) return fallback;
+      if (/[a-z%]/i.test(s) && !/^-?\d+(?:[.,]\d+)?$/.test(s)) return s;
+
+      const n = toNumber(s, NaN);
+      if (!Number.isFinite(n)) return fallback;
+
+      if (percentWhenFraction && n >= 0 && n <= 1) {
+        return `${n * 100}%`;
+      }
+      return `${n}px`;
+    }
+
+    function parseTilt(v){
+      const s = safeText(v).toLowerCase();
+      if (s === "left") return "-8deg";
+      if (s === "right") return "8deg";
+      return "0deg";
+    }
+
+    function resolveFont(v){
+      const s = safeText(v).toLowerCase();
+      if (!s) return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "cutmark") return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "anton") return '"Anton","Impact","Arial Black",sans-serif';
+      if (s === "oswald") return '"Oswald","Segoe UI",Arial,sans-serif';
+      return `"${safeText(v)}","Oswald","Segoe UI",Arial,sans-serif`;
+    }
+
+    function toSrc(path){
+      let p = safeText(path);
+      if (!p) return "";
+      if (/^https?:\/\//i.test(p)) return p;
+
+      p = p.replace(/\\/g, "/");
+
+      const parts = p.split("/").filter(Boolean);
+      const lower = parts.map(x => x.toLowerCase());
+
+      const folderIndex =
+        lower.indexOf("assets") >= 0 ? lower.indexOf("assets") :
+        lower.indexOf("logos") >= 0 ? lower.indexOf("logos") :
+        lower.indexOf("setas") >= 0 ? lower.indexOf("setas") :
+        lower.indexOf("jogadores") >= 0 ? lower.indexOf("jogadores") :
+        lower.indexOf("maps") >= 0 ? lower.indexOf("maps") :
+        -1;
+
+      if (folderIndex >= 0) {
+        p = "../" + parts.slice(folderIndex).join("/");
+      } else {
+        p = "../" + p.replace(/^\/+/, "");
+      }
+
+      return encodeURI(p);
+    }
+
+    async function fetchSheetRange(range){
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
+        encodeURIComponent(range) +
+        `?key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error(`Erro ao carregar ${range}: HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function fetchSheetRanges(ranges){
+      if (!ranges.length) return {};
+      const params = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&");
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?` +
+        `${params}&key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error(`Erro ao carregar ranges em lote: HTTP ${res.status}`);
+      const json = await res.json();
+
+      const out = {};
+      for (const vr of (json.valueRanges || [])) {
+        out[vr.range.replace(/'/g, "")] = vr.values || [];
+      }
+      return out;
+    }
+
+    function parseConfigMatrix(values){
+      const rows = values || [];
+      if (!rows.length) throw new Error("CONFIG vazia.");
+
+      const headerRow = rows[0] || [];
+      const normHeaders = headerRow.map(normalizeHeader);
+
+      const obsIndex = normHeaders.indexOf("OBS");
+      const pngIndex = normHeaders.indexOf("PNG");
+
+      if (pngIndex < 0) throw new Error("Coluna PNG não encontrada na CONFIG.");
+
+      const firstDataIndex = 2;
+      const lastDataIndexExclusive = obsIndex >= 0 ? obsIndex : pngIndex;
+
+      const dataColumns = [];
+      for (let i = firstDataIndex; i < lastDataIndexExclusive; i++) {
+        const original = safeText(headerRow[i]);
+        const key = normalizeHeader(original);
+        if (!original || !key) continue;
+        dataColumns.push({
+          index: i,
+          header: original,
+          key,
+          cfg: {}
+        });
+      }
+
+      const globalPng = {};
+
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        const cfgKey = normalizeKey(row[1]);
+        if (!cfgKey) continue;
+
+        for (const col of dataColumns) {
+          const val = row[col.index];
+          if (val !== undefined && safeText(val) !== "") {
+            col.cfg[cfgKey] = safeText(val);
+          }
+        }
+
+        const pngVal = row[pngIndex];
+        if (pngVal !== undefined && safeText(pngVal) !== "") {
+          globalPng[cfgKey] = safeText(pngVal);
+        }
+      }
+
+      return {
+        dataColumns,
+        globalPng,
+        meta: {
+          obsIndex,
+          pngIndex
+        }
+      };
+    }
+
+    function buildVisibleColumns(parsed){
+      return parsed.dataColumns
+        .map(col => {
+          const cfg = col.cfg || {};
+          return {
+            key: col.key,
+            header: col.header,
+            type: normalizeKey(cfg.type || "text"),
+            show: toBool(cfg.show, false),
+            range: safeText(cfg.range),
+
+            text_color: cfg.text_color || "#ffffff",
+            font: resolveFont(cfg.font),
+            font_size: parseMeasure(cfg.font_size, "24px"),
+            font_weight: cfg.font_weight || "500",
+            align: (cfg.align || "center").toLowerCase(),
+
+            widthRaw: safeText(cfg.width || "auto"),
+            heightRaw: safeText(cfg.height || ""),
+            use_custom_height: toBool(cfg.use_custom_height, false),
+            padding: parseMeasure(cfg.padding, "0px"),
+            item_gap: parseMeasure(cfg.item_gap, "0px"),
+            gap_after: safeText(cfg.gap_after || ""),
+            merge_group: safeText(cfg.merge_group || ""),
+            background: cfg.background || "transparent",
+            radius: parseMeasure(cfg.radius, "0px"),
+            tilt: parseTilt(cfg.tilt),
+
+            image_fit: cfg.image_fit || "contain",
+            image_align_x: cfg.image_align_x || "center",
+            image_align_y: cfg.image_align_y || "center",
+            image_opacity: cfg.image_opacity || "1",
+
+            header_text: safeText(cfg.header_text || col.header),
+            header_show: toBool(cfg.header_show, false),
+            header_color: cfg.header_color || "#606060",
+            header_font: resolveFont(cfg.header_font || "cutmark"),
+            header_size: parseMeasure(cfg.header_size, "18px"),
+            header_weight: cfg.header_weight || "600",
+            header_align: (cfg.header_align || cfg.align || "center").toLowerCase()
+          };
+        })
+        .filter(col => col.show);
+    }
+
+    function splitRows(items, mode){
+      if (mode === "single") {
+        return { left: items, right: [] };
+      }
+      const half = Math.ceil(items.length / 2);
+      return {
+        left: items.slice(0, half),
+        right: items.slice(half)
+      };
+    }
+
+    function buildGapArray(columns, defaultGap){
+      const gaps = [];
+      for (let i = 0; i < columns.length - 1; i++) {
+        const customGap = safeText(columns[i].gap_after);
+        const gapValue = customGap !== ""
+          ? Math.max(0, toNumber(customGap, defaultGap))
+          : Math.max(0, defaultGap);
+        gaps.push(gapValue);
+      }
+      return gaps;
+    }
+
+    function calcColumnWidths(columns, availableWidth, cellGap){
+      const gaps = buildGapArray(columns, cellGap);
+      const totalGap = gaps.reduce((a,b) => a+b, 0);
+
+      const autoIndexes = [];
+      const desired = [];
+      let totalFixed = 0;
+
+      columns.forEach((col, index) => {
+        const raw = safeText(col.widthRaw).toLowerCase();
+        if (!raw || raw === "auto") {
+          autoIndexes.push(index);
+          desired[index] = 160;
+        } else {
+          const n = toNumber(raw, 160);
+          desired[index] = Math.max(20, n);
+          totalFixed += desired[index];
+        }
+      });
+
+      const usable = Math.max(120, availableWidth - totalGap);
+
+      if (!autoIndexes.length) {
+        const totalDesired = desired.reduce((a,b) => a+b, 0);
+        const scale = totalDesired > usable ? (usable / totalDesired) : 1;
+        return desired.map(w => Math.max(18, Math.floor(w * scale)));
+      }
+
+      const remaining = Math.max(60, usable - totalFixed);
+      const autoBase = Math.max(80, Math.floor(remaining / autoIndexes.length));
+      autoIndexes.forEach(i => desired[i] = autoBase);
+
+      const totalDesired = desired.reduce((a,b) => a+b, 0);
+      const scale = totalDesired > usable ? (usable / totalDesired) : 1;
+
+      return desired.map(w => Math.max(18, Math.floor(w * scale)));
+    }
+
+    function buildGridTemplate(widths, columns, defaultGap){
+      const parts = [];
+
+      for (let i = 0; i < widths.length; i++) {
+        parts.push(`${widths[i]}px`);
+
+        if (i < widths.length - 1) {
+          const customGap = safeText(columns[i].gap_after);
+          const gapValue = customGap !== ""
+            ? `${Math.max(0, toNumber(customGap, defaultGap))}px`
+            : `${Math.max(0, defaultGap)}px`;
+
+          parts.push(gapValue);
+        }
+      }
+
+      return parts.join(" ");
+    }
+
+    function normalizeTableX(v){
+      const s = safeText(v);
+      if (!s) return { left:"50%", shift:"-50%" };
+
+      if (isNumericLike(s)) {
+        const n = toNumber(s, 0);
+        if (n >= 0 && n <= 1) {
+          return { left:`${n * 100}%`, shift:"-50%" };
+        }
+        return { left:`${n}px`, shift:"0px" };
+      }
+
+      if (s.includes("%")) {
+        return { left:s, shift:"-50%" };
+      }
+
+      return { left:s, shift:"0px" };
+    }
+
+    function normalizeAxisValue(v, allowPercentFromFraction = false, fallback = "0px"){
+      return parseMeasure(v, fallback, allowPercentFromFraction);
+    }
+
+    function applyGlobalPng(globalPng){
+      const tableMode = safeText(globalPng.table_mode || "single").toLowerCase();
+
+      const tablePos = normalizeTableX(globalPng.table_x || "0,5");
+      document.documentElement.style.setProperty("--table-x", tablePos.left);
+      document.documentElement.style.setProperty("--table-shift-x", tablePos.shift);
+      document.documentElement.style.setProperty("--table-y", normalizeAxisValue(globalPng.table_y, false, "30px"));
+      document.documentElement.style.setProperty("--table-w", normalizeAxisValue(globalPng.table_w, false, "1100px"));
+      document.documentElement.style.setProperty("--table-h", normalizeAxisValue(globalPng.table_h, false, "1000px"));
+
+      document.documentElement.style.setProperty("--row-h", normalizeAxisValue(globalPng.row_height, false, "96px"));
+      document.documentElement.style.setProperty("--row-gap", normalizeAxisValue(globalPng.row_gap, false, "10px"));
+      document.documentElement.style.setProperty("--cell-gap", normalizeAxisValue(globalPng.cell_gap, false, "8px"));
+      document.documentElement.style.setProperty("--col-gap", normalizeAxisValue(globalPng.col_gap, false, "0px"));
+
+      const titlePos = normalizeTableX(globalPng.title_x || "0,5");
+      document.documentElement.style.setProperty("--title-x", titlePos.left);
+      document.documentElement.style.setProperty("--title-y", normalizeAxisValue(globalPng.title_y, false, "0px"));
+      document.documentElement.style.setProperty("--title-w", normalizeAxisValue(globalPng.title_w, false, "800px"));
+      document.documentElement.style.setProperty("--title-h", normalizeAxisValue(globalPng.title_h, false, "100px"));
+      document.documentElement.style.setProperty("--title-font", resolveFont(globalPng.title_font));
+      document.documentElement.style.setProperty("--title-size", normalizeAxisValue(globalPng.title_size, false, "0px"));
+      document.documentElement.style.setProperty("--title-weight", globalPng.title_weight || "700");
+      document.documentElement.style.setProperty("--title-color", globalPng.title_color || "#606060");
+
+      titleEl.textContent = safeText(globalPng.title_text || "");
+      titleEl.style.display = toBool(globalPng.show_title, false) ? "flex" : "none";
+      titleEl.style.justifyContent =
+        safeText(globalPng.title_align || "center").toLowerCase() === "left" ? "flex-start" :
+        safeText(globalPng.title_align || "center").toLowerCase() === "right" ? "flex-end" : "center";
+      titleEl.style.textAlign = safeText(globalPng.title_align || "center").toLowerCase();
+
+      const rowBg = safeText(globalPng.row_bg_image);
+      document.documentElement.style.setProperty("--row-bg-image", rowBg ? `url("${toSrc(rowBg)}")` : "none");
+      document.documentElement.style.setProperty("--row-bg-fit", globalPng.row_bg_fit || "cover");
+      document.documentElement.style.setProperty("--row-bg-pos-x", globalPng.row_bg_pos_x || "center");
+      document.documentElement.style.setProperty("--row-bg-pos-y", globalPng.row_bg_pos_y || "center");
+      document.documentElement.style.setProperty("--row-bg-opacity", globalPng.row_bg_opacity || "1");
+
+      const topArtPath = safeText(globalPng.top_art_image);
+      if (topArtPath) {
+        topArt.src = toSrc(topArtPath);
+        topArt.style.display = "block";
+      } else {
+        topArt.removeAttribute("src");
+        topArt.style.display = "none";
+      }
+
+      document.documentElement.style.setProperty("--top-art-x", normalizeAxisValue(globalPng.top_art_x, true, "0px"));
+      document.documentElement.style.setProperty("--top-art-y", normalizeAxisValue(globalPng.top_art_y, true, "0px"));
+      document.documentElement.style.setProperty("--top-art-w", normalizeAxisValue(globalPng.top_art_w, false, "0px"));
+      document.documentElement.style.setProperty("--top-art-h", normalizeAxisValue(globalPng.top_art_h, false, "0px"));
+      document.documentElement.style.setProperty("--top-art-fit", globalPng.top_art_fit || "contain");
+      document.documentElement.style.setProperty("--top-art-opacity", globalPng.top_art_opacity || "1");
+
+      boardEl.classList.remove("mode-single", "mode-double");
+      boardEl.classList.add(tableMode === "double" ? "mode-double" : "mode-single");
+      document.getElementById("blockR").style.display = tableMode === "double" ? "" : "none";
+
+      return {
+        tableMode,
+        tableWidthPx: toNumber(globalPng.table_w, 1100),
+        colGapPx: toNumber(globalPng.col_gap, 0),
+        cellGapPx: toNumber(globalPng.cell_gap, 8)
+      };
+    }
+
+    function collectRanges(columns){
+      const set = new Set();
+      for (const col of columns) {
+        if (safeText(col.range).toLowerCase() !== "auto" && safeText(col.range)) {
+          set.add(col.range.replace(/'/g, ""));
+        }
+      }
+      return [...set];
+    }
+
+    function getMaxRows(columns, dataByRange){
+      let max = 0;
+      for (const col of columns) {
+        const range = safeText(col.range).replace(/'/g, "");
+        if (!range || range.toLowerCase() === "auto") continue;
+        const rows = dataByRange[range] || [];
+        if (rows.length > max) max = rows.length;
+      }
+      return max || 12;
+    }
+
+    function buildRowData(columns, dataByRange, totalRows){
+      const out = [];
+
+      for (let i = 0; i < totalRows; i++) {
+        const item = { __index: i + 1, cells: [] };
+
+        for (const col of columns) {
+          let value = "";
+
+          if (safeText(col.range).toLowerCase() === "auto") {
+            value = String(i + 1).padStart(2, "0");
+          } else {
+            const range = safeText(col.range).replace(/'/g, "");
+            const rows = dataByRange[range] || [];
+            value = safeText(rows[i]?.[0]);
+          }
+
+          item.cells.push({
+            key: col.key,
+            type: col.type,
+            value,
+            config: col
+          });
+        }
+
+        out.push(item);
+      }
+
+      return out;
+    }
+
+    function createHeaderCell(col, widthPx, visualIndex){
+      if (!col.header_show) return null;
+
+      const el = document.createElement("div");
+      el.className = "header-cell";
+      el.style.width = `${widthPx}px`;
+      el.style.gridColumn = String((visualIndex * 2) + 1);
+      el.style.justifyContent =
+        col.header_align === "left" ? "flex-start" :
+        col.header_align === "right" ? "flex-end" : "center";
+
+      const txt = document.createElement("div");
+      txt.className = "header-txt";
+      txt.textContent = safeText(col.header_text || "");
+      txt.style.setProperty("--header-color", col.header_color);
+      txt.style.setProperty("--header-font", col.header_font);
+      txt.style.setProperty("--header-size", col.header_size);
+      txt.style.setProperty("--header-weight", col.header_weight);
+      txt.style.setProperty("--header-align", col.header_align);
+
+      el.appendChild(txt);
+      return el;
+    }
+
+    function createHeaderRow(columns, widths, defaultGap){
+      const row = document.createElement("div");
+      row.className = "header-row";
+      row.style.gridTemplateColumns = buildGridTemplate(widths, columns, defaultGap);
+
+      columns.forEach((col, index) => {
+        const cell = createHeaderCell(col, widths[index], index);
+        if (cell) row.appendChild(cell);
+      });
+
+      return row;
+    }
+
+    function renderHeaders(target, columns, widths, defaultGap){
+      target.innerHTML = "";
+
+      const hasVisibleHeader = columns.some(col => col.header_show);
+      target.classList.toggle("is-hidden", !hasVisibleHeader);
+
+      if (!hasVisibleHeader) return;
+
+      target.appendChild(createHeaderRow(columns, widths, defaultGap));
+    }
+
+    function createCell(cell, widthPx, visualIndex){
+      const col = cell.config;
+      const el = document.createElement("div");
+      el.className = `cell ${col.type === "image" ? "image" : (col.type === "number" ? "number" : "text")}`;
+      el.style.width = `${widthPx}px`;
+      el.style.height = col.use_custom_height
+        ? parseMeasure(col.heightRaw, "100%")
+        : "100%";
+
+      el.style.gridColumn = String((visualIndex * 2) + 1);
+      el.style.setProperty("--cell-bg", col.background);
+      el.style.setProperty("--cell-radius", col.radius);
+      el.style.setProperty("--cell-tilt", col.tilt);
+      el.style.setProperty("--cell-padding", col.padding);
+      el.style.setProperty("--cell-item-gap", col.item_gap);
+      el.dataset.mergeGroup = col.merge_group || "";
+
+      el.style.justifyContent =
+        col.align === "left" ? "flex-start" :
+        col.align === "right" ? "flex-end" : "center";
+
+      const inner = document.createElement("div");
+      inner.className = "cell-inner";
+
+      if (col.type === "image") {
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "img-wrap";
+
+        const img = document.createElement("img");
+        const src = toSrc(cell.value);
+        img.alt = col.header;
+        img.style.setProperty("--cell-image-fit", col.image_fit);
+        img.style.setProperty("--cell-image-align-x", col.image_align_x);
+        img.style.setProperty("--cell-image-align-y", col.image_align_y);
+        img.style.setProperty("--cell-image-opacity", col.image_opacity);
+
+        if (src) {
+          img.src = src;
+          img.onerror = () => { img.style.display = "none"; };
+        } else {
+          img.style.display = "none";
+        }
+
+        imgWrap.appendChild(img);
+        inner.appendChild(imgWrap);
+      } else {
+        const txt = document.createElement("div");
+        txt.className = "txt";
+        txt.textContent = cell.value || (col.type === "number" ? "0" : "");
+        txt.style.setProperty("--cell-color", col.text_color);
+        txt.style.setProperty("--cell-font", col.font);
+        txt.style.setProperty("--cell-font-size", col.font_size);
+        txt.style.setProperty("--cell-font-weight", col.font_weight);
+        txt.style.setProperty("--cell-align", col.align);
+        inner.appendChild(txt);
+      }
+
+      el.appendChild(inner);
+      return el;
+    }
+
+    function createRow(rowData, columns, widths, defaultGap){
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.gridTemplateColumns = buildGridTemplate(widths, columns, defaultGap);
+      row.style.height = "var(--row-h)";
+
+      rowData.cells.forEach((cell, index) => {
+        row.appendChild(createCell(cell, widths[index], index));
+      });
+
+      return row;
+    }
+
+    function renderRows(target, rowsData, columns, widths, defaultGap){
+      target.innerHTML = "";
+      for (const rowData of rowsData) {
+        target.appendChild(createRow(rowData, columns, widths, defaultGap));
+      }
+    }
+
+    function showDebug(text){
+      debugEl.style.display = "block";
+      debugEl.textContent = text;
+    }
+
+    function hideDebug(){
+      debugEl.style.display = "none";
+      debugEl.textContent = "";
+    }
+
+    async function tick(){
+      try{
+        if (!API_KEY || !SHEET_ID) {
+          throw new Error("API_KEY ou SHEET_ID não definidos no overlay_config.js");
+        }
+
+        const cfgJson = await fetchSheetRange(CONFIG_RANGE);
+        const parsed = parseConfigMatrix(cfgJson.values || []);
+        const visibleColumns = buildVisibleColumns(parsed);
+
+        if (!visibleColumns.length) {
+          throw new Error("Nenhuma coluna visível encontrada na CONFIG (show = 1).");
+        }
+
+        const globalState = applyGlobalPng(parsed.globalPng);
+
+        const ranges = collectRanges(visibleColumns);
+        const dataByRange = await fetchSheetRanges(ranges);
+
+        const totalRows = getMaxRows(visibleColumns, dataByRange);
+        const rowData = buildRowData(visibleColumns, dataByRange, totalRows);
+        const blocks = splitRows(rowData, globalState.tableMode);
+
+        const availablePerBlock =
+          globalState.tableMode === "double"
+            ? Math.floor((globalState.tableWidthPx - globalState.colGapPx) / 2)
+            : globalState.tableWidthPx;
+
+        const widths = calcColumnWidths(visibleColumns, availablePerBlock, globalState.cellGapPx);
+
+        renderHeaders(headersL, visibleColumns, widths, globalState.cellGapPx);
+        renderHeaders(headersR, visibleColumns, widths, globalState.cellGapPx);
+
+        renderRows(rowsL, blocks.left, visibleColumns, widths, globalState.cellGapPx);
+        renderRows(rowsR, blocks.right, visibleColumns, widths, globalState.cellGapPx);
+
+        hideDebug();
+      } catch (err) {
+        console.error(err);
+        showDebug(
+          "ERRO NA OVERLAY PNG:\n\n" +
+          (err?.message || String(err))
+        );
+      }
+    }
+
+    tick();
+  </script>
+</body>
+</html>

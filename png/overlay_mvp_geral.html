@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1" />
+  <title>Overlay - MVP Geral PNG</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../theme.css">
+  <script src="../overlay_config.js"></script>
+
+  <style>
+    :root{
+      --stage-w: 1920px;
+      --stage-h: 1080px;
+
+      --table-x: 50%;
+      --table-y: 40px;
+      --table-w: 1820px;
+      --table-h: 1000px;
+      --table-shift-x: -50%;
+
+      --list-title-font: "Anton","Impact","Arial Black",sans-serif;
+      --list-title-size: 88px;
+      --list-title-weight: 400;
+      --list-title-color: #96c12f;
+      --list-title-align: right;
+      --list-title-y: 0px;
+
+      --main-top: 120px;
+      --main-gap: 80px;
+
+      --hero-w: 600px;
+      --hero-h: 850px;
+      --hero-bg: #606059;
+      --hero-border: none;
+      --hero-radius: 0px;
+
+      --hero-box-x: 0px;
+      --hero-box-y: 722px;
+      --hero-box-w: 600px;
+      --hero-box-h: 128px;
+      --hero-box-bg: #5318F0;
+      --hero-box-border: none;
+      --hero-box-radius: 0px;
+      --hero-box-pad: 14px;
+
+      --headers-top: 102px;
+      --rows-top: 140px;
+      --row-height: 86px;
+      --row-gap: 10px;
+      --cell-gap: 8px;
+
+      --header-row-h: 28px;
+      --header-gap-bottom: 10px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
+      width:var(--stage-w);
+      height:var(--stage-h);
+      margin:0;
+      overflow:hidden;
+      background:transparent;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
+
+    body{
+      font-family:"Oswald","Segoe UI",Arial,sans-serif;
+    }
+
+    .stage{
+      position:relative;
+      width:var(--stage-w);
+      height:var(--stage-h);
+      overflow:hidden;
+      background:transparent;
+    }
+
+    .wrap{
+      position:absolute;
+      left:var(--table-x);
+      top:var(--table-y);
+      width:var(--table-w);
+      height:var(--table-h);
+      transform:translateX(var(--table-shift-x));
+      z-index:2;
+      pointer-events:none;
+    }
+
+    .main{
+      position:absolute;
+      left:0;
+      top:var(--main-top);
+      width:100%;
+      height:calc(100% - var(--main-top));
+      display:grid;
+      grid-template-columns: var(--hero-w) 1fr;
+      gap:var(--main-gap);
+      align-items:start;
+    }
+
+    .hero{
+      position:relative;
+      width:var(--hero-w);
+      height:var(--hero-h);
+      background:var(--hero-bg);
+      border:var(--hero-border);
+      border-radius:var(--hero-radius);
+      overflow:hidden;
+    }
+
+    .hero-photo{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      object-position:center bottom;
+      opacity:1;
+      display:block;
+    }
+
+    .hero-box{
+      position:absolute;
+      left:var(--hero-box-x);
+      top:var(--hero-box-y);
+      width:var(--hero-box-w);
+      height:var(--hero-box-h);
+      background:var(--hero-box-bg);
+      border:var(--hero-box-border);
+      border-radius:var(--hero-box-radius);
+      padding:var(--hero-box-pad);
+      overflow:hidden;
+    }
+
+    .hero-logo-box{
+      position:absolute;
+      width:92px;
+      height:92px;
+      background:#606060;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .hero-logo{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+    }
+
+    .hero-name{
+      position:absolute;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .hero-stats{
+      position:absolute;
+      display:flex;
+      align-items:center;
+      flex-wrap:nowrap;
+      gap:0;
+      min-width:0;
+    }
+
+    .hero-stat{
+      line-height:1;
+      white-space:nowrap;
+      text-transform:uppercase;
+    }
+
+    .list-wrap{
+      position:relative;
+      width:100%;
+      height:var(--hero-h);
+      overflow:visible;
+    }
+
+    .list-title{
+      position:absolute;
+      top:var(--list-title-y);
+      font-family:var(--list-title-font);
+      font-size:var(--list-title-size);
+      font-weight:var(--list-title-weight);
+      color:var(--list-title-color);
+      text-transform:uppercase;
+      text-align:var(--list-title-align);
+      line-height:1;
+      white-space:nowrap;
+      overflow:hidden;
+      max-width:100%;
+    }
+
+    .headers{
+      position:absolute;
+      left:0;
+      right:0;
+      top:var(--headers-top);
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      margin-bottom:var(--header-gap-bottom);
+    }
+
+    .headers.is-hidden{
+      display:none;
+    }
+
+    .header-row{
+      position:relative;
+      display:grid;
+      align-items:end;
+      min-width:0;
+      height:var(--header-row-h);
+    }
+
+    .header-cell{
+      position:relative;
+      min-width:0;
+      overflow:hidden;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      height:100%;
+    }
+
+    .header-txt{
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+
+    .rows{
+      position:absolute;
+      left:0;
+      right:0;
+      top:var(--rows-top);
+      display:flex;
+      flex-direction:column;
+      gap:var(--row-gap);
+      min-width:0;
+      overflow:visible;
+    }
+
+    .row{
+      position:relative;
+      display:grid;
+      align-items:center;
+      min-width:0;
+      height:var(--row-height);
+      overflow:visible;
+    }
+
+    .cell{
+      position:relative;
+      min-width:0;
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      background:transparent;
+      border-radius:0;
+      padding:0;
+      border:none;
+    }
+
+    .cell-inner{
+      width:100%;
+      max-width:100%;
+      min-width:0;
+      display:flex;
+      align-items:center;
+      justify-content:inherit;
+      gap:0;
+      overflow:hidden;
+      height:100%;
+      padding-inline:0;
+    }
+
+    .cell.text .txt,
+    .cell.number .txt{
+      width:100%;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .cell.image .img-wrap{
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .cell.image img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      object-position:center center;
+      opacity:1;
+      display:block;
+    }
+
+    .debug{
+      position:absolute;
+      left:20px;
+      bottom:20px;
+      max-width:860px;
+      padding:10px 14px;
+      background:rgba(0,0,0,.72);
+      color:#fff;
+      font:14px/1.4 monospace;
+      border-radius:10px;
+      z-index:99;
+      display:none;
+      white-space:pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="wrap" id="wrap">
+      <div class="main">
+        <div class="hero" id="heroBox">
+          <img class="hero-photo" id="heroPhoto" alt="Foto">
+
+          <div class="hero-box" id="heroInfoBox">
+            <div class="hero-logo-box" id="heroLogoBox">
+              <img class="hero-logo" id="heroLogo" alt="Logo">
+            </div>
+
+            <div class="hero-name" id="heroName">-</div>
+
+            <div class="hero-stats" id="heroStats">
+              <div class="hero-stat" id="heroABT">0 ABT</div>
+              <div class="hero-stat" id="heroKD">0 K.D</div>
+              <div class="hero-stat" id="heroQD">0 QD</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="list-wrap">
+          <div class="list-title" id="listTitle">LÍDERES DE ABATES</div>
+          <div class="headers" id="headers"></div>
+          <div class="rows" id="rows"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="debug" id="debug"></div>
+  </div>
+
+  <script>
+    const CFG = window.OVERLAY_CFG || {};
+    const API_KEY = CFG.API_KEY || "";
+    const SHEET_ID = CFG.SHEET_ID || "";
+    const REFRESH_MS = Number(CFG.REFRESH_MS ?? 5000);
+
+    const CONFIG_RANGE = "CONFIG!A90:R166";
+
+    const heroBox = document.getElementById("heroBox");
+    const heroInfoBox = document.getElementById("heroInfoBox");
+    const listTitleEl = document.getElementById("listTitle");
+    const heroPhoto = document.getElementById("heroPhoto");
+    const heroLogo = document.getElementById("heroLogo");
+    const heroLogoBox = document.getElementById("heroLogoBox");
+    const heroName = document.getElementById("heroName");
+    const heroABT = document.getElementById("heroABT");
+    const heroKD = document.getElementById("heroKD");
+    const heroQD = document.getElementById("heroQD");
+    const heroStats = document.getElementById("heroStats");
+    const headersEl = document.getElementById("headers");
+    const rowsEl = document.getElementById("rows");
+    const debugEl = document.getElementById("debug");
+
+    function safeText(v){
+      return String(v ?? "").trim();
+    }
+
+    function normalizeHeader(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toUpperCase();
+    }
+
+    function normalizeKey(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase();
+    }
+
+    function toBool(v, fallback = false){
+      const s = safeText(v).toLowerCase();
+      if (["1","true","sim","yes"].includes(s)) return true;
+      if (["0","false","nao","não","no"].includes(s)) return false;
+      return fallback;
+    }
+
+    function toNumber(v, fallback = 0){
+      const s = safeText(v).replace(",", ".");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function isNumericLike(v){
+      const s = safeText(v).replace(",", ".");
+      return s !== "" && !isNaN(Number(s));
+    }
+
+    function parseMeasure(value, fallback = "", percentWhenFraction = false){
+      const s = safeText(value);
+      if (!s) return fallback;
+      if (/[a-z%]/i.test(s) && !/^-?\d+(?:[.,]\d+)?$/.test(s)) return s;
+      const n = toNumber(s, NaN);
+      return Number.isFinite(n)
+        ? (percentWhenFraction && n >= 0 && n <= 1 ? `${n * 100}%` : `${n}px`)
+        : fallback;
+    }
+
+    function resolveFont(v){
+      const s = safeText(v).toLowerCase();
+      if (!s) return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "cutmark") return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "anton") return '"Anton","Impact","Arial Black",sans-serif';
+      if (s === "oswald") return '"Oswald","Segoe UI",Arial,sans-serif';
+      return `"${safeText(v)}","Oswald","Segoe UI",Arial,sans-serif`;
+    }
+
+    function toSrc(path){
+      let p = safeText(path);
+      if (!p) return "";
+      if (/^https?:\/\//i.test(p)) return p;
+
+      p = p.replace(/\\/g, "/");
+
+      const parts = p.split("/").filter(Boolean);
+      const lower = parts.map(x => x.toLowerCase());
+
+      const folderIndex =
+        lower.indexOf("assets") >= 0 ? lower.indexOf("assets") :
+        lower.indexOf("logos") >= 0 ? lower.indexOf("logos") :
+        lower.indexOf("maps") >= 0 ? lower.indexOf("maps") :
+        lower.indexOf("players") >= 0 ? lower.indexOf("players") :
+        lower.indexOf("jogadores") >= 0 ? lower.indexOf("jogadores") :
+        -1;
+
+      if (folderIndex >= 0) {
+        p = "../" + parts.slice(folderIndex).join("/");
+      } else if (!p.startsWith("../") && !p.startsWith("./") && !p.startsWith("/")) {
+        p = "../" + p.replace(/^\/+/, "");
+      }
+
+      return encodeURI(p);
+    }
+
+    async function fetchSheetRange(range){
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
+        encodeURIComponent(range) +
+        `?key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error(`Erro ao carregar ${range}: HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function fetchSheetRanges(ranges){
+      if (!ranges.length) return {};
+      const params = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&");
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?` +
+        `${params}&key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) throw new Error(`Erro ao carregar ranges em lote: HTTP ${res.status}`);
+      const json = await res.json();
+
+      const out = {};
+      for (const vr of (json.valueRanges || [])) {
+        out[vr.range.replace(/'/g, "")] = vr.values || [];
+      }
+      return out;
+    }
+
+    function findHeaderRowIndex(rows){
+      for (let i = 0; i < rows.length; i++) {
+        const norm = (rows[i] || []).map(normalizeHeader);
+        if (norm.includes("OBS") && norm.includes("PNG")) return i;
+      }
+      return -1;
+    }
+
+    function parseConfigMatrix(values){
+      const rows = values || [];
+      if (!rows.length) throw new Error("CONFIG vazia.");
+
+      const headerRowIndex = findHeaderRowIndex(rows);
+      if (headerRowIndex < 0) throw new Error("Cabeçalho com OBS e PNG não encontrado.");
+
+      const headerRow = rows[headerRowIndex] || [];
+      const normHeaders = headerRow.map(normalizeHeader);
+
+      const obsIndex = normHeaders.indexOf("OBS");
+      const pngIndex = normHeaders.indexOf("PNG");
+
+      if (obsIndex < 0) throw new Error("Coluna OBS não encontrada.");
+      if (pngIndex < 0) throw new Error("Coluna PNG não encontrada.");
+
+      const dataColumns = [];
+      for (let i = 2; i < obsIndex; i++) {
+        const original = safeText(headerRow[i]);
+        const key = normalizeHeader(original);
+        if (!original || !key) continue;
+        dataColumns.push({
+          index: i,
+          header: original,
+          key,
+          cfg: {}
+        });
+      }
+
+      const globalPng = {};
+
+      for (let r = headerRowIndex + 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        const cfgKey = normalizeKey(row[1]);
+        if (!cfgKey) continue;
+
+        for (const col of dataColumns) {
+          const val = row[col.index];
+          if (val !== undefined && safeText(val) !== "") {
+            col.cfg[cfgKey] = safeText(val);
+          }
+        }
+
+        const pngVal = row[pngIndex];
+        if (pngVal !== undefined && safeText(pngVal) !== "") {
+          globalPng[cfgKey] = safeText(pngVal);
+        }
+      }
+
+      return { dataColumns, globalPng };
+    }
+
+    function buildVisibleColumns(parsed){
+      return parsed.dataColumns
+        .map(col => {
+          const cfg = col.cfg || {};
+          return {
+            key: col.key,
+            header: col.header,
+            type: normalizeKey(cfg.type || "text"),
+            show: toBool(cfg.show, false),
+            range: safeText(cfg.range),
+
+            text_color: cfg.text_color || "#ffffff",
+            font: resolveFont(cfg.font),
+            font_size: parseMeasure(cfg.font_size, "24px"),
+            font_weight: cfg.font_weight || "500",
+            align: (cfg.align || "center").toLowerCase(),
+
+            widthRaw: safeText(cfg.width || "auto"),
+            heightRaw: safeText(cfg.height || ""),
+            use_custom_height: toBool(cfg.use_custom_height, false),
+            padding: parseMeasure(cfg.padding, "0px"),
+            item_gap: parseMeasure(cfg.item_gap, "0px"),
+            gap_after: safeText(cfg.gap_after || ""),
+            merge_group: safeText(cfg.merge_group || ""),
+            background: cfg.background || "transparent",
+            radius: parseMeasure(cfg.radius, "0px"),
+            border: safeText(cfg.border || "none"),
+            tilt: safeText(cfg.tilt || "none"),
+
+            image_fit: cfg.image_fit || "contain",
+            image_align_x: cfg.image_align_x || "center",
+            image_align_y: cfg.image_align_y || "center",
+            image_opacity: cfg.image_opacity || "1",
+
+            header_text: safeText(cfg.header_text || col.header),
+            header_show: toBool(cfg.header_show, false),
+            header_color: cfg.header_color || "#606060",
+            header_font: resolveFont(cfg.header_font || "cutmark"),
+            header_size: parseMeasure(cfg.header_size, "18px"),
+            header_weight: cfg.header_weight || "600",
+            header_align: (cfg.header_align || cfg.align || "center").toLowerCase()
+          };
+        })
+        .filter(col => col.show);
+    }
+
+    function getHeroColumns(columns){
+      return {
+        foto: columns.find(c => c.key === "HERO_FOTO"),
+        logo: columns.find(c => c.key === "HERO_LOGO"),
+        nome: columns.find(c => c.key === "HERO_NOME"),
+        abt: columns.find(c => c.key === "HERO_ABT"),
+        kd: columns.find(c => c.key === "HERO_KD"),
+        qd: columns.find(c => c.key === "HERO_QD")
+      };
+    }
+
+    function getListColumns(columns){
+      const heroKeys = new Set(["HERO_FOTO","HERO_LOGO","HERO_NOME","HERO_ABT","HERO_KD","HERO_QD"]);
+      return columns.filter(c => !heroKeys.has(c.key));
+    }
+
+    function buildGapArray(columns, defaultGap){
+      const gaps = [];
+      for (let i = 0; i < columns.length - 1; i++) {
+        const customGap = safeText(columns[i].gap_after);
+        const gapValue = customGap !== ""
+          ? Math.max(0, toNumber(customGap, defaultGap))
+          : Math.max(0, defaultGap);
+        gaps.push(gapValue);
+      }
+      return gaps;
+    }
+
+    function calcColumnWidths(columns, availableWidth, cellGap){
+      const gaps = buildGapArray(columns, cellGap);
+      const totalGap = gaps.reduce((a,b) => a+b, 0);
+
+      const autoIndexes = [];
+      const desired = [];
+      let totalFixed = 0;
+
+      columns.forEach((col, index) => {
+        const raw = safeText(col.widthRaw).toLowerCase();
+        if (!raw || raw === "auto") {
+          autoIndexes.push(index);
+          desired[index] = 160;
+        } else {
+          const n = toNumber(raw, 160);
+          desired[index] = Math.max(20, n);
+          totalFixed += desired[index];
+        }
+      });
+
+      const usable = Math.max(120, availableWidth - totalGap);
+
+      if (!autoIndexes.length) {
+        const totalDesired = desired.reduce((a,b) => a+b, 0);
+        const scale = totalDesired > usable ? (usable / totalDesired) : 1;
+        return desired.map(w => Math.max(18, Math.floor(w * scale)));
+      }
+
+      const remaining = Math.max(60, usable - totalFixed);
+      const autoBase = Math.max(80, Math.floor(remaining / autoIndexes.length));
+      autoIndexes.forEach(i => desired[i] = autoBase);
+
+      const totalDesired = desired.reduce((a,b) => a+b, 0);
+      const scale = totalDesired > usable ? (usable / totalDesired) : 1;
+
+      return desired.map(w => Math.max(18, Math.floor(w * scale)));
+    }
+
+    function buildGridTemplate(widths, columns, defaultGap){
+      const parts = [];
+      for (let i = 0; i < widths.length; i++) {
+        parts.push(`${widths[i]}px`);
+        if (i < widths.length - 1) {
+          const customGap = safeText(columns[i].gap_after);
+          const gapValue = customGap !== ""
+            ? `${Math.max(0, toNumber(customGap, defaultGap))}px`
+            : `${Math.max(0, defaultGap)}px`;
+          parts.push(gapValue);
+        }
+      }
+      return parts.join(" ");
+    }
+
+    function normalizeTableX(v){
+      const s = safeText(v);
+      if (!s) return { left:"50%", shift:"-50%" };
+
+      if (isNumericLike(s)) {
+        const n = toNumber(s, 0);
+        if (n >= 0 && n <= 1) {
+          return { left:`${n * 100}%`, shift:"-50%" };
+        }
+        return { left:`${n}px`, shift:"0px" };
+      }
+
+      if (s.includes("%")) return { left:s, shift:"-50%" };
+      return { left:s, shift:"0px" };
+    }
+
+    function normalizeAnchorX(v){
+      const s = safeText(v);
+      if (!s) return { left:"100%", translate:"-100%" };
+
+      if (isNumericLike(s)) {
+        const n = toNumber(s, 1);
+        if (n >= 0 && n <= 1) {
+          return { left:`${n * 100}%`, translate:`${-n * 100}%` };
+        }
+        return { left:`${n}px`, translate:"0px" };
+      }
+
+      if (s.includes("%")) return { left:s, translate:"-50%" };
+      return { left:s, translate:"0px" };
+    }
+
+    function parsePx(raw, fallback){
+      const s = safeText(raw);
+      if (!s) return fallback;
+      return Math.max(0, toNumber(s, fallback));
+    }
+
+    function setListTitlePosition(v, align){
+      const pos = normalizeAnchorX(v || "1");
+      listTitleEl.style.left = pos.left;
+      listTitleEl.style.transform = `translateX(${pos.translate})`;
+      listTitleEl.style.right = "auto";
+      listTitleEl.style.textAlign = align || "right";
+    }
+
+    function applyGlobalPng(globalPng){
+      const tablePos = normalizeTableX(globalPng.table_x || "0,5");
+      document.documentElement.style.setProperty("--table-x", tablePos.left);
+      document.documentElement.style.setProperty("--table-shift-x", tablePos.shift);
+      document.documentElement.style.setProperty("--table-y", parseMeasure(globalPng.table_y, "40px"));
+      document.documentElement.style.setProperty("--table-w", parseMeasure(globalPng.table_w, "1820px"));
+      document.documentElement.style.setProperty("--table-h", parseMeasure(globalPng.table_h, "1000px"));
+
+      document.documentElement.style.setProperty("--list-title-font", resolveFont(globalPng.list_title_font));
+      document.documentElement.style.setProperty("--list-title-size", parseMeasure(globalPng.list_title_size, "88px"));
+      document.documentElement.style.setProperty("--list-title-weight", globalPng.list_title_weight || "400");
+      document.documentElement.style.setProperty("--list-title-color", globalPng.list_title_color || "#96c12f");
+      document.documentElement.style.setProperty("--list-title-y", parseMeasure(globalPng.list_title_y, "0px"));
+
+      const listTitleAlign = safeText(globalPng.list_title_align || "right").toLowerCase();
+      listTitleEl.textContent = safeText(globalPng.list_title_text || "LÍDERES DE ABATES");
+      listTitleEl.style.display = toBool(globalPng.show_list_title, true) ? "block" : "none";
+      setListTitlePosition(globalPng.list_title_x || "1", listTitleAlign);
+
+      document.documentElement.style.setProperty("--main-top", parseMeasure(globalPng.main_top, "120px"));
+      document.documentElement.style.setProperty("--main-gap", parseMeasure(globalPng.main_gap, "80px"));
+
+      document.documentElement.style.setProperty("--headers-top", parseMeasure(globalPng.headers_y, "102px"));
+      document.documentElement.style.setProperty("--rows-top", parseMeasure(globalPng.rows_top, "140px"));
+      document.documentElement.style.setProperty("--row-height", parseMeasure(globalPng.row_height, "86px"));
+      document.documentElement.style.setProperty("--row-gap", parseMeasure(globalPng.row_gap, "10px"));
+      document.documentElement.style.setProperty("--cell-gap", parseMeasure(globalPng.cell_gap || globalPng.row_gap, "8px"));
+      document.documentElement.style.setProperty("--header-row-h", parseMeasure(globalPng.header_row_h, "28px"));
+      document.documentElement.style.setProperty("--header-gap-bottom", parseMeasure(globalPng.header_gap_bottom, "10px"));
+
+      document.documentElement.style.setProperty("--hero-box-x", parseMeasure(globalPng.hero_box_x, "0px"));
+      document.documentElement.style.setProperty("--hero-box-y", parseMeasure(globalPng.hero_box_y, "722px"));
+      document.documentElement.style.setProperty("--hero-box-w", parseMeasure(globalPng.hero_box_w, "600px"));
+      document.documentElement.style.setProperty("--hero-box-h", parseMeasure(globalPng.hero_box_h, "128px"));
+      document.documentElement.style.setProperty("--hero-box-bg", globalPng.hero_box_bg || "#5318F0");
+      document.documentElement.style.setProperty("--hero-box-border", globalPng.hero_box_border || "none");
+      document.documentElement.style.setProperty("--hero-box-radius", parseMeasure(globalPng.hero_box_radius, "0px"));
+      document.documentElement.style.setProperty("--hero-box-pad", parseMeasure(globalPng.hero_box_pad, "14px"));
+
+      return {
+        showHeaders: toBool(globalPng.show_headers, true),
+        tableWidthPx: toNumber(globalPng.table_w, 1820),
+        mainGapPx: toNumber(globalPng.main_gap, 80),
+        cellGapPx: toNumber(globalPng.cell_gap || globalPng.row_gap, 8),
+        maxTotal: Math.max(2, toNumber(globalPng.max_total, 8)),
+        heroBoxW: toNumber(globalPng.hero_box_w, 600),
+        heroBoxPad: toNumber(globalPng.hero_box_pad, 14),
+        heroLogoX: toNumber(globalPng.hero_logo_x, 14),
+        heroLogoY: toNumber(globalPng.hero_logo_y, 18),
+        heroNameX: toNumber(globalPng.hero_name_x, 118),
+        heroNameY: toNumber(globalPng.hero_name_y, 14),
+        heroStatsX: toNumber(globalPng.hero_stats_x, 118),
+        heroStatsY: toNumber(globalPng.hero_stats_y, 60)
+      };
+    }
+
+    function collectRanges(columns){
+      const set = new Set();
+      for (const col of columns) {
+        if (safeText(col.range).toLowerCase() !== "auto" && safeText(col.range)) {
+          set.add(col.range.replace(/'/g, ""));
+        }
+      }
+      return [...set];
+    }
+
+    function getMaxRows(columns, dataByRange){
+      let max = 0;
+      for (const col of columns) {
+        const range = safeText(col.range).replace(/'/g, "");
+        if (!range || range.toLowerCase() === "auto") continue;
+        const rows = dataByRange[range] || [];
+        if (rows.length > max) max = rows.length;
+      }
+      return max || 12;
+    }
+
+    function readRangeRow(range, dataByRange, rowIndex){
+      const key = safeText(range).replace(/'/g, "");
+      const rows = dataByRange[key] || [];
+      return rows[rowIndex] || [];
+    }
+
+    function readRangeValue(range, dataByRange, rowIndex){
+      const row = readRangeRow(range, dataByRange, rowIndex);
+      return row.map(v => safeText(v)).filter(Boolean).join(" ").trim();
+    }
+
+    function readRangeValueAt(range, dataByRange, rowIndex, colIndex = 0){
+      const row = readRangeRow(range, dataByRange, rowIndex);
+      return safeText(row[colIndex] || "");
+    }
+
+    function setImg(el, src, fit = "", opacity = "1", posX = "center", posY = "center"){
+      if (!src) {
+        el.removeAttribute("src");
+        el.style.display = "none";
+        return;
+      }
+      el.src = src;
+      el.style.display = "";
+      if (fit) el.style.objectFit = fit;
+      el.style.objectPosition = `${posX} ${posY}`;
+      el.style.opacity = opacity || "1";
+    }
+
+    function renderHeaders(target, columns, widths, defaultGap, showHeaders){
+      target.innerHTML = "";
+
+      if (!showHeaders || !columns.some(c => c.header_show)) {
+        target.classList.add("is-hidden");
+        return;
+      }
+
+      target.classList.remove("is-hidden");
+
+      const row = document.createElement("div");
+      row.className = "header-row";
+      row.style.gridTemplateColumns = buildGridTemplate(widths, columns, defaultGap);
+
+      columns.forEach((col, index) => {
+        if (!col.header_show) return;
+
+        const el = document.createElement("div");
+        el.className = "header-cell";
+        el.style.width = `${widths[index]}px`;
+        el.style.gridColumn = String((index * 2) + 1);
+        el.style.justifyContent =
+          col.header_align === "left" ? "flex-start" :
+          col.header_align === "right" ? "flex-end" : "center";
+
+        const txt = document.createElement("div");
+        txt.className = "header-txt";
+        txt.textContent = safeText(col.header_text || "");
+        txt.style.color = col.header_color;
+        txt.style.fontFamily = col.header_font;
+        txt.style.fontSize = col.header_size;
+        txt.style.fontWeight = col.header_weight;
+        txt.style.textAlign = col.header_align;
+
+        el.appendChild(txt);
+        row.appendChild(el);
+      });
+
+      target.appendChild(row);
+    }
+
+    function applyHero(heroCols, dataByRange, globalState){
+      const rowIndex = 0;
+
+      const foto = heroCols.foto ? readRangeValueAt(heroCols.foto.range, dataByRange, rowIndex, 0) : "";
+      const logo = heroCols.logo ? readRangeValueAt(heroCols.logo.range, dataByRange, rowIndex, 0) : "";
+      const nome = heroCols.nome ? readRangeValue(heroCols.nome.range, dataByRange, rowIndex) : "";
+      const abt = heroCols.abt ? readRangeValueAt(heroCols.abt.range, dataByRange, rowIndex, 0) : "";
+      const kd = heroCols.kd ? readRangeValueAt(heroCols.kd.range, dataByRange, rowIndex, 0) : "";
+      const qd = heroCols.qd ? readRangeValueAt(heroCols.qd.range, dataByRange, rowIndex, 0) : "";
+
+      const fotoW = parsePx(heroCols.foto?.widthRaw, 600);
+      const fotoH = parsePx(heroCols.foto?.heightRaw, 850);
+      const logoW = parsePx(heroCols.logo?.widthRaw, 92);
+      const logoH = parsePx(heroCols.logo?.heightRaw, 92);
+
+      const heroBg = heroCols.foto?.background || "#606059";
+      const heroBorder = heroCols.foto?.border || "none";
+      const heroRadius = heroCols.foto?.radius || "0px";
+
+      document.documentElement.style.setProperty("--hero-w", `${fotoW}px`);
+      document.documentElement.style.setProperty("--hero-h", `${fotoH}px`);
+      document.documentElement.style.setProperty("--hero-bg", heroBg);
+      document.documentElement.style.setProperty("--hero-border", heroBorder);
+      document.documentElement.style.setProperty("--hero-radius", heroRadius);
+
+      heroBox.style.background = heroBg;
+      heroBox.style.border = heroBorder;
+      heroBox.style.borderRadius = heroRadius;
+
+      setImg(
+        heroPhoto,
+        toSrc(foto),
+        heroCols.foto?.image_fit || "contain",
+        heroCols.foto?.image_opacity || "1",
+        heroCols.foto?.image_align_x || "center",
+        heroCols.foto?.image_align_y || "bottom"
+      );
+
+      heroInfoBox.style.background = safeText(getComputedStyle(document.documentElement).getPropertyValue("--hero-box-bg"));
+      heroInfoBox.style.border = safeText(getComputedStyle(document.documentElement).getPropertyValue("--hero-box-border"));
+      heroInfoBox.style.borderRadius = safeText(getComputedStyle(document.documentElement).getPropertyValue("--hero-box-radius"));
+
+      setImg(
+        heroLogo,
+        toSrc(logo),
+        heroCols.logo?.image_fit || "contain",
+        heroCols.logo?.image_opacity || "1",
+        heroCols.logo?.image_align_x || "center",
+        heroCols.logo?.image_align_y || "center"
+      );
+
+      heroLogoBox.style.display = logo ? "flex" : "none";
+      heroLogoBox.style.width = `${logoW}px`;
+      heroLogoBox.style.height = `${logoH}px`;
+      heroLogoBox.style.background = heroCols.logo?.background || "#606060";
+      heroLogoBox.style.border = heroCols.logo?.border || "none";
+      heroLogoBox.style.borderRadius = heroCols.logo?.radius || "0px";
+      heroLogoBox.style.left = `${globalState.heroLogoX}px`;
+      heroLogoBox.style.top = `${globalState.heroLogoY}px`;
+
+      heroName.textContent = nome || "-";
+      if (heroCols.nome) {
+        heroName.style.fontFamily = heroCols.nome.font;
+        heroName.style.fontSize = heroCols.nome.font_size;
+        heroName.style.fontWeight = heroCols.nome.font_weight;
+        heroName.style.color = heroCols.nome.text_color;
+        heroName.style.textAlign = heroCols.nome.align;
+        heroName.style.left = `${globalState.heroNameX}px`;
+        heroName.style.top = `${globalState.heroNameY}px`;
+        heroName.style.maxWidth = `${Math.max(40, globalState.heroBoxW - globalState.heroNameX - globalState.heroBoxPad)}px`;
+      }
+
+      heroABT.textContent = `${abt || "0"} ABT`;
+      if (heroCols.abt) {
+        heroABT.style.fontFamily = heroCols.abt.font;
+        heroABT.style.fontSize = heroCols.abt.font_size;
+        heroABT.style.fontWeight = heroCols.abt.font_weight;
+        heroABT.style.color = heroCols.abt.text_color;
+        heroABT.style.marginRight = parseMeasure(heroCols.abt.gap_after, "0px");
+      }
+
+      heroKD.textContent = `${kd || "0"} K.D`;
+      if (heroCols.kd) {
+        heroKD.style.fontFamily = heroCols.kd.font;
+        heroKD.style.fontSize = heroCols.kd.font_size;
+        heroKD.style.fontWeight = heroCols.kd.font_weight;
+        heroKD.style.color = heroCols.kd.text_color;
+        heroKD.style.marginRight = parseMeasure(heroCols.kd.gap_after, "0px");
+      }
+
+      heroQD.textContent = `${qd || "0"} QD`;
+      if (heroCols.qd) {
+        heroQD.style.fontFamily = heroCols.qd.font;
+        heroQD.style.fontSize = heroCols.qd.font_size;
+        heroQD.style.fontWeight = heroCols.qd.font_weight;
+        heroQD.style.color = heroCols.qd.text_color;
+        heroQD.style.marginRight = parseMeasure(heroCols.qd.gap_after, "0px");
+      }
+
+      heroStats.style.left = `${globalState.heroStatsX}px`;
+      heroStats.style.top = `${globalState.heroStatsY}px`;
+      heroStats.style.maxWidth = `${Math.max(40, globalState.heroBoxW - globalState.heroStatsX - globalState.heroBoxPad)}px`;
+    }
+
+    function buildListRowData(listColumns, dataByRange, totalRows){
+      const out = [];
+      for (let i = 1; i < totalRows; i++) {
+        const item = { cells: [] };
+
+        for (const col of listColumns) {
+          let value = "";
+          if (safeText(col.range).toLowerCase() === "auto") {
+            value = String(i + 1).padStart(2, "0");
+          } else {
+            value = readRangeValue(col.range, dataByRange, i);
+          }
+
+          item.cells.push({
+            key: col.key,
+            type: col.type,
+            value,
+            config: col
+          });
+        }
+
+        out.push(item);
+      }
+      return out;
+    }
+
+    function applyTiltStyle(el, inner, tilt){
+      const t = safeText(tilt).toLowerCase();
+
+      el.style.transform = "none";
+      inner.style.transform = "none";
+      inner.style.paddingInline = "0px";
+      el.style.clipPath = "none";
+
+      if (t === "left") {
+        el.style.clipPath = "polygon(6% 0,100% 0,94% 100%,0 100%)";
+        inner.style.paddingInline = "10px";
+      } else if (t === "right") {
+        el.style.clipPath = "polygon(0 0,94% 0,100% 100%,6% 100%)";
+        inner.style.paddingInline = "10px";
+      }
+    }
+
+    function createCell(cell, widthPx, visualIndex){
+      const col = cell.config;
+      const el = document.createElement("div");
+      el.className = `cell ${col.type === "image" ? "image" : (col.type === "number" ? "number" : "text")}`;
+      el.style.width = `${widthPx}px`;
+      el.style.height = col.use_custom_height ? parseMeasure(col.heightRaw, "100%") : "100%";
+      el.style.gridColumn = String((visualIndex * 2) + 1);
+      el.style.background = col.background || "transparent";
+      el.style.borderRadius = col.radius || "0px";
+      el.style.border = safeText(col.border || "none");
+      el.style.padding = `0 ${col.padding || "0px"}`;
+      el.style.justifyContent =
+        col.align === "left" ? "flex-start" :
+        col.align === "right" ? "flex-end" : "center";
+
+      const inner = document.createElement("div");
+      inner.className = "cell-inner";
+      inner.style.gap = col.item_gap || "0px";
+
+      applyTiltStyle(el, inner, col.tilt);
+
+      if (col.type === "image") {
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "img-wrap";
+
+        const img = document.createElement("img");
+        const src = toSrc(cell.value);
+        img.alt = col.header;
+        img.style.objectFit = col.image_fit;
+        img.style.objectPosition = `${col.image_align_x} ${col.image_align_y}`;
+        img.style.opacity = col.image_opacity;
+
+        if (src) {
+          img.src = src;
+          img.onerror = () => { img.style.display = "none"; };
+        } else {
+          img.style.display = "none";
+        }
+
+        imgWrap.appendChild(img);
+        inner.appendChild(imgWrap);
+      } else {
+        const txt = document.createElement("div");
+        txt.className = "txt";
+        txt.textContent = cell.value || (col.type === "number" ? "0" : "");
+        txt.style.color = col.text_color;
+        txt.style.fontFamily = col.font;
+        txt.style.fontSize = col.font_size;
+        txt.style.fontWeight = col.font_weight;
+        txt.style.textAlign = col.align;
+        inner.appendChild(txt);
+      }
+
+      el.appendChild(inner);
+      return el;
+    }
+
+    function renderRows(target, rowsData, columns, widths, defaultGap){
+      target.innerHTML = "";
+      for (const rowData of rowsData) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.gridTemplateColumns = buildGridTemplate(widths, columns, defaultGap);
+
+        rowData.cells.forEach((cell, index) => {
+          row.appendChild(createCell(cell, widths[index], index));
+        });
+
+        target.appendChild(row);
+      }
+    }
+
+    function showDebug(text){
+      debugEl.style.display = "block";
+      debugEl.textContent = text;
+    }
+
+    function hideDebug(){
+      debugEl.style.display = "none";
+      debugEl.textContent = "";
+    }
+
+    async function tick(){
+      try{
+        if (!API_KEY || !SHEET_ID) {
+          throw new Error("API_KEY ou SHEET_ID não definidos no overlay_config.js");
+        }
+
+        const cfgJson = await fetchSheetRange(CONFIG_RANGE);
+        const parsed = parseConfigMatrix(cfgJson.values || []);
+        const visibleColumns = buildVisibleColumns(parsed);
+
+        if (!visibleColumns.length) {
+          throw new Error("Nenhuma coluna visível encontrada na CONFIG (show = 1).");
+        }
+
+        const globalState = applyGlobalPng(parsed.globalPng);
+        const heroCols = getHeroColumns(visibleColumns);
+        const listColumns = getListColumns(visibleColumns);
+
+        const ranges = collectRanges(visibleColumns);
+        const dataByRange = await fetchSheetRanges(ranges);
+
+        const totalRowsRaw = getMaxRows(visibleColumns, dataByRange);
+        const totalRows = Math.min(totalRowsRaw, globalState.maxTotal);
+
+        applyHero(heroCols, dataByRange, globalState);
+
+        const heroWidthPx = parsePx(heroCols.foto?.widthRaw, 600);
+        const availableListWidth = Math.max(
+          400,
+          globalState.tableWidthPx - heroWidthPx - globalState.mainGapPx
+        );
+
+        const widths = calcColumnWidths(listColumns, availableListWidth, globalState.cellGapPx);
+
+        renderHeaders(headersEl, listColumns, widths, globalState.cellGapPx, globalState.showHeaders);
+
+        const rowData = buildListRowData(listColumns, dataByRange, totalRows);
+        renderRows(rowsEl, rowData, listColumns, widths, globalState.cellGapPx);
+
+        hideDebug();
+      } catch (err) {
+        console.error(err);
+        showDebug("ERRO NA OVERLAY MVP PNG:\n\n" + (err?.message || String(err)));
+      }
+    }
+
+    tick();
+  </script>
+</body>
+</html>

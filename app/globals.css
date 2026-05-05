@@ -1,26 +1,871 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --dz-bg: #f5f7fb;
+  --dz-bg-2: #eef3f8;
+  --dz-surface: #ffffff;
+  --dz-surface-2: #f8fafc;
+  --dz-line: #dde5ef;
+  --dz-line-strong: #c8d4e3;
+  --dz-text: #0f172a;
+  --dz-muted: #64748b;
+  --dz-faint: #94a3b8;
+  --dz-primary: #14d9ff;
+  --dz-primary-2: #2563eb;
+  --dz-accent: #7c3aed;
+  --dz-success: #22c55e;
+  --dz-danger: #ef4444;
+  --dz-warning: #f59e0b;
+  --dz-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --dz-shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+  --dz-radius: 10px;
+  --dz-radius-sm: 6px;
+  --dz-header-h: 64px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  scroll-behavior: smooth;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background-color: var(--dz-bg);
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%);
+  background-size: 28px 28px, 28px 28px, 100% 100%, 100% 100%;
+  color: var(--dz-text);
+  font-family: Inter, "Plus Jakarta Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--dz-primary);
+  color: #03101a;
+}
+
+/* ===== DESIGN SYSTEM GLOBAL ===== */
+.dz-page {
+  min-height: calc(100vh - var(--dz-header-h));
+  color: var(--dz-text);
+}
+
+.dz-container {
+  width: min(1500px, calc(100vw - 32px));
+  margin-inline: auto;
+}
+
+.dz-card,
+.glass-card,
+.panel-card,
+.soft-card {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid var(--dz-line) !important;
+  border-radius: var(--dz-radius) !important;
+  box-shadow: var(--dz-shadow-sm) !important;
+  color: var(--dz-text) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dz-card-compact {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--dz-line);
+  border-radius: var(--dz-radius-sm);
+  box-shadow: var(--dz-shadow-sm);
+  padding: 10px;
+}
+
+.dz-title {
+  color: var(--dz-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dz-subtitle,
+.text-muted {
+  color: var(--dz-muted) !important;
+}
+
+.text-faint {
+  color: var(--dz-faint) !important;
+}
+
+.border-soft {
+  border-color: var(--dz-line) !important;
+}
+
+.dz-kicker {
+  color: var(--dz-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+/* ===== BOTÕES ===== */
+.dz-btn,
+.button-primary,
+.button-secondary {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: var(--dz-radius-sm) !important;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease, background-color .14s ease, color .14s ease;
+  white-space: nowrap;
+}
+
+.dz-btn:hover,
+.button-primary:hover,
+.button-secondary:hover {
+  transform: translateY(-1px);
+}
+
+.dz-btn-primary,
+.button-primary {
+  background: linear-gradient(135deg, var(--dz-primary), var(--dz-primary-2)) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(37, 99, 235, .25) !important;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, .14) !important;
+}
+
+.dz-btn-secondary,
+.button-secondary {
+  background: #ffffff !important;
+  color: var(--dz-text) !important;
+  border: 1px solid var(--dz-line) !important;
+}
+
+.dz-btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+.dz-btn-danger {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+/* ===== INPUTS ===== */
+.dz-input,
+.input-base,
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  min-height: 34px;
+  border-radius: var(--dz-radius-sm) !important;
+  border: 1px solid var(--dz-line) !important;
+  background: #ffffff !important;
+  color: var(--dz-text) !important;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color .14s ease, box-shadow .14s ease, background-color .14s ease;
+}
+
+textarea {
+  padding: 9px 10px;
+}
+
+.dz-input::placeholder,
+.input-base::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--dz-faint) !important;
+}
+
+.dz-input:focus,
+.input-base:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(20, 217, 255, .8) !important;
+  box-shadow: 0 0 0 3px rgba(20, 217, 255, .16) !important;
+}
+
+/* ===== BADGES ===== */
+.dz-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border: 1px solid var(--dz-line);
+  background: var(--dz-surface-2);
+  color: var(--dz-muted);
+}
+
+.dz-badge-primary { background: #e0f7ff; border-color: #a5ecff; color: #0369a1; }
+.dz-badge-success { background: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+.dz-badge-warning { background: #fef3c7; border-color: #fde68a; color: #b45309; }
+.dz-badge-danger { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
+.dz-badge-purple { background: #ede9fe; border-color: #ddd6fe; color: #6d28d9; }
+
+/* ===== TABELAS COMPACTAS ===== */
+.dz-table-wrap {
+  overflow: hidden;
+  border: 1px solid var(--dz-line);
+  border-radius: var(--dz-radius);
+  background: #ffffff;
+  box-shadow: var(--dz-shadow-sm);
+}
+
+.dz-table,
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--dz-text);
+}
+
+.dz-table th,
+table th {
+  height: 34px;
+  background: #f8fafc;
+  color: var(--dz-muted);
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  border-bottom: 1px solid var(--dz-line);
+}
+
+.dz-table td,
+table td {
+  height: 36px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.dz-table tr:hover td,
+table tr:hover td {
+  background: #f8fbff;
+}
+
+/* ===== NAV GLOBAL ===== */
+.nav-link-top {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  border-radius: var(--dz-radius-sm);
+  padding: 0 10px;
+  color: var(--dz-muted);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all .14s ease;
+  white-space: nowrap;
+}
+
+.nav-link-top:hover,
+.nav-link-top.active {
+  background: #eef7ff;
+  color: #0f172a;
+}
+
+.dropdown-user-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 9px;
+  border-radius: var(--dz-radius-sm);
+  color: var(--dz-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.dropdown-user-btn:hover {
+  background: #f1f5f9;
+  border-color: var(--dz-line);
+}
+
+/* ===== SCROLL ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  body { font-size: 12px; }
+  .dz-container { width: min(100% - 20px, 1500px); }
+  .dz-card-compact { padding: 8px; }
+}
+
+/* ===== LEALT RESPONSIVO APP-LIKE ===== */
+:root {
+  --dz-bg: #f7f7f7;
+  --dz-surface: #ffffff;
+  --dz-surface-2: #f8fafc;
+  --dz-line: #e4e4e7;
+  --dz-text: #111827;
+  --dz-muted: #71717a;
+  --dz-primary: #2563eb;
+  --dz-primary-2: #1d4ed8;
+  --dz-radius: 6px;
+  --dz-radius-sm: 4px;
+  --dz-header-h: 54px;
+  --dz-shadow: none;
+  --dz-shadow-sm: none;
+}
+body { background-color: var(--dz-bg) !important; background-image: linear-gradient(rgba(15,23,42,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,.025) 1px, transparent 1px) !important; background-size: 24px 24px,24px 24px !important; color: var(--dz-text) !important; }
+.dz-card,.glass-card,.panel-card,.soft-card,.dz-table-wrap { border-radius: 6px !important; box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.dz-btn,.button-primary,.button-secondary,.dz-input,.input-base,input:not([type='checkbox']):not([type='radio']),select,textarea,.dz-badge,.nav-link-top,.dropdown-user-btn { border-radius: 4px !important; }
+@media (max-width: 1279px) {
+  html { -webkit-tap-highlight-color: transparent; }
+  body { font-size: 12px !important; line-height: 1.28 !important; overscroll-behavior-y: none; }
+  .dz-container { width: 100% !important; max-width: 100% !important; padding-inline: 8px !important; }
+  .dz-page { min-height: calc(100dvh - 54px) !important; }
+  .dz-card,.glass-card,.panel-card,.soft-card { padding: 10px !important; }
+  .dz-card-compact { padding: 8px !important; border-radius: 4px !important; box-shadow: none !important; }
+  .dz-title { font-size: 14px !important; line-height: 1.2 !important; }
+  h1 { font-size: clamp(18px, 5vw, 24px) !important; line-height: 1.12 !important; }
+  h2 { font-size: clamp(16px, 4.2vw, 20px) !important; line-height: 1.15 !important; }
+  h3 { font-size: clamp(14px, 3.8vw, 18px) !important; line-height: 1.18 !important; }
+  .text-\[30px\],.text-\[32px\],.text-\[36px\],.text-\[40px\],.text-\[48px\],.text-\[56px\] { font-size: 22px !important; line-height: 1.08 !important; }
+  .text-\[24px\],.text-\[26px\],.text-\[28px\] { font-size: 18px !important; line-height: 1.12 !important; }
+  .gap-8,.gap-10,.gap-12 { gap: 12px !important; } .gap-6 { gap: 10px !important; }
+  .p-8,.p-10,.p-12 { padding: 12px !important; } .p-6 { padding: 10px !important; }
+  .px-8,.px-10,.px-12 { padding-left: 12px !important; padding-right: 12px !important; }
+  .py-8,.py-10,.py-12 { padding-top: 12px !important; padding-bottom: 12px !important; }
+  .rounded-xl,.rounded-2xl,.rounded-3xl,.rounded-\[24px\],.rounded-\[28px\],.rounded-\[32px\] { border-radius: 6px !important; }
+  .shadow,.shadow-sm,.shadow-md,.shadow-lg,.shadow-xl,.shadow-2xl { box-shadow: none !important; }
+  table { min-width: max-content; }
+  .dz-table-wrap,.overflow-x-auto { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .dz-table th,table th { height: 30px !important; padding: 0 8px !important; font-size: 9px !important; white-space: nowrap; }
+  .dz-table td,table td { height: 32px !important; padding: 4px 8px !important; font-size: 11px !important; white-space: nowrap; }
+  .dz-btn,.button-primary,.button-secondary,button,a { touch-action: manipulation; }
+  input:not([type='checkbox']):not([type='radio']),select,textarea,.dz-input,.input-base { min-height: 36px !important; font-size: 12px !important; }
+}
+@media (max-width: 640px) {
+  :root { --dz-header-h: 54px; }
+  .dz-container { padding-inline: 6px !important; }
+  .grid { min-width: 0; }
+  img,video,canvas,svg { max-width: 100%; }
+}
+
+/* ===== LEALT MOBILE APP: informação resumida ===== */
+@media (max-width: 767px) {
+  body {
+    background-color: #ffffff !important;
+    background-image: none !important;
+  }
+
+  main,
+  .dz-page,
+  .min-h-screen {
+    background-color: #ffffff !important;
+  }
+
+  section {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-filters-compact select,
+  .mobile-filters-compact input:not([type='checkbox']):not([type='radio']),
+  .mobile-filters-compact label {
+    min-height: 42px !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-radius: 0 !important;
+    font-size: 12px !important;
+  }
+
+  .mobile-app-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f4f4f5;
+  }
+
+  .mobile-app-logo {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    overflow: hidden;
+    background: #f4f4f5;
+  }
+
+  .mobile-app-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-app-meta {
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #71717a;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* No mobile, tabelas grandes devem virar lista/cards específicos. Se alguma tabela antiga sobrar, reduzimos o estrago visual. */
+  .overflow-x-auto table {
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+}
+
+/* =========================================================
+   LEALT APP RESPONSIVO GLOBAL
+   Mobile/tablet não pode ser PC espremido: remove molduras,
+   compacta listas/tabelas e deixa a navegação com cara de app.
+   Aplica no site inteiro sem mexer na lógica das páginas.
+   ========================================================= */
+@media (max-width: 1023px) {
+  :root {
+    --dz-bg: #ffffff;
+    --dz-bg-2: #ffffff;
+    --dz-line: #e5e7eb;
+    --dz-shadow: none;
+    --dz-shadow-sm: none;
+    --dz-radius: 4px;
+    --dz-radius-sm: 3px;
+    --dz-header-h: 56px;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    font-size: 12px;
+  }
+
+  body::before,
+  body::after,
+  .pointer-events-none.fixed.inset-0,
+  .pointer-events-none.fixed.inset-x-0.top-0 {
+    display: none !important;
+  }
+
+  main {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 0 calc(64px + env(safe-area-inset-bottom)) !important;
+    background: #ffffff !important;
+  }
+
+  main > * {
+    max-width: 100% !important;
+  }
+
+  main [class*="mx-auto"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  main [class*="max-w-"] {
+    max-width: 100% !important;
+  }
+
+  main [class*="px-8"],
+  main [class*="px-10"],
+  main [class*="px-12"],
+  main [class*="p-8"],
+  main [class*="p-10"],
+  main [class*="p-12"] {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  main [class*="py-8"],
+  main [class*="py-10"],
+  main [class*="py-12"],
+  main [class*="p-8"],
+  main [class*="p-10"],
+  main [class*="p-12"] {
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  /* Cabeçalho mobile estilo app: sem moldura de site. */
+  header {
+    border-bottom: 0 !important;
+    box-shadow: 0 1px 12px rgba(15, 23, 42, 0.08) !important;
+    background: #ffffff !important;
+  }
+
+  header > div:first-child {
+    height: 54px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    max-width: none !important;
+  }
+
+  header button,
+  header a {
+    border-radius: 0 !important;
+  }
+
+  header [class*="border"] {
+    border-color: #e5e7eb !important;
+  }
+
+  /* Menu aberto vira gaveta limpa, não dropdown de desktop. */
+  header nav,
+  header [class*="fixed"][class*="top-"] {
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+
+  /* Barra inferior estilo app: sem borda de tabela/site. */
+  body nav.fixed.bottom-0,
+  body nav[class*="bottom-0"] {
+    border-top: 0 !important;
+    background: #ffffff !important;
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08) !important;
+    padding-top: 4px !important;
+  }
+
+  body nav[class*="bottom-0"] a {
+    border: 0 !important;
+    min-height: 50px !important;
+  }
+
+  body nav[class*="bottom-0"] a[class*="bg-"] {
+    background: #eaf6ff !important;
+  }
+
+  /* Cards/blocos: no app, bloco principal ocupa a tela sem bordas laterais. */
+  .dz-card,
+  .glass-card,
+  .panel-card,
+  .soft-card,
+  .dz-table-wrap {
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  main section,
+  main article,
+  main div[class*="bg-white"][class*="border"] {
+    border-left-width: 0 !important;
+    border-right-width: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Mantém inputs/botões com limite visual, mas compactos. */
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea,
+  button {
+    min-height: 36px;
+    border-radius: 4px !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 12px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  /* Tipografia mobile: informação forte, sem título gigante. */
+  h1 {
+    font-size: clamp(20px, 6vw, 26px) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  h2 {
+    font-size: clamp(16px, 4.8vw, 20px) !important;
+    line-height: 1.15 !important;
+  }
+
+  h3 {
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+
+  p,
+  li,
+  td,
+  th,
+  span,
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    line-height: 1.25;
+  }
+
+  /* Grids largos passam a ser app list. */
+  main [class*="grid-cols-2"],
+  main [class*="grid-cols-3"],
+  main [class*="grid-cols-4"],
+  main [class*="grid-cols-5"],
+  main [class*="grid-cols-6"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main [class*="gap-8"],
+  main [class*="gap-10"],
+  main [class*="gap-12"] {
+    gap: 10px !important;
+  }
+
+  /* Tabelas/listas: no mobile mostra resumo; o detalhe fica na página interna. */
+  .dz-table-wrap,
+  main table {
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  main table {
+    table-layout: fixed !important;
+  }
+
+  main table th,
+  main table td {
+    height: auto !important;
+    min-height: 34px !important;
+    padding: 8px 8px !important;
+    font-size: 11px !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  main table th:nth-child(n+4),
+  main table td:nth-child(n+4) {
+    display: none !important;
+  }
+
+  main table th:nth-child(1),
+  main table td:nth-child(1) {
+    width: 44px !important;
+  }
+
+  main table th:nth-child(2),
+  main table td:nth-child(2) {
+    width: auto !important;
+  }
+
+  main table th:nth-child(3),
+  main table td:nth-child(3) {
+    width: 58px !important;
+    text-align: right !important;
+  }
+
+  /* Cards horizontais: imagem/logo menor e texto resumido. */
+  main img {
+    max-width: 100%;
+  }
+
+  main [class*="h-24"][class*="w-24"],
+  main [class*="h-28"][class*="w-28"],
+  main [class*="h-32"][class*="w-32"] {
+    height: 56px !important;
+    width: 56px !important;
+  }
+
+  main [class*="text-4xl"],
+  main [class*="text-5xl"],
+  main [class*="text-6xl"],
+  main [class*="text-7xl"] {
+    font-size: 22px !important;
+    line-height: 1.05 !important;
+  }
+
+  main [class*="tracking-"] {
+    letter-spacing: 0.02em;
+  }
+
+  /* Utilidades para próximas páginas: usar quando quiser esconder informação secundária no app. */
+  .lealt-mobile-hide,
+  .desktop-detail,
+  .only-desktop-detail {
+    display: none !important;
+  }
+
+  .lealt-app-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    border-top: 1px solid #eef2f7 !important;
+    border-bottom: 1px solid #eef2f7 !important;
+  }
+
+  .lealt-app-list-item {
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 56px !important;
+    padding: 8px 12px !important;
+    border-bottom: 1px solid #eef2f7 !important;
+    background: #ffffff !important;
+  }
+
+  .lealt-app-list-item:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .lealt-app-logo {
+    width: 40px !important;
+    height: 40px !important;
+    object-fit: cover !important;
+  }
+
+  .lealt-app-title {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+  }
+
+  .lealt-app-subtitle {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 10px !important;
+    color: #64748b !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-only,
+  .lealt-mobile-only {
+    display: none !important;
+  }
+}
+
+/* =========================================================
+   CORREÇÃO URGENTE: MOBILE PRECISA ROLAR NORMALMENTE
+   Algumas regras globais de app-like podem deixar wrappers altos/fixos
+   parecendo travados em navegadores mobile. Esta camada força o scroll
+   vertical no documento inteiro sem mexer na lógica das páginas.
+   ========================================================= */
+@media (max-width: 1023px) {
+  html,
+  body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  body > div,
+  body > div > div,
+  .min-h-screen,
+  .dz-page,
+  main {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+    position: relative;
+    touch-action: pan-y !important;
+  }
+
+  main {
+    display: block !important;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Mantém scroll interno apenas nos menus/dropdowns que realmente precisam. */
+  header [class*="overflow-y-auto"],
+  [role="dialog"] [class*="overflow-y-auto"],
+  .custom-scrollbar {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
 }

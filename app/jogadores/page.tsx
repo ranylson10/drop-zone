@@ -1,0 +1,504 @@
+'use client'
+
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import Image from 'next/image'
+import MessageShortcut from '@/app/components/chat/MessageShortcut'
+import {
+  BarChart3,
+  Clock3,
+  Crosshair,
+  Gamepad2,
+  Loader2,
+  Medal,
+  Monitor,
+  Search,
+  Shield,
+  Smartphone,
+  Trophy,
+  UserCircle2,
+  Users,
+  Zap,
+} from 'lucide-react'
+
+type JogadorRow = {
+  id: string
+  nick: string | null
+  uid_jogo: string | null
+  servidor: string | null
+  funcao: string | null
+  plataforma: 'mobile' | 'emulador' | null
+  foto_capa: string | null
+  equipe_id: string | null
+  created_at?: string | null
+  equipes?:
+    | {
+        id: string
+        nome: string | null
+        tag: string | null
+        logo_url: string | null
+      }
+    | { id: string; nome: string | null; tag: string | null; logo_url: string | null }[]
+    | null
+  rank_score?: number
+  rank_posicao?: number
+  score_bruto?: number
+}
+
+function normalizarEquipe(equipe: JogadorRow['equipes']) {
+  if (!equipe) return null
+  return Array.isArray(equipe) ? equipe[0] || null : equipe
+}
+
+function getRoleIcon(role: string | null) {
+  switch ((role || '').toLowerCase()) {
+    case 'sniper':
+      return <Crosshair size={14} className="text-red-500" />
+    case 'suporte':
+      return <Shield size={14} className="text-blue-500" />
+    case 'granadeiro':
+      return <Zap size={14} className="text-yellow-500" />
+    default:
+      return <Users size={14} className="text-[#2563eb]" />
+  }
+}
+
+function getPlatformLabel(plataforma: string | null) {
+  if (plataforma === 'mobile') return 'Mobile'
+  if (plataforma === 'emulador') return 'Emulador'
+  return 'N/I'
+}
+
+function getPlatformIcon(plataforma: string | null) {
+  if (plataforma === 'mobile') return <Smartphone size={13} className="text-[#2563eb]" />
+  if (plataforma === 'emulador') return <Monitor size={13} className="text-[#2563eb]" />
+  return <Gamepad2 size={13} className="text-[#2563eb]" />
+}
+
+function calcularScoreJogador(jogador: JogadorRow) {
+  const equipe = normalizarEquipe(jogador.equipes)
+
+  let score = 0
+  if (jogador.nick) score += 20
+  if (jogador.uid_jogo) score += 15
+  if (jogador.plataforma) score += 15
+  if (jogador.funcao) score += 15
+  if (jogador.servidor) score += 10
+  if (jogador.foto_capa) score += 10
+  if (equipe?.id) score += 15
+
+  return score
+}
+
+function medalha(posicao?: number) {
+  if (posicao === 1) return '🥇'
+  if (posicao === 2) return '🥈'
+  if (posicao === 3) return '🥉'
+  return posicao || '-'
+}
+
+function dataCurta(data?: string | null) {
+  if (!data) return 'N/I'
+  return new Date(data).toLocaleDateString('pt-BR')
+}
+
+export default function JogadoresPage() {
+  const [loading, setLoading] = useState(true)
+  const [busca, setBusca] = useState('')
+  const [filtroPlataforma, setFiltroPlataforma] = useState('')
+  const [jogadores, setJogadores] = useState<JogadorRow[]>([])
+
+  const carregarJogadores = useCallback(async () => {
+    try {
+      setLoading(true)
+
+      const { data, error } = await supabase
+        .from('perfis_jogo')
+        .select(`
+          id,
+          nick,
+          uid_jogo,
+          servidor,
+          funcao,
+          plataforma,
+          foto_capa,
+          equipe_id,
+          created_at,
+          equipes:equipe_id (
+            id,
+            nome,
+            tag,
+            logo_url
+          )
+        `)
+        .eq('ativo', true)
+        .order('created_at', { ascending: false })
+        .limit(300)
+
+      if (error) throw error
+
+      const base = (data || []) as JogadorRow[]
+      const maxScore = Math.max(...base.map(calcularScoreJogador), 1)
+
+      const jogadoresRankeados = base
+        .map((jogador) => {
+          const scoreBruto = calcularScoreJogador(jogador)
+          return {
+            ...jogador,
+            score_bruto: scoreBruto,
+            rank_score: Math.round((scoreBruto / maxScore) * 100),
+          }
+        })
+        .sort((a, b) => {
+          if ((b.rank_score || 0) !== (a.rank_score || 0)) {
+            return (b.rank_score || 0) - (a.rank_score || 0)
+          }
+
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        })
+        .map((jogador, index) => ({
+          ...jogador,
+          rank_posicao: index + 1,
+        }))
+
+      setJogadores(jogadoresRankeados)
+    } catch (error) {
+      console.error('Erro ao carregar jogadores:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    carregarJogadores()
+  }, [carregarJogadores])
+
+  const jogadoresFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase()
+
+    return jogadores.filter((jogador) => {
+      const equipe = normalizarEquipe(jogador.equipes)
+      const bateBusca =
+        !termo ||
+        [jogador.nick, jogador.uid_jogo, jogador.servidor, jogador.funcao, equipe?.nome, equipe?.tag].some(
+          (valor) => String(valor || '').toLowerCase().includes(termo)
+        )
+
+      const batePlataforma = !filtroPlataforma || jogador.plataforma === filtroPlataforma
+      return bateBusca && batePlataforma
+    })
+  }, [busca, filtroPlataforma, jogadores])
+
+  const totalJogadores = jogadores.length
+  const totalComEquipe = jogadores.filter((jogador) => normalizarEquipe(jogador.equipes)?.id).length
+  const totalMobile = jogadores.filter((jogador) => jogador.plataforma === 'mobile').length
+  const totalEmulador = jogadores.filter((jogador) => jogador.plataforma === 'emulador').length
+  const mediaScore = jogadores.length
+    ? Math.round(jogadores.reduce((total, jogador) => total + (jogador.rank_score || 0), 0) / jogadores.length)
+    : 0
+  const ultimosJogadores = [...jogadores]
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+    .slice(0, 6)
+  const topJogadores = jogadores.slice(0, 6)
+
+  return (
+    <div className="min-h-screen bg-[#f7f7f7] text-[#142340]">
+      <div className="mx-auto max-w-[1520px] px-4 pb-6 pt-5">
+        <section className="mb-3 flex flex-col gap-2 border border-zinc-200 bg-white p-2 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
+              <Users size={18} />
+              Jogadores
+            </div>
+            <h1 className="text-[20px] font-semibold tracking-tight text-[#111827] md:text-[22px]">
+              Ranking competitivo dos jogadores
+            </h1>
+            <p className="mt-1 text-[12px] text-zinc-500">
+              Baseado em cadastro completo, equipe, plataforma, função e atividade.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/jogadores/convites"
+              className="border border-zinc-300 px-4 py-2 text-[11px] font-semibold uppercase  text-[#142340] transition hover:bg-[#2563eb] hover:text-black"
+            >
+              Convites
+            </Link>
+            <Link
+              href="/meu-perfil"
+              className="bg-[#2563eb] px-3 py-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#1d4ed8]"
+            >
+              + Novo jogador
+            </Link>
+          </div>
+        </section>
+
+        <section className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+          <div className="border border-zinc-200 bg-white p-2">
+            <div className="flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+              <Users size={15} className="text-[#2563eb]" />
+              Jogadores
+            </div>
+            <div className="mt-1 text-[18px] font-semibold text-[#111827]">{totalJogadores}</div>
+            <div className="text-[10px] font-medium uppercase text-zinc-500">cadastrados</div>
+          </div>
+
+          <div className="border border-zinc-200 bg-white p-2">
+            <div className="flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+              <Shield size={15} className="text-[#2563eb]" />
+              Com equipe
+            </div>
+            <div className="mt-1 text-[18px] font-semibold text-[#111827]">{totalComEquipe}</div>
+            <div className="text-[10px] font-medium uppercase text-zinc-500">vinculados</div>
+          </div>
+
+          <div className="border border-zinc-200 bg-white p-2">
+            <div className="flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+              <Smartphone size={15} className="text-[#2563eb]" />
+              Mobile
+            </div>
+            <div className="mt-1 text-[18px] font-semibold text-[#111827]">{totalMobile}</div>
+            <div className="text-[10px] font-medium uppercase text-zinc-500">atletas</div>
+          </div>
+
+          <div className="border border-zinc-200 bg-white p-2">
+            <div className="flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+              <Monitor size={15} className="text-[#2563eb]" />
+              Emulador
+            </div>
+            <div className="mt-1 text-[18px] font-semibold text-[#111827]">{totalEmulador}</div>
+            <div className="text-[10px] font-medium uppercase text-zinc-500">atletas</div>
+          </div>
+
+          <div className="border border-zinc-200 bg-white p-2">
+            <div className="flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+              <BarChart3 size={15} className="text-[#2563eb]" />
+              Média score
+            </div>
+            <div className="mt-1 text-[18px] font-semibold text-[#111827]">{mediaScore}</div>
+            <div className="text-[10px] font-medium uppercase text-zinc-500">score médio</div>
+          </div>
+        </section>
+
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-[#2563eb]" />
+          </div>
+        ) : (
+          <>
+            {ultimosJogadores.length > 0 && (
+              <section className="mb-3 border border-zinc-200 bg-white">
+                <div className="flex items-center justify-between px-3 py-2">
+                  <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
+                    <Clock3 size={16} className="text-[#2563eb]" />
+                    Últimos jogadores que entraram
+                  </div>
+                  <span className="text-[10px] font-medium uppercase text-zinc-500">recentes</span>
+                </div>
+
+                <div className="overflow-x-auto px-3 pb-3">
+                  <div className="flex min-w-max gap-2">
+                    {ultimosJogadores.map((jogador) => {
+                      const equipe = normalizarEquipe(jogador.equipes)
+                      return (
+                        <Link
+                          key={`ultimo-${jogador.id}`}
+                          href={`/jogadores/${jogador.id}`}
+                          className="flex w-[225px] shrink-0 items-center gap-2 bg-zinc-50 p-2.5 transition hover:bg-zinc-50"
+                        >
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
+                            {jogador.foto_capa ? (
+                              <Image src={jogador.foto_capa} alt={jogador.nick || 'Jogador'} fill className="object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-zinc-500">
+                                <UserCircle2 size={24} />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="truncate text-[12px] font-semibold uppercase">{jogador.nick || 'Sem nick'}</div>
+                            <div className="mt-1 text-[10px] font-medium uppercase text-zinc-500">
+                              ID: {jogador.uid_jogo || 'N/I'}
+                            </div>
+                            <div className="text-[10px] font-medium uppercase text-zinc-500">
+                              {equipe?.tag || equipe?.nome || 'Sem equipe'}
+                            </div>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <section className="mb-3 border border-zinc-200 bg-white">
+              <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
+                  <Trophy size={16} className="text-[#2563eb]" />
+                  Ranking dos melhores jogadores
+                </div>
+                <span className="text-[10px] font-medium uppercase text-zinc-500">top 6</span>
+              </div>
+
+              <div className="overflow-x-auto px-3 pb-3">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-[78px_2fr_1.3fr_120px_120px_170px_120px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+                    <div>Posição</div>
+                    <div>Jogador</div>
+                    <div>Equipe</div>
+                    <div>Plataforma</div>
+                    <div>Função</div>
+                    <div>Score</div>
+                    <div>Cadastro</div>
+                  </div>
+
+                  {topJogadores.map((jogador) => {
+                    const equipe = normalizarEquipe(jogador.equipes)
+                    return (
+                      <Link
+                        key={`rank-${jogador.id}`}
+                        href={`/jogadores/${jogador.id}`}
+                        className="grid grid-cols-[78px_2fr_1.3fr_120px_120px_170px_120px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
+                      >
+                        <div className="text-sm font-semibold">{medalha(jogador.rank_posicao)}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="relative h-8 w-8 shrink-0 overflow-hidden bg-zinc-100">
+                            {jogador.foto_capa ? (
+                              <Image src={jogador.foto_capa} alt={jogador.nick || 'Jogador'} fill className="object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-zinc-500">
+                                <UserCircle2 size={20} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</div>
+                            <div className="text-[10px] font-medium uppercase text-zinc-500">ID: {jogador.uid_jogo || 'N/I'}</div>
+                          </div>
+                        </div>
+                        <div className="font-semibold uppercase">{equipe?.tag || equipe?.nome || 'Sem equipe'}</div>
+                        <div className="flex items-center gap-2 font-semibold">{getPlatformIcon(jogador.plataforma)} {getPlatformLabel(jogador.plataforma)}</div>
+                        <div className="flex items-center gap-2 font-semibold uppercase">{getRoleIcon(jogador.funcao)} {jogador.funcao || 'N/I'}</div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-9 font-semibold text-[#2563eb]">{jogador.rank_score || 0}</span>
+                            <div className="h-1.5 w-[110px] bg-zinc-200">
+                              <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, jogador.rank_score || 0))}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="font-semibold text-zinc-500">{dataCurta(jogador.created_at)}</div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+
+            <section className="border border-zinc-200 bg-white">
+              <div className="flex flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
+                  <Users size={16} className="text-[#2563eb]" />
+                  Todos os jogadores
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_190px] lg:w-[480px]">
+                  <div className="relative">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                    <input
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Buscar jogador..."
+                      className="h-9 w-full border border-zinc-300 bg-white pl-9 pr-3 text-[12px] font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                    />
+                  </div>
+
+                  <select
+                    value={filtroPlataforma}
+                    onChange={(e) => setFiltroPlataforma(e.target.value)}
+                    className="h-9 w-full border border-zinc-300 bg-white px-3 text-[12px] font-medium uppercase text-[#142340] outline-none focus:border-[#2563eb]"
+                  >
+                    <option value="">Todas plataformas</option>
+                    <option value="mobile">Mobile</option>
+                    <option value="emulador">Emulador</option>
+                  </select>
+                </div>
+              </div>
+
+              {jogadoresFiltrados.length > 0 ? (
+                <div className="overflow-x-auto px-3 pb-3">
+                  <div className="min-w-[980px]">
+                    <div className="grid grid-cols-[62px_2fr_1.25fr_120px_120px_170px_120px_96px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+                      <div>Pos.</div>
+                      <div>Jogador</div>
+                      <div>Equipe</div>
+                      <div>Plataforma</div>
+                      <div>Função</div>
+                      <div>Score</div>
+                      <div>Servidor</div>
+                      <div>Ações</div>
+                    </div>
+
+                    {jogadoresFiltrados.map((jogador) => {
+                      const equipe = normalizarEquipe(jogador.equipes)
+                      return (
+                        <Link
+                          key={jogador.id}
+                          href={`/jogadores/${jogador.id}`}
+                          className="grid grid-cols-[62px_2fr_1.25fr_120px_120px_170px_120px_96px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
+                        >
+                          <div className="font-semibold">#{jogador.rank_posicao || '-'}</div>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="relative h-8 w-8 shrink-0 overflow-hidden bg-zinc-100">
+                              {jogador.foto_capa ? (
+                                <Image src={jogador.foto_capa} alt={jogador.nick || 'Jogador'} fill className="object-cover" />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-zinc-500">
+                                  <UserCircle2 size={20} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</div>
+                              <div className="text-[10px] font-medium uppercase text-zinc-500">ID: {jogador.uid_jogo || 'N/I'}</div>
+                            </div>
+                          </div>
+                          <div className="font-semibold uppercase">{equipe?.tag || equipe?.nome || 'Sem equipe'}</div>
+                          <div className="flex items-center gap-2 font-semibold">{getPlatformIcon(jogador.plataforma)} {getPlatformLabel(jogador.plataforma)}</div>
+                          <div className="flex items-center gap-2 font-semibold uppercase">{getRoleIcon(jogador.funcao)} {jogador.funcao || 'N/I'}</div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-9 font-semibold text-[#2563eb]">{jogador.rank_score || 0}</span>
+                              <div className="h-1.5 w-[110px] bg-zinc-200">
+                                <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, jogador.rank_score || 0))}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="font-semibold text-zinc-500">{jogador.servidor || 'N/I'}</div>
+                          <div className="flex items-center gap-2">
+                            <MessageShortcut referenciaTipo="jogador" referenciaId={jogador.id} titulo={jogador.nick || 'Jogador'} avatarUrl={jogador.foto_capa} tipo="dm" />
+                            <span className="border border-zinc-300 px-2.5 py-1 text-[9px] font-semibold uppercase text-[#142340]">
+                              Ver perfil
+                            </span>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="border-t border-zinc-200 py-8 text-center text-[12px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+                  Nenhum jogador encontrado.
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

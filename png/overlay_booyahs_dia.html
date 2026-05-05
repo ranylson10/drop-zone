@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1" />
+  <title>Overlay - Mapas do Dia PNG</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../theme.css">
+  <script src="../overlay_config.js"></script>
+
+  <style>
+    :root{
+      --stage-w: 1920px;
+      --stage-h: 1080px;
+
+      --wrap-x: 50%;
+      --wrap-y: 60px;
+      --wrap-w: 1820px;
+      --wrap-h: 960px;
+      --wrap-shift-x: -50%;
+
+      --top-h: 240px;
+
+      --brand-x: 0px;
+      --brand-y: 0px;
+      --brand-gap: 14px;
+      --brand-logo-w: 90px;
+      --brand-logo-h: 90px;
+      --brand-font: "Oswald","Segoe UI",Arial,sans-serif;
+      --brand-size: 18px;
+      --brand-weight: 700;
+      --brand-color: rgba(0,0,0,.50);
+
+      --title-x: 230px;
+      --title-y: 14px;
+      --title-w: 1300px;
+      --title-h: 140px;
+      --title-font: "Anton","Impact","Arial Black",sans-serif;
+      --title-size: 132px;
+      --title-weight: 400;
+      --title-color: #101113;
+      --title-align: left;
+
+      --cards-mt: 40px;
+      --cards-row-h: 640px;
+      --cards-gap: 22px;
+      --max-cards: 7;
+
+      --card-h: 520px;
+      --card-max-w: 420px;
+      --card-min-w: 240px;
+      --card-bg: rgba(0,0,0,.16);
+      --card-border: 2px solid rgba(0,0,0,.22);
+      --card-radius: 10px;
+      --card-shadow-a: .18;
+      --card-bracket-opacity: .45;
+
+      --card-img-h: 310px;
+      --card-map-sat: 1.05;
+      --card-map-con: 1.05;
+      --card-shade-top: rgba(0,0,0,.10);
+      --card-shade-bot: rgba(0,0,0,.65);
+
+      --mapbar-h: 78px;
+      --mapbar-bg: linear-gradient(180deg,#121316,#0b0c0e);
+      --mapbar-pad: 18px;
+
+      --stats-h: 132px;
+      --stats-bg: rgba(0,0,0,.55);
+
+      --enter-ms: 0ms;
+      --enter-px: 0px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{width:var(--stage-w);height:var(--stage-h);margin:0;overflow:hidden;background:transparent}
+    body{
+      font-family:"Oswald","Segoe UI",Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
+    .stage{position:relative;width:var(--stage-w);height:var(--stage-h);background:transparent}
+
+    .wrap{
+      position:absolute;
+      left:var(--wrap-x);
+      top:var(--wrap-y);
+      width:var(--wrap-w);
+      height:var(--wrap-h);
+      transform:translateX(var(--wrap-shift-x));
+      pointer-events:none;
+    }
+
+    .top{
+      position:relative;
+      height:var(--top-h);
+    }
+
+    .brand{
+      position:absolute;
+      left:var(--brand-x);
+      top:var(--brand-y);
+      display:flex;
+      gap:var(--brand-gap);
+      align-items:flex-start;
+    }
+
+    .brandLogo{
+      width:var(--brand-logo-w);
+      height:var(--brand-logo-h);
+      object-fit:contain;
+      filter: drop-shadow(0 10px 12px rgba(0,0,0,.35));
+    }
+
+    .brandTxt{
+      font-family:var(--brand-font);
+      font-weight:var(--brand-weight);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:var(--brand-color);
+      line-height:1.05;
+      padding-top:10px;
+      font-size:var(--brand-size);
+    }
+
+    .bigTitle{
+      position:absolute;
+      left:var(--title-x);
+      top:var(--title-y);
+      width:var(--title-w);
+      height:var(--title-h);
+      display:flex;
+      align-items:flex-start;
+      justify-content:flex-start;
+      font-family:var(--title-font);
+      font-size:var(--title-size);
+      font-weight:var(--title-weight);
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color:var(--title-color);
+      text-shadow:0 14px 24px rgba(0,0,0,.16);
+      white-space:nowrap;
+      overflow:hidden;
+      text-align:var(--title-align);
+    }
+
+    .row{
+      position:relative;
+      margin-top:var(--cards-mt);
+      height:var(--cards-row-h);
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      gap:var(--cards-gap);
+      padding:0;
+    }
+
+    .card{
+      flex:1 1 0;
+      max-width:var(--card-max-w);
+      min-width:var(--card-min-w);
+      height:var(--card-h);
+      background:var(--card-bg);
+      border:var(--card-border);
+      border-radius:var(--card-radius);
+      box-shadow:0 18px 28px rgba(0,0,0,var(--card-shadow-a));
+      overflow:hidden;
+      position:relative;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:10px;
+      pointer-events:none;
+      background:
+        linear-gradient(#101113,#101113) left top/18px 2px no-repeat,
+        linear-gradient(#101113,#101113) left top/2px 18px no-repeat,
+        linear-gradient(#101113,#101113) right top/18px 2px no-repeat,
+        linear-gradient(#101113,#101113) right top/2px 18px no-repeat,
+        linear-gradient(#101113,#101113) left bottom/18px 2px no-repeat,
+        linear-gradient(#101113,#101113) left bottom/2px 18px no-repeat,
+        linear-gradient(#101113,#101113) right bottom/18px 2px no-repeat,
+        linear-gradient(#101113,#101113) right bottom/2px 18px no-repeat;
+      opacity:var(--card-bracket-opacity);
+      z-index:5;
+    }
+
+    .imgArea{
+      height:var(--card-img-h);
+      position:relative;
+      background:rgba(0,0,0,.20);
+      overflow:hidden;
+    }
+
+    .mapImg{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+      filter:saturate(var(--card-map-sat)) contrast(var(--card-map-con));
+      opacity:0;
+    }
+
+    .imgShade{
+      position:absolute;
+      inset:0;
+      background:linear-gradient(180deg, var(--card-shade-top), var(--card-shade-bot));
+    }
+
+    .teamLogo{
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      z-index:3;
+      pointer-events:none;
+      opacity:0;
+    }
+
+    .mapBar{
+      height:var(--mapbar-h);
+      display:flex;
+      align-items:center;
+      padding:0 var(--mapbar-pad);
+      gap:12px;
+      position:relative;
+      overflow:hidden;
+      background:var(--mapbar-bg);
+    }
+
+    .mapBar::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: radial-gradient(420px 120px at 0% 50%, rgba(255,255,255,.10), transparent 55%);
+      opacity:.70;
+    }
+
+    .mapName{
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      z-index:1;
+      line-height:1;
+      text-transform:uppercase;
+      width:100%;
+    }
+
+    .stats{
+      height:var(--stats-h);
+      background:var(--stats-bg);
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      padding:18px 18px 16px;
+      gap:16px;
+    }
+
+    .ptsBlock{ min-width:0; }
+
+    .ptsVal{
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .ptsLbl{
+      line-height:1;
+      text-transform:uppercase;
+      margin-top:6px;
+    }
+
+    .abtVal{
+      line-height:1;
+      text-transform:uppercase;
+      align-self:flex-end;
+      padding-bottom:4px;
+      white-space:nowrap;
+    }
+
+    .debug{
+      position:absolute;
+      left:20px;
+      bottom:20px;
+      max-width:900px;
+      padding:12px 14px;
+      background:rgba(0,0,0,.78);
+      color:#fff;
+      font:14px/1.45 monospace;
+      border-radius:10px;
+      z-index:999;
+      display:none;
+      white-space:pre-wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <div class="wrap" id="wrap">
+
+      <div class="top">
+        <div class="brand" id="brand">
+          <img class="brandLogo" id="brandLogo" alt="Logo">
+          <div class="brandTxt">
+            <div id="brandLine1">COPA ALOE</div>
+            <div id="brandLine2">8º SPLIT 2K26</div>
+          </div>
+        </div>
+
+        <div class="bigTitle" id="bigTitle">MAPAS DO DIA</div>
+      </div>
+
+      <div class="row" id="cardsRow"></div>
+    </div>
+
+    <div class="debug" id="debug"></div>
+  </div>
+
+  <script>
+    const CFG = window.OVERLAY_CFG || {};
+    const API_KEY  = CFG.API_KEY || "";
+    const SHEET_ID = CFG.SHEET_ID || "";
+    const REFRESH_MS = Number(CFG.REFRESH_MS ?? 5000);
+
+    const CONFIG_RANGE = "CONFIG!A170:I260";
+
+    const wrap = document.getElementById("wrap");
+    const cardsRow = document.getElementById("cardsRow");
+    const cardRefs = [];
+
+    const brand = document.getElementById("brand");
+    const brandLogo = document.getElementById("brandLogo");
+    const brandLine1 = document.getElementById("brandLine1");
+    const brandLine2 = document.getElementById("brandLine2");
+    const bigTitle = document.getElementById("bigTitle");
+    const debugEl = document.getElementById("debug");
+
+    function safeText(v){
+      return String(v ?? "").trim();
+    }
+
+    function normalizeHeader(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toUpperCase();
+    }
+
+    function normalizeKey(v){
+      return safeText(v)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toLowerCase();
+    }
+
+    function toBool(v, fallback = false){
+      const s = safeText(v).toLowerCase();
+      if (["1","true","sim","yes"].includes(s)) return true;
+      if (["0","false","nao","não","no"].includes(s)) return false;
+      return fallback;
+    }
+
+    function toNumber(v, fallback = 0){
+      const s = safeText(v).replace(",", ".");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function isNumericLike(v){
+      const s = safeText(v).replace(",", ".");
+      return s !== "" && !isNaN(Number(s));
+    }
+
+    function parseMeasure(value, fallback = "", percentWhenFraction = false){
+      const s = safeText(value);
+      if (!s) return fallback;
+      if (/[a-z%]/i.test(s) && !/^-?\d+(?:[.,]\d+)?$/.test(s)) return s;
+
+      const n = toNumber(s, NaN);
+      if (!Number.isFinite(n)) return fallback;
+      return percentWhenFraction && n >= 0 && n <= 1 ? `${n * 100}%` : `${n}px`;
+    }
+
+    function resolveFont(v){
+      const s = safeText(v).toLowerCase();
+      if (!s) return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "cutmark") return '"Oswald","Segoe UI",Arial,sans-serif';
+      if (s === "anton") return '"Anton","Impact","Arial Black",sans-serif';
+      if (s === "oswald") return '"Oswald","Segoe UI",Arial,sans-serif';
+      return `"${safeText(v)}","Oswald","Segoe UI",Arial,sans-serif`;
+    }
+
+    function toSrc(path){
+      let p = safeText(path);
+      p = p.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+      p = p.replace(/^"+|"+$/g, "");
+      if(!p) return "";
+      if(/^https?:\/\//i.test(p)) return p;
+      if(/^data:/i.test(p)) return p;
+
+      p = p.replace(/\\/g, "/");
+
+      const parts = p.split("/").filter(Boolean);
+      const lower = parts.map(x => x.toLowerCase());
+
+      const folderIndex =
+        lower.indexOf("assets") >= 0 ? lower.indexOf("assets") :
+        lower.indexOf("logos") >= 0 ? lower.indexOf("logos") :
+        lower.indexOf("maps") >= 0 ? lower.indexOf("maps") :
+        lower.indexOf("players") >= 0 ? lower.indexOf("players") :
+        lower.indexOf("jogadores") >= 0 ? lower.indexOf("jogadores") :
+        -1;
+
+      if (folderIndex >= 0) {
+        p = "../" + parts.slice(folderIndex).join("/");
+      } else if (!p.startsWith("../") && !p.startsWith("./") && !p.startsWith("/")) {
+        p = "../" + p.replace(/^\/+/, "");
+      }
+
+      return encodeURI(p);
+    }
+
+    async function fetchSheetRange(range){
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/` +
+        encodeURIComponent(range) +
+        `?key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if(!res.ok) throw new Error(`Erro ao carregar ${range}: HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function fetchSheetRanges(ranges){
+      if (!ranges.length) return {};
+      const params = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join("&");
+      const url =
+        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values:batchGet?` +
+        `${params}&key=${API_KEY}&majorDimension=ROWS`;
+
+      const res = await fetch(url, { cache:"no-store" });
+      if(!res.ok) throw new Error(`Erro ao carregar ranges em lote: HTTP ${res.status}`);
+      const json = await res.json();
+
+      const out = {};
+      for (const vr of (json.valueRanges || [])) {
+        out[vr.range.replace(/'/g, "")] = vr.values || [];
+      }
+      return out;
+    }
+
+    function findHeaderRowIndex(rows){
+      for (let i = 0; i < rows.length; i++) {
+        const norm = (rows[i] || []).map(normalizeHeader);
+        if (norm.includes("OBS") && norm.includes("PNG")) return i;
+      }
+      return -1;
+    }
+
+    function parseConfigMatrix(values){
+      const rows = values || [];
+      if (!rows.length) throw new Error("CONFIG dos mapas vazia.");
+
+      const headerRowIndex = findHeaderRowIndex(rows);
+      if (headerRowIndex < 0) {
+        throw new Error("Cabeçalho com OBS e PNG não encontrado na CONFIG dos mapas.");
+      }
+
+      const headerRow = rows[headerRowIndex] || [];
+      const normHeaders = headerRow.map(normalizeHeader);
+
+      const obsIndex = normHeaders.indexOf("OBS");
+      const pngIndex = normHeaders.indexOf("PNG");
+
+      if (obsIndex < 0) throw new Error("Coluna OBS não encontrada.");
+      if (pngIndex < 0) throw new Error("Coluna PNG não encontrada.");
+
+      const dataColumns = [];
+      for (let i = 2; i < obsIndex; i++) {
+        const original = safeText(headerRow[i]);
+        const key = normalizeHeader(original);
+        if (!original || !key) continue;
+        dataColumns.push({ index:i, header:original, key, cfg:{} });
+      }
+
+      const globalPng = {};
+
+      for (let r = headerRowIndex + 1; r < rows.length; r++) {
+        const row = rows[r] || [];
+        if (!row.length || row.every(v => !safeText(v))) continue;
+
+        const cfgKey = normalizeKey(row[1]);
+        if (!cfgKey) continue;
+
+        for (const col of dataColumns) {
+          const val = row[col.index];
+          if (val !== undefined && safeText(val) !== "" && col.cfg[cfgKey] === undefined) {
+            col.cfg[cfgKey] = safeText(val);
+          }
+        }
+
+        const pngVal = row[pngIndex];
+        if (pngVal !== undefined && safeText(pngVal) !== "" && globalPng[cfgKey] === undefined) {
+          globalPng[cfgKey] = safeText(pngVal);
+        }
+      }
+
+      return { dataColumns, globalPng };
+    }
+
+    function buildVisibleColumns(parsed){
+      return parsed.dataColumns.map(col => {
+        const cfg = col.cfg || {};
+        return {
+          key: col.key,
+          header: col.header,
+          type: normalizeKey(cfg.type || "text"),
+          show: toBool(cfg.show, false),
+          range: safeText(cfg.range),
+
+          text_color: cfg.text_color || "#ffffff",
+          font: resolveFont(cfg.font),
+          font_size: parseMeasure(cfg.font_size, "24px"),
+          font_weight: cfg.font_weight || "500",
+          align: (cfg.align || "center").toLowerCase(),
+
+          widthRaw: safeText(cfg.width || "auto"),
+          heightRaw: safeText(cfg.height || ""),
+          use_custom_height: toBool(cfg.use_custom_height, false),
+          padding: parseMeasure(cfg.padding, "0px"),
+          item_gap: parseMeasure(cfg.item_gap, "0px"),
+          gap_after: safeText(cfg.gap_after || ""),
+          background: cfg.background || "transparent",
+          radius: parseMeasure(cfg.radius, "0px"),
+          border: safeText(cfg.border || "none"),
+
+          image_fit: cfg.image_fit || "contain",
+          image_align_x: cfg.image_align_x || "center",
+          image_align_y: cfg.image_align_y || "center",
+          image_opacity: cfg.image_opacity || "1"
+        };
+      }).filter(col => col.show);
+    }
+
+    function normalizeWrapX(v){
+      const s = safeText(v);
+      if (!s) return { left:"50%", shift:"-50%" };
+
+      if (isNumericLike(s)) {
+        const n = toNumber(s, 0);
+        if (n >= 0 && n <= 1) return { left:`${n * 100}%`, shift:"-50%" };
+        return { left:`${n}px`, shift:"0px" };
+      }
+
+      if (s.includes("%")) return { left:s, shift:"-50%" };
+      return { left:s, shift:"0px" };
+    }
+
+    function setIf(root, cssVar, value){
+      if (value !== undefined && value !== null && value !== "") {
+        root.style.setProperty(cssVar, value);
+      }
+    }
+
+    function applyGlobalPng(globalPng){
+      const root = document.documentElement;
+
+      const wrapPos = normalizeWrapX(globalPng.wrap_x || "0,5");
+      setIf(root, "--wrap-x", wrapPos.left);
+      setIf(root, "--wrap-shift-x", wrapPos.shift);
+      setIf(root, "--wrap-y", parseMeasure(globalPng.wrap_y, "60px"));
+      setIf(root, "--wrap-w", parseMeasure(globalPng.wrap_w, "1820px"));
+      setIf(root, "--wrap-h", parseMeasure(globalPng.wrap_h, "960px"));
+
+      setIf(root, "--top-h", parseMeasure(globalPng.top_h, "240px"));
+
+      setIf(root, "--brand-x", parseMeasure(globalPng.brand_x, "0px"));
+      setIf(root, "--brand-y", parseMeasure(globalPng.brand_y, "0px"));
+      setIf(root, "--brand-gap", parseMeasure(globalPng.brand_gap, "14px"));
+      setIf(root, "--brand-logo-w", parseMeasure(globalPng.brand_logo_w, "90px"));
+      setIf(root, "--brand-logo-h", parseMeasure(globalPng.brand_logo_h, "90px"));
+      setIf(root, "--brand-font", resolveFont(globalPng.brand_font));
+      setIf(root, "--brand-size", parseMeasure(globalPng.brand_size, "18px"));
+      setIf(root, "--brand-weight", globalPng.brand_weight || "700");
+      setIf(root, "--brand-color", globalPng.brand_color || "rgba(0,0,0,.50)");
+
+      setIf(root, "--title-x", parseMeasure(globalPng.title_x, "230px"));
+      setIf(root, "--title-y", parseMeasure(globalPng.title_y, "14px"));
+      setIf(root, "--title-w", parseMeasure(globalPng.title_w, "1300px"));
+      setIf(root, "--title-h", parseMeasure(globalPng.title_h, "140px"));
+      setIf(root, "--title-font", resolveFont(globalPng.title_font));
+      setIf(root, "--title-size", parseMeasure(globalPng.title_size, "132px"));
+      setIf(root, "--title-weight", globalPng.title_weight || "400");
+      setIf(root, "--title-color", globalPng.title_color || "#101113");
+      setIf(root, "--title-align", (globalPng.title_align || "left").toLowerCase());
+
+      setIf(root, "--cards-mt", parseMeasure(globalPng.cards_mt, "40px"));
+      setIf(root, "--cards-row-h", parseMeasure(globalPng.cards_row_h, "640px"));
+      setIf(root, "--cards-gap", parseMeasure(globalPng.cards_gap, "22px"));
+      setIf(root, "--max-cards", safeText(globalPng.max_cards || "7"));
+
+      setIf(root, "--card-h", parseMeasure(globalPng.card_h, "520px"));
+      setIf(root, "--card-max-w", parseMeasure(globalPng.card_max_w, "420px"));
+      setIf(root, "--card-min-w", parseMeasure(globalPng.card_min_w, "240px"));
+      setIf(root, "--card-bg", globalPng.card_bg || "rgba(0,0,0,.16)");
+      setIf(root, "--card-border", globalPng.card_border || "2px solid rgba(0,0,0,.22)");
+      setIf(root, "--card-radius", parseMeasure(globalPng.card_radius, "10px"));
+      setIf(root, "--card-shadow-a", safeText(globalPng.card_shadow_a || ".18"));
+      setIf(root, "--card-bracket-opacity", safeText(globalPng.card_bracket_opacity || ".45"));
+
+      setIf(root, "--card-img-h", parseMeasure(globalPng.card_img_h, "310px"));
+      setIf(root, "--card-map-sat", safeText(globalPng.card_map_sat || "1.05"));
+      setIf(root, "--card-map-con", safeText(globalPng.card_map_con || "1.05"));
+      setIf(root, "--card-shade-top", globalPng.card_shade_top || "rgba(0,0,0,.10)");
+      setIf(root, "--card-shade-bot", globalPng.card_shade_bot || "rgba(0,0,0,.65)");
+
+      setIf(root, "--mapbar-h", parseMeasure(globalPng.mapbar_h, "78px"));
+      setIf(root, "--mapbar-bg", globalPng.mapbar_bg || "linear-gradient(180deg,#121316,#0b0c0e)");
+      setIf(root, "--mapbar-pad", parseMeasure(globalPng.mapbar_pad, "18px"));
+
+      setIf(root, "--stats-h", parseMeasure(globalPng.stats_h, "132px"));
+      setIf(root, "--stats-bg", globalPng.stats_bg || "rgba(0,0,0,.55)");
+
+      setIf(root, "--enter-ms", "0ms");
+      setIf(root, "--enter-px", "0px");
+
+      brand.style.display = toBool(globalPng.show_brand, true) ? "" : "none";
+      brandLine1.textContent = safeText(globalPng.brand_line1 || "COPA ALOE");
+      brandLine2.textContent = safeText(globalPng.brand_line2 || "8º SPLIT 2K26");
+      bigTitle.textContent = safeText(globalPng.title_text || "MAPAS DO DIA");
+      bigTitle.style.display = toBool(globalPng.show_title, true) ? "" : "none";
+
+      const logoSrc = toSrc(globalPng.brand_logo || "logo.png");
+      if (logoSrc) {
+        brandLogo.src = logoSrc;
+        brandLogo.style.display = "";
+      } else {
+        brandLogo.removeAttribute("src");
+        brandLogo.style.display = "none";
+      }
+
+      return {
+        maxCards: Math.max(1, toNumber(globalPng.max_cards, 7))
+      };
+    }
+
+    function collectRanges(columns){
+      const set = new Set();
+      for (const col of columns) {
+        if (safeText(col.range).toLowerCase() !== "auto" && safeText(col.range)) {
+          set.add(col.range.replace(/'/g, ""));
+        }
+      }
+      return [...set];
+    }
+
+    function readRangeValue(range, dataByRange, rowIndex){
+      const key = safeText(range).replace(/'/g, "");
+      const rows = dataByRange[key] || [];
+      const row = rows[rowIndex] || [];
+      const parts = row.map(v => safeText(v)).filter(Boolean);
+      return parts.join(" ").trim();
+    }
+
+    function setImg(el, src, fit = "", opacity = "1", posX = "center", posY = "center"){
+      if (!src) {
+        el.dataset.src = "";
+        el.removeAttribute("src");
+        el.style.opacity = 0;
+        return;
+      }
+      if (el.dataset.src !== src) {
+        el.dataset.src = src;
+        el.src = src;
+      }
+      el.style.opacity = opacity || "1";
+      if (fit) el.style.objectFit = fit;
+      el.style.objectPosition = `${posX} ${posY}`;
+    }
+
+    function makeCard(){
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const imgArea = document.createElement("div");
+      imgArea.className = "imgArea";
+
+      const mapImg = document.createElement("img");
+      mapImg.className = "mapImg";
+      mapImg.alt = "Mapa";
+      mapImg.onerror = () => mapImg.style.opacity = 0;
+
+      const shade = document.createElement("div");
+      shade.className = "imgShade";
+
+      const teamLogo = document.createElement("img");
+      teamLogo.className = "teamLogo";
+      teamLogo.alt = "Equipe";
+      teamLogo.onerror = () => teamLogo.style.opacity = 0;
+
+      imgArea.appendChild(mapImg);
+      imgArea.appendChild(shade);
+      imgArea.appendChild(teamLogo);
+
+      const mapBar = document.createElement("div");
+      mapBar.className = "mapBar";
+
+      const mapName = document.createElement("div");
+      mapName.className = "mapName";
+      mapName.textContent = "-";
+      mapBar.appendChild(mapName);
+
+      const stats = document.createElement("div");
+      stats.className = "stats";
+
+      const ptsBlock = document.createElement("div");
+      ptsBlock.className = "ptsBlock";
+
+      const ptsVal = document.createElement("div");
+      ptsVal.className = "ptsVal";
+      ptsVal.textContent = "0";
+
+      const ptsLbl = document.createElement("div");
+      ptsLbl.className = "ptsLbl";
+      ptsLbl.textContent = "PTS";
+
+      ptsBlock.appendChild(ptsVal);
+      ptsBlock.appendChild(ptsLbl);
+
+      const abtVal = document.createElement("div");
+      abtVal.className = "abtVal";
+      abtVal.textContent = "0 ABT";
+
+      stats.appendChild(ptsBlock);
+      stats.appendChild(abtVal);
+
+      card.appendChild(imgArea);
+      card.appendChild(mapBar);
+      card.appendChild(stats);
+
+      return { card, imgArea, mapImg, teamLogo, mapName, mapBar, ptsVal, ptsLbl, abtVal, stats };
+    }
+
+    function buildCards(n){
+      cardsRow.innerHTML = "";
+      cardRefs.length = 0;
+
+      for(let i=0;i<n;i++){
+        const ref = makeCard();
+        cardsRow.appendChild(ref.card);
+        cardRefs.push(ref);
+      }
+    }
+
+    function applyCardStyles(ref, cols){
+      const fotoCol = cols.foto;
+      const logoCol = cols.logo;
+      const nomeCol = cols.nome;
+      const ptsCol  = cols.pts;
+      const abtCol  = cols.abt;
+
+      if (fotoCol) {
+        ref.imgArea.style.height = parseMeasure(
+          fotoCol.heightRaw,
+          getComputedStyle(document.documentElement).getPropertyValue("--card-img-h").trim() || "310px"
+        );
+        ref.imgArea.style.background = fotoCol.background || "rgba(0,0,0,.20)";
+        ref.imgArea.style.border = fotoCol.border || "none";
+        ref.imgArea.style.borderRadius = fotoCol.radius || "0px";
+
+        ref.mapImg.style.objectFit = fotoCol.image_fit;
+        ref.mapImg.style.objectPosition = `${fotoCol.image_align_x} ${fotoCol.image_align_y}`;
+      }
+
+      if (logoCol) {
+        ref.teamLogo.style.width = parseMeasure(logoCol.widthRaw, "170px");
+        ref.teamLogo.style.height = parseMeasure(logoCol.heightRaw, "170px");
+        ref.teamLogo.style.objectFit = logoCol.image_fit;
+        ref.teamLogo.style.objectPosition = `${logoCol.image_align_x} ${logoCol.image_align_y}`;
+      }
+
+      if (nomeCol) {
+        ref.mapBar.style.height = parseMeasure(
+          nomeCol.heightRaw,
+          getComputedStyle(document.documentElement).getPropertyValue("--mapbar-h").trim() || "78px"
+        );
+        ref.mapBar.style.background = nomeCol.background || "linear-gradient(180deg,#121316,#0b0c0e)";
+        ref.mapBar.style.border = nomeCol.border || "none";
+        ref.mapBar.style.borderRadius = nomeCol.radius || "0px";
+        ref.mapBar.style.paddingLeft = nomeCol.padding || "18px";
+        ref.mapBar.style.paddingRight = nomeCol.padding || "18px";
+
+        ref.mapName.style.fontFamily = nomeCol.font;
+        ref.mapName.style.fontSize = nomeCol.font_size;
+        ref.mapName.style.fontWeight = nomeCol.font_weight;
+        ref.mapName.style.color = nomeCol.text_color;
+        ref.mapName.style.textAlign = nomeCol.align;
+      }
+
+      if (ptsCol) {
+        ref.ptsVal.style.fontFamily = ptsCol.font;
+        ref.ptsVal.style.fontSize = ptsCol.font_size;
+        ref.ptsVal.style.fontWeight = ptsCol.font_weight;
+        ref.ptsVal.style.color = ptsCol.text_color;
+        ref.ptsVal.style.textAlign = ptsCol.align;
+      }
+
+      if (abtCol) {
+        ref.abtVal.style.fontFamily = abtCol.font;
+        ref.abtVal.style.fontSize = abtCol.font_size;
+        ref.abtVal.style.fontWeight = abtCol.font_weight;
+        ref.abtVal.style.color = abtCol.text_color;
+        ref.abtVal.style.textAlign = abtCol.align;
+      }
+    }
+
+    function showDebug(text){
+      debugEl.style.display = "block";
+      debugEl.textContent = text;
+    }
+
+    function hideDebug(){
+      debugEl.style.display = "none";
+      debugEl.textContent = "";
+    }
+
+    async function tick(){
+      try{
+        const cfgJson = await fetchSheetRange(CONFIG_RANGE);
+        const parsed = parseConfigMatrix(cfgJson.values || []);
+        const visibleColumns = buildVisibleColumns(parsed);
+
+        if (!visibleColumns.length) throw new Error("Nenhuma coluna visível encontrada.");
+
+        const globalState = applyGlobalPng(parsed.globalPng);
+
+        const cols = {
+          foto: visibleColumns.find(c => c.key === "MAPA_FOTO"),
+          logo: visibleColumns.find(c => c.key === "LOGO_EQUIPE"),
+          nome: visibleColumns.find(c => c.key === "NOME_MAPA"),
+          pts:  visibleColumns.find(c => c.key === "PTS"),
+          abt:  visibleColumns.find(c => c.key === "ABT")
+        };
+
+        const ranges = collectRanges(visibleColumns);
+        const dataByRange = await fetchSheetRanges(ranges);
+
+        const totalRowsRaw = Math.max(
+          (cols.foto && (dataByRange[safeText(cols.foto.range).replace(/'/g,"")] || []).length) || 0,
+          (cols.logo && (dataByRange[safeText(cols.logo.range).replace(/'/g,"")] || []).length) || 0,
+          (cols.nome && (dataByRange[safeText(cols.nome.range).replace(/'/g,"")] || []).length) || 0,
+          (cols.pts  && (dataByRange[safeText(cols.pts.range).replace(/'/g,"")] || []).length) || 0,
+          (cols.abt  && (dataByRange[safeText(cols.abt.range).replace(/'/g,"")] || []).length) || 0
+        );
+
+        const totalCards = Math.min(totalRowsRaw || globalState.maxCards, globalState.maxCards);
+
+        if (!totalCards) throw new Error("Nenhum card encontrado nos ranges da tabela.");
+        if (cardRefs.length !== totalCards) buildCards(totalCards);
+
+        for (let i = 0; i < totalCards; i++) {
+          const ref = cardRefs[i];
+
+          const foto = cols.foto ? readRangeValue(cols.foto.range, dataByRange, i) : "";
+          const logo = cols.logo ? readRangeValue(cols.logo.range, dataByRange, i) : "";
+          const nome = cols.nome ? readRangeValue(cols.nome.range, dataByRange, i) : "";
+          const pts  = cols.pts  ? readRangeValue(cols.pts.range,  dataByRange, i) : "0";
+          const abt  = cols.abt  ? readRangeValue(cols.abt.range,  dataByRange, i) : "0";
+
+          ref.card.style.background = safeText(parsed.globalPng.card_bg || "rgba(0,0,0,.16)");
+          ref.card.style.border = safeText(parsed.globalPng.card_border || "2px solid rgba(0,0,0,.22)");
+          ref.card.style.borderRadius = parseMeasure(parsed.globalPng.card_radius, "10px");
+          ref.card.style.height = parseMeasure(parsed.globalPng.card_h, "520px");
+          ref.card.style.maxWidth = parseMeasure(parsed.globalPng.card_max_w, "420px");
+          ref.card.style.minWidth = parseMeasure(parsed.globalPng.card_min_w, "240px");
+          ref.card.style.boxShadow = `0 18px 28px rgba(0,0,0,${safeText(parsed.globalPng.card_shadow_a || ".18")})`;
+
+          ref.stats.style.background = safeText(parsed.globalPng.stats_bg || "rgba(0,0,0,.55)");
+          ref.stats.style.height = parseMeasure(parsed.globalPng.stats_h, "132px");
+
+          ref.ptsLbl.style.fontFamily = resolveFont(parsed.globalPng.pts_lbl_font || "Oswald");
+          ref.ptsLbl.style.fontSize = parseMeasure(parsed.globalPng.pts_lbl_size, "18px");
+          ref.ptsLbl.style.fontWeight = safeText(parsed.globalPng.pts_lbl_weight || "700");
+          ref.ptsLbl.style.color = safeText(parsed.globalPng.pts_lbl_color || "rgba(255,255,255,.70)");
+
+          setImg(
+            ref.mapImg,
+            toSrc(foto),
+            cols.foto?.image_fit || "cover",
+            cols.foto?.image_opacity || "1",
+            cols.foto?.image_align_x || "center",
+            cols.foto?.image_align_y || "center"
+          );
+
+          setImg(
+            ref.teamLogo,
+            toSrc(logo),
+            cols.logo?.image_fit || "contain",
+            cols.logo?.image_opacity || "1",
+            cols.logo?.image_align_x || "center",
+            cols.logo?.image_align_y || "center"
+          );
+
+          ref.mapName.textContent = nome || "-";
+          ref.ptsVal.textContent = pts || "0";
+          ref.ptsLbl.textContent = safeText(parsed.globalPng.pts_lbl_text || "PTS");
+          ref.abtVal.textContent = `${abt || "0"} ${safeText(parsed.globalPng.abt_suffix || "ABT")}`;
+
+          applyCardStyles(ref, cols);
+        }
+
+        hideDebug();
+      } catch(e) {
+        console.error(e);
+        showDebug("ERRO NA OVERLAY MAPAS DO DIA PNG:\n\n" + (e?.message || String(e)));
+      }
+    }
+
+    buildCards(4);
+    tick();
+    setInterval(tick, REFRESH_MS);
+  </script>
+</body>
+</html>

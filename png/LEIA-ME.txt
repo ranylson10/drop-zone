@@ -1,0 +1,5 @@
+PASTA PNG
+
+- Coloque aqui as versoes HTML usadas para exportacao em PNG.
+- Execute EXPORTAR_PNG.bat para gerar as imagens em png\output.
+- Instale antes: pip install playwright  /  playwright install
