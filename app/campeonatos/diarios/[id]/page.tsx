@@ -441,10 +441,7 @@ export default function CampeonatoDiarioDetalhePage() {
     return jogosDoGrupo.map((jogo, index) => ({
       id: `${jogo.id}-${jogo.numero_queda || index + 1}`,
       jogoId: jogo.id,
-      titulo:
-        jogo.nome ||
-        jogo.nome_bloco ||
-        `Queda ${jogo.numero_queda || index + 1}`,
+      titulo: `Queda ${jogo.numero_queda || index + 1}`,
       mapa: normalizarMapa(jogo.mapa),
       ordem: Number(jogo.numero_queda || index + 1),
     }))
@@ -1243,7 +1240,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
       {grupoAtivo && resumoGrupo ? (
         <>
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_335px]">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,820px)_430px] xl:justify-center">
             <section className="border border-zinc-200 bg-white">
               <div className="border-b border-zinc-200 px-3 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1369,7 +1366,7 @@ export default function CampeonatoDiarioDetalhePage() {
                           )}
                         </div>
 
-                        <div className="grid max-h-[560px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid max-h-[560px] grid-cols-1 gap-2 overflow-y-auto pr-1">
                           {slotsComEquipe.length === 0 ? (
                             <div className="col-span-full border border-dashed border-zinc-200 bg-zinc-50 px-3 py-10 text-center text-[12px] text-zinc-500">Nenhum slot encontrado.</div>
                           ) : (
@@ -1577,8 +1574,8 @@ export default function CampeonatoDiarioDetalhePage() {
                   <div className="mb-3 flex items-center gap-2 text-[#142340]">
                     <BarChart3 size={16} className="text-sky-600" />
                     <div>
-                      <h2 className="text-[14px] font-semibold uppercase">Estatísticas da partida</h2>
-                      <p className="text-[11px] text-zinc-500">Selecione uma queda e acompanhe dados visuais.</p>
+                      <h2 className="text-[14px] font-semibold uppercase">Estatísticas da queda</h2>
+                      <p className="text-[11px] text-zinc-500">Selecione uma queda e acompanhe os dados visuais.</p>
                     </div>
                   </div>
 
@@ -1594,7 +1591,7 @@ export default function CampeonatoDiarioDetalhePage() {
                         </option>
                       ))
                     ) : (
-                      <option value="">Sem partida</option>
+                      <option value="">Sem queda</option>
                     )}
                   </select>
 
