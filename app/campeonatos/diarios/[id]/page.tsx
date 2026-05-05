@@ -11,6 +11,7 @@ import {
   Plus,
   X,
   UserPlus,
+  Wallet,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
@@ -308,6 +309,10 @@ export default function CampeonatoDiarioDetalhePage() {
   const [equipeSelecionadaId, setEquipeSelecionadaId] = useState('')
   const [lineSelecionadaId, setLineSelecionadaId] = useState('')
   const [quedaAtiva, setQuedaAtiva] = useState<string>('')
+  const [usuarioId, setUsuarioId] = useState<string | null>(null)
+  const [podeGerenciar, setPodeGerenciar] = useState(false)
+  const [saldoCarteira, setSaldoCarteira] = useState<number | null>(null)
+  const [modoSlotModal, setModoSlotModal] = useState<'comprar' | 'gerenciar'>('comprar')
 
   const grupoAtivo = useMemo(
     () => grupos.find((g) => g.id === grupoId) || null,
@@ -650,6 +655,82 @@ export default function CampeonatoDiarioDetalhePage() {
     }))
   }, [slotsComEquipe, resultadosJogos, quedaAtiva, grupoAtivo, campeonatoEquipeMap])
 
+
+  async function carregarSaldoCarteira(token?: string | null) {
+    try {
+      if (!token) {
+        setSaldoCarteira(null)
+        return
+      }
+
+      const res = await fetch('/api/wallet/saldo', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const json = await res.json()
+
+      if (!res.ok) throw new Error(json?.error || 'Erro ao consultar saldo.')
+
+      setSaldoCarteira(Number(json?.saldo_disponivel ?? json?.saldo ?? 0))
+    } catch (e) {
+      console.warn('Não foi possível carregar saldo da carteira:', e)
+      setSaldoCarteira(null)
+    }
+  }
+
+  async function carregarUsuarioEPermissao() {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token || null
+      const user = sessionData.session?.user || null
+
+      setUsuarioId(user?.id || null)
+      await carregarSaldoCarteira(token)
+
+      if (!user || !campeonatoId) {
+        setPodeGerenciar(false)
+        return
+      }
+
+      const { data, error } = await supabase.rpc('fn_usuario_admin_do_campeonato', {
+        p_campeonato_id: campeonatoId,
+      })
+
+      if (!error && Boolean(data)) {
+        setPodeGerenciar(true)
+        return
+      }
+
+      if (error) {
+        console.warn('Falha ao verificar permissão via RPC:', error)
+      }
+
+      const { data: campeonatoOwner } = await supabase
+        .from('campeonatos')
+        .select('criado_por')
+        .eq('id', campeonatoId)
+        .maybeSingle()
+
+      setPodeGerenciar(String((campeonatoOwner as any)?.criado_por || '') === user.id)
+    } catch (e) {
+      console.warn('Falha ao carregar usuário/permissão:', e)
+      setUsuarioId(null)
+      setPodeGerenciar(false)
+    }
+  }
+
+  function abrirCompraVaga() {
+    const primeiroLivre = slotsComEquipe.find((s) => !s.equipe)
+    if (!primeiroLivre) {
+      setErro('Não há slots livres neste horário.')
+      return
+    }
+
+    setModoSlotModal('comprar')
+    setSlotModal(primeiroLivre)
+    setEquipeSelecionadaId('')
+    setLineSelecionadaId('')
+  }
+
   async function carregar() {
     if (!campeonatoId) return
 
@@ -823,6 +904,64 @@ export default function CampeonatoDiarioDetalhePage() {
     }
   }
 
+
+  async function comprarVagaComCarteira() {
+    if (!slotModal || !grupoAtivo || !resumoGrupo) return
+
+    const participanteId = tipoParticipanteSlot === 'line' ? lineSelecionadaId : equipeSelecionadaId
+    if (!participanteId) {
+      setErro('Selecione uma equipe ou line para comprar a vaga.')
+      return
+    }
+
+    try {
+      setSalvandoSlot(true)
+      setErro('')
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token || null
+      const user = sessionData.session?.user || null
+
+      if (!user || !token) {
+        window.location.href = '/login'
+        return
+      }
+
+      const valor = Number(resumoGrupo.inscricao || 0)
+
+      if (tipoParticipanteSlot === 'line') {
+        const { error } = await supabase.rpc('reservar_inscricao_grupo_diario_line', {
+          p_campeonato_id: campeonatoId,
+          p_grupo_id: grupoAtivo.id,
+          p_line_id: participanteId,
+          p_user_id: user.id,
+          p_valor: valor,
+        })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.rpc('reservar_inscricao_grupo_diario', {
+          p_campeonato_id: campeonatoId,
+          p_grupo_id: grupoAtivo.id,
+          p_equipe_id: participanteId,
+          p_user_id: user.id,
+          p_valor: valor,
+        })
+        if (error) throw error
+      }
+
+      setSlotModal(null)
+      setEquipeSelecionadaId('')
+      setLineSelecionadaId('')
+      await carregar()
+      await carregarUsuarioEPermissao()
+    } catch (e: any) {
+      console.error('Erro ao comprar vaga com carteira:', e)
+      setErro(e?.message || e?.details || 'Erro ao comprar vaga com saldo da carteira.')
+    } finally {
+      setSalvandoSlot(false)
+    }
+  }
+
   async function removerEquipeDoSlot() {
     if (!slotModal) return
 
@@ -854,7 +993,14 @@ export default function CampeonatoDiarioDetalhePage() {
 
   useEffect(() => {
     carregar()
+    carregarUsuarioEPermissao()
   }, [campeonatoId])
+
+  useEffect(() => {
+    if (!podeGerenciar && abaDireita !== 'tabela') {
+      setAbaDireita('tabela')
+    }
+  }, [podeGerenciar, abaDireita])
 
   const resumoGrupo = useMemo(() => {
     if (!grupoAtivo) return null
@@ -989,20 +1135,39 @@ export default function CampeonatoDiarioDetalhePage() {
                 </div>
               </div>
 
-              <div className="mb-2">
-                <button
-                  onClick={() => {
-                    const primeiroLivre = slotsComEquipe.find((s) => !s.equipe)
-                    if (primeiroLivre) {
-                      setSlotModal(primeiroLivre)
-                      setEquipeSelecionadaId('')
-                    }
-                  }}
-                  className="inline-flex h-9 w-full items-center justify-center gap-2 border border-sky-200 bg-sky-50 px-3 text-[12px] font-medium text-sky-700 transition hover:bg-sky-100"
-                >
-                  <UserPlus size={14} />
-                  Adicionar participante
-                </button>
+              <div className="mb-2 space-y-2">
+                {podeGerenciar ? (
+                  <button
+                    onClick={() => {
+                      const primeiroLivre = slotsComEquipe.find((s) => !s.equipe)
+                      if (primeiroLivre) {
+                        setModoSlotModal('gerenciar')
+                        setSlotModal(primeiroLivre)
+                        setEquipeSelecionadaId('')
+                        setLineSelecionadaId('')
+                      }
+                    }}
+                    className="inline-flex h-9 w-full items-center justify-center gap-2 border border-sky-200 bg-sky-50 px-3 text-[12px] font-medium text-sky-700 transition hover:bg-sky-100"
+                  >
+                    <UserPlus size={14} />
+                    Adicionar participante
+                  </button>
+                ) : (
+                  <button
+                    onClick={abrirCompraVaga}
+                    disabled={resumoGrupo.ocupados >= resumoGrupo.totalSlots}
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+                  >
+                    <Wallet size={14} />
+                    {resumoGrupo.inscricao > 0 ? `Comprar vaga • ${moeda(resumoGrupo.inscricao)}` : 'Inscrever grátis'}
+                  </button>
+                )}
+
+                {!podeGerenciar ? (
+                  <div className="border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-medium text-blue-800">
+                    Saldo: {saldoCarteira === null ? 'entrar para consultar' : moeda(saldoCarteira)}
+                  </div>
+                ) : null}
               </div>
 
               <div className="border border-zinc-200">
@@ -1016,8 +1181,11 @@ export default function CampeonatoDiarioDetalhePage() {
                       <button
                         key={slot.id}
                         onClick={() => {
+                          if (!podeGerenciar) return
+                          setModoSlotModal('gerenciar')
                           setSlotModal(slot)
                           setEquipeSelecionadaId('')
+                          setLineSelecionadaId('')
                         }}
                         className={`grid w-full grid-cols-[44px_36px_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 px-2 py-2 text-left transition last:border-b-0 ${
                           ocupado
@@ -1059,7 +1227,7 @@ export default function CampeonatoDiarioDetalhePage() {
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-2">
                 <div>
                   <h2 className="text-[16px] font-semibold uppercase text-[#142340]">Painel do horário</h2>
-                  <p className="text-[12px] text-zinc-500">Tabela, súmula e MVP separados por horário.</p>
+                  <p className="text-[12px] text-zinc-500">Tabela pública do horário. Súmula e MVP ficam disponíveis apenas para administradores.</p>
                 </div>
 
                 <div className="flex gap-1">
@@ -1074,27 +1242,31 @@ export default function CampeonatoDiarioDetalhePage() {
                     Tabela
                   </button>
 
-                  <button
-                    onClick={() => setAbaDireita('sumula')}
-                    className={`px-3 py-2 text-[12px] font-medium ${
-                      abaDireita === 'sumula'
-                        ? 'bg-sky-500 text-white'
-                        : 'border border-zinc-200 bg-white text-zinc-600'
-                    }`}
-                  >
-                    Súmula
-                  </button>
+                  {podeGerenciar ? (
+                    <>
+                      <button
+                        onClick={() => setAbaDireita('sumula')}
+                        className={`px-3 py-2 text-[12px] font-medium ${
+                          abaDireita === 'sumula'
+                            ? 'bg-sky-500 text-white'
+                            : 'border border-zinc-200 bg-white text-zinc-600'
+                        }`}
+                      >
+                        Súmula
+                      </button>
 
-                  <button
-                    onClick={() => setAbaDireita('mvp')}
-                    className={`px-3 py-2 text-[12px] font-medium ${
-                      abaDireita === 'mvp'
-                        ? 'bg-sky-500 text-white'
-                        : 'border border-zinc-200 bg-white text-zinc-600'
-                    }`}
-                  >
-                    MVP
-                  </button>
+                      <button
+                        onClick={() => setAbaDireita('mvp')}
+                        className={`px-3 py-2 text-[12px] font-medium ${
+                          abaDireita === 'mvp'
+                            ? 'bg-sky-500 text-white'
+                            : 'border border-zinc-200 bg-white text-zinc-600'
+                        }`}
+                      >
+                        MVP
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
@@ -1138,7 +1310,7 @@ export default function CampeonatoDiarioDetalhePage() {
                 </div>
               )}
 
-              {abaDireita === 'sumula' && (
+              {podeGerenciar && abaDireita === 'sumula' && (
                 <div>
                   <div className="mb-3 flex flex-wrap gap-1">
                     {quedasDoGrupo.length > 0 ? (
@@ -1191,7 +1363,7 @@ export default function CampeonatoDiarioDetalhePage() {
                 </div>
               )}
 
-              {abaDireita === 'mvp' && (
+              {podeGerenciar && abaDireita === 'mvp' && (
                 <div className="overflow-hidden border border-zinc-200 bg-zinc-50 p-2">
                   <MVPTable data={[]} />
                 </div>
@@ -1214,7 +1386,7 @@ export default function CampeonatoDiarioDetalhePage() {
                   Slot {slotModal.slot_numero}
                 </div>
                 <h3 className="mt-1 text-lg font-semibold text-[#142340]">
-                  {slotModal.equipe ? 'Editar slot' : 'Adicionar participante'}
+                  {modoSlotModal === 'comprar' ? 'Comprar vaga com carteira' : slotModal.equipe ? 'Editar slot' : 'Adicionar participante'}
                 </h3>
               </div>
 
@@ -1320,25 +1492,42 @@ export default function CampeonatoDiarioDetalhePage() {
               )}
             </div>
 
-            <div className="grid gap-2 md:grid-cols-2">
-              <button
-                onClick={adicionarParticipanteNoSlot}
-                disabled={!(tipoParticipanteSlot === 'line' ? lineSelecionadaId : equipeSelecionadaId) || salvandoSlot}
-                className="inline-flex h-10 items-center justify-center gap-2 border border-sky-500 bg-sky-500 text-[12px] font-medium text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus size={14} />
-                {salvandoSlot ? 'Salvando...' : 'Salvar participante'}
-              </button>
+            {modoSlotModal === 'comprar' ? (
+              <div className="space-y-2">
+                <div className="border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] text-blue-900">
+                  Pagamento pela carteira: <strong>{moeda(resumoGrupo?.inscricao || 0)}</strong>
+                  {saldoCarteira !== null ? ` • Saldo disponível: ${moeda(saldoCarteira)}` : ''}
+                </div>
+                <button
+                  onClick={comprarVagaComCarteira}
+                  disabled={!(tipoParticipanteSlot === 'line' ? lineSelecionadaId : equipeSelecionadaId) || salvandoSlot}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-[12px] font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Wallet size={14} />
+                  {salvandoSlot ? 'Processando...' : 'Confirmar e pagar com saldo'}
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                <button
+                  onClick={adicionarParticipanteNoSlot}
+                  disabled={!(tipoParticipanteSlot === 'line' ? lineSelecionadaId : equipeSelecionadaId) || salvandoSlot}
+                  className="inline-flex h-10 items-center justify-center gap-2 border border-sky-500 bg-sky-500 text-[12px] font-medium text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus size={14} />
+                  {salvandoSlot ? 'Salvando...' : 'Salvar participante'}
+                </button>
 
-              <button
-                onClick={removerEquipeDoSlot}
-                disabled={!slotModal.equipe || salvandoSlot}
-                className="inline-flex h-10 items-center justify-center gap-2 border border-red-200 bg-red-50 text-[12px] font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <X size={14} />
-                Remover participante
-              </button>
-            </div>
+                <button
+                  onClick={removerEquipeDoSlot}
+                  disabled={!slotModal.equipe || salvandoSlot}
+                  className="inline-flex h-10 items-center justify-center gap-2 border border-red-200 bg-red-50 text-[12px] font-medium text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X size={14} />
+                  Remover participante
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
