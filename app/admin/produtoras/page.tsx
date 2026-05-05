@@ -1,8 +1,6 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -38,7 +36,7 @@ type ProfileMap = Record<string, { nome_exibicao: string | null }>
 
 const statusOptions = ['todos', 'pendente', 'aprovada', 'recusada', 'suspensa']
 
-export default function AdminProdutorasPage() {
+export default function Conteudo() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
