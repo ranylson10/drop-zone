@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -79,7 +79,7 @@ const origemLabels: Record<string, string> = {
  outro: 'Outro',
 }
 
-export default function AdminModeracaoPage() {
+function AdminModeracaoContent() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
@@ -513,5 +513,13 @@ export default function AdminModeracaoPage() {
  </div>
  </section>
  </div>
+ )
+}
+
+export default function AdminModeracaoPage() {
+ return (
+  <Suspense fallback={<main className="min-h-screen bg-slate-100 p-6 text-sm font-bold text-slate-600">Carregando moderação...</main>}>
+   <AdminModeracaoContent />
+  </Suspense>
  )
 }
