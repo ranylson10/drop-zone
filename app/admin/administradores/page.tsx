@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -52,7 +52,7 @@ const tipoLabels: Record<string, string> = {
  liga: 'Liga',
 }
 
-export default function AdminAdministradoresPage() {
+function AdminAdministradoresContent() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
@@ -575,5 +575,13 @@ export default function AdminAdministradoresPage() {
  </div>
  </section>
  </div>
+ )
+}
+
+export default function AdminAdministradoresPage() {
+ return (
+  <Suspense fallback={<div className="p-6 text-sm font-bold text-zinc-400">Carregando...</div>}>
+   <AdminAdministradoresContent />
+  </Suspense>
  )
 }
