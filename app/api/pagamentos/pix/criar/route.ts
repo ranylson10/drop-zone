@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +17,8 @@ function centsSafe(value: unknown) {
 
 export async function POST(req: NextRequest) {
   try {
+    const { supabaseAdmin } = await import('@/lib/supabase-admin')
+
     const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
 
     if (!accessToken) {
