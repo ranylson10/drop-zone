@@ -1,5 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, LayoutGrid, Swords, Trophy, ShieldCheck, Target, CircleDollarSign } from 'lucide-react'

@@ -1,5 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
+export const dynamic = 'force-dynamic'
+
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Swords, Trophy, ListOrdered } from 'lucide-react'
 
