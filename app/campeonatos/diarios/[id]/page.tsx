@@ -1283,10 +1283,10 @@ export default function CampeonatoDiarioDetalhePage() {
               <div className="p-3">
                 <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
                   <aside className="space-y-2">
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="grid grid-cols-3 overflow-hidden border border-zinc-200 bg-white">
                       <button
                         onClick={() => setAbaDireita('equipes')}
-                        className={`h-10 border text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                        className={`h-11 w-full border-r border-zinc-200 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                           abaDireita === 'equipes'
                             ? 'border-sky-500 bg-sky-500 text-white'
                             : 'border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
@@ -1297,7 +1297,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
                       <button
                         onClick={() => setAbaDireita('tabela')}
-                        className={`h-10 border text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                        className={`h-11 w-full border-r border-zinc-200 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                           abaDireita === 'tabela'
                             ? 'border-sky-500 bg-sky-500 text-white'
                             : 'border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
@@ -1308,7 +1308,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
                       <button
                         onClick={() => setAbaDireita('mvp')}
-                        className={`h-10 border text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                        className={`h-11 w-full text-[11px] font-semibold uppercase tracking-[0.16em] ${
                           abaDireita === 'mvp'
                             ? 'border-sky-500 bg-sky-500 text-white'
                             : 'border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
@@ -1334,8 +1334,8 @@ export default function CampeonatoDiarioDetalhePage() {
                     <div className="border border-zinc-200 bg-white p-2">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <div>
-                          <h3 className="text-[13px] font-semibold uppercase text-[#142340]">Slots do horário</h3>
-                          <p className="text-[11px] text-zinc-500">Lista compacta de equipes e vagas.</p>
+                          <h3 className="text-[13px] font-semibold uppercase text-[#142340]">Equipes / Slots</h3>
+                          <p className="text-[11px] text-zinc-500">Slots ocupados e vagas livres do horário.</p>
                         </div>
                         <span className="border border-emerald-100 bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-700">
                           {Math.max(resumoGrupo.totalSlots - resumoGrupo.ocupados, 0)} livres
@@ -1428,38 +1428,22 @@ export default function CampeonatoDiarioDetalhePage() {
 
                   <main className="min-w-0 border border-zinc-200 bg-white">
                     {abaDireita === 'equipes' && (
-                      <div className="p-4">
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <h3 className="text-[14px] font-semibold uppercase text-[#142340]">Equipes confirmadas</h3>
-                            <p className="text-[12px] text-zinc-500">Resumo visual das equipes no horário selecionado.</p>
-                          </div>
-                          <span className="border border-sky-100 bg-sky-50 px-3 py-2 text-[11px] font-semibold uppercase text-sky-700">
-                            {resumoGrupo.ocupados}/{resumoGrupo.totalSlots} ocupadas
-                          </span>
-                        </div>
-
-                        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                          {slotsComEquipe.filter((slot) => !!slot.equipe).length > 0 ? (
-                            slotsComEquipe.filter((slot) => !!slot.equipe).map((slot) => (
-                              <div key={`card-${slot.id}`} className="flex items-center gap-3 border border-zinc-200 bg-zinc-50 p-3">
-                                <div className="flex h-9 w-9 items-center justify-center border border-sky-200 bg-white text-[12px] font-bold text-sky-700">
-                                  {slot.slot_numero}
-                                </div>
-                                <div className="h-9 w-9 border border-zinc-200 bg-white">
-                                  {slot.equipe?.logo_url ? <img src={slot.equipe.logo_url} alt={slot.equipe.nome} className="h-full w-full object-cover" /> : null}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="truncate text-[12px] font-semibold uppercase text-[#142340]">{slot.equipe?.nome}</div>
-                                  <div className="text-[10px] font-semibold uppercase tracking-[0.10em] text-emerald-600">Confirmada</div>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="col-span-full border border-dashed border-zinc-200 bg-zinc-50 px-3 py-8 text-center text-[12px] text-zinc-500">
-                              Nenhuma equipe confirmada neste horário.
+                      <div className="flex min-h-[340px] items-center justify-center p-4">
+                        <div className="max-w-md border border-dashed border-sky-200 bg-sky-50 px-5 py-6 text-center">
+                          <h3 className="text-[14px] font-semibold uppercase tracking-[0.12em] text-[#142340]">Equipes do horário</h3>
+                          <p className="mt-2 text-[12px] leading-5 text-zinc-600">
+                            A lista de slots fica no painel ao lado. Use a aba Equipes para comprar vaga, conferir slots livres e ver participantes confirmados.
+                          </p>
+                          <div className="mt-4 grid grid-cols-2 gap-2 text-left text-[11px]">
+                            <div className="border border-white bg-white px-3 py-2">
+                              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Ocupadas</div>
+                              <div className="mt-1 text-lg font-semibold text-sky-700">{resumoGrupo.ocupados}</div>
                             </div>
-                          )}
+                            <div className="border border-white bg-white px-3 py-2">
+                              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Livres</div>
+                              <div className="mt-1 text-lg font-semibold text-emerald-700">{Math.max(resumoGrupo.totalSlots - resumoGrupo.ocupados, 0)}</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
