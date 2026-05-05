@@ -244,7 +244,7 @@ export default function GerenciarEquipes({ campeonatoId }: { campeonatoId: strin
  tag,
  logo_url,
  equipe_oficial_id_vinculada: avulsa?.equipe_oficial_id || null,
- origem_inscricao: item.origem_inscricao === 'site' ? 'site' : 'organizador',
+ origem_inscricao: item.origem_inscricao === 'site' ? ('site' as const) : ('organizador' as const),
  status_pagamento: item.status_pagamento || (item.origem_inscricao === 'site' ? 'pago' : 'manual'),
  agendada_para: item.agendada_para || null,
  valor_vaga_pago: item.valor_vaga_pago ?? null,
