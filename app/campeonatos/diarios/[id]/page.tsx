@@ -98,6 +98,7 @@ type Jogo = {
   numero_queda?: number | null
   mapa?: string | null
   data_hora?: string | null
+  quantidade_partidas?: number | null
   configuracao?: any
 }
 
@@ -114,10 +115,51 @@ type ResultadoJogo = {
   total_pontos: number
 }
 
+type Partida = {
+  id: string
+  campeonato_id: string
+  jogo_id: string
+  partida_id?: string | null
+  grupo_id?: string | null
+  numero: number
+  mapa?: string | null
+  status?: string | null
+  ordem_exibicao?: number | null
+}
+
+type ResultadoPartidaEquipe = {
+  id: string
+  campeonato_id: string
+  jogo_id: string
+  partida_id: string
+  equipe_id: string
+  grupo_id?: string | null
+  colocacao: number
+  abates: number
+  pontos_colocacao?: number | null
+  pontos_abates?: number | null
+  pontos_total: number
+}
+
+type ResultadoPartidaJogador = {
+  id: string
+  campeonato_id: string
+  jogo_id: string
+  partida_id: string
+  equipe_id?: string | null
+  perfil_jogo_id?: string | null
+  jogador_campeonato_id?: string | null
+  abates: number
+  dano?: number | null
+  assistencias?: number | null
+  revives?: number | null
+}
+
 type ResultadoMvp = {
   id: string
   campeonato_id: string
   jogo_id: string
+  partida_id?: string | null
   grupo_id?: string | null
   equipe_id?: string | null
   equipe_avulsa_id?: string | null
@@ -168,6 +210,7 @@ type LinhaMvp = {
 type QuedaResumo = {
   id: string
   jogoId: string
+  partidaId?: string | null
   titulo: string
   mapa: string
   ordem: number
@@ -303,7 +346,10 @@ export default function CampeonatoDiarioDetalhePage() {
   const [equipesAvulsas, setEquipesAvulsas] = useState<EquipeAvulsa[]>([])
   const [lines, setLines] = useState<Line[]>([])
   const [jogos, setJogos] = useState<Jogo[]>([])
+  const [partidas, setPartidas] = useState<Partida[]>([])
   const [resultadosJogos, setResultadosJogos] = useState<ResultadoJogo[]>([])
+  const [resultadosPartidasEquipes, setResultadosPartidasEquipes] = useState<ResultadoPartidaEquipe[]>([])
+  const [resultadosPartidasJogadores, setResultadosPartidasJogadores] = useState<ResultadoPartidaJogador[]>([])
   const [resultadosMvp, setResultadosMvp] = useState<ResultadoMvp[]>([])
 
   const [equipesDisponiveis, setEquipesDisponiveis] = useState<EquipeOficial[]>([])
@@ -437,21 +483,46 @@ export default function CampeonatoDiarioDetalhePage() {
   const jogoIdsDoGrupo = useMemo(() => jogosDoGrupo.map((j) => j.id), [jogosDoGrupo])
 
   const quedasDoGrupo = useMemo<QuedaResumo[]>(() => {
-    return jogosDoGrupo.map((jogo, index) => ({
-      id: `${jogo.id}-${jogo.numero_queda || index + 1}`,
-      jogoId: jogo.id,
-      titulo: `Queda ${jogo.numero_queda || index + 1}`,
-      mapa: normalizarMapa(jogo.mapa),
-      ordem: Number(jogo.numero_queda || index + 1),
-    }))
-  }, [jogosDoGrupo])
+    const jogoSet = new Set(jogosDoGrupo.map((jogo) => String(jogo.id)))
+    const partidasDoGrupo = partidas
+      .filter((partida) => jogoSet.has(String(partida.jogo_id || '')))
+      .sort((a, b) => {
+        const jogoA = String(a.jogo_id || '')
+        const jogoB = String(b.jogo_id || '')
+        if (jogoA !== jogoB) return jogoA.localeCompare(jogoB)
+        return Number(a.ordem_exibicao || a.numero || 0) - Number(b.ordem_exibicao || b.numero || 0)
+      })
+
+    if (partidasDoGrupo.length > 0) {
+      return partidasDoGrupo.map((partida, index) => ({
+        id: String(partida.id),
+        jogoId: String(partida.jogo_id),
+        partidaId: String(partida.id),
+        titulo: `Queda ${Number(partida.numero || index + 1)}`,
+        mapa: normalizarMapa(partida.mapa),
+        ordem: Number(partida.ordem_exibicao || partida.numero || index + 1),
+      }))
+    }
+
+    return jogosDoGrupo.flatMap((jogo) => {
+      const quantidade = Math.max(0, Number(jogo.quantidade_partidas || grupoAtivo?.qtd_quedas || 0))
+      return Array.from({ length: quantidade }).map((_, index) => ({
+        id: `${jogo.id}-queda-${index + 1}`,
+        jogoId: jogo.id,
+        partidaId: null,
+        titulo: `Queda ${index + 1}`,
+        mapa: normalizarMapa(jogo.mapa),
+        ordem: index + 1,
+      }))
+    })
+  }, [jogosDoGrupo, partidas, grupoAtivo?.qtd_quedas])
 
   useEffect(() => {
     if (!quedaAtiva && quedasDoGrupo[0]) {
-      setQuedaAtiva(quedasDoGrupo[0].jogoId)
+      setQuedaAtiva(quedasDoGrupo[0].id)
     }
-    if (quedaAtiva && !quedasDoGrupo.some((q) => q.jogoId === quedaAtiva)) {
-      setQuedaAtiva(quedasDoGrupo[0]?.jogoId || '')
+    if (quedaAtiva && !quedasDoGrupo.some((q) => q.id === quedaAtiva)) {
+      setQuedaAtiva(quedasDoGrupo[0]?.id || '')
     }
   }, [quedasDoGrupo, quedaAtiva])
 
@@ -629,11 +700,29 @@ export default function CampeonatoDiarioDetalhePage() {
     }))
   }, [grupoAtivo, slotsComEquipe, jogoIdsDoGrupo, resultadosMvp, campeonatoEquipeMap, equipesOficiaisMap, equipesAvulsasMap])
 
-  const linhasSumula = useMemo(() => {
-    const resultadoMap = new Map<string, ResultadoJogo>()
-    const jogoAtual = String(quedaAtiva || '').trim()
+  const quedaSelecionada = useMemo(() => {
+    return quedasDoGrupo.find((queda) => queda.id === quedaAtiva) || quedasDoGrupo[0] || null
+  }, [quedasDoGrupo, quedaAtiva])
 
-    if (jogoAtual) {
+  const linhasSumula = useMemo(() => {
+    const resultadoMap = new Map<string, { posicao: number; abates: number; total_pontos: number }>()
+    const partidaAtual = String(quedaSelecionada?.partidaId || '').trim()
+    const jogoAtual = String(quedaSelecionada?.jogoId || '').trim()
+
+    if (partidaAtual) {
+      resultadosPartidasEquipes
+        .filter((row) => String(row.partida_id || '') === partidaAtual)
+        .forEach((row) => {
+          const key = String(row.equipe_id || '').trim()
+          if (key) {
+            resultadoMap.set(key, {
+              posicao: Number(row.colocacao || 0),
+              abates: Number(row.abates || 0),
+              total_pontos: Number(row.pontos_total || 0),
+            })
+          }
+        })
+    } else if (jogoAtual) {
       resultadosJogos
         .filter((row) => String(row.jogo_id || '') === jogoAtual)
         .forEach((row) => {
@@ -674,14 +763,52 @@ export default function CampeonatoDiarioDetalhePage() {
       abates: 0,
       pontos: 0,
     }))
-  }, [slotsComEquipe, resultadosJogos, quedaAtiva, grupoAtivo, campeonatoEquipeMap])
+  }, [slotsComEquipe, resultadosJogos, resultadosPartidasEquipes, quedaSelecionada, grupoAtivo, campeonatoEquipeMap])
 
   const estatisticasQuedaSelecionada = useMemo(() => {
-    const jogoAtual = String(quedaAtiva || jogosDoGrupo[0]?.id || '').trim()
+    const partidaAtual = String(quedaSelecionada?.partidaId || '').trim()
+    const jogoAtual = String(quedaSelecionada?.jogoId || '').trim()
     const jogo = jogosDoGrupo.find((item) => String(item.id) === jogoAtual) || null
 
-    const equipes = linhasSumula
-      .filter((linha) => linha.nome && !linha.nome.toUpperCase().startsWith('SLOT '))
+    function resolverEquipe(row: ResultadoPartidaEquipe) {
+      const equipeRef = String(row.equipe_id || '').trim()
+      let campeonatoEquipe = equipeRef ? campeonatoEquipeMap.get(equipeRef) : null
+
+      if (!campeonatoEquipe && equipeRef) {
+        campeonatoEquipe = campeonatoEquipes.find((ce) => {
+          return (
+            String(ce.equipe_id || '') === equipeRef ||
+            String(ce.equipe_avulsa_id || '') === equipeRef ||
+            String(ce.line_id || '') === equipeRef
+          )
+        }) || null
+      }
+
+      const campeonatoEquipeId = String(campeonatoEquipe?.id || equipeRef)
+      const slot = slotsComEquipe.find((item) => String(item.equipe?.campeonato_equipe_id || item.campeonato_equipe_id || '') === campeonatoEquipeId)
+      const publicId = String(campeonatoEquipe?.line_id || campeonatoEquipe?.equipe_id || campeonatoEquipe?.equipe_avulsa_id || equipeRef || '').trim()
+      const oficial = publicId ? equipesOficiaisMap.get(publicId) : null
+      const avulsa = publicId ? equipesAvulsasMap.get(publicId) : null
+
+      return {
+        nome: slot?.equipe?.nome || oficial?.nome || avulsa?.nome || `Equipe ${equipeRef.slice(0, 6)}`,
+        logo_url: slot?.equipe?.logo_url || oficial?.logo_url || avulsa?.logo_url || null,
+      }
+    }
+
+    const equipes = resultadosPartidasEquipes
+      .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
+      .map((row) => {
+        const info = resolverEquipe(row)
+        return {
+          key: String(row.id),
+          nome: info.nome,
+          logo_url: info.logo_url,
+          posicao: Number(row.colocacao || 0),
+          abates: Number(row.abates || 0),
+          pontos: Number(row.pontos_total || 0),
+        }
+      })
       .sort((a, b) => {
         if (Number(a.posicao || 0) && Number(b.posicao || 0)) return Number(a.posicao || 0) - Number(b.posicao || 0)
         if (b.pontos !== a.pontos) return b.pontos - a.pontos
@@ -691,20 +818,32 @@ export default function CampeonatoDiarioDetalhePage() {
     const maxPontos = Math.max(...equipes.map((linha) => Number(linha.pontos || 0)), 1)
     const maxAbates = Math.max(...equipes.map((linha) => Number(linha.abates || 0)), 1)
 
-    const jogadores = resultadosMvp
-      .filter((row) => String(row.jogo_id || '') === jogoAtual)
-      .map((row) => ({
-        key: String(row.id || `${row.nick_snapshot}-${row.uid_jogo_snapshot}`),
-        nick: String(row.nick_snapshot || 'SEM NICK').trim() || 'SEM NICK',
-        abates: Number(row.abates || 0),
-      }))
+    const mvpPorJogador = new Map<string, ResultadoMvp>()
+    resultadosMvp
+      .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
+      .forEach((row) => {
+        const key = String(row.jogador_campeonato_id || row.perfil_jogo_id || row.uid_jogo_snapshot || '').trim()
+        if (key) mvpPorJogador.set(key, row)
+      })
+
+    const jogadores = resultadosPartidasJogadores
+      .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
+      .map((row, index) => {
+        const keyBase = String(row.jogador_campeonato_id || row.perfil_jogo_id || '').trim()
+        const mvp = keyBase ? mvpPorJogador.get(keyBase) : null
+        return {
+          key: String(row.id || keyBase || index),
+          nick: String(mvp?.nick_snapshot || (keyBase ? `Jogador ${keyBase.slice(0, 6)}` : `Jogador ${index + 1}`)).trim(),
+          abates: Number(row.abates || 0),
+        }
+      })
       .sort((a, b) => b.abates - a.abates)
       .slice(0, 12)
 
     const maxAbatesJogadores = Math.max(...jogadores.map((jogador) => Number(jogador.abates || 0)), 1)
 
-    return { jogoAtual, jogo, equipes, jogadores, maxPontos, maxAbates, maxAbatesJogadores }
-  }, [quedaAtiva, jogosDoGrupo, linhasSumula, resultadosMvp])
+    return { jogoAtual, partidaAtual, jogo, equipes, jogadores, maxPontos, maxAbates, maxAbatesJogadores }
+  }, [quedaSelecionada, jogosDoGrupo, resultadosPartidasEquipes, resultadosPartidasJogadores, resultadosMvp, campeonatoEquipeMap, campeonatoEquipes, slotsComEquipe, equipesOficiaisMap, equipesAvulsasMap])
 
 
   async function carregarSaldoCarteira(token?: string | null) {
@@ -872,7 +1011,10 @@ export default function CampeonatoDiarioDetalhePage() {
         slotsRes,
         campeonatoEquipesRes,
         jogosRes,
+        partidasRes,
         resultadosJogosRes,
+        resultadosPartidasEquipesRes,
+        resultadosPartidasJogadoresRes,
         resultadosMvpRes,
       ] = await Promise.all([
         supabase.from('campeonatos').select('id, nome, banner_url, logo_url').eq('id', campeonatoId).single(),
@@ -893,16 +1035,30 @@ export default function CampeonatoDiarioDetalhePage() {
           .eq('campeonato_id', campeonatoId),
         supabase
           .from('jogos')
-          .select('id, campeonato_id, grupo_id, fase_id, nome, nome_bloco, numero_queda, mapa, data_hora, configuracao')
+          .select('id, campeonato_id, grupo_id, fase_id, nome, nome_bloco, numero_queda, mapa, data_hora, quantidade_partidas, configuracao')
           .eq('campeonato_id', campeonatoId)
           .order('created_at', { ascending: true }),
+        supabase
+          .from('partidas')
+          .select('id, campeonato_id, jogo_id, grupo_id, numero, mapa, status, ordem_exibicao')
+          .eq('campeonato_id', campeonatoId)
+          .order('jogo_id', { ascending: true })
+          .order('numero', { ascending: true }),
         supabase
           .from('resultados_jogos')
           .select('id, campeonato_id, fase_id, jogo_id, equipe_id, grupo_id, mapa, posicao, abates, total_pontos')
           .eq('campeonato_id', campeonatoId),
         supabase
+          .from('resultados_partidas_equipes')
+          .select('id, campeonato_id, jogo_id, partida_id, equipe_id, grupo_id, colocacao, abates, pontos_colocacao, pontos_abates, pontos_total')
+          .eq('campeonato_id', campeonatoId),
+        supabase
+          .from('resultados_partidas_jogadores')
+          .select('id, campeonato_id, jogo_id, partida_id, equipe_id, perfil_jogo_id, jogador_campeonato_id, abates, dano, assistencias, revives')
+          .eq('campeonato_id', campeonatoId),
+        supabase
           .from('resultados_mvp')
-          .select('id, campeonato_id, jogo_id, grupo_id, equipe_id, equipe_avulsa_id, perfil_jogo_id, jogador_campeonato_id, nick_snapshot, uid_jogo_snapshot, abates, dano, assistencias, revives')
+          .select('id, campeonato_id, jogo_id, partida_id, grupo_id, equipe_id, equipe_avulsa_id, perfil_jogo_id, jogador_campeonato_id, nick_snapshot, uid_jogo_snapshot, abates, dano, assistencias, revives')
           .eq('campeonato_id', campeonatoId),
       ])
 
@@ -911,7 +1067,10 @@ export default function CampeonatoDiarioDetalhePage() {
       if (slotsRes.error) throw slotsRes.error
       if (campeonatoEquipesRes.error) throw campeonatoEquipesRes.error
       if (jogosRes.error) throw jogosRes.error
+      if (partidasRes.error) throw partidasRes.error
       if (resultadosJogosRes.error) throw resultadosJogosRes.error
+      if (resultadosPartidasEquipesRes.error) throw resultadosPartidasEquipesRes.error
+      if (resultadosPartidasJogadoresRes.error) throw resultadosPartidasJogadoresRes.error
       if (resultadosMvpRes.error) throw resultadosMvpRes.error
 
       const campeonatoEquipesRows = (campeonatoEquipesRes.data || []) as CampeonatoEquipe[]
@@ -944,7 +1103,10 @@ export default function CampeonatoDiarioDetalhePage() {
       setEquipesAvulsas((equipesAvulsasRes.data || []) as EquipeAvulsa[])
       setLines((linesRes.data || []) as Line[])
       setJogos((jogosRes.data || []) as Jogo[])
+      setPartidas((partidasRes.data || []) as Partida[])
       setResultadosJogos((resultadosJogosRes.data || []) as ResultadoJogo[])
+      setResultadosPartidasEquipes((resultadosPartidasEquipesRes.data || []) as ResultadoPartidaEquipe[])
+      setResultadosPartidasJogadores((resultadosPartidasJogadoresRes.data || []) as ResultadoPartidaJogador[])
       setResultadosMvp((resultadosMvpRes.data || []) as ResultadoMvp[])
       if (userAtual?.id) {
         await carregarParticipantesDoUsuario(userAtual.id)
@@ -1574,9 +1736,9 @@ export default function CampeonatoDiarioDetalhePage() {
                             quedasDoGrupo.map((queda) => (
                               <button
                                 key={queda.id}
-                                onClick={() => setQuedaAtiva(queda.jogoId)}
+                                onClick={() => setQuedaAtiva(queda.id)}
                                 className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
-                                  quedaAtiva === queda.jogoId ? 'bg-sky-500 text-white' : 'border border-zinc-200 bg-white text-zinc-600'
+                                  quedaAtiva === queda.id ? 'bg-sky-500 text-white' : 'border border-zinc-200 bg-white text-zinc-600'
                                 }`}
                               >
                                 {queda.titulo}
@@ -1592,17 +1754,17 @@ export default function CampeonatoDiarioDetalhePage() {
                         </div>
 
                         <div className="mb-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
-                          {quedaAtiva && quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)
-                            ? `${quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.titulo} • ${quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.mapa}`
+                          {quedaAtiva && quedasDoGrupo.find((q) => q.id === quedaAtiva)
+                            ? `${quedasDoGrupo.find((q) => q.id === quedaAtiva)?.titulo} • ${quedasDoGrupo.find((q) => q.id === quedaAtiva)?.mapa}`
                             : 'Sem queda selecionada'}
                         </div>
 
                         <div className="border border-zinc-200 bg-zinc-50 p-2">
                           {jogosDoGrupo.length > 0 ? (
                             <SumulaPartida
-                              key={`${grupoAtivo?.id || 'grupo'}-${quedaAtiva || jogosDoGrupo[0]?.id || 'jogo'}`}
+                              key={`${grupoAtivo?.id || 'grupo'}-${quedaSelecionada?.id || quedaAtiva || jogosDoGrupo[0]?.id || 'jogo'}`}
                               faseInicialId={grupoAtivo?.fase_id || undefined}
-                              jogoInicialId={quedaAtiva || jogosDoGrupo[0]?.id || undefined}
+                              jogoInicialId={quedaSelecionada?.jogoId || jogosDoGrupo[0]?.id || undefined}
                             />
                           ) : (
                             <div className="px-3 py-6 text-center text-[12px] text-zinc-500">Nenhum jogo cadastrado para este horário.</div>
@@ -1650,13 +1812,13 @@ export default function CampeonatoDiarioDetalhePage() {
                   </div>
 
                   <select
-                    value={quedaAtiva || estatisticasQuedaSelecionada.jogoAtual}
+                    value={quedaAtiva || quedaSelecionada?.id || ''}
                     onChange={(e) => setQuedaAtiva(e.target.value)}
                     className="mb-3 h-10 w-full border border-zinc-200 bg-white px-3 text-[12px] font-semibold text-[#142340] outline-none focus:border-sky-500"
                   >
                     {quedasDoGrupo.length > 0 ? (
                       quedasDoGrupo.map((queda) => (
-                        <option key={queda.jogoId} value={queda.jogoId}>
+                        <option key={queda.id} value={queda.id}>
                           {queda.titulo} • {queda.mapa}
                         </option>
                       ))
@@ -1718,7 +1880,7 @@ export default function CampeonatoDiarioDetalhePage() {
                         })
                       ) : (
                         <div className="border border-dashed border-zinc-200 bg-zinc-50 px-3 py-6 text-center text-[12px] text-zinc-500">
-                          Sem estatísticas de equipes para esta partida.
+                          Sem estatísticas de equipes para esta queda.
                         </div>
                       )}
                     </div>
@@ -1747,7 +1909,7 @@ export default function CampeonatoDiarioDetalhePage() {
                         })
                       ) : (
                         <div className="border border-dashed border-zinc-200 bg-zinc-50 px-3 py-6 text-center text-[12px] text-zinc-500">
-                          Sem abates de jogadores registrados nesta partida.
+                          Sem abates de jogadores registrados nesta queda.
                         </div>
                       )}
                     </div>
