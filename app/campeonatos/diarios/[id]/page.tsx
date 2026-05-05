@@ -20,7 +20,6 @@ import {
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
 import SumulaPartida from '@/app/campeonatos/[id]/components/SumulaPartida'
-import MVPTable from '@/app/campeonatos/[id]/components/MVPTable'
 
 type Campeonato = {
   id: string
@@ -1366,15 +1365,16 @@ export default function CampeonatoDiarioDetalhePage() {
                           )}
                         </div>
 
-                        <div className="grid max-h-[560px] grid-cols-1 gap-2 overflow-y-auto pr-1">
+                        <div className="max-h-[560px] space-y-2 overflow-y-auto pr-1">
                           {slotsComEquipe.length === 0 ? (
-                            <div className="col-span-full border border-dashed border-zinc-200 bg-zinc-50 px-3 py-10 text-center text-[12px] text-zinc-500">Nenhum slot encontrado.</div>
+                            <div className="border border-dashed border-zinc-200 bg-zinc-50 px-3 py-10 text-center text-[12px] text-zinc-500">Nenhum slot encontrado.</div>
                           ) : (
                             slotsComEquipe.map((slot) => {
                               const ocupado = !!slot.equipe
+                              const podeComprarSlot = !podeGerenciar && !ocupado
 
                               return (
-                                <button
+                                <div
                                   key={slot.id}
                                   onClick={() => {
                                     if (!podeGerenciar) return
@@ -1383,11 +1383,11 @@ export default function CampeonatoDiarioDetalhePage() {
                                     setEquipeSelecionadaId('')
                                     setLineSelecionadaId('')
                                   }}
-                                  className={`grid grid-cols-[38px_38px_minmax(0,1fr)] items-center gap-2 border px-2 py-2 text-left transition ${
+                                  className={`grid grid-cols-[38px_38px_minmax(0,1fr)_auto] items-center gap-2 border px-2 py-2 text-left transition ${
                                     ocupado
                                       ? 'border-sky-100 bg-sky-50 hover:bg-sky-100'
                                       : 'border-zinc-200 bg-white hover:bg-zinc-50'
-                                  }`}
+                                  } ${podeGerenciar ? 'cursor-pointer' : ''}`}
                                 >
                                   <div className={`flex h-9 w-9 items-center justify-center border text-[12px] font-semibold ${
                                     ocupado
@@ -1411,7 +1411,25 @@ export default function CampeonatoDiarioDetalhePage() {
                                       {ocupado ? 'Confirmada' : 'Livre'}
                                     </div>
                                   </div>
-                                </button>
+
+                                  {podeComprarSlot ? (
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        setModoSlotModal('comprar')
+                                        setSlotModal(slot)
+                                        setEquipeSelecionadaId('')
+                                        setLineSelecionadaId('')
+                                      }}
+                                      className="h-9 border border-blue-600 bg-blue-600 px-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-110"
+                                    >
+                                      Comprar
+                                    </button>
+                                  ) : (
+                                    <div className="h-9 w-[74px]" />
+                                  )}
+                                </div>
                               )
                             })
                           )}
@@ -1474,12 +1492,64 @@ export default function CampeonatoDiarioDetalhePage() {
 
                     {abaDireita === 'mvp' && (
                       <div>
-                        <div className="mb-3">
-                          <h3 className="text-[14px] font-semibold uppercase text-[#142340]">MVP do horário</h3>
-                          <p className="text-[12px] text-zinc-500">Ranking de atletas por abates.</p>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h3 className="text-[14px] font-semibold uppercase text-[#142340]">MVP do horário</h3>
+                            <p className="text-[12px] text-zinc-500">Ranking de atletas por abates no padrão LEALT.</p>
+                          </div>
+                          <span className="border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                            {linhasMvp.filter((item) => item.abates > 0).length} atletas pontuando
+                          </span>
                         </div>
-                        <div className="overflow-hidden border border-zinc-200 bg-zinc-50 p-2">
-                          <MVPTable data={[]} />
+
+                        <div className="overflow-hidden border border-zinc-200 bg-white">
+                          <div className="grid grid-cols-[48px_minmax(0,1fr)_72px_72px] border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                            <div>Rank</div>
+                            <div>Atleta / Equipe</div>
+                            <div className="text-center">Quedas</div>
+                            <div className="text-center">Abates</div>
+                          </div>
+
+                          {linhasMvp.length > 0 ? (
+                            linhasMvp.slice(0, 12).map((item, index) => {
+                              const destaque = index === 0
+                              const medalha = index === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : index === 1 ? 'bg-slate-50 text-slate-700 border-slate-200' : index === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-[#142340] border-zinc-200'
+
+                              return (
+                                <div
+                                  key={item.key}
+                                  className={`grid grid-cols-[48px_minmax(0,1fr)_72px_72px] items-center border-b border-zinc-100 px-3 py-2 text-[12px] last:border-b-0 ${destaque ? 'bg-blue-50/70' : 'bg-white'}`}
+                                >
+                                  <div>
+                                    <span className={`inline-flex h-8 w-8 items-center justify-center border text-[11px] font-bold ${medalha}`}>
+                                      {index + 1}º
+                                    </span>
+                                  </div>
+
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <div className="h-8 w-8 overflow-hidden border border-zinc-200 bg-zinc-50">
+                                      {item.equipe_logo ? (
+                                        <img src={item.equipe_logo} alt={item.equipe} className="h-full w-full object-cover" />
+                                      ) : null}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="truncate text-[12px] font-semibold uppercase text-[#142340]">{item.nick}</div>
+                                      <div className="truncate text-[9px] font-semibold uppercase tracking-[0.10em] text-zinc-500">{item.equipe}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-center text-[12px] font-semibold text-zinc-600">{item.abates > 0 ? Math.max(1, jogoIdsDoGrupo.length || 1) : 0}</div>
+                                  <div className="text-center">
+                                    <span className="inline-flex min-w-10 justify-center border border-emerald-100 bg-emerald-50 px-2 py-1 text-[12px] font-bold text-emerald-700">
+                                      {item.abates}
+                                    </span>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          ) : (
+                            <div className="px-3 py-10 text-center text-[12px] text-zinc-500">Nenhum MVP registrado ainda.</div>
+                          )}
                         </div>
                       </div>
                     )}
