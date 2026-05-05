@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Upload, Shuffle, Loader2, Plus, Minus, CheckCircle2 } from 'lucide-react'
 import { useSearchParams, useRouter } from 'next/navigation'
