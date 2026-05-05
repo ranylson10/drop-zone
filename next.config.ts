@@ -4,14 +4,16 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
   experimental: {
-  missingSuspenseWithCSRBailout: false,
-},
+    missingSuspenseWithCSRBailout: false,
+  },
+
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "uyivmievsgkbojplpblz.supabase.co",
+        hostname: "uyivmievsgkbojplplbz.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",
       },
