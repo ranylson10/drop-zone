@@ -60,7 +60,7 @@ function iniciais(nome: string) {
     .toUpperCase() || 'DZ'
 }
 
-export default function ChatShell() {
+function ChatShellInner() {
   const { user, perfilAtivo } = usePerfil()
   const searchParams = useSearchParams()
 
@@ -483,5 +483,13 @@ export default function ChatShell() {
         </section>
       </div>
     </main>
+  )
+}
+
+export default function ChatShell() {
+  return (
+    <Suspense fallback={null}>
+      <ChatShellInner />
+    </Suspense>
   )
 }

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Swords, Trophy, ListOrdered } from 'lucide-react'
 
-export default function Page() {
+function PageInner() {
  const router = useRouter()
  const searchParams = useSearchParams()
  const produtoraId = searchParams.get('produtoraId')
@@ -51,4 +51,12 @@ export default function Page() {
  </div>
  </div>
  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <PageInner />
+    </Suspense>
+  )
 }

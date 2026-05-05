@@ -518,10 +518,18 @@ function AdminModeracaoContent() {
  )
 }
 
-export default function AdminModeracaoPage() {
+function AdminModeracaoPageInner() {
  return (
   <Suspense fallback={<main className="min-h-screen bg-slate-100 p-6 text-sm font-bold text-slate-600">Carregando moderação...</main>}>
    <AdminModeracaoContent />
   </Suspense>
  )
+}
+
+export default function AdminModeracaoPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminModeracaoPageInner />
+    </Suspense>
+  )
 }

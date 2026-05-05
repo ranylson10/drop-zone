@@ -11,7 +11,7 @@ import { AlertTriangle, ArrowLeft, Loader2, Send, ShieldCheck } from 'lucide-rea
 const categorias = ['pagamento', 'premiacao', 'resultado', 'sumula', 'inscricao', 'regra', 'antijogo', 'conduta', 'organizacao', 'suporte', 'fraude', 'outro']
 const tipos = ['campeonato', 'equipe', 'jogador', 'organizacao', 'usuario', 'produtora', 'perfil_jogo']
 
-export default function DenunciarPage() {
+function DenunciarPageInner() {
   const router = useRouter()
   const params = useSearchParams()
   const [loading, setLoading] = useState(false)
@@ -149,5 +149,13 @@ export default function DenunciarPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DenunciarPage() {
+  return (
+    <Suspense fallback={null}>
+      <DenunciarPageInner />
+    </Suspense>
   )
 }

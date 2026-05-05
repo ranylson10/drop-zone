@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function Page() {
+function PageInner() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
@@ -19,4 +19,12 @@ export default function Page() {
  Abrindo formulário do diário...
  </div>
  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <PageInner />
+    </Suspense>
+  )
 }

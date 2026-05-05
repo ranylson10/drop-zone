@@ -459,10 +459,18 @@ function AdminProdutorasContent() {
  )
 }
 
-export default function Conteudo() {
+function ConteudoInner() {
  return (
  <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#f7f7f7] text-sm font-semibold text-zinc-500">Carregando...</div>}>
  <AdminProdutorasContent />
  </Suspense>
  )
+}
+
+export default function Conteudo() {
+  return (
+    <Suspense fallback={null}>
+      <ConteudoInner />
+    </Suspense>
+  )
 }

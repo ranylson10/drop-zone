@@ -13,7 +13,7 @@ const MAPAS_INICIAIS = [
  { id: 'Solara', nome: 'Solara', url: '/mapas/solara.jpg' }
 ]
 
-export default function SorteadorMapas({ campeonatoId, aoFinalizar }: { campeonatoId: string, aoFinalizar: () => void }) {
+function SorteadorMapasInner({ campeonatoId, aoFinalizar }: { campeonatoId: string, aoFinalizar: () => void }) {
  const searchParams = useSearchParams()
  const router = useRouter()
  
@@ -217,5 +217,13 @@ export default function SorteadorMapas({ campeonatoId, aoFinalizar }: { campeona
  </p>
  </div>
  </div>
+ )
+}
+
+export default function SorteadorMapas(props: { campeonatoId: string, aoFinalizar: () => void }) {
+ return (
+ <Suspense fallback={null}>
+ <SorteadorMapasInner {...props} />
+ </Suspense>
  )
 }

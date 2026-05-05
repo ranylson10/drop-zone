@@ -580,10 +580,18 @@ function AdminAdministradoresContent() {
  )
 }
 
-export default function AdminAdministradoresPage() {
+function AdminAdministradoresPageInner() {
  return (
   <Suspense fallback={<div className="p-6 text-sm font-bold text-zinc-400">Carregando...</div>}>
    <AdminAdministradoresContent />
   </Suspense>
  )
+}
+
+export default function AdminAdministradoresPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminAdministradoresPageInner />
+    </Suspense>
+  )
 }

@@ -12,7 +12,7 @@ import { DropZoneLogo } from '@/app/components/DropZoneLogo'
 
 const CODE_LENGTH = 6
 
-export default function ConfirmarContaPage() {
+function ConfirmarContaPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -295,5 +295,13 @@ export default function ConfirmarContaPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+export default function ConfirmarContaPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmarContaPageInner />
+    </Suspense>
   )
 }

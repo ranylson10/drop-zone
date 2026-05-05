@@ -58,7 +58,7 @@ const OPCOES = [
  },
 ]
 
-export default function Page() {
+function PageInner() {
  const searchParams = useSearchParams()
  const produtoraId = searchParams.get('produtoraId')
 
@@ -201,4 +201,12 @@ export default function Page() {
  </div>
  </div>
  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <PageInner />
+    </Suspense>
+  )
 }

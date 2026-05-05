@@ -62,7 +62,7 @@ function getBarraClasse(status: GuiaStatus) {
  return 'bg-sky-500'
 }
 
-export default function SelfiePage() {
+function SelfiePageInner() {
  const searchParams = useSearchParams()
  const userId = searchParams.get('user') || ''
 
@@ -438,4 +438,12 @@ export default function SelfiePage() {
  </div>
  </div>
  )
+}
+
+export default function SelfiePage() {
+  return (
+    <Suspense fallback={null}>
+      <SelfiePageInner />
+    </Suspense>
+  )
 }

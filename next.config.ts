@@ -4,12 +4,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
-  },
-
-  images: {
+images: {
     remotePatterns: [
       {
         protocol: "https",

@@ -60,7 +60,7 @@ function slugify(value: string) {
     .replace(/-+/g, '-')
 }
 
-export default function FormCriacaoTipo({ tipo }: Props) {
+function FormCriacaoTipoInner({ tipo }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { perfilAtivo, tipoPerfil, produtoras } = usePerfil()
@@ -1575,5 +1575,13 @@ export default function FormCriacaoTipo({ tipo }: Props) {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function FormCriacaoTipo(props: Props) {
+  return (
+    <Suspense fallback={null}>
+      <FormCriacaoTipoInner {...props} />
+    </Suspense>
   )
 }

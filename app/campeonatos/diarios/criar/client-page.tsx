@@ -59,7 +59,7 @@ function nomeHorarioPorHora(horario: string, fallbackIndex: number) {
  return horario.replace(':', 'H')
 }
 
-export default function CriarDiarioPage() {
+function CriarDiarioPageInner() {
  const searchParams = useSearchParams()
  const isXtreino = searchParams.get('xtreino') === '1'
  const xtreinoModo = String(searchParams.get('modo') || 'jogo_unico').toLowerCase()
@@ -837,4 +837,12 @@ export default function CriarDiarioPage() {
  </div>
  </div>
  )
+}
+
+export default function CriarDiarioPage() {
+  return (
+    <Suspense fallback={null}>
+      <CriarDiarioPageInner />
+    </Suspense>
+  )
 }
