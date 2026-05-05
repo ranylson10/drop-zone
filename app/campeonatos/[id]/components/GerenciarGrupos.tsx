@@ -893,7 +893,7 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
       // porque alguns jogos antigos estão com campeonato_id/fase_id nulos.
       const grupoContexto = grupos.find((grupo) => grupo.id === slotSelecionado.grupo_id)
       const campeonatoIdAlvo = slotSelecionado.campeonato_id || grupoContexto?.campeonato_id || campeonatoId
-      const faseIdAlvo = slotSelecionado.fase_id || grupoContexto?.fase_id || equipeSelecionada?.fase_id || null
+      const faseIdAlvo = slotSelecionado.fase_id || grupoContexto?.fase_id || null
 
       if (!campeonatoIdAlvo || !faseIdAlvo) {
         console.warn('Sincronização de jogo_equipes ignorada: campeonato_id ou fase_id não encontrado.', {
@@ -916,7 +916,7 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
             campeonato_id: campeonatoIdAlvo,
             fase_id: faseIdAlvo,
             grupo_id: slotSelecionado.grupo_id,
-            equipe_id: equipeSelecionada?.equipe_id || null,
+            equipe_id: null,
             campeonato_equipe_id: campeonatoEquipeId,
             origem_slot_id: slotSelecionado.id,
           }))

@@ -733,7 +733,7 @@ export default function AbaCampeonatos({
  if (item) desejadosMap.set(makeKey(item.kind, item.id), { jogador: item, observacoes: 'reserva' })
  })
 
- const updates: Promise<any>[] = []
+ const updates: any[] = []
  const inserts: any[] = []
  const sumulaParaCriar: { jogador: Convocavel; observacoes: string }[] = []
 

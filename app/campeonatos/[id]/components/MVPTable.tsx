@@ -434,6 +434,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  perfil_jogo_id: perfilId,
  equipe_id: equipeId,
  jogador_campeonato_id: null,
+          campeonato_equipe_id: null,
  }
  }) || []
 

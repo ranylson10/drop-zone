@@ -348,7 +348,7 @@ export default function ModeradoresPage() {
     if (!confrontoSelecionado) return
     setSalvandoKills(true)
     try {
-      const updates: Promise<any>[] = []
+      const updates: any[] = []
 
       for (const j of jogadoresA) {
         updates.push(

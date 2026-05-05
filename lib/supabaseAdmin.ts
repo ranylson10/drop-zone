@@ -43,7 +43,7 @@ export function getServerSupabaseClient(authHeader?: string | null) {
   const token = extrairBearerToken(authHeader)
   const key = supabaseServiceRoleKey || supabaseAnonKey
 
-  return createClient(supabaseUrl, key, {
+  return createClient(supabaseUrl!, key!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -65,7 +65,7 @@ export async function getUserFromBearerToken(authHeader?: string | null) {
     return null
   }
 
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
+  const client = createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

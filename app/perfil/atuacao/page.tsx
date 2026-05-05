@@ -126,7 +126,9 @@ export default function PerfilAtuacaoPage() {
  return
  }
 
- await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: uid }).catch(() => null)
+ try {
+      await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: uid })
+    } catch {}
 
  const { data: atuacoesData } = await supabase
  .from('lealt_usuario_atuacoes')
