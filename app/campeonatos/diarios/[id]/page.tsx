@@ -12,6 +12,8 @@ import {
   X,
   UserPlus,
   Wallet,
+  MessageCircle,
+  Send,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
@@ -291,7 +293,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [grupoId, setGrupoId] = useState('')
-  const [abaDireita, setAbaDireita] = useState<'tabela' | 'sumula' | 'mvp'>('tabela')
+  const [abaDireita, setAbaDireita] = useState<'equipes' | 'tabela' | 'sumula' | 'mvp'>('equipes')
 
   const [slots, setSlots] = useState<Slot[]>([])
   const [campeonatoEquipes, setCampeonatoEquipes] = useState<CampeonatoEquipe[]>([])
@@ -313,6 +315,26 @@ export default function CampeonatoDiarioDetalhePage() {
   const [podeGerenciar, setPodeGerenciar] = useState(false)
   const [saldoCarteira, setSaldoCarteira] = useState<number | null>(null)
   const [modoSlotModal, setModoSlotModal] = useState<'comprar' | 'gerenciar'>('comprar')
+  const [mensagemChat, setMensagemChat] = useState('')
+  const [chatMensagens, setChatMensagens] = useState<Array<{ id: string; autor: string; texto: string; horario: string }>>([
+    { id: 'boas-vindas', autor: 'Arena', texto: 'Chat aberto para acompanhar o diário ao vivo.', horario: 'agora' },
+  ])
+
+  function enviarMensagemChat() {
+    const texto = mensagemChat.trim()
+    if (!texto) return
+
+    setChatMensagens((atual) => [
+      ...atual,
+      {
+        id: `${Date.now()}`,
+        autor: 'Você',
+        texto,
+        horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      },
+    ])
+    setMensagemChat('')
+  }
 
   const grupoAtivo = useMemo(
     () => grupos.find((g) => g.id === grupoId) || null,
@@ -1070,8 +1092,8 @@ export default function CampeonatoDiarioDetalhePage() {
   }, [campeonatoId])
 
   useEffect(() => {
-    if (!podeGerenciar && abaDireita !== 'tabela') {
-      setAbaDireita('tabela')
+    if (!podeGerenciar && abaDireita === 'sumula') {
+      setAbaDireita('equipes')
     }
   }, [podeGerenciar, abaDireita])
 
@@ -1173,7 +1195,7 @@ export default function CampeonatoDiarioDetalhePage() {
             key={g.id}
             onClick={() => {
               setGrupoId(g.id)
-              setAbaDireita('tabela')
+              setAbaDireita('equipes')
             }}
             className={`px-3 py-2 text-[12px] font-semibold uppercase tracking-[0.08em] ${
               grupoId === g.id
@@ -1188,260 +1210,344 @@ export default function CampeonatoDiarioDetalhePage() {
 
       {grupoAtivo && resumoGrupo ? (
         <>
-          <div className="grid gap-3 lg:grid-cols-[285px_minmax(0,1fr)]">
-            <section className="border border-zinc-200 bg-white p-3">
-              <div className="mb-3 border-b border-zinc-200 pb-2">
-                <div className="flex items-start justify-between gap-2">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_335px]">
+            <section className="border border-zinc-200 bg-white">
+              <div className="border-b border-zinc-200 px-3 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-[16px] font-semibold uppercase text-[#142340]">{grupoAtivo.nome}</h2>
-                    <div className="mt-1 text-[12px] text-zinc-500">
+                    <h2 className="text-[16px] font-semibold uppercase text-[#142340]">Painel do horário</h2>
+                    <p className="text-[12px] text-zinc-500">
+                      Equipes, tabela e MVP em abas. Súmula fica disponível apenas para administradores.
+                    </p>
+                  </div>
+
+                  <BadgeStatus status={grupoAtivo.status} />
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-zinc-500 md:grid-cols-4">
+                  <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Horário</div>
+                    <div className="mt-1 font-semibold text-[#142340]">
                       {formatarHora(grupoAtivo.horario_inicio)}
                       {grupoAtivo.horario_fim ? ` - ${formatarHora(grupoAtivo.horario_fim)}` : ''}
                     </div>
                   </div>
-                  <BadgeStatus status={grupoAtivo.status} />
-                </div>
-
-                <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-zinc-500">
-                  <div>Quedas: {grupoAtivo.qtd_quedas || 0}</div>
-                  <div className="text-right">Slots: {grupoAtivo.qtd_slots || 0}</div>
+                  <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Quedas</div>
+                    <div className="mt-1 font-semibold text-[#142340]">{grupoAtivo.qtd_quedas || 0}</div>
+                  </div>
+                  <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Slots</div>
+                    <div className="mt-1 font-semibold text-[#142340]">{resumoGrupo.ocupados} / {resumoGrupo.totalSlots}</div>
+                  </div>
+                  <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-400">Inscrição</div>
+                    <div className="mt-1 font-semibold text-[#142340]">{moeda(resumoGrupo.inscricao)}</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="mb-2 space-y-2">
+              <div className="flex flex-wrap gap-1 border-b border-zinc-200 bg-zinc-50 px-3 py-2">
+                <button
+                  onClick={() => setAbaDireita('equipes')}
+                  className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                    abaDireita === 'equipes'
+                      ? 'bg-sky-500 text-white'
+                      : 'border border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
+                  }`}
+                >
+                  Equipes
+                </button>
+
+                <button
+                  onClick={() => setAbaDireita('tabela')}
+                  className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                    abaDireita === 'tabela'
+                      ? 'bg-sky-500 text-white'
+                      : 'border border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
+                  }`}
+                >
+                  Tabela
+                </button>
+
+                <button
+                  onClick={() => setAbaDireita('mvp')}
+                  className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                    abaDireita === 'mvp'
+                      ? 'bg-sky-500 text-white'
+                      : 'border border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
+                  }`}
+                >
+                  MVP
+                </button>
+
                 {podeGerenciar ? (
                   <button
-                    onClick={() => {
-                      const primeiroLivre = slotsComEquipe.find((s) => !s.equipe)
-                      if (primeiroLivre) {
-                        setModoSlotModal('gerenciar')
-                        setSlotModal(primeiroLivre)
-                        setEquipeSelecionadaId('')
-                        setLineSelecionadaId('')
-                      }
-                    }}
-                    className="inline-flex h-9 w-full items-center justify-center gap-2 border border-sky-200 bg-sky-50 px-3 text-[12px] font-medium text-sky-700 transition hover:bg-sky-100"
+                    onClick={() => setAbaDireita('sumula')}
+                    className={`ml-auto px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                      abaDireita === 'sumula'
+                        ? 'bg-orange-500 text-white'
+                        : 'border border-orange-200 bg-white text-orange-600 hover:bg-orange-50'
+                    }`}
                   >
-                    <UserPlus size={14} />
-                    Adicionar participante
+                    Súmula admin
                   </button>
-                ) : (
-                  <button
-                    onClick={abrirCompraVaga}
-                    disabled={resumoGrupo.ocupados >= resumoGrupo.totalSlots}
-                    className="inline-flex h-10 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
-                  >
-                    <Wallet size={14} />
-                    {resumoGrupo.inscricao > 0 ? `Comprar vaga • ${moeda(resumoGrupo.inscricao)}` : 'Inscrever grátis'}
-                  </button>
-                )}
-
-                {!podeGerenciar ? (
-                  <div className="border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-medium text-blue-800">
-                    Saldo: {saldoCarteira === null ? 'entrar para consultar' : moeda(saldoCarteira)}
-                  </div>
                 ) : null}
               </div>
 
-              <div className="border border-zinc-200">
-                {slotsComEquipe.length === 0 ? (
-                  <div className="px-3 py-6 text-center text-[12px] text-zinc-500">Nenhum slot encontrado.</div>
-                ) : (
-                  slotsComEquipe.map((slot) => {
-                    const ocupado = !!slot.equipe
+              <div className="p-3">
+                {abaDireita === 'equipes' && (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-[14px] font-semibold uppercase text-[#142340]">Equipes do horário</h3>
+                        <p className="text-[12px] text-zinc-500">Slots ocupados e vagas disponíveis para este horário.</p>
+                      </div>
 
-                    return (
-                      <button
-                        key={slot.id}
-                        onClick={() => {
-                          if (!podeGerenciar) return
-                          setModoSlotModal('gerenciar')
-                          setSlotModal(slot)
-                          setEquipeSelecionadaId('')
-                          setLineSelecionadaId('')
-                        }}
-                        className={`grid w-full grid-cols-[44px_36px_minmax(0,1fr)] items-center gap-2 border-b border-zinc-200 px-2 py-2 text-left transition last:border-b-0 ${
-                          ocupado
-                            ? 'bg-sky-50 hover:bg-sky-100'
-                            : 'bg-white hover:bg-zinc-50'
-                        }`}
+                      {!podeGerenciar ? (
+                        <div className="border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] font-medium text-blue-800">
+                          Saldo: {saldoCarteira === null ? 'entrar para consultar' : moeda(saldoCarteira)}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+                      <div className="space-y-2">
+                        {podeGerenciar ? (
+                          <button
+                            onClick={() => {
+                              const primeiroLivre = slotsComEquipe.find((s) => !s.equipe)
+                              if (primeiroLivre) {
+                                setModoSlotModal('gerenciar')
+                                setSlotModal(primeiroLivre)
+                                setEquipeSelecionadaId('')
+                                setLineSelecionadaId('')
+                              }
+                            }}
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 border border-sky-200 bg-sky-50 px-3 text-[12px] font-medium text-sky-700 transition hover:bg-sky-100"
+                          >
+                            <UserPlus size={14} />
+                            Adicionar participante
+                          </button>
+                        ) : (
+                          <button
+                            onClick={abrirCompraVaga}
+                            disabled={resumoGrupo.ocupados >= resumoGrupo.totalSlots}
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+                          >
+                            <Wallet size={14} />
+                            {resumoGrupo.inscricao > 0 ? `Comprar vaga • ${moeda(resumoGrupo.inscricao)}` : 'Inscrever grátis'}
+                          </button>
+                        )}
+
+                        <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-zinc-600">
+                          {Math.max(resumoGrupo.totalSlots - resumoGrupo.ocupados, 0)} vaga(s) livre(s) de {resumoGrupo.totalSlots}.
+                        </div>
+                      </div>
+
+                      <div className="overflow-hidden border border-zinc-200">
+                        {slotsComEquipe.length === 0 ? (
+                          <div className="px-3 py-6 text-center text-[12px] text-zinc-500">Nenhum slot encontrado.</div>
+                        ) : (
+                          slotsComEquipe.map((slot) => {
+                            const ocupado = !!slot.equipe
+
+                            return (
+                              <button
+                                key={slot.id}
+                                onClick={() => {
+                                  if (!podeGerenciar) return
+                                  setModoSlotModal('gerenciar')
+                                  setSlotModal(slot)
+                                  setEquipeSelecionadaId('')
+                                  setLineSelecionadaId('')
+                                }}
+                                className={`grid w-full grid-cols-[44px_36px_minmax(0,1fr)_90px] items-center gap-2 border-b border-zinc-200 px-2 py-2 text-left transition last:border-b-0 ${
+                                  ocupado
+                                    ? 'bg-sky-50 hover:bg-sky-100'
+                                    : 'bg-white hover:bg-zinc-50'
+                                }`}
+                              >
+                                <div className={`flex h-8 w-8 items-center justify-center border text-[13px] font-semibold ${
+                                  ocupado
+                                    ? 'border-sky-200 bg-sky-50 text-sky-700'
+                                    : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
+                                }`}>
+                                  {slot.slot_numero}
+                                </div>
+
+                                <div className="h-8 w-8 border border-zinc-200 bg-zinc-50">
+                                  {slot.equipe?.logo_url ? (
+                                    <img
+                                      src={slot.equipe.logo_url}
+                                      alt={slot.equipe.nome}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : null}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <div className="truncate text-[13px] font-medium text-[#142340]">
+                                    {slot.equipe?.nome || 'SLOT LIVRE'}
+                                  </div>
+                                </div>
+
+                                <div className={`text-right text-[10px] font-semibold uppercase tracking-[0.10em] ${ocupado ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                                  {ocupado ? 'Confirmada' : 'Livre'}
+                                </div>
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {abaDireita === 'tabela' && (
+                  <div className="overflow-hidden border border-zinc-200">
+                    <div className="grid grid-cols-[46px_minmax(0,1fr)_66px_72px_72px_78px] bg-zinc-50 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      <div>#</div>
+                      <div>Participante</div>
+                      <div className="text-center">Part.</div>
+                      <div className="text-center">Booyah</div>
+                      <div className="text-center">Abates</div>
+                      <div className="text-center">Pontos</div>
+                    </div>
+
+                    {linhasTabela.map((linha, index) => (
+                      <div
+                        key={linha.key}
+                        className="grid grid-cols-[46px_minmax(0,1fr)_66px_72px_72px_78px] items-center border-t border-zinc-200 bg-white px-2 py-2 text-[12px]"
                       >
-                        <div className={`flex h-8 w-8 items-center justify-center border text-[13px] font-semibold ${
-                          ocupado
-                            ? 'border-sky-200 bg-sky-50 text-sky-700'
-                            : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50'
-                        }`}>
-                          {slot.slot_numero}
-                        </div>
+                        <div className="font-semibold text-[#142340]">{index + 1}</div>
 
-                        <div className="h-8 w-8 border border-zinc-200 bg-zinc-50">
-                          {slot.equipe?.logo_url ? (
-                            <img
-                              src={slot.equipe.logo_url}
-                              alt={slot.equipe.nome}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : null}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="truncate text-[13px] font-medium text-[#142340]">
-                            {slot.equipe?.nome || 'SLOT LIVRE'}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="h-7 w-7 border border-zinc-200 bg-zinc-50">
+                            {linha.logo_url ? (
+                              <img
+                                src={linha.logo_url}
+                                alt={linha.nome}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
                           </div>
+                          <div className="truncate font-medium text-[#142340]">{linha.nome}</div>
                         </div>
-                      </button>
-                    )
-                  })
+
+                        <div className="text-center font-semibold text-zinc-600">{linha.partidas}</div>
+                        <div className="text-center font-semibold text-zinc-600">{linha.booyahs}</div>
+                        <div className="text-center font-semibold text-zinc-600">{linha.abates}</div>
+                        <div className="text-center font-semibold text-sky-600">{linha.pontos}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {abaDireita === 'mvp' && (
+                  <div className="overflow-hidden border border-zinc-200 bg-zinc-50 p-2">
+                    <MVPTable data={[]} />
+                  </div>
+                )}
+
+                {podeGerenciar && abaDireita === 'sumula' && (
+                  <div>
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      {quedasDoGrupo.length > 0 ? (
+                        quedasDoGrupo.map((queda) => (
+                          <button
+                            key={queda.id}
+                            onClick={() => setQuedaAtiva(queda.jogoId)}
+                            className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                              quedaAtiva === queda.jogoId
+                                ? 'bg-sky-500 text-white'
+                                : 'border border-zinc-200 bg-white text-zinc-600'
+                            }`}
+                          >
+                            {queda.titulo}
+                          </button>
+                        ))
+                      ) : (
+                        Array.from({ length: Number(grupoAtivo.qtd_quedas || 0) }).map((_, index) => (
+                          <span
+                            key={`queda-placeholder-${index}`}
+                            className="border border-zinc-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600"
+                          >
+                            Queda {index + 1}
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="mb-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
+                      {quedaAtiva && quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)
+                        ? `${quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.titulo} • ${
+                            quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.mapa
+                          }`
+                        : 'Sem queda selecionada'}
+                    </div>
+
+                    <div className="border border-zinc-200 bg-zinc-50 p-2">
+                      {jogosDoGrupo.length > 0 ? (
+                        <SumulaPartida
+                          key={`${grupoAtivo?.id || 'grupo'}-${quedaAtiva || jogosDoGrupo[0]?.id || 'jogo'}`}
+                          faseInicialId={grupoAtivo?.fase_id || undefined}
+                          jogoInicialId={quedaAtiva || jogosDoGrupo[0]?.id || undefined}
+                        />
+                      ) : (
+                        <div className="px-3 py-6 text-center text-[12px] text-zinc-500">
+                          Nenhum jogo cadastrado para este horário.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </section>
 
-            <section className="border border-zinc-200 bg-white p-3">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-2">
-                <div>
-                  <h2 className="text-[16px] font-semibold uppercase text-[#142340]">Painel do horário</h2>
-                  <p className="text-[12px] text-zinc-500">Tabela pública do horário. Súmula e MVP ficam disponíveis apenas para administradores.</p>
+            <aside className="flex min-h-[520px] flex-col border border-zinc-200 bg-white">
+              <div className="border-b border-zinc-200 px-3 py-3">
+                <div className="flex items-center gap-2 text-[#142340]">
+                  <MessageCircle size={16} className="text-sky-600" />
+                  <h2 className="text-[14px] font-semibold uppercase">Chat ao vivo</h2>
                 </div>
-
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setAbaDireita('tabela')}
-                    className={`px-3 py-2 text-[12px] font-medium ${
-                      abaDireita === 'tabela'
-                        ? 'bg-sky-500 text-white'
-                        : 'border border-zinc-200 bg-white text-zinc-600'
-                    }`}
-                  >
-                    Tabela
-                  </button>
-
-                  {podeGerenciar ? (
-                    <>
-                      <button
-                        onClick={() => setAbaDireita('sumula')}
-                        className={`px-3 py-2 text-[12px] font-medium ${
-                          abaDireita === 'sumula'
-                            ? 'bg-sky-500 text-white'
-                            : 'border border-zinc-200 bg-white text-zinc-600'
-                        }`}
-                      >
-                        Súmula
-                      </button>
-
-                      <button
-                        onClick={() => setAbaDireita('mvp')}
-                        className={`px-3 py-2 text-[12px] font-medium ${
-                          abaDireita === 'mvp'
-                            ? 'bg-sky-500 text-white'
-                            : 'border border-zinc-200 bg-white text-zinc-600'
-                        }`}
-                      >
-                        MVP
-                      </button>
-                    </>
-                  ) : null}
-                </div>
+                <p className="mt-1 text-[11px] text-zinc-500">Interação da comunidade durante o horário.</p>
               </div>
 
-              {abaDireita === 'tabela' && (
-                <div className="overflow-hidden border border-zinc-200">
-                  <div className="grid grid-cols-[46px_minmax(0,1fr)_66px_72px_72px_78px] bg-zinc-50 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                    <div>#</div>
-                    <div>Participante</div>
-                    <div className="text-center">Part.</div>
-                    <div className="text-center">Booyah</div>
-                    <div className="text-center">Abates</div>
-                    <div className="text-center">Pontos</div>
-                  </div>
-
-                  {linhasTabela.map((linha, index) => (
-                    <div
-                      key={linha.key}
-                      className="grid grid-cols-[46px_minmax(0,1fr)_66px_72px_72px_78px] items-center border-t border-zinc-200 bg-white px-2 py-2 text-[12px]"
-                    >
-                      <div className="font-semibold text-[#142340]">{index + 1}</div>
-
-                      <div className="flex min-w-0 items-center gap-2">
-                        <div className="h-7 w-7 border border-zinc-200 bg-zinc-50">
-                          {linha.logo_url ? (
-                            <img
-                              src={linha.logo_url}
-                              alt={linha.nome}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : null}
-                        </div>
-                        <div className="truncate font-medium text-[#142340]">{linha.nome}</div>
-                      </div>
-
-                      <div className="text-center font-semibold text-zinc-600">{linha.partidas}</div>
-                      <div className="text-center font-semibold text-zinc-600">{linha.booyahs}</div>
-                      <div className="text-center font-semibold text-zinc-600">{linha.abates}</div>
-                      <div className="text-center font-semibold text-sky-600">{linha.pontos}</div>
+              <div className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-3">
+                {chatMensagens.map((mensagem) => (
+                  <div key={mensagem.id} className="border border-zinc-200 bg-white px-3 py-2">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase text-[#142340]">{mensagem.autor}</span>
+                      <span className="text-[10px] text-zinc-400">{mensagem.horario}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {podeGerenciar && abaDireita === 'sumula' && (
-                <div>
-                  <div className="mb-3 flex flex-wrap gap-1">
-                    {quedasDoGrupo.length > 0 ? (
-                      quedasDoGrupo.map((queda) => (
-                        <button
-                          key={queda.id}
-                          onClick={() => setQuedaAtiva(queda.jogoId)}
-                          className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] ${
-                            quedaAtiva === queda.jogoId
-                              ? 'bg-sky-500 text-white'
-                              : 'border border-zinc-200 bg-white text-zinc-600'
-                          }`}
-                        >
-                          {queda.titulo}
-                        </button>
-                      ))
-                    ) : (
-                      Array.from({ length: Number(grupoAtivo.qtd_quedas || 0) }).map((_, index) => (
-                        <span
-                          key={`queda-placeholder-${index}`}
-                          className="border border-zinc-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-600"
-                        >
-                          Queda {index + 1}
-                        </span>
-                      ))
-                    )}
+                    <p className="text-[12px] leading-5 text-zinc-600">{mensagem.texto}</p>
                   </div>
+                ))}
+              </div>
 
-                  <div className="mb-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
-                    {quedaAtiva && quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)
-                      ? `${quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.titulo} • ${
-                          quedasDoGrupo.find((q) => q.jogoId === quedaAtiva)?.mapa
-                        }`
-                      : 'Sem queda selecionada'}
-                  </div>
-
-                  <div className="border border-zinc-200 bg-zinc-50 p-2">
-                    {jogosDoGrupo.length > 0 ? (
-                      <SumulaPartida
-                        key={`${grupoAtivo?.id || 'grupo'}-${quedaAtiva || jogosDoGrupo[0]?.id || 'jogo'}`}
-                        faseInicialId={grupoAtivo?.fase_id || undefined}
-                        jogoInicialId={quedaAtiva || jogosDoGrupo[0]?.id || undefined}
-                      />
-                    ) : (
-                      <div className="px-3 py-6 text-center text-[12px] text-zinc-500">
-                        Nenhum jogo cadastrado para este horário.
-                      </div>
-                    )}
-                  </div>
+              <div className="border-t border-zinc-200 p-3">
+                <div className="flex gap-2">
+                  <input
+                    value={mensagemChat}
+                    onChange={(e) => setMensagemChat(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') enviarMensagemChat()
+                    }}
+                    placeholder="Enviar mensagem..."
+                    className="h-10 min-w-0 flex-1 border border-zinc-200 bg-white px-3 text-[12px] text-[#142340] outline-none focus:border-sky-500"
+                  />
+                  <button
+                    onClick={enviarMensagemChat}
+                    className="flex h-10 w-10 items-center justify-center border border-sky-600 bg-sky-600 text-white hover:brightness-110"
+                    aria-label="Enviar mensagem"
+                  >
+                    <Send size={15} />
+                  </button>
                 </div>
-              )}
-
-              {podeGerenciar && abaDireita === 'mvp' && (
-                <div className="overflow-hidden border border-zinc-200 bg-zinc-50 p-2">
-                  <MVPTable data={[]} />
-                </div>
-              )}
-            </section>
+                <div className="mt-2 text-[10px] text-zinc-400">Chat visual em tempo real na página. Persistência no banco pode ser ligada depois.</div>
+              </div>
+            </aside>
           </div>
         </>
       ) : (
