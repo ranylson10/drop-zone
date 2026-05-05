@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -36,7 +36,7 @@ type ProfileMap = Record<string, { nome_exibicao: string | null }>
 
 const statusOptions = ['todos', 'pendente', 'aprovada', 'recusada', 'suspensa']
 
-export default function Conteudo() {
+function AdminProdutorasContent() {
  const router = useRouter()
  const searchParams = useSearchParams()
 
@@ -454,5 +454,13 @@ export default function Conteudo() {
  </div>
  </section>
  </div>
+ )
+}
+
+export default function Conteudo() {
+ return (
+ <Suspense fallback={<div className="flex h-screen items-center justify-center bg-[#f7f7f7] text-sm font-semibold text-zinc-500">Carregando...</div>}>
+ <AdminProdutorasContent />
+ </Suspense>
  )
 }
