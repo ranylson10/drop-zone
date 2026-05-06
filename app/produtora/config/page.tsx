@@ -87,6 +87,9 @@ export default function ConfigProdutoraPage() {
  capa_url: produtora.capa_url,
  slug: produtora.slug,
  dono_id: produtora.dono_id,
+ whatsapp_suporte: produtora.whatsapp_suporte,
+ instagram_url: produtora.instagram_url,
+ discord_url: produtora.discord_url,
  }}
  onSuccess={(data) => {
  localStorage.setItem('perfil_ativo_id', data.id)

@@ -19,6 +19,9 @@ import {
  Plus,
  Eye,
  Layers3,
+ Copy,
+ ExternalLink,
+ MessageCircle,
 } from 'lucide-react'
 
 type Produtora = {
@@ -30,7 +33,26 @@ type Produtora = {
  descricao: string | null
  dono_id: string
  created_at?: string | null
+ whatsapp_suporte?: string | null
+ instagram_url?: string | null
+ discord_url?: string | null
 }
+
+
+
+ function obterOrigem() {
+ if (typeof window === 'undefined') return ''
+ return window.location.origin
+ }
+
+ async function copiarLinkPublico(texto: string) {
+ try {
+ await navigator.clipboard.writeText(texto)
+ alert('Link copiado.')
+ } catch {
+ window.prompt('Copie o link:', texto)
+ }
+ }
 
 type Profile = {
  id: string
@@ -310,6 +332,15 @@ export default function PerfilProdutoraPage() {
 
  if (!produtora) return null
 
+
+ const origem = obterOrigem()
+ const slugPublico = produtora.slug || produtora.id
+ const linkPublicoProdutora = origem ? `${origem}/p/${slugPublico}` : `/p/${slugPublico}`
+ const whatsappProdutora = String(produtora.whatsapp_suporte || '').replace(/\D/g, '')
+ const linkWhatsAppProdutora = whatsappProdutora
+ ? `https://wa.me/${whatsappProdutora}?text=${encodeURIComponent(`Olá, vim pelo Drop Zone e quero informações sobre os campeonatos da produtora ${produtora.nome}.`)}`
+ : ''
+
  return (
  <>
  <div className="min-h-screen bg-[#f7f7f7] text-[#142340]">
@@ -442,6 +473,46 @@ export default function PerfilProdutoraPage() {
  </div>
  )
  })}
+ </section>
+
+
+ <section className="mt-3 border border-zinc-200 bg-white p-4">
+ <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+ <div>
+ <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+ <span className="inline-block h-2 w-2 bg-[#2563eb]" /> Links públicos
+ </div>
+ <p className="text-[12px] text-zinc-500">Use esse link na bio, WhatsApp, Discord ou descrição dos grupos.</p>
+ </div>
+ <div className="flex flex-wrap gap-2">
+ <button
+ type="button"
+ onClick={() => copiarLinkPublico(linkPublicoProdutora)}
+ className="inline-flex h-9 items-center gap-2 border border-zinc-300 bg-white px-3 text-[11px] font-medium uppercase tracking-wide text-[#142340] hover:bg-zinc-50"
+ >
+ <Copy size={14} className="text-[#2563eb]" /> Copiar link da produtora
+ </button>
+ <Link
+ href={linkPublicoProdutora}
+ target="_blank"
+ className="inline-flex h-9 items-center gap-2 bg-[#2563eb] px-3 text-[11px] font-medium uppercase tracking-wide text-white hover:bg-[#1d4ed8]"
+ >
+ <ExternalLink size={14} /> Abrir link público
+ </Link>
+ {linkWhatsAppProdutora ? (
+ <Link
+ href={linkWhatsAppProdutora}
+ target="_blank"
+ className="inline-flex h-9 items-center gap-2 bg-[#16a34a] px-3 text-[11px] font-medium uppercase tracking-wide text-white hover:bg-[#15803d]"
+ >
+ <MessageCircle size={14} /> WhatsApp
+ </Link>
+ ) : null}
+ </div>
+ </div>
+ <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] font-semibold text-[#142340]">
+ {linkPublicoProdutora}
+ </div>
  </section>
 
  <section className="mt-3 border border-zinc-200 bg-white">

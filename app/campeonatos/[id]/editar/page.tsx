@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { ChevronLeft, Loader2, Save, Settings } from 'lucide-react'
+import { ChevronLeft, Copy, ExternalLink, Loader2, MessageCircle, Save, Settings } from 'lucide-react'
 
 const STATUS_OPTIONS = [
   { value: 'rascunho', label: 'Rascunho' },
@@ -79,6 +80,7 @@ export default function EditarCampeonatoPage() {
     data_fim: '',
     data_abertura_inscricoes: '',
     data_encerramento_inscricoes: '',
+    whatsapp_suporte: '',
   })
 
   useEffect(() => {
@@ -108,6 +110,7 @@ export default function EditarCampeonatoPage() {
           data_fim: toDatetimeLocal(data?.data_fim),
           data_abertura_inscricoes: toDatetimeLocal(data?.data_abertura_inscricoes),
           data_encerramento_inscricoes: toDatetimeLocal(data?.data_encerramento_inscricoes),
+          whatsapp_suporte: data?.whatsapp_suporte || '',
         })
       } catch (error: any) {
         console.error('Erro ao carregar campeonato:', error)
@@ -140,6 +143,7 @@ export default function EditarCampeonatoPage() {
         data_fim: toIsoOrNull(form.data_fim),
         data_abertura_inscricoes: toIsoOrNull(form.data_abertura_inscricoes),
         data_encerramento_inscricoes: toIsoOrNull(form.data_encerramento_inscricoes),
+        whatsapp_suporte: String(form.whatsapp_suporte || '').trim() || null,
         updated_at: new Date().toISOString(),
       }
 
@@ -166,6 +170,24 @@ export default function EditarCampeonatoPage() {
       setErro(extrairMensagemErro(error))
     } finally {
       setSalvando(false)
+    }
+  }
+
+
+
+  const origem = typeof window !== 'undefined' ? window.location.origin : ''
+  const linkEscala = origem ? `${origem}/escala/${id}` : `/escala/${id}`
+  const linkCompleto = origem ? `${origem}/campeonatos/${id}` : `/campeonatos/${id}`
+  const mensagemWhatsApp = `Olá, vim pelo Drop Zone e quero comprar vaga no campeonato ${form.nome || ''}.`
+  const whatsappLimpo = String(form.whatsapp_suporte || '').replace(/\D/g, '')
+  const linkWhatsApp = whatsappLimpo ? `https://wa.me/${whatsappLimpo}?text=${encodeURIComponent(mensagemWhatsApp)}` : ''
+
+  async function copiar(texto: string) {
+    try {
+      await navigator.clipboard.writeText(texto)
+      alert('Link copiado.')
+    } catch {
+      window.prompt('Copie o link:', texto)
     }
   }
 
@@ -220,6 +242,32 @@ export default function EditarCampeonatoPage() {
             {erro}
           </div>
         )}
+
+
+        <section className="grid gap-3 border border-zinc-200 bg-white p-4 md:grid-cols-3">
+          <div className="md:col-span-3">
+            <div className="mb-1 flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-[#2563eb]">
+              <ExternalLink size={14} /> Links rápidos do campeonato
+            </div>
+            <p className="text-[12px] text-zinc-500">Use esses links na descrição dos grupos, WhatsApp, Discord ou Instagram.</p>
+          </div>
+
+          <button type="button" onClick={() => copiar(linkEscala)} className="flex h-10 items-center justify-center gap-2 border border-zinc-300 bg-white px-3 text-[11px] font-medium uppercase text-[#142340] hover:bg-zinc-50">
+            <Copy size={14} /> Copiar link de escalação
+          </button>
+
+          <button type="button" onClick={() => copiar(linkCompleto)} className="flex h-10 items-center justify-center gap-2 border border-zinc-300 bg-white px-3 text-[11px] font-medium uppercase text-[#142340] hover:bg-zinc-50">
+            <Copy size={14} /> Copiar link completo
+          </button>
+
+          {linkWhatsApp ? (
+            <Link href={linkWhatsApp} target="_blank" className="flex h-10 items-center justify-center gap-2 bg-[#16a34a] px-3 text-[11px] font-medium uppercase text-white hover:bg-[#15803d]">
+              <MessageCircle size={14} /> Testar WhatsApp
+            </Link>
+          ) : (
+            <div className="flex h-10 items-center justify-center border border-dashed border-zinc-300 px-3 text-[11px] font-medium uppercase text-zinc-400">Informe WhatsApp abaixo</div>
+          )}
+        </section>
 
         <section className="grid gap-3 border border-zinc-200 bg-white p-4 md:grid-cols-2">
           <label className="md:col-span-2">
@@ -312,6 +360,17 @@ export default function EditarCampeonatoPage() {
               type="datetime-local"
               value={form.data_encerramento_inscricoes}
               onChange={(event) => atualizar('data_encerramento_inscricoes', event.target.value)}
+              className="h-9 w-full border border-zinc-300 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+            />
+          </label>
+
+
+          <label className="md:col-span-2">
+            <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">WhatsApp do responsável para compra de vaga</span>
+            <input
+              value={form.whatsapp_suporte}
+              onChange={(event) => atualizar('whatsapp_suporte', event.target.value)}
+              placeholder="Ex: 5591999999999"
               className="h-9 w-full border border-zinc-300 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-[#2563eb]"
             />
           </label>

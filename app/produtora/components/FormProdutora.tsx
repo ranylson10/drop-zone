@@ -11,6 +11,8 @@ import {
  X,
  Building2,
  FileText,
+ MessageCircle,
+ Link2,
 } from 'lucide-react'
 
 type FormProdutoraData = {
@@ -21,6 +23,9 @@ type FormProdutoraData = {
  capa_url: string
  slug?: string
  dono_id?: string
+ whatsapp_suporte?: string
+ instagram_url?: string
+ discord_url?: string
 }
 
 type FormProdutoraProps = {
@@ -64,6 +69,9 @@ export default function FormProdutora({
  capa_url: initialData?.capa_url || '',
  slug: initialData?.slug || '',
  dono_id: initialData?.dono_id || '',
+ whatsapp_suporte: initialData?.whatsapp_suporte || '',
+ instagram_url: initialData?.instagram_url || '',
+ discord_url: initialData?.discord_url || '',
  })
 
  const [previewLogo, setPreviewLogo] = useState(initialData?.logo_url || '')
@@ -96,6 +104,9 @@ export default function FormProdutora({
  capa_url: initialData?.capa_url || '',
  slug: initialData?.slug || '',
  dono_id: initialData?.dono_id || '',
+ whatsapp_suporte: initialData?.whatsapp_suporte || '',
+ instagram_url: initialData?.instagram_url || '',
+ discord_url: initialData?.discord_url || '',
  })
 
  setPreviewLogo(initialData?.logo_url || '')
@@ -108,6 +119,9 @@ export default function FormProdutora({
  initialData?.capa_url,
  initialData?.slug,
  initialData?.dono_id,
+ initialData?.whatsapp_suporte,
+ initialData?.instagram_url,
+ initialData?.discord_url,
  ])
 
  async function handleUpload(
@@ -190,6 +204,9 @@ export default function FormProdutora({
  logo_url: form.logo_url || null,
  capa_url: form.capa_url || null,
  slug: gerarSlug(nomeLimpo),
+ whatsapp_suporte: form.whatsapp_suporte?.trim() || null,
+ instagram_url: form.instagram_url?.trim() || null,
+ discord_url: form.discord_url?.trim() || null,
  }
 
  if (mode === 'create') {
@@ -374,6 +391,46 @@ export default function FormProdutora({
  />
  </div>
  </div>
+ </div>
+
+
+
+ <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+ <label className="space-y-2">
+ <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+ <MessageCircle size={12} /> WhatsApp público
+ </span>
+ <input
+ value={form.whatsapp_suporte || ''}
+ onChange={(e) => setForm((prev) => ({ ...prev, whatsapp_suporte: e.target.value }))}
+ placeholder="Ex: 5591999999999"
+ className="h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-[#142340] outline-none transition placeholder:text-zinc-400 focus:border-[#2563eb]"
+ />
+ </label>
+
+ <label className="space-y-2">
+ <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+ <Link2 size={12} /> Instagram
+ </span>
+ <input
+ value={form.instagram_url || ''}
+ onChange={(e) => setForm((prev) => ({ ...prev, instagram_url: e.target.value }))}
+ placeholder="https://instagram.com/sua_produtora"
+ className="h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-[#142340] outline-none transition placeholder:text-zinc-400 focus:border-[#2563eb]"
+ />
+ </label>
+
+ <label className="space-y-2">
+ <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+ <Link2 size={12} /> Discord ou grupo
+ </span>
+ <input
+ value={form.discord_url || ''}
+ onChange={(e) => setForm((prev) => ({ ...prev, discord_url: e.target.value }))}
+ placeholder="https://discord.gg/..."
+ className="h-11 w-full border border-zinc-200 bg-white px-3 text-sm text-[#142340] outline-none transition placeholder:text-zinc-400 focus:border-[#2563eb]"
+ />
+ </label>
  </div>
 
  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
