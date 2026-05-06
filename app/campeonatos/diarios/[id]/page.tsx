@@ -796,7 +796,10 @@ export default function CampeonatoDiarioDetalhePage() {
       }
     }
 
-    const equipes = resultadosPartidasEquipes
+    const mvpRowsDaQueda = resultadosMvp
+      .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
+
+    const equipesPartida = resultadosPartidasEquipes
       .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
       .map((row) => {
         const info = resolverEquipe(row)
@@ -809,6 +812,41 @@ export default function CampeonatoDiarioDetalhePage() {
           pontos: Number(row.pontos_total || 0),
         }
       })
+
+    const equipesLegado = equipesPartida.length > 0
+      ? []
+      : resultadosJogos
+          .filter((row) => {
+            if (String(row.jogo_id || '') !== jogoAtual) return false
+            // resultados_jogos é legado e não tem partida_id. Só usa como fallback quando
+            // existe MVP salvo para a queda selecionada, evitando repetir dados em quedas vazias.
+            if (partidaAtual && mvpRowsDaQueda.length === 0) return false
+            return true
+          })
+          .map((row) => {
+            const fakeRow = {
+              id: row.id,
+              campeonato_id: row.campeonato_id,
+              jogo_id: row.jogo_id,
+              partida_id: partidaAtual || '',
+              equipe_id: row.equipe_id,
+              grupo_id: row.grupo_id,
+              colocacao: Number(row.posicao || 0),
+              abates: Number(row.abates || 0),
+              pontos_total: Number(row.total_pontos || 0),
+            } as ResultadoPartidaEquipe
+            const info = resolverEquipe(fakeRow)
+            return {
+              key: String(row.id),
+              nome: info.nome,
+              logo_url: info.logo_url,
+              posicao: Number(row.posicao || 0),
+              abates: Number(row.abates || 0),
+              pontos: Number(row.total_pontos || 0),
+            }
+          })
+
+    const equipes = [...equipesPartida, ...equipesLegado]
       .sort((a, b) => {
         if (Number(a.posicao || 0) && Number(b.posicao || 0)) return Number(a.posicao || 0) - Number(b.posicao || 0)
         if (b.pontos !== a.pontos) return b.pontos - a.pontos
@@ -819,14 +857,12 @@ export default function CampeonatoDiarioDetalhePage() {
     const maxAbates = Math.max(...equipes.map((linha) => Number(linha.abates || 0)), 1)
 
     const mvpPorJogador = new Map<string, ResultadoMvp>()
-    resultadosMvp
-      .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
-      .forEach((row) => {
-        const key = String(row.jogador_campeonato_id || row.perfil_jogo_id || row.uid_jogo_snapshot || '').trim()
-        if (key) mvpPorJogador.set(key, row)
-      })
+    mvpRowsDaQueda.forEach((row) => {
+      const key = String(row.jogador_campeonato_id || row.perfil_jogo_id || row.uid_jogo_snapshot || '').trim()
+      if (key) mvpPorJogador.set(key, row)
+    })
 
-    const jogadores = resultadosPartidasJogadores
+    const jogadoresPartida = resultadosPartidasJogadores
       .filter((row) => partidaAtual ? String(row.partida_id || '') === partidaAtual : String(row.jogo_id || '') === jogoAtual)
       .map((row, index) => {
         const keyBase = String(row.jogador_campeonato_id || row.perfil_jogo_id || '').trim()
@@ -837,6 +873,19 @@ export default function CampeonatoDiarioDetalhePage() {
           abates: Number(row.abates || 0),
         }
       })
+
+    const jogadoresLegado = jogadoresPartida.length > 0
+      ? []
+      : mvpRowsDaQueda.map((row, index) => {
+          const keyBase = String(row.jogador_campeonato_id || row.perfil_jogo_id || row.uid_jogo_snapshot || '').trim()
+          return {
+            key: String(row.id || keyBase || index),
+            nick: String(row.nick_snapshot || (keyBase ? `Jogador ${keyBase.slice(0, 6)}` : `Jogador ${index + 1}`)).trim(),
+            abates: Number(row.abates || 0),
+          }
+        })
+
+    const jogadores = [...jogadoresPartida, ...jogadoresLegado]
       .sort((a, b) => b.abates - a.abates)
       .slice(0, 12)
 
