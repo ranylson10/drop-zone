@@ -73,8 +73,8 @@ export default function LinkPublicoProdutoraPage() {
   const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
 
   useEffect(() => {
-    document.documentElement.style.colorScheme = 'light dark'
-    document.body.style.colorScheme = 'light dark'
+    document.documentElement.style.colorScheme = 'light'
+    document.body.style.colorScheme = 'light'
     document.documentElement.classList.remove('dark')
     document.body.classList.remove('dark')
     document.body.style.background = '#f5f7fb'
@@ -86,7 +86,7 @@ export default function LinkPublicoProdutoraPage() {
       meta.name = 'color-scheme'
       document.head.appendChild(meta)
     }
-    meta.content = 'light dark'
+    meta.content = 'light'
   }, [])
 
   useEffect(() => {

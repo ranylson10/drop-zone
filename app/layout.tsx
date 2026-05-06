@@ -1,274 +1,289 @@
 'use client'
 
+import './globals.css'
 import { useEffect, useMemo, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { CalendarDays, ExternalLink, ShieldCheck, Trophy, Users } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { usePathname, useRouter } from 'next/navigation'
+import {
+  LogOut,
+  LogIn,
+  UserPlus,
+  User,
+  Building2,
+  Gamepad2,
+  ChevronDown,
+  Shield,
+  Check,
+  Menu,
+  X,
+  Wallet,
+  Flame,
+  BarChart3,
+} from 'lucide-react'
+import { PerfilProvider, usePerfil } from './contexts/PerfilContext'
+import { DropZoneLogo } from './components/DropZoneLogo'
+import { supabase } from '../lib/supabase'
+import ModeradorMatchToast from '@/app/components/ModeradorMatchToast'
 
-type Produtora = {
-  id: string
-  nome?: string | null
-  slug?: string | null
-  descricao?: string | null
-  logo_url?: string | null
-  banner_url?: string | null
-  whatsapp?: string | null
-  whatsapp_suporte?: string | null
-  contato_whatsapp?: string | null
-  instagram_url?: string | null
+type NavChild = {
+  href: string
+  label: string
 }
 
-type Campeonato = {
-  id: string
-  nome: string
-  modelo_competicao?: string | null
-  tipo?: string | null
-  status?: string | null
-  logo_url?: string | null
-  banner_url?: string | null
-  data_inicio?: string | null
-  horario_inicio?: string | null
-  vagas?: number | null
-  quantidade_equipes?: number | null
-  valor_vaga?: number | null
-  valor_premiacao?: number | null
-  whatsapp_suporte?: string | null
-  created_at?: string | null
+type NavItem = {
+  href: string
+  label: string
+  children?: NavChild[]
 }
 
-const tipoVisual: Record<string, { label: string; cor: string; bg: string; border: string }> = {
-  diario: { label: 'DIÁRIO', cor: '#009FE3', bg: '#EAF7FF', border: '#009FE3' },
-  xtreino: { label: 'XTREINO', cor: '#00B96B', bg: '#E9FFF4', border: '#00B96B' },
-  copa: { label: 'COPA', cor: '#7C3AED', bg: '#F3EEFF', border: '#7C3AED' },
-  liga: { label: 'LIGA', cor: '#F59E0B', bg: '#FFF7E6', border: '#F59E0B' },
-  confronto: { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
-  '4x4': { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
+type NavLinkItemProps = {
+  item: NavChild
+  ativo: boolean
+  onClick?: () => void
 }
 
-function moeda(valor?: number | null) {
-  const n = Number(valor || 0)
-  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function dataCurta(data?: string | null) {
-  if (!data) return 'A definir'
-  const d = new Date(data)
-  if (Number.isNaN(d.getTime())) return 'A definir'
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-}
-
-function getTipo(camp: Campeonato) {
-  const chave = String(camp.modelo_competicao || camp.tipo || 'diario').toLowerCase()
-  return tipoVisual[chave] || { label: chave.toUpperCase(), cor: '#2563EB', bg: '#EFF6FF', border: '#2563EB' }
-}
-
-export default function LinkPublicoProdutoraPage() {
-  const params = useParams<{ slug: string }>()
-  const slug = decodeURIComponent(String(params?.slug || ''))
-
-  const [loading, setLoading] = useState(true)
-  const [produtora, setProdutora] = useState<Produtora | null>(null)
-  const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
-
-  useEffect(() => {
-    document.documentElement.style.colorScheme = 'light'
-    document.body.style.colorScheme = 'light'
-    document.documentElement.classList.remove('dark')
-    document.body.classList.remove('dark')
-    document.body.style.background = '#f5f7fb'
-    document.body.style.color = '#0f172a'
-
-    let meta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
-    if (!meta) {
-      meta = document.createElement('meta')
-      meta.name = 'color-scheme'
-      document.head.appendChild(meta)
-    }
-    meta.content = 'light'
-  }, [])
-
-  useEffect(() => {
-    async function carregar() {
-      setLoading(true)
-      try {
-        let query = supabase.from('produtoras').select('*')
-
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug)
-        if (isUuid) query = query.eq('id', slug)
-        else query = query.or(`slug.eq.${slug},nome.ilike.${slug.replace(/-/g, ' ')}`)
-
-        const { data: prod } = await query.limit(1).maybeSingle()
-        if (!prod) {
-          setProdutora(null)
-          setCampeonatos([])
-          return
-        }
-
-        setProdutora(prod as Produtora)
-
-        const { data: camps } = await supabase
-          .from('campeonatos')
-          .select('id,nome,modelo_competicao,tipo,status,logo_url,banner_url,data_inicio,horario_inicio,vagas,quantidade_equipes,valor_vaga,valor_premiacao,whatsapp_suporte,created_at')
-          .eq('produtora_id', prod.id)
-          .in('status', ['rascunho', 'inscricoes', 'em_andamento'])
-          .order('created_at', { ascending: false })
-
-        setCampeonatos((camps || []) as Campeonato[])
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (slug) carregar()
-  }, [slug])
-
-  const logo = produtora?.logo_url || '/logo.png'
-  const banner = produtora?.banner_url || null
-
-  const pageStyle = useMemo(
-    () => ({
-      background: '#f5f7fb',
-      color: '#0f172a',
-      colorScheme: 'light' as const,
-      minHeight: '100vh',
-    }),
-    [],
-  )
-
-  if (loading) {
-    return (
-      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
-        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
-          Carregando link oficial...
-        </div>
-      </main>
-    )
-  }
-
-  if (!produtora) {
-    return (
-      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
-        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
-          Produtora não encontrada.
-        </div>
-      </main>
-    )
-  }
-
+function NavLinkItem({ item, ativo, onClick }: NavLinkItemProps) {
   return (
-    <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 pb-8 pt-3 sm:px-4">
-      <section className="lealt-public-box mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
-        <div className="relative h-[116px] border-b border-[#d8e1ee] bg-[#eaf1f8]">
-          {banner ? (
-            <Image src={banner} alt="Banner da produtora" fill className="object-cover" unoptimized />
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className={[
+        'block border-t border-zinc-100 px-3 py-2 text-[12px] font-medium transition',
+        ativo
+          ? 'bg-[#eaf6ff] text-[#2563eb]'
+          : 'text-[#142340] hover:bg-zinc-50 hover:text-[#2563eb]',
+      ].join(' ')}
+    >
+      {item.label}
+    </Link>
+  )
+}
+
+type ItemPerfilProps = {
+  ativo?: boolean
+  titulo: string
+  subtitulo: string
+  corBorda: string
+  icone: React.ReactNode
+  avatar?: string | null
+  onClick: () => void
+}
+
+function PerfilItem({
+  ativo = false,
+  titulo,
+  subtitulo,
+  corBorda,
+  icone,
+  avatar,
+  onClick,
+}: ItemPerfilProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        'w-full flex items-center gap-3  border p-3 text-left transition-all duration-200',
+        ativo
+          ? 'border-blue-200 bg-blue-50 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]'
+          : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-200',
+      ].join(' ')}
+    >
+      <div
+        className="h-11 w-11 shrink-0 overflow-hidden  border bg-black/30 p-0.5"
+        style={{ borderColor: ativo ? corBorda : 'rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-slate-100">
+          {avatar ? (
+            <img src={avatar} alt={titulo} className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full bg-[linear-gradient(120deg,#eaf1f8,#ffffff,#e8f6ff)]" />
+            icone
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/30 to-transparent" />
-          <div className="absolute bottom-[-28px] left-4 flex items-end gap-3">
-            <div className="h-[72px] w-[72px] border-4 border-white bg-white shadow-sm">
-              <Image src={logo} alt={produtora.nome || 'Produtora'} width={72} height={72} className="h-full w-full object-cover" unoptimized />
-            </div>
-            <div className="pb-7">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#009FE3]">Link oficial Drop Zone</p>
-              <h1 className="text-2xl font-black uppercase leading-none text-[#0f172a]">{produtora.nome}</h1>
-            </div>
-          </div>
         </div>
+      </div>
 
-        <div className="px-4 pb-4 pt-10">
-          {produtora.descricao ? <p className="text-sm font-semibold leading-5 text-[#64748b]">{produtora.descricao}</p> : null}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-slate-950">{titulo}</p>
+        <p className="truncate text-[11px] text-slate-500">{subtitulo}</p>
+      </div>
+
+      {ativo && (
+        <div className="shrink-0">
+          <Check size={16} style={{ color: corBorda }} />
         </div>
-      </section>
-
-      <section className="mx-auto mt-4 max-w-[760px] border-t border-[#d8e1ee] pt-4">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-[26px] font-black uppercase leading-[0.95] tracking-[-0.04em] text-[#0f172a]">
-              Campeonatos com vagas
-              <br />e inscrições
-            </h2>
-            <p className="mt-2 text-sm font-semibold leading-5 text-[#64748b]">Escolha o campeonato para se inscrever, escalar sua equipe ou ver detalhes.</p>
-          </div>
-          <div className="border border-[#cbd5e1] bg-white px-3 py-2 text-sm font-black text-[#0f172a]">{campeonatos.length}</div>
-        </div>
-
-        <div className="space-y-3">
-          {campeonatos.map((camp) => {
-            const tipo = getTipo(camp)
-            const vagas = camp.vagas || camp.quantidade_equipes || 0
-            return (
-              <article key={camp.id} className="lealt-public-card overflow-hidden border border-[#d8e1ee] bg-white shadow-sm" style={{ borderLeft: `5px solid ${tipo.cor}` }}>
-                <div className="lealt-public-card-head flex items-center gap-3 border-b border-[#d8e1ee] bg-white p-3">
-                  <div className="h-[58px] w-[58px] shrink-0 border border-[#d8e1ee] bg-[#f8fafc]">
-                    {camp.logo_url ? (
-                      <Image src={camp.logo_url} alt={camp.nome} width={58} height={58} className="h-full w-full object-cover" unoptimized />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[10px] font-black text-[#94a3b8]">DZ</div>
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="border px-2 py-1 text-[10px] font-black uppercase leading-none" style={{ borderColor: tipo.cor, color: tipo.cor, background: tipo.bg }}>
-                        {tipo.label}
-                      </span>
-                      <span className="text-[11px] font-black uppercase text-[#94a3b8]">{camp.status || 'rascunho'}</span>
-                    </div>
-                    <h3 className="mt-1 truncate text-xl font-black uppercase leading-none tracking-[-0.03em] text-[#0f172a]">{camp.nome}</h3>
-                  </div>
-
-                  <div className="shrink-0 border border-[#cbd5e1] bg-[#f8fafc] px-2 py-2 text-center text-sm font-black uppercase leading-none text-[#0f172a]">
-                    {vagas} vagas
-                  </div>
-                </div>
-
-                <div className="lealt-public-card-info grid grid-cols-3 border-b border-[#d8e1ee] bg-white">
-                  <InfoItem icon={<CalendarDays size={15} />} label="Data" value={dataCurta(camp.data_inicio)} />
-                  <InfoItem icon={<Trophy size={15} />} label="Prêmio" value={moeda(camp.valor_premiacao)} />
-                  <InfoItem icon={<Users size={15} />} label="Inscrição" value={moeda(camp.valor_vaga)} />
-                </div>
-
-                <div className="lealt-public-card-actions grid grid-cols-2 gap-2 bg-white p-3">
-                  <Link
-                    href={`/escala/${camp.id}`}
-                    className="flex h-11 items-center justify-center gap-2 text-center text-[13px] font-black uppercase tracking-[-0.01em] text-white"
-                    style={{ background: tipo.cor }}
-                  >
-                    <ShieldCheck size={17} />
-                    Inscreva-se
-                  </Link>
-                  <Link
-                    href={`/campeonatos/${camp.id}`}
-                    className="flex h-11 items-center justify-center gap-2 border border-[#cbd5e1] bg-white text-center text-[13px] font-black uppercase tracking-[-0.01em] text-[#0f172a]"
-                  >
-                    <ExternalLink size={17} />
-                    Saiba mais
-                  </Link>
-                </div>
-              </article>
-            )
-          })}
-
-          {campeonatos.length === 0 ? (
-            <div className="border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#64748b]">Nenhum campeonato disponível no momento.</div>
-          ) : null}
-        </div>
-      </section>
-    </main>
+      )}
+    </button>
   )
 }
 
-function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function ApostadosHeaderCard({ compacto = false }: { compacto?: boolean }) {
+  const pathname = usePathname()
+  const ativo = pathname === '/apostados' || pathname?.startsWith('/apostados/')
+
+  const links = [
+    { href: '/apostados', label: 'Filas automáticas' },
+    { href: '/confrontos/ranking', label: 'Ranking', icon: BarChart3 },
+    { href: '/moderadores/online', label: 'Moderadores online' },
+  ]
+
+  if (compacto) {
+    return (
+      <Link
+        href="/apostados"
+        className={[
+          'flex min-h-11 items-center justify-between border border-orange-200 bg-orange-50 px-3 py-2 text-[13px] font-semibold uppercase tracking-wide text-orange-700',
+          ativo ? 'ring-1 ring-orange-300' : '',
+        ].join(' ')}
+      >
+        <span className="flex items-center gap-2">
+          <Flame size={16} />
+          Apostados
+        </span>
+        <span className="border border-orange-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-orange-700">
+          Destaque
+        </span>
+      </Link>
+    )
+  }
+
   return (
-    <div className="lealt-public-info-item min-w-0 border-r border-[#d8e1ee] px-2 py-2 last:border-r-0 sm:px-3">
-      <div className="lealt-public-info-label flex items-center gap-1 text-[10px] font-black uppercase leading-none text-[#64748b]">
-        <span className="text-[#2563eb]">{icon}</span>
-        {label}
+    <div className="group relative hidden lg:block">
+      <Link
+        href="/apostados"
+        className={[
+          'relative inline-flex h-10 items-center gap-2 border px-3 text-[12px] font-semibold uppercase tracking-wide transition',
+          ativo
+            ? 'border-orange-300 bg-orange-100 text-orange-800'
+            : 'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-300 hover:bg-orange-100',
+        ].join(' ')}
+      >
+        <span className="flex h-6 w-6 items-center justify-center border border-orange-300 bg-white text-orange-600">
+          <Flame size={14} />
+        </span>
+        <span>Apostados</span>
+        <span className="border border-orange-400 bg-orange-500 px-1.5 py-0.5 text-[9px] leading-none text-white">
+          LIVE
+        </span>
+        <ChevronDown size={13} className="transition group-hover:rotate-180" />
+        <span className="absolute -right-1 -top-1 h-2 w-2 bg-orange-500" />
+      </Link>
+
+      <div className="invisible absolute right-0 top-full z-[230] w-60 border border-orange-200 bg-white opacity-0 transition group-hover:visible group-hover:opacity-100">
+        <div className="border-b border-orange-100 bg-orange-50 px-3 py-2">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
+            <Flame size={13} />
+            Área de apostados
+          </div>
+          <p className="mt-1 text-[11px] normal-case tracking-normal text-orange-700/80">
+            Filas fixas, ranking e moderadores online.
+          </p>
+        </div>
+
+        {links.map((link) => {
+          const Icon = link.icon
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center justify-between border-t border-zinc-100 px-3 py-2 text-[12px] font-medium text-[#142340] transition hover:bg-orange-50 hover:text-orange-700"
+            >
+              <span className="flex items-center gap-2">
+                {Icon ? <Icon size={13} className="text-orange-600" /> : <span className="h-1.5 w-1.5 bg-orange-500" />}
+                {link.label}
+              </span>
+            </Link>
+          )
+        })}
       </div>
-      <div className="lealt-public-info-value mt-1 truncate text-[13px] font-black leading-none text-[#0f172a] sm:text-sm">{value}</div>
     </div>
+  )
+}
+
+function NavbarContent() {
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const {
+    user,
+    perfilAtivo,
+    tipoPerfil,
+    perfilUsuario,
+    perfisJogo,
+    equipes,
+    produtoras,
+    setPerfilAtivoByTipo,
+    loading,
+  } = usePerfil()
+
+  const [activeDropdown, setActiveDropdown] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [saldoCarteira, setSaldoCarteira] = useState(0)
+  const [isSiteAdmin, setIsSiteAdmin] = useState(false)
+  const [isModerador, setIsModerador] = useState(false)
+
+  const isActive = (path: string) =>
+    pathname === path || pathname?.startsWith(`${path}/`)
+
+  const usuarioLogado = Boolean(user)
+
+  const getTemaColor = () => '#2563eb'
+
+  const corTema = getTemaColor()
+
+  const nomePerfilAtivo = useMemo(() => {
+    if (!perfilAtivo) return 'Usuário'
+    return (
+      perfilAtivo.nome ||
+      perfilAtivo.nome_exibicao ||
+      perfilAtivo.username ||
+      perfilAtivo.nick ||
+      'Usuário'
+    )
+  }, [perfilAtivo])
+
+  const avatarPerfilAtivo =
+    perfilAtivo?.avatar_url ||
+    perfilAtivo?.foto_url ||
+    perfilAtivo?.logo_url ||
+    perfilAtivo?.foto_capa ||
+    null
+
+
+  function formatarDinheiro(valor: number) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  }
+
+  return (
+    <html
+      lang="pt-br"
+      suppressHydrationWarning
+      className="light"
+      style={{ colorScheme: 'light', background: '#f5f7fb' }}
+    >
+      <head>
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+        <meta name="theme-color" content="#f5f7fb" />
+        <meta name="msapplication-TileColor" content="#f5f7fb" />
+      </head>
+      <body
+        className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950"
+        style={{ colorScheme: 'light dark' as any, background: '#f5f7fb' }}
+      >
+        <PerfilProvider>
+          <div className="relative min-h-screen">
+            <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
+            <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.10),transparent_55%)]" />
+
+            <NavbarContent />
+
+            <AuthenticatedOnlyToast />
+
+            <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
+              {children}
+            </main>
+          </div>
+        </PerfilProvider>
+      </body>
+    </html>
   )
 }
