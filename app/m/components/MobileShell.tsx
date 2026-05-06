@@ -89,7 +89,11 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 text-slate-950">
+    <div
+      data-lealt-mobile="light"
+      className="min-h-screen bg-[#f8fafc] pb-20 text-[#0f172a]"
+      style={{ colorScheme: 'light' }}
+    >
       <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:22px_22px]" />
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
