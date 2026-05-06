@@ -139,7 +139,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (loading) {
     return (
-      <main style={pageStyle} className="lealt-force-light px-3 py-6">
+      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
         <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
           Carregando link oficial...
         </div>
@@ -149,7 +149,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (!produtora) {
     return (
-      <main style={pageStyle} className="lealt-force-light px-3 py-6">
+      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
         <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
           Produtora não encontrada.
         </div>
@@ -158,8 +158,8 @@ export default function LinkPublicoProdutoraPage() {
   }
 
   return (
-    <main style={pageStyle} className="lealt-force-light px-3 pb-8 pt-3 sm:px-4">
-      <section className="mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
+    <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 pb-8 pt-3 sm:px-4">
+      <section className="lealt-public-box mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
         <div className="relative h-[116px] border-b border-[#d8e1ee] bg-[#eaf1f8]">
           {banner ? (
             <Image src={banner} alt="Banner da produtora" fill className="object-cover" unoptimized />
@@ -200,8 +200,8 @@ export default function LinkPublicoProdutoraPage() {
             const tipo = getTipo(camp)
             const vagas = camp.vagas || camp.quantidade_equipes || 0
             return (
-              <article key={camp.id} className="overflow-hidden border border-[#d8e1ee] bg-white shadow-sm" style={{ borderLeft: `5px solid ${tipo.cor}` }}>
-                <div className="flex items-center gap-3 border-b border-[#d8e1ee] bg-white p-3">
+              <article key={camp.id} className="lealt-public-card overflow-hidden border border-[#d8e1ee] bg-white shadow-sm" style={{ borderLeft: `5px solid ${tipo.cor}` }}>
+                <div className="lealt-public-card-head flex items-center gap-3 border-b border-[#d8e1ee] bg-white p-3">
                   <div className="h-[58px] w-[58px] shrink-0 border border-[#d8e1ee] bg-[#f8fafc]">
                     {camp.logo_url ? (
                       <Image src={camp.logo_url} alt={camp.nome} width={58} height={58} className="h-full w-full object-cover" unoptimized />
@@ -225,7 +225,7 @@ export default function LinkPublicoProdutoraPage() {
                   </div>
                 </div>
 
-                <div className="lealt-public-card-info grid grid-cols-3 border-b border-[#d8e1ee] bg-[#fbfdff]">
+                <div className="lealt-public-card-info grid grid-cols-3 border-b border-[#d8e1ee] bg-white">
                   <InfoItem icon={<CalendarDays size={15} />} label="Data" value={dataCurta(camp.data_inicio)} />
                   <InfoItem icon={<Trophy size={15} />} label="Prêmio" value={moeda(camp.valor_premiacao)} />
                   <InfoItem icon={<Users size={15} />} label="Inscrição" value={moeda(camp.valor_vaga)} />
@@ -263,12 +263,12 @@ export default function LinkPublicoProdutoraPage() {
 
 function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="min-w-0 border-r border-[#d8e1ee] px-2 py-2 last:border-r-0 sm:px-3">
-      <div className="flex items-center gap-1 text-[10px] font-black uppercase leading-none text-[#64748b]">
+    <div className="lealt-public-info-item min-w-0 border-r border-[#d8e1ee] px-2 py-2 last:border-r-0 sm:px-3">
+      <div className="lealt-public-info-label flex items-center gap-1 text-[10px] font-black uppercase leading-none text-[#64748b]">
         <span className="text-[#2563eb]">{icon}</span>
         {label}
       </div>
-      <div className="mt-1 truncate text-[13px] font-black leading-none text-[#0f172a] sm:text-sm">{value}</div>
+      <div className="lealt-public-info-value mt-1 truncate text-[13px] font-black leading-none text-[#0f172a] sm:text-sm">{value}</div>
     </div>
   )
 }

@@ -942,3 +942,91 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* =========================================================
+   FIX REAL /p/[slug] — vence regras mobile globais e dark mode
+   ========================================================= */
+html,
+body,
+#__next {
+  color-scheme: light only !important;
+  background: #f5f7fb !important;
+}
+
+.lealt-public-page,
+.lealt-public-page * {
+  color-scheme: light only !important;
+  forced-color-adjust: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lealt-public-page {
+  background: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+.lealt-public-box,
+.lealt-public-card,
+.lealt-public-card-head,
+.lealt-public-card-actions,
+.lealt-public-card-info,
+.lealt-public-info-item {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #d8e1ee !important;
+}
+
+.lealt-public-muted {
+  color: #64748b !important;
+}
+
+main.lealt-public-page .lealt-public-card-info,
+main.lealt-public-page .lealt-public-card-info[class*="grid-cols-3"],
+.lealt-public-page .lealt-public-card-info,
+.lealt-public-page .lealt-public-card-info[class*="grid-cols-3"] {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+main.lealt-public-page .lealt-public-card-actions,
+main.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"],
+.lealt-public-page .lealt-public-card-actions,
+.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+@media (max-width: 640px) {
+  main.lealt-public-page {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  main.lealt-public-page .lealt-public-card-info,
+  main.lealt-public-page .lealt-public-card-info[class*="grid-cols-3"] {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  main.lealt-public-page .lealt-public-card-actions,
+  main.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  main.lealt-public-page .lealt-public-info-item {
+    padding: 8px 6px !important;
+  }
+
+  main.lealt-public-page .lealt-public-info-label {
+    font-size: 9px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  main.lealt-public-page .lealt-public-info-value {
+    font-size: 12px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+}
