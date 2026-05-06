@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getCampeonatoHref } from '@/app/campeonatos/utils/getCampeonatoHref'
 import { resolverTipoCompeticao } from '@/app/campeonatos/components/tiposCompeticao'
-import { CalendarDays, ExternalLink, Loader2, MessageCircle, ShieldCheck, Trophy, Users } from 'lucide-react'
+import { CalendarDays, ExternalLink, Loader2, ShieldCheck, Trophy, Users } from 'lucide-react'
 
 type ProdutoraPublica = {
   id: string
@@ -45,17 +45,6 @@ function formatarMoeda(valor: number | null | undefined) {
   const numero = Number(valor || 0)
   if (!numero) return 'Grátis'
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numero)
-}
-
-function normalizarWhatsApp(numero?: string | null) {
-  return String(numero || '').replace(/\D/g, '')
-}
-
-function criarLinkWhatsApp(numero: string, campeonatoNome: string) {
-  const limpo = normalizarWhatsApp(numero)
-  if (!limpo) return ''
-  const msg = `Olá, vim pelo Drop Zone e quero comprar vaga no campeonato ${campeonatoNome}.`
-  return `https://wa.me/${limpo}?text=${encodeURIComponent(msg)}`
 }
 
 function dataCurta(valor?: string | null) {
@@ -137,7 +126,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f7f7f7] text-[#142340]">
+      <main className="light flex min-h-screen items-center justify-center bg-white text-[#142340]" style={{ colorScheme: 'light' }}>
         <Loader2 className="animate-spin text-[#2563eb]" size={32} />
       </main>
     )
@@ -145,7 +134,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (erro || !produtora) {
     return (
-      <main className="min-h-screen bg-[#f7f7f7] px-4 py-8 text-[#142340]">
+      <main className="light min-h-screen bg-white px-4 py-8 text-[#142340]" style={{ colorScheme: 'light' }}>
         <div className="mx-auto max-w-lg border border-zinc-200 bg-white p-6 text-center">
           <h1 className="text-lg font-semibold uppercase">Link indisponível</h1>
           <p className="mt-2 text-sm text-zinc-500">{erro || 'Produtora não encontrada.'}</p>
@@ -155,7 +144,7 @@ export default function LinkPublicoProdutoraPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f7f7] text-[#142340]">
+    <main className="light min-h-screen bg-white text-[#142340]" style={{ colorScheme: 'light' }}>
       <div className="mx-auto max-w-3xl px-3 py-3 pb-10">
         <section className="overflow-hidden border border-zinc-200 bg-white">
           <div className="h-28 bg-zinc-100 md:h-40">
@@ -186,7 +175,7 @@ export default function LinkPublicoProdutoraPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold uppercase text-[#142340]">Campeonatos com vagas e inscrições</h2>
-              <p className="text-[11px] text-zinc-500">Escolha o campeonato para comprar vaga ou escalar sua equipe.</p>
+              <p className="text-[11px] text-zinc-500">Escolha o campeonato para se inscrever, escalar sua equipe ou ver detalhes.</p>
             </div>
             <span className="border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-semibold uppercase text-zinc-500">{campeonatos.length}</span>
           </div>
@@ -198,55 +187,47 @@ export default function LinkPublicoProdutoraPage() {
               {campeonatos.map((camp) => {
                 const tipo = resolverTipoCompeticao(camp as any) || camp.modelo_competicao || 'campeonato'
                 const hrefCompleto = getCampeonatoHref(camp.id, String(tipo))
-                const whatsapp = criarLinkWhatsApp(camp.whatsapp_suporte || produtora.whatsapp_suporte || '', camp.nome)
-
                 return (
-                  <article key={camp.id} className="border border-zinc-200 bg-white p-3">
-                    <div className="flex gap-3">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
-                        {camp.logo_url ? <img src={camp.logo_url} alt={camp.nome} className="h-full w-full object-cover" /> : null}
+                  <article key={camp.id} className="border border-zinc-200 bg-white">
+                    <div className="flex items-center gap-3 border-b border-zinc-100 bg-[#f8fafc] p-3">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-zinc-200 bg-white">
+                        {camp.logo_url ? <img src={camp.logo_url} alt={camp.nome} className="h-full w-full object-cover" /> : <ShieldCheck size={22} className="text-zinc-300" />}
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-sm font-semibold uppercase text-[#142340]">{camp.nome}</h3>
-                            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{String(tipo)} • {camp.status || 'rascunho'}</p>
-                          </div>
-                          <span className="shrink-0 border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-semibold uppercase text-[#2563eb]">{camp.vagas || 0} vagas</span>
+                        <div className="flex items-center gap-2">
+                          <span className="border border-zinc-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-wide text-[#2563eb]">{String(tipo)}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">{camp.status || 'rascunho'}</span>
                         </div>
-
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
-                          <div className="border border-zinc-100 bg-zinc-50 p-2">
-                            <CalendarDays size={13} className="mb-1 text-[#2563eb]" />
-                            <p className="font-semibold uppercase text-[#142340]">{dataCurta(camp.data_inicio)}</p>
-                          </div>
-                          <div className="border border-zinc-100 bg-zinc-50 p-2">
-                            <Trophy size={13} className="mb-1 text-emerald-600" />
-                            <p className="font-semibold uppercase text-[#142340]">{formatarMoeda(camp.valor_premiacao)}</p>
-                          </div>
-                          <div className="border border-zinc-100 bg-zinc-50 p-2">
-                            <Users size={13} className="mb-1 text-[#2563eb]" />
-                            <p className="font-semibold uppercase text-[#142340]">{formatarMoeda(camp.valor_vaga)}</p>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                          {whatsapp ? (
-                            <Link href={whatsapp} target="_blank" className="flex h-9 items-center justify-center gap-2 bg-[#16a34a] px-3 text-[11px] font-semibold uppercase text-white">
-                              <MessageCircle size={14} /> Comprar vaga
-                            </Link>
-                          ) : null}
-
-                          <Link href={`/escala/${camp.id}`} className="flex h-9 items-center justify-center gap-2 bg-[#2563eb] px-3 text-[11px] font-semibold uppercase text-white">
-                            <ShieldCheck size={14} /> Inscrever / escalar
-                          </Link>
-
-                          <Link href={hrefCompleto} className="flex h-9 items-center justify-center gap-2 border border-zinc-300 bg-white px-3 text-[11px] font-semibold uppercase text-[#142340]">
-                            <ExternalLink size={14} /> Ver completo
-                          </Link>
-                        </div>
+                        <h3 className="mt-1 truncate text-base font-black uppercase leading-tight text-[#07111f]">{camp.nome}</h3>
                       </div>
+
+                      <span className="shrink-0 border border-zinc-200 bg-white px-2 py-1 text-[10px] font-black uppercase text-[#2563eb]">{camp.vagas || 0} vagas</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 border-b border-zinc-100 bg-white text-[10px]">
+                      <div className="border-r border-zinc-100 p-2">
+                        <div className="flex items-center gap-1 text-zinc-400"><CalendarDays size={12} /> Data</div>
+                        <p className="mt-1 truncate text-xs font-black uppercase text-[#07111f]">{dataCurta(camp.data_inicio)}</p>
+                      </div>
+                      <div className="border-r border-zinc-100 p-2">
+                        <div className="flex items-center gap-1 text-zinc-400"><Trophy size={12} /> Prêmio</div>
+                        <p className="mt-1 truncate text-xs font-black uppercase text-[#07111f]">{formatarMoeda(camp.valor_premiacao)}</p>
+                      </div>
+                      <div className="p-2">
+                        <div className="flex items-center gap-1 text-zinc-400"><Users size={12} /> Inscrição</div>
+                        <p className="mt-1 truncate text-xs font-black uppercase text-[#07111f]">{formatarMoeda(camp.valor_vaga)}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 p-3">
+                      <Link href={`/escala/${camp.id}`} className="flex h-10 items-center justify-center gap-2 bg-[#2563eb] px-3 text-[11px] font-black uppercase tracking-wide text-white">
+                        <ShieldCheck size={14} /> Inscreva-se
+                      </Link>
+
+                      <Link href={hrefCompleto} className="flex h-10 items-center justify-center gap-2 border border-zinc-300 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-[#142340]">
+                        <ExternalLink size={14} /> Saiba mais
+                      </Link>
                     </div>
                   </article>
                 )
