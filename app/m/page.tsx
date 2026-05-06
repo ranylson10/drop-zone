@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Gamepad2, Rss, Trophy, UserRound, Users, Wallet } from "lucide-react";
+import { Trophy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { MobileCard, MobileSectionTitle } from "./components/MobileShell";
 import { MobileFeedList } from "./components/MobileFeedList";
@@ -49,37 +49,6 @@ function tipoInfo(campeonato: Campeonato) {
   if (tipo.includes("confronto") || tipo.includes("4x4"))
     return { label: "Confronto", cls: "border-red-200 bg-red-50 text-red-700" };
   return { label: "Diário", cls: "border-blue-200 bg-blue-50 text-blue-700" };
-}
-
-function AtalhoCompacto({
-  href,
-  label,
-  desc,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  desc: string;
-  icon: any;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex min-h-[68px] items-center gap-2 border border-slate-200 bg-white p-2.5 active:bg-slate-50"
-    >
-      <div className="grid h-9 w-9 shrink-0 place-items-center border border-blue-200 bg-blue-50 text-blue-600">
-        <Icon size={17} />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-black uppercase leading-4 text-slate-950">
-          {label}
-        </p>
-        <p className="truncate text-[10px] font-semibold text-slate-500">
-          {desc}
-        </p>
-      </div>
-    </Link>
-  );
 }
 
 export default function MobileHomePage() {
@@ -173,48 +142,12 @@ export default function MobileHomePage() {
 
       <section>
         <MobileSectionTitle
-          title="Atalhos"
-          subtitle="Funções principais sem ocupar espaço demais."
+          title="Feed"
+          subtitle="Postagens da comunidade."
         />
-        <div className="grid grid-cols-2 gap-2">
-          <AtalhoCompacto
-            href="/m/campeonatos"
-            label="Inscrever"
-            desc="Vagas abertas"
-            icon={Trophy}
-          />
-          <AtalhoCompacto
-            href="/m/equipe"
-            label="Equipe"
-            desc="Elenco"
-            icon={Users}
-          />
-          <AtalhoCompacto
-            href="/m/jogadores"
-            label="Jogadores"
-            desc="Cadastro"
-            icon={UserRound}
-          />
-          <AtalhoCompacto
-            href="/m/lines"
-            label="Lines"
-            desc="Titulares"
-            icon={Gamepad2}
-          />
-          <AtalhoCompacto
-            href="/m/carteira"
-            label="Carteira"
-            desc="PIX"
-            icon={Wallet}
-          />
-          <AtalhoCompacto
-            href="/m/feed"
-            label="Feed"
-            desc="Postagens"
-            icon={Rss}
-          />
-        </div>
+        <MobileFeedList limit={20} />
       </section>
+
 
       <section>
         <div className="flex items-end justify-between gap-2">
@@ -274,14 +207,6 @@ export default function MobileHomePage() {
             );
           })}
         </div>
-      </section>
-
-      <section>
-        <MobileSectionTitle
-          title="Feed"
-          subtitle="Postagens da comunidade, igual app social."
-        />
-        <MobileFeedList limit={20} />
       </section>
     </div>
   );
