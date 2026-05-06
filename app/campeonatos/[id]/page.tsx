@@ -419,7 +419,7 @@ function HeaderStat({ label, value }: { label: string; value: any }) {
   )
 }
 
-function MiniInfo({ label, value }: { label: string; value: any }) {
+function LealtMiniInfo({ label, value }: { label: string; value: any }) {
   return (
     <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
       <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">{label}</div>
@@ -1409,10 +1409,10 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           <div className="border-b border-zinc-200 bg-white px-4 py-3 md:px-6">
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px_170px] lg:items-end">
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                <MiniInfo label="Status" value={normalizarStatusCampeonato(camp?.status).label} />
-                <MiniInfo label="Início" value={formatarDataBanner(camp?.data_inicio)} />
-                <MiniInfo label="Saldo" value={formatarMoeda(saldoCarteira)} />
-                <MiniInfo label="Restantes" value={String(vagasRestantesCompra)} />
+                <LealtMiniInfo label="Status" value={normalizarStatusCampeonato(camp?.status).label} />
+                <LealtMiniInfo label="Início" value={formatarDataBanner(camp?.data_inicio)} />
+                <LealtMiniInfo label="Saldo" value={formatarMoeda(saldoCarteira)} />
+                <LealtMiniInfo label="Restantes" value={String(vagasRestantesCompra)} />
               </div>
 
               <div>
