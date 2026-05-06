@@ -410,7 +410,25 @@ function obterSeloReputacao(score: number) {
   }
 }
 
-export default function Page() {
+function HeaderStat({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="border-l border-white/15 pl-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">{label}</div>
+      <div className="mt-1 truncate text-xl font-semibold text-white">{value || '---'}</div>
+    </div>
+  )
+}
+
+function MiniInfo({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+      <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">{label}</div>
+      <div className="mt-1 truncate text-xs font-bold text-[#142340]">{value || '---'}</div>
+    </div>
+  )
+}
+
+export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: string } = {}) {
   const params = useParams()
   const id = String(params?.id || '')
   const router = useRouter()
@@ -427,12 +445,13 @@ export default function Page() {
   const [rankingMvp, setRankingMvp] = useState<any[]>([])
   const [xtreinoConfig, setXtreinoConfig] = useState<any>(null)
 
-  const tipoVisual = getTipoVisual(String(camp?.tipo_competicao || camp?.modelo_competicao || '').toLowerCase())
-  const isXtreino = String(camp?.tipo_competicao || '').toLowerCase() === 'xtreino'
+  const tipoCompeticaoAtual = String(tipoForcado || camp?.tipo_competicao || camp?.modelo_competicao || camp?.tipo || '').toLowerCase()
+  const tipoVisual = getTipoVisual(tipoCompeticaoAtual)
+  const isXtreino = tipoCompeticaoAtual === 'xtreino'
   const xtreinoModo = String(xtreinoConfig?.modo_xtreino || '').toLowerCase()
 
-  const isCopa = String(camp?.tipo_competicao || '').toLowerCase() === 'copa'
-  const isLiga = String(camp?.tipo_competicao || '').toLowerCase() === 'liga'
+  const isCopa = tipoCompeticaoAtual === 'copa'
+  const isLiga = tipoCompeticaoAtual === 'liga'
   const isXtreinoMataMata = isXtreino && xtreinoModo === 'mata_mata'
   const isXtreinoPontosCorridos = isXtreino && xtreinoModo === 'pontos_corridos'
   const usaAbasCopa = isCopa || isXtreinoMataMata
@@ -1348,146 +1367,85 @@ export default function Page() {
           </div>
         )}
 
-        <div className={`mx-auto w-full max-w-[1180px] dz-panel overflow-hidden border-l-4 ${tipoVisual.borderStrong}`}>
-          <div className="flex flex-col md:flex-row h-auto md:min-h-[350px] border-b border-zinc-200 bg-zinc-50">
-            <div className="w-full md:w-[300px] bg-zinc-200 relative group overflow-hidden border-r border-zinc-200">
-              <img
-                src={camp?.banner_url || 'https://via.placeholder.com/320x350'}
-                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                alt=""
-              />
-            </div>
+        <div className="mx-auto w-full max-w-[1180px] overflow-hidden border border-zinc-200 bg-white shadow-[0_12px_35px_rgba(15,23,42,0.08)]">
+          <div className="mb-3 flex items-center justify-between px-0 pt-0">
+            <button
+              onClick={() => router.back()}
+              className="mb-3 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#142340] hover:text-slate-950"
+            >
+              <ChevronLeft size={14} /> Voltar
+            </button>
+          </div>
 
-            <div className="flex-1 p-8 flex flex-col justify-between">
-              <div className="flex justify-between items-start">
-                <button
-                  onClick={() => router.back()}
-                  className="text-black/30 hover:text-black uppercase text-[10px] font-black flex items-center gap-1 transition-colors"
+          <div className={`border-l-4 ${tipoVisual.borderStrong} bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white md:px-6`}>
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_150px_150px_150px_150px] md:items-center">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="h-16 w-16 shrink-0 border border-white/20 bg-white p-1">
+                  <img src={camp?.logo_url || '/placeholder.png'} className="h-full w-full object-contain" alt="" />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex h-6 items-center border border-white/20 bg-white/10 px-2 text-[10px] font-black uppercase tracking-[0.22em] text-white`}>
+                      {tipoVisual.label}
+                    </span>
+                    <span className="inline-flex h-6 items-center border border-white/20 bg-white/10 px-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/80">
+                      {camp?.plataforma || camp?.modo_jogo || camp?.formato || 'Free Fire'}
+                    </span>
+                  </div>
+                  <h1 className="truncate text-3xl font-semibold uppercase tracking-tight md:text-4xl">
+                    {camp?.nome}
+                  </h1>
+                </div>
+              </div>
+
+              <HeaderStat label={isCopa ? 'Formato' : isLiga ? 'Rodadas' : isXtreino ? 'Modo' : 'Formato'} value={isCopa ? (camp?.formato || 'Mata-mata') : isLiga ? String(camp?.quantidade_rodadas || xtreinoConfig?.quantidade_rodadas || 1) : isXtreino ? (xtreinoConfig?.modo_xtreino || 'Flexível') : (camp?.formato || '4x4')} />
+              <HeaderStat label="Vagas" value={`${vagasPreenchidas} / ${camp?.vagas || camp?.quantidade_equipes || 0}`} />
+              <HeaderStat label="Premiação" value={formatarMoeda(camp?.valor_premiacao)} />
+              <HeaderStat label="Inscrição" value={valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'Grátis'} />
+            </div>
+          </div>
+
+          <div className="border-b border-zinc-200 bg-white px-4 py-3 md:px-6">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px_170px] lg:items-end">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <MiniInfo label="Status" value={normalizarStatusCampeonato(camp?.status).label} />
+                <MiniInfo label="Início" value={formatarDataBanner(camp?.data_inicio)} />
+                <MiniInfo label="Saldo" value={formatarMoeda(saldoCarteira)} />
+                <MiniInfo label="Restantes" value={String(vagasRestantesCompra)} />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Equipe / line do usuário</label>
+                <select
+                  value={equipeCompraId}
+                  onChange={(event) => setEquipeCompraId(event.target.value)}
+                  className="h-10 w-full border border-zinc-200 bg-white px-3 text-xs font-bold uppercase text-[#142340] outline-none focus:border-slate-400"
                 >
-                  <ChevronLeft size={14} /> Voltar
-                </button>
-
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <StatusCampeonatoSelect
-                    value={camp?.status}
-                    onChange={(valor: string) => salvarAlteracao('status', valor)}
-                    compact
-                  />
-
-                  <button
-                    type="button"
-                    onClick={abrirConfirmacaoCompra}
-                    className="inline-flex h-8 items-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-wide text-white transition hover:bg-[#1d4ed8]"
-                  >
-                    <CircleDollarSign size={13} /> Inscrever-se
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/campeonatos/${id}/editar`)}
-                    className="inline-flex h-8 items-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-medium uppercase tracking-wide text-[#142340] transition hover:border-[#2563eb] hover:text-[#2563eb]"
-                  >
-                    <Settings size={13} /> Configurações
-                  </button>
-                </div>
+                  {minhasEquipesCompra.length === 0 && <option value="">Nenhuma equipe encontrada</option>}
+                  {minhasEquipesCompra.map((equipe) => (
+                    <option key={equipe.id} value={equipe.id}>
+                      {equipe.tag ? `[${equipe.tag}] ` : ''}{equipe.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="mt-4">
-                <div className={`mb-2 inline-flex items-center px-2 py-1 text-[10px] font-medium uppercase tracking-wide ${tipoVisual.badge}`}>
-                  {tipoVisual.label}
-                </div>
-                <h1 className={`text-4xl md:text-6xl font-semibold uppercase tracking-tight leading-none ${tipoVisual.text}`}>
-                  {camp?.nome}
-                </h1>
-              </div>
-
-              <div className="mt-8 flex items-center gap-6">
-                <img
-                  src={camp?.logo_url || '/placeholder.png'}
-                  className="w-16 h-16 object-contain border border-zinc-200 p-1 bg-white"
-                  alt=""
-                />
-
-                <div className="flex flex-wrap gap-10">
-                  <StatEdit
-                    label="Premiação"
-                    value={camp?.valor_premiacao}
-                    prefix="R$ "
-                    onSave={(v: any) => salvarAlteracao('valor_premiacao', v)}
-                    highlight
-                  />
-
-                  <StatEdit
-                    label="Vagas"
-                    value={`${vagasPreenchidas}/${camp?.vagas || 0}`}
-                    onSave={(v: any) => salvarAlteracao('vagas', v)}
-                  />
-
-                  <StatusCampeonatoSelect
-                    label="Status"
-                    value={camp?.status}
-                    onChange={(valor: string) => salvarAlteracao('status', valor)}
-                  />
-
-                  <StatDisplay label="Início" value={formatarDataBanner(camp?.data_inicio)} />
-                </div>
-              </div>
-
-              <div className="mt-6 border border-slate-200 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4">
-                <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-                  <div className="flex-1">
-                    <div className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">
-                      Compra de vaga pela carteira
-                    </div>
-                    <div className="mt-1 text-2xl font-black uppercase">
-                      {valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'Vaga gratuita'}
-                    </div>
-                    <div className="mt-1 text-[11px] font-bold uppercase text-zinc-500">
-                      Saldo: {formatarMoeda(saldoCarteira)} · Vagas restantes: {vagasRestantesCompra}
-                    </div>
-                  </div>
-
-                  <div className="w-full lg:w-[320px]">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-1">
-                      Equipe
-                    </label>
-                    <select
-                      value={equipeCompraId}
-                      onChange={(event) => setEquipeCompraId(event.target.value)}
-                      className="w-full border border-slate-200 bg-white px-3 py-3 text-xs font-black uppercase outline-none"
-                    >
-                      {minhasEquipesCompra.length === 0 && (
-                        <option value="">Nenhuma equipe encontrada</option>
-                      )}
-                      {minhasEquipesCompra.map((equipe) => (
-                        <option key={equipe.id} value={equipe.id}>
-                          {equipe.tag ? `[${equipe.tag}] ` : ''}{equipe.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={abrirConfirmacaoCompra}
-                    disabled={comprandoVaga || !usuarioAtual || !equipeCompraId}
-                    className="border border-cyan-200 bg-cyan-50 text-cyan-700 px-6 py-3 text-xs font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500"
-                  >
-                    {comprandoVaga ? 'Processando...' : valorVagaCompra > 0 ? 'Comprar vaga' : 'Garantir vaga'}
-                  </button>
-                </div>
-
-                {mensagemCompraVaga && (
-                  <div className="mt-3 border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-zinc-700">
-                    {mensagemCompraVaga}
-                  </div>
-                )}
-
-                <div className="mt-3 text-[10px] font-bold uppercase text-zinc-500">
-                  O mesmo usuário pode comprar mais de uma vaga usando equipes diferentes. O bloqueio é apenas contra a mesma equipe duplicada no mesmo campeonato.
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={abrirConfirmacaoCompra}
+                disabled={comprandoVaga || !usuarioAtual || !equipeCompraId || vagasRestantesCompra <= 0}
+                className={`h-10 border px-4 text-[11px] font-black uppercase tracking-wide transition disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-200 disabled:text-zinc-500 ${tipoVisual.button}`}
+              >
+                {comprandoVaga ? 'Processando...' : valorVagaCompra > 0 ? 'Comprar vaga' : 'Inscrever grátis'}
+              </button>
             </div>
+
+            {mensagemCompraVaga && (
+              <div className="mt-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700">
+                {mensagemCompraVaga}
+              </div>
+            )}
           </div>
 
           <div className="sticky top-[60px] z-40 border-b border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur-sm">

@@ -46,5 +46,5 @@ export default function Page() {
     return <DiarioDetalhePage />
   }
 
-  return <CampeonatoDetalhePage />
+  return <CampeonatoDetalhePage tipoForcado="xtreino" />
 }
