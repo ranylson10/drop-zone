@@ -270,7 +270,7 @@ export default function EscalaCampeonatoPage() {
                   )
                 })}
 
-                {!vagasAgrupadas.length ? (
+                {!vagasAgrupadas.length && (
                   <div className="border border-dashed border-slate-300 bg-slate-50 p-4 text-center">
                     <ShieldCheck className="mx-auto text-slate-400" size={22}/>
                     <p className="mt-2 text-sm font-black uppercase text-slate-900">Nenhuma vaga encontrada para suas equipes</p>
