@@ -1,52 +1,11 @@
 @import "tailwindcss";
 
 /* =========================================================
-   LEALT LIGHT THEME REAL — ANDROID/SAMSUNG
-   Estratégia usada por sites grandes: declarar suporte a light/dark
-   e fazer o tema dark carregar a MESMA paleta clara.
-   Isso evita que Samsung Internet/Chrome Android tentem gerar dark automático.
+   FORÇAR TEMA CLARO (ANTI-AUTO DARK MODE ANDROID/SAMSUNG)
    ========================================================= */
 :root {
-  color-scheme: light dark;
-}
+  color-scheme: light !important;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: light dark;
-    --dz-bg: #f5f7fb;
-    --dz-bg-2: #eef3f8;
-    --dz-surface: #ffffff;
-    --dz-surface-2: #f8fafc;
-    --dz-line: #dde5ef;
-    --dz-line-strong: #c8d4e3;
-    --dz-text: #0f172a;
-    --dz-muted: #64748b;
-    --dz-faint: #94a3b8;
-    --dz-primary: #14d9ff;
-    --dz-primary-2: #2563eb;
-    --dz-accent: #7c3aed;
-    --dz-success: #22c55e;
-    --dz-danger: #ef4444;
-    --dz-warning: #f59e0b;
-  }
-
-  html,
-  body {
-    background-color: #f5f7fb !important;
-    color: #0f172a !important;
-  }
-
-  body {
-    background-image:
-      linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-      radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
-      radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
-  }
-}
-
-
-:root {
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
   --dz-surface: #ffffff;
@@ -67,6 +26,58 @@
   --dz-radius: 10px;
   --dz-radius-sm: 6px;
   --dz-header-h: 64px;
+}
+
+html,
+body {
+  background-color: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+html {
+  color-scheme: light !important;
+}
+
+body {
+  color-scheme: light !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light !important;
+  }
+
+  html,
+  body {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .lealt-public-page,
+  .lealt-public-box,
+  .lealt-public-card,
+  .lealt-public-card-head,
+  .lealt-public-card-info,
+  .lealt-public-card-actions,
+  .lealt-force-light {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    background-image: none !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 html {
@@ -924,28 +935,28 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 :root,
 html,
 body {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   background-color: #f5f7fb !important;
 }
 
 html.light,
 html:not(.dark),
 body {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root,
   html,
   body {
-    color-scheme: light dark !important;
+    color-scheme: light !important;
     background-color: #f5f7fb !important;
     color: #0f172a !important;
   }
 
   .lealt-force-light,
   .lealt-force-light * {
-    color-scheme: light dark !important;
+    color-scheme: light !important;
   }
 }
 
@@ -995,13 +1006,13 @@ body {
 html,
 body,
 #__next {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   background: #f5f7fb !important;
 }
 
 .lealt-public-page,
 .lealt-public-page * {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   forced-color-adjust: none !important;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1085,7 +1096,7 @@ main.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"],
 :root,
 html,
 body {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   forced-color-adjust: none !important;
   background-color: #f5f7fb !important;
   background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
@@ -1094,7 +1105,7 @@ body {
 
 html.dark,
 body.dark {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   background-color: #f5f7fb !important;
   background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
   color: #0f172a !important;
@@ -1104,7 +1115,7 @@ body.dark {
 .lealt-public-page section,
 .lealt-public-page article,
 .lealt-public-page div {
-  color-scheme: light dark !important;
+  color-scheme: light !important;
   forced-color-adjust: none !important;
 }
 
@@ -1146,7 +1157,7 @@ body.dark {
   body,
   html.dark,
   body.dark {
-    color-scheme: light dark !important;
+    color-scheme: light !important;
     forced-color-adjust: none !important;
     background-color: #f5f7fb !important;
     background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
@@ -1178,7 +1189,7 @@ body.dark {
 @media (prefers-color-scheme: dark) {
   .lealt-public-page,
   .lealt-public-page * {
-    color-scheme: light dark !important;
+    color-scheme: light !important;
   }
 
   .lealt-public-page {
@@ -1205,7 +1216,7 @@ body.dark {
   .lealt-public-page span,
   .lealt-public-page a,
   .lealt-public-page button {
-    color-scheme: light dark !important;
+    color-scheme: light !important;
   }
 
   .lealt-public-muted,

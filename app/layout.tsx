@@ -1,804 +1,274 @@
 'use client'
 
-import './globals.css'
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import {
-  LogOut,
-  LogIn,
-  UserPlus,
-  User,
-  Building2,
-  Gamepad2,
-  ChevronDown,
-  Shield,
-  Check,
-  Menu,
-  X,
-  Wallet,
-  Flame,
-  BarChart3,
-} from 'lucide-react'
-import { PerfilProvider, usePerfil } from './contexts/PerfilContext'
-import { DropZoneLogo } from './components/DropZoneLogo'
-import { supabase } from '../lib/supabase'
-import ModeradorMatchToast from '@/app/components/ModeradorMatchToast'
+import { useParams } from 'next/navigation'
+import { CalendarDays, ExternalLink, ShieldCheck, Trophy, Users } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
-type NavChild = {
-  href: string
-  label: string
+type Produtora = {
+  id: string
+  nome?: string | null
+  slug?: string | null
+  descricao?: string | null
+  logo_url?: string | null
+  banner_url?: string | null
+  whatsapp?: string | null
+  whatsapp_suporte?: string | null
+  contato_whatsapp?: string | null
+  instagram_url?: string | null
 }
 
-type NavItem = {
-  href: string
-  label: string
-  children?: NavChild[]
+type Campeonato = {
+  id: string
+  nome: string
+  modelo_competicao?: string | null
+  tipo?: string | null
+  status?: string | null
+  logo_url?: string | null
+  banner_url?: string | null
+  data_inicio?: string | null
+  horario_inicio?: string | null
+  vagas?: number | null
+  quantidade_equipes?: number | null
+  valor_vaga?: number | null
+  valor_premiacao?: number | null
+  whatsapp_suporte?: string | null
+  created_at?: string | null
 }
 
-type NavLinkItemProps = {
-  item: NavChild
-  ativo: boolean
-  onClick?: () => void
+const tipoVisual: Record<string, { label: string; cor: string; bg: string; border: string }> = {
+  diario: { label: 'DIÁRIO', cor: '#009FE3', bg: '#EAF7FF', border: '#009FE3' },
+  xtreino: { label: 'XTREINO', cor: '#00B96B', bg: '#E9FFF4', border: '#00B96B' },
+  copa: { label: 'COPA', cor: '#7C3AED', bg: '#F3EEFF', border: '#7C3AED' },
+  liga: { label: 'LIGA', cor: '#F59E0B', bg: '#FFF7E6', border: '#F59E0B' },
+  confronto: { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
+  '4x4': { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
 }
 
-function NavLinkItem({ item, ativo, onClick }: NavLinkItemProps) {
-  return (
-    <Link
-      href={item.href}
-      onClick={onClick}
-      className={[
-        'block border-t border-zinc-100 px-3 py-2 text-[12px] font-medium transition',
-        ativo
-          ? 'bg-[#eaf6ff] text-[#2563eb]'
-          : 'text-[#142340] hover:bg-zinc-50 hover:text-[#2563eb]',
-      ].join(' ')}
-    >
-      {item.label}
-    </Link>
-  )
+function moeda(valor?: number | null) {
+  const n = Number(valor || 0)
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-type ItemPerfilProps = {
-  ativo?: boolean
-  titulo: string
-  subtitulo: string
-  corBorda: string
-  icone: React.ReactNode
-  avatar?: string | null
-  onClick: () => void
+function dataCurta(data?: string | null) {
+  if (!data) return 'A definir'
+  const d = new Date(data)
+  if (Number.isNaN(d.getTime())) return 'A definir'
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-function PerfilItem({
-  ativo = false,
-  titulo,
-  subtitulo,
-  corBorda,
-  icone,
-  avatar,
-  onClick,
-}: ItemPerfilProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'w-full flex items-center gap-3  border p-3 text-left transition-all duration-200',
-        ativo
-          ? 'border-blue-200 bg-blue-50 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]'
-          : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-200',
-      ].join(' ')}
-    >
-      <div
-        className="h-11 w-11 shrink-0 overflow-hidden  border bg-black/30 p-0.5"
-        style={{ borderColor: ativo ? corBorda : 'rgba(255,255,255,0.08)' }}
-      >
-        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-slate-100">
-          {avatar ? (
-            <img src={avatar} alt={titulo} className="h-full w-full object-cover" />
-          ) : (
-            icone
-          )}
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold text-slate-950">{titulo}</p>
-        <p className="truncate text-[11px] text-slate-500">{subtitulo}</p>
-      </div>
-
-      {ativo && (
-        <div className="shrink-0">
-          <Check size={16} style={{ color: corBorda }} />
-        </div>
-      )}
-    </button>
-  )
+function getTipo(camp: Campeonato) {
+  const chave = String(camp.modelo_competicao || camp.tipo || 'diario').toLowerCase()
+  return tipoVisual[chave] || { label: chave.toUpperCase(), cor: '#2563EB', bg: '#EFF6FF', border: '#2563EB' }
 }
 
-function ApostadosHeaderCard({ compacto = false }: { compacto?: boolean }) {
-  const pathname = usePathname()
-  const ativo = pathname === '/apostados' || pathname?.startsWith('/apostados/')
+export default function LinkPublicoProdutoraPage() {
+  const params = useParams<{ slug: string }>()
+  const slug = decodeURIComponent(String(params?.slug || ''))
 
-  const links = [
-    { href: '/apostados', label: 'Filas automáticas' },
-    { href: '/confrontos/ranking', label: 'Ranking', icon: BarChart3 },
-    { href: '/moderadores/online', label: 'Moderadores online' },
-  ]
-
-  if (compacto) {
-    return (
-      <Link
-        href="/apostados"
-        className={[
-          'flex min-h-11 items-center justify-between border border-orange-200 bg-orange-50 px-3 py-2 text-[13px] font-semibold uppercase tracking-wide text-orange-700',
-          ativo ? 'ring-1 ring-orange-300' : '',
-        ].join(' ')}
-      >
-        <span className="flex items-center gap-2">
-          <Flame size={16} />
-          Apostados
-        </span>
-        <span className="border border-orange-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-          Destaque
-        </span>
-      </Link>
-    )
-  }
-
-  return (
-    <div className="group relative hidden lg:block">
-      <Link
-        href="/apostados"
-        className={[
-          'relative inline-flex h-10 items-center gap-2 border px-3 text-[12px] font-semibold uppercase tracking-wide transition',
-          ativo
-            ? 'border-orange-300 bg-orange-100 text-orange-800'
-            : 'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-300 hover:bg-orange-100',
-        ].join(' ')}
-      >
-        <span className="flex h-6 w-6 items-center justify-center border border-orange-300 bg-white text-orange-600">
-          <Flame size={14} />
-        </span>
-        <span>Apostados</span>
-        <span className="border border-orange-400 bg-orange-500 px-1.5 py-0.5 text-[9px] leading-none text-white">
-          LIVE
-        </span>
-        <ChevronDown size={13} className="transition group-hover:rotate-180" />
-        <span className="absolute -right-1 -top-1 h-2 w-2 bg-orange-500" />
-      </Link>
-
-      <div className="invisible absolute right-0 top-full z-[230] w-60 border border-orange-200 bg-white opacity-0 transition group-hover:visible group-hover:opacity-100">
-        <div className="border-b border-orange-100 bg-orange-50 px-3 py-2">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
-            <Flame size={13} />
-            Área de apostados
-          </div>
-          <p className="mt-1 text-[11px] normal-case tracking-normal text-orange-700/80">
-            Filas fixas, ranking e moderadores online.
-          </p>
-        </div>
-
-        {links.map((link) => {
-          const Icon = link.icon
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex items-center justify-between border-t border-zinc-100 px-3 py-2 text-[12px] font-medium text-[#142340] transition hover:bg-orange-50 hover:text-orange-700"
-            >
-              <span className="flex items-center gap-2">
-                {Icon ? <Icon size={13} className="text-orange-600" /> : <span className="h-1.5 w-1.5 bg-orange-500" />}
-                {link.label}
-              </span>
-            </Link>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function NavbarContent() {
-  const pathname = usePathname()
-  const router = useRouter()
-
-  const {
-    user,
-    perfilAtivo,
-    tipoPerfil,
-    perfilUsuario,
-    perfisJogo,
-    equipes,
-    produtoras,
-    setPerfilAtivoByTipo,
-    loading,
-  } = usePerfil()
-
-  const [activeDropdown, setActiveDropdown] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [saldoCarteira, setSaldoCarteira] = useState(0)
-  const [isSiteAdmin, setIsSiteAdmin] = useState(false)
-  const [isModerador, setIsModerador] = useState(false)
-
-  const isActive = (path: string) =>
-    pathname === path || pathname?.startsWith(`${path}/`)
-
-  const usuarioLogado = Boolean(user)
-
-  const getTemaColor = () => '#2563eb'
-
-  const corTema = getTemaColor()
-
-  const nomePerfilAtivo = useMemo(() => {
-    if (!perfilAtivo) return 'Usuário'
-    return (
-      perfilAtivo.nome ||
-      perfilAtivo.nome_exibicao ||
-      perfilAtivo.username ||
-      perfilAtivo.nick ||
-      'Usuário'
-    )
-  }, [perfilAtivo])
-
-  const avatarPerfilAtivo =
-    perfilAtivo?.avatar_url ||
-    perfilAtivo?.foto_url ||
-    perfilAtivo?.logo_url ||
-    perfilAtivo?.foto_capa ||
-    null
-
-
-  function formatarDinheiro(valor: number) {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-  }
+  const [loading, setLoading] = useState(true)
+  const [produtora, setProdutora] = useState<Produtora | null>(null)
+  const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
 
   useEffect(() => {
-    let ativo = true
+    document.documentElement.style.colorScheme = 'light'
+    document.body.style.colorScheme = 'light'
+    document.documentElement.classList.remove('dark')
+    document.body.classList.remove('dark')
+    document.body.style.background = '#f5f7fb'
+    document.body.style.color = '#0f172a'
 
-    async function carregarDadosUsuario() {
+    let meta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'color-scheme'
+      document.head.appendChild(meta)
+    }
+    meta.content = 'light'
+  }, [])
+
+  useEffect(() => {
+    async function carregar() {
+      setLoading(true)
       try {
-        const { data } = await supabase.auth.getUser()
-        const uid = data.user?.id
+        let query = supabase.from('produtoras').select('*')
 
-        if (!uid) {
-          if (!ativo) return
-          setSaldoCarteira(0)
-          setIsSiteAdmin(false)
-          setIsModerador(false)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug)
+        if (isUuid) query = query.eq('id', slug)
+        else query = query.or(`slug.eq.${slug},nome.ilike.${slug.replace(/-/g, ' ')}`)
+
+        const { data: prod } = await query.limit(1).maybeSingle()
+        if (!prod) {
+          setProdutora(null)
+          setCampeonatos([])
           return
         }
 
-        const [walletRes, siteAdminRes, moderadorRes] = await Promise.all([
-          supabase
-            .from('wallet_saldo')
-            .select('saldo')
-            .eq('user_id', uid)
-            .maybeSingle(),
-          supabase
-            .from('site_administradores')
-            .select('id')
-            .eq('user_id', uid)
-            .eq('ativo', true)
-            .limit(1),
-          supabase
-            .from('administradores_evento')
-            .select('id')
-            .eq('user_id', uid)
-            .eq('status', 'aprovado')
-            .limit(1),
-        ])
+        setProdutora(prod as Produtora)
 
-        if (!ativo) return
+        const { data: camps } = await supabase
+          .from('campeonatos')
+          .select('id,nome,modelo_competicao,tipo,status,logo_url,banner_url,data_inicio,horario_inicio,vagas,quantidade_equipes,valor_vaga,valor_premiacao,whatsapp_suporte,created_at')
+          .eq('produtora_id', prod.id)
+          .in('status', ['rascunho', 'inscricoes', 'em_andamento'])
+          .order('created_at', { ascending: false })
 
-        setSaldoCarteira(Number(walletRes.data?.saldo || 0))
-        setIsSiteAdmin(Boolean(siteAdminRes.data && siteAdminRes.data.length > 0))
-        setIsModerador(Boolean(moderadorRes.data && moderadorRes.data.length > 0))
-      } catch {
-        if (!ativo) return
-        setSaldoCarteira(0)
-        setIsSiteAdmin(false)
-        setIsModerador(false)
+        setCampeonatos((camps || []) as Campeonato[])
+      } finally {
+        setLoading(false)
       }
     }
 
-    carregarDadosUsuario()
+    if (slug) carregar()
+  }, [slug])
 
-    return () => {
-      ativo = false
-    }
-  }, [])
+  const logo = produtora?.logo_url || '/logo.png'
+  const banner = produtora?.banner_url || null
 
-  async function encerrarSessao() {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+  const pageStyle = useMemo(
+    () => ({
+      background: '#f5f7fb',
+      color: '#0f172a',
+      colorScheme: 'light' as const,
+      minHeight: '100vh',
+    }),
+    [],
+  )
+
+  if (loading) {
+    return (
+      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
+        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
+          Carregando link oficial...
+        </div>
+      </main>
+    )
   }
 
-  const navItems = useMemo<NavItem[]>(() => {
-    const base: NavItem[] = [
-      { href: '/feed', label: 'Início' },
-      { href: '/equipe', label: 'Equipes' },
-      { href: '/jogadores', label: 'Jogadores' },
-      {
-        href: '/campeonatos',
-        label: 'Campeonatos',
-        children: [
-          { href: '/campeonatos', label: 'Todos os campeonatos' },
-          { href: '/campeonatos/diarios', label: 'Diários' },
-          { href: '/campeonatos/copas', label: 'Copas' },
-          { href: '/campeonatos/ligas', label: 'Ligas' },
-          { href: '/campeonatos/xtreinos', label: 'Xtreinos' },
-          { href: '/campeonatos/confrontos', label: 'Confrontos 4x4' },
-          { href: '/produtora', label: 'Produtoras' },
-        ],
-      },
-      {
-        href: '/transparencia',
-        label: 'Transparência',
-        children: [
-          { href: '/transparencia', label: 'Denúncias públicas' },
-          { href: '/transparencia/minhas', label: 'Minhas denúncias' },
-        ],
-      },
-    ]
-
-    if (isModerador || isSiteAdmin) {
-      base.push({
-        href: '/moderadores',
-        label: 'Moderadores',
-        children: [
-          { href: '/moderadores', label: 'Painel do moderador' },
-        ],
-      })
-    }
-
-    if (isSiteAdmin) {
-      base.push({
-        href: '/admin',
-        label: 'Administração',
-        children: [
-          { href: '/admin', label: 'Painel geral' },
-          { href: '/admin/produtoras', label: 'Produtoras' },
-          { href: '/admin/administradores', label: 'Administradores' },
-          { href: '/admin/moderacao', label: 'Moderação' },
-          { href: '/admin/kyc', label: 'KYC' },
-        ],
-      })
-    }
-
-    return base
-  }, [isModerador, isSiteAdmin])
+  if (!produtora) {
+    return (
+      <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 py-6">
+        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
+          Produtora não encontrada.
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-slate-200/80 bg-white text-slate-950 ">
-      <div className="mx-auto flex h-[68px] w-full max-w-[1500px] items-center justify-between gap-4 px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/feed" className="group flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center  border border-slate-200 bg-white transition-all duration-200 group-hover:border-blue-200 group-hover:bg-slate-50">
-              <DropZoneLogo size="sm" animated />
-            </div>
-
-            <div className="hidden min-w-0 flex-col sm:flex">
-              <span className="truncate text-[15px] font-semibold tracking-[-0.02em] text-slate-950">
-                Drop Zone
-              </span>
-              <span className="truncate text-[11px] text-slate-500">
-                Plataforma competitiva
-              </span>
-            </div>
-          </Link>
-
-          <nav className="ml-3 hidden items-center gap-1 xl:flex">
-            {navItems.map((item) => {
-              const ativo = isActive(item.href)
-              const hasChildren = Boolean(item.children?.length)
-
-              if (hasChildren) {
-                return (
-                  <div key={item.href} className="group relative">
-                    <Link
-                      href={item.href}
-                      className={[
-                        'inline-flex h-9 items-center gap-1 border px-3 text-[12px] font-medium transition',
-                        ativo
-                          ? 'border-blue-200 bg-[#eaf6ff] text-[#2563eb]'
-                          : 'border-transparent text-[#142340] hover:border-zinc-200 hover:bg-zinc-50 hover:text-[#2563eb]',
-                      ].join(' ')}
-                    >
-                      {item.label}
-                      <ChevronDown size={13} className="transition group-hover:rotate-180" />
-                    </Link>
-
-                    <div className="invisible absolute left-0 top-full z-[220] w-56 border border-zinc-200 bg-white opacity-0 transition group-hover:visible group-hover:opacity-100">
-                      <div className="border-b border-zinc-100 px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                        {item.label}
-                      </div>
-                      {item.children?.map((child) => (
-                        <NavLinkItem
-                          key={child.href}
-                          item={child}
-                          ativo={isActive(child.href)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={[
-                    'inline-flex h-9 items-center border px-3 text-[12px] font-medium transition',
-                    ativo
-                      ? 'border-blue-200 bg-[#eaf6ff] text-[#2563eb]'
-                      : 'border-transparent text-[#142340] hover:border-zinc-200 hover:bg-zinc-50 hover:text-[#2563eb]',
-                  ].join(' ')}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-2 md:gap-3">
-          <button
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            className="flex h-10 w-10 items-center justify-center  border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 xl:hidden"
-            aria-label="Abrir menu"
-          >
-            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-
-          <ApostadosHeaderCard />
-
-
-
-          {usuarioLogado ? (
-            <>
-          <button
-            onClick={() => router.push('/carteira')}
-            className="hidden md:flex items-center gap-3  border border-[#2563eb]/20 bg-white px-3 py-2 transition-all duration-200 hover:border-[#2563eb]/50 hover:bg-slate-50"
-          >
-            <div className="flex h-10 w-10 items-center justify-center  border border-[#2563eb]/25 bg-[#2563eb]/10">
-              <Wallet size={16} className="text-[#2563eb]" />
-            </div>
-
-            <div className="text-left leading-none">
-              <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Carteira
-              </div>
-              <div className="mt-1 text-[12px] font-semibold uppercase text-slate-950">
-                {formatarDinheiro(saldoCarteira)}
-              </div>
-            </div>
-          </button>
-
-          <div className="relative">
-            <button
-              onClick={() => setActiveDropdown((prev) => !prev)}
-              className="group flex items-center gap-3  border border-slate-200 bg-white px-2.5 py-2 transition-all duration-200 hover:bg-slate-50"
-            >
-              <div className="hidden text-right lg:block">
-                <p className="max-w-[180px] truncate text-[13px] font-medium text-slate-950">
-                  {loading ? 'Carregando...' : nomePerfilAtivo}
-                </p>
-
-                <p
-                  className="mt-0.5 text-[11px] font-medium"
-                  style={{ color: corTema }}
-                >
-                  {tipoPerfil === 'usuario'
-                    ? 'Perfil pessoal'
-                    : `Perfil ${tipoPerfil}`}
-                </p>
-              </div>
-
-              <div
-                className="h-10 w-10 overflow-hidden  border p-0.5"
-                style={{
-                  borderColor: activeDropdown ? corTema : 'rgba(255,255,255,0.10)',
-                }}
-              >
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] bg-slate-100">
-                  {avatarPerfilAtivo ? (
-                    <img
-                      src={avatarPerfilAtivo}
-                      className="h-full w-full object-cover"
-                      alt="Perfil ativo"
-                    />
-                  ) : (
-                    <User size={16} className="text-slate-500" />
-                  )}
-                </div>
-              </div>
-
-              <ChevronDown
-                size={16}
-                className={`text-slate-500 transition-transform duration-200 ${
-                  activeDropdown ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-
-            {activeDropdown && (
-              <>
-                <div
-                  className="fixed inset-0 z-[150]"
-                  onClick={() => setActiveDropdown(false)}
-                />
-
-                <div className="absolute right-0 top-[58px] z-[200] w-[360px] max-w-[92vw]  border border-slate-200 bg-white p-3 shadow-[0_24px_80px_rgba(15,23,42,0.16)] animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="mb-3 border-b border-slate-200 px-1 pb-3">
-                    <p className="text-[12px] font-semibold text-slate-950">
-                      Selecionar perfil
-                    </p>
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      Escolha com qual identidade deseja usar o sistema.
-                    </p>
-
-                    <Link
-                      href="/perfil"
-                      onClick={() => setActiveDropdown(false)}
-                      className="mt-3 inline-flex h-8 items-center justify-center border border-zinc-300 bg-white px-3 text-[11px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-zinc-50 hover:text-[#2563eb]"
-                    >
-                      Abrir meu perfil
-                    </Link>
-                  </div>
-
-                  <div className="custom-scrollbar max-h-[520px] space-y-3 overflow-y-auto pr-1">
-                    {perfilUsuario && (
-                      <div className="space-y-2">
-                        <p className="px-1 text-[11px] font-medium text-slate-500">
-                          Perfil de usuário
-                        </p>
-
-                        <PerfilItem
-                          ativo={tipoPerfil === 'usuario'}
-                          titulo={
-                            perfilUsuario.nome_exibicao ||
-                            perfilUsuario.username ||
-                            'Meu perfil'
-                          }
-                          subtitulo={perfilUsuario.username || 'Conta principal'}
-                          corBorda="#ffffff"
-                          avatar={perfilUsuario.avatar_url || perfilUsuario.foto_url || null}
-                          icone={<User size={16} className="text-slate-950" />}
-                          onClick={() => {
-                            setPerfilAtivoByTipo('usuario')
-                            setActiveDropdown(false)
-                          }}
-                        />
-                      </div>
-                    )}
-
-                    {perfisJogo?.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="px-1 text-[11px] font-medium text-slate-500">
-                          Perfis de jogo
-                        </p>
-
-                        {perfisJogo.map((perfil) => (
-                          <PerfilItem
-                            key={perfil.id}
-                            ativo={tipoPerfil === 'jogo' && perfilAtivo?.id === perfil.id}
-                            titulo={perfil.nick || 'Perfil de jogo'}
-                            subtitulo="Identidade competitiva"
-                            corBorda="#2563eb"
-                            avatar={perfil.foto_capa || perfil.avatar_url || null}
-                            icone={<Gamepad2 size={16} className="text-[#2563eb]" />}
-                            onClick={() => {
-                              setPerfilAtivoByTipo('jogo', perfil.id)
-                              setActiveDropdown(false)
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {equipes?.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="px-1 text-[11px] font-medium text-slate-500">
-                          Equipes
-                        </p>
-
-                        {equipes.map((equipe) => (
-                          <PerfilItem
-                            key={equipe.id}
-                            ativo={tipoPerfil === 'equipe' && perfilAtivo?.id === equipe.id}
-                            titulo={equipe.nome || 'Equipe'}
-                            subtitulo="Perfil coletivo para inscrições"
-                            corBorda="#2563eb"
-                            avatar={equipe.logo_url || null}
-                            icone={<Shield size={16} className="text-[#2563eb]" />}
-                            onClick={() => {
-                              setPerfilAtivoByTipo('equipe', equipe.id)
-                              setActiveDropdown(false)
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {produtoras?.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="px-1 text-[11px] font-medium text-slate-500">
-                          Produtoras
-                        </p>
-
-                        {produtoras.map((produtora) => (
-                          <PerfilItem
-                            key={produtora.id}
-                            ativo={
-                              tipoPerfil === 'produtora' && perfilAtivo?.id === produtora.id
-                            }
-                            titulo={produtora.nome || 'Produtora'}
-                            subtitulo="Perfil organizador de campeonatos"
-                            corBorda="#2563eb"
-                            avatar={produtora.logo_url || null}
-                            icone={<Building2 size={16} className="text-[#2563eb]" />}
-                            onClick={() => {
-                              setPerfilAtivoByTipo('produtora', produtora.id)
-                              setActiveDropdown(false)
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 border-t border-slate-200 pt-3">
-                    <button
-                      onClick={encerrarSessao}
-                      className="flex w-full items-center gap-3  px-3 py-3 text-[13px] font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
-                    >
-                      <LogOut size={16} />
-                      Encerrar sessão
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          </>
+    <main style={pageStyle} className="lealt-public-page lealt-force-light px-3 pb-8 pt-3 sm:px-4">
+      <section className="lealt-public-box mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
+        <div className="relative h-[116px] border-b border-[#d8e1ee] bg-[#eaf1f8]">
+          {banner ? (
+            <Image src={banner} alt="Banner da produtora" fill className="object-cover" unoptimized />
           ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/cadastro"
-                className="hidden h-10 items-center gap-2 border border-orange-300 bg-orange-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-orange-700 transition hover:bg-orange-100 sm:inline-flex"
-              >
-                <UserPlus size={14} />
-                Registre-se
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-10 items-center gap-2 border border-blue-300 bg-blue-600 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-blue-700"
-              >
-                <LogIn size={14} />
-                Login
-              </Link>
-            </div>
+            <div className="h-full w-full bg-[linear-gradient(120deg,#eaf1f8,#ffffff,#e8f6ff)]" />
           )}
-        </div>
-      </div>
-
-      {mobileMenuOpen && (
-        <div className="border-t border-zinc-200 bg-white px-4 py-3 xl:hidden">
-          <nav className="mx-auto flex max-w-[1500px] flex-col border border-zinc-200 bg-white">
-            <div className="border-b border-zinc-100 p-2">
-              <ApostadosHeaderCard compacto />
+          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/30 to-transparent" />
+          <div className="absolute bottom-[-28px] left-4 flex items-end gap-3">
+            <div className="h-[72px] w-[72px] border-4 border-white bg-white shadow-sm">
+              <Image src={logo} alt={produtora.nome || 'Produtora'} width={72} height={72} className="h-full w-full object-cover" unoptimized />
             </div>
-            {navItems.map((item) => {
-              const ativo = isActive(item.href)
-              const hasChildren = Boolean(item.children?.length)
-
-              return (
-                <div key={item.href} className="border-b border-zinc-100 last:border-b-0">
-                  <Link
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={[
-                      'flex min-h-10 items-center justify-between px-3 py-2 text-[13px] font-medium transition',
-                      ativo
-                        ? 'bg-[#eaf6ff] text-[#2563eb]'
-                        : 'text-[#142340] hover:bg-zinc-50 hover:text-[#2563eb]',
-                    ].join(' ')}
-                  >
-                    {item.label}
-                    {hasChildren && <ChevronDown size={14} />}
-                  </Link>
-
-                  {hasChildren && (
-                    <div className="bg-zinc-50">
-                      {item.children?.map((child) => (
-                        <NavLinkItem
-                          key={child.href}
-                          item={child}
-                          ativo={isActive(child.href)}
-                          onClick={() => setMobileMenuOpen(false)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
+            <div className="pb-7">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#009FE3]">Link oficial Drop Zone</p>
+              <h1 className="text-2xl font-black uppercase leading-none text-[#0f172a]">{produtora.nome}</h1>
+            </div>
+          </div>
         </div>
-      )}
-    </header>
+
+        <div className="px-4 pb-4 pt-10">
+          {produtora.descricao ? <p className="text-sm font-semibold leading-5 text-[#64748b]">{produtora.descricao}</p> : null}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-4 max-w-[760px] border-t border-[#d8e1ee] pt-4">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-[26px] font-black uppercase leading-[0.95] tracking-[-0.04em] text-[#0f172a]">
+              Campeonatos com vagas
+              <br />e inscrições
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-5 text-[#64748b]">Escolha o campeonato para se inscrever, escalar sua equipe ou ver detalhes.</p>
+          </div>
+          <div className="border border-[#cbd5e1] bg-white px-3 py-2 text-sm font-black text-[#0f172a]">{campeonatos.length}</div>
+        </div>
+
+        <div className="space-y-3">
+          {campeonatos.map((camp) => {
+            const tipo = getTipo(camp)
+            const vagas = camp.vagas || camp.quantidade_equipes || 0
+            return (
+              <article key={camp.id} className="lealt-public-card overflow-hidden border border-[#d8e1ee] bg-white shadow-sm" style={{ borderLeft: `5px solid ${tipo.cor}` }}>
+                <div className="lealt-public-card-head flex items-center gap-3 border-b border-[#d8e1ee] bg-white p-3">
+                  <div className="h-[58px] w-[58px] shrink-0 border border-[#d8e1ee] bg-[#f8fafc]">
+                    {camp.logo_url ? (
+                      <Image src={camp.logo_url} alt={camp.nome} width={58} height={58} className="h-full w-full object-cover" unoptimized />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-black text-[#94a3b8]">DZ</div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="border px-2 py-1 text-[10px] font-black uppercase leading-none" style={{ borderColor: tipo.cor, color: tipo.cor, background: tipo.bg }}>
+                        {tipo.label}
+                      </span>
+                      <span className="text-[11px] font-black uppercase text-[#94a3b8]">{camp.status || 'rascunho'}</span>
+                    </div>
+                    <h3 className="mt-1 truncate text-xl font-black uppercase leading-none tracking-[-0.03em] text-[#0f172a]">{camp.nome}</h3>
+                  </div>
+
+                  <div className="shrink-0 border border-[#cbd5e1] bg-[#f8fafc] px-2 py-2 text-center text-sm font-black uppercase leading-none text-[#0f172a]">
+                    {vagas} vagas
+                  </div>
+                </div>
+
+                <div className="lealt-public-card-info grid grid-cols-3 border-b border-[#d8e1ee] bg-white">
+                  <InfoItem icon={<CalendarDays size={15} />} label="Data" value={dataCurta(camp.data_inicio)} />
+                  <InfoItem icon={<Trophy size={15} />} label="Prêmio" value={moeda(camp.valor_premiacao)} />
+                  <InfoItem icon={<Users size={15} />} label="Inscrição" value={moeda(camp.valor_vaga)} />
+                </div>
+
+                <div className="lealt-public-card-actions grid grid-cols-2 gap-2 bg-white p-3">
+                  <Link
+                    href={`/escala/${camp.id}`}
+                    className="flex h-11 items-center justify-center gap-2 text-center text-[13px] font-black uppercase tracking-[-0.01em] text-white"
+                    style={{ background: tipo.cor }}
+                  >
+                    <ShieldCheck size={17} />
+                    Inscreva-se
+                  </Link>
+                  <Link
+                    href={`/campeonatos/${camp.id}`}
+                    className="flex h-11 items-center justify-center gap-2 border border-[#cbd5e1] bg-white text-center text-[13px] font-black uppercase tracking-[-0.01em] text-[#0f172a]"
+                  >
+                    <ExternalLink size={17} />
+                    Saiba mais
+                  </Link>
+                </div>
+              </article>
+            )
+          })}
+
+          {campeonatos.length === 0 ? (
+            <div className="border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#64748b]">Nenhum campeonato disponível no momento.</div>
+          ) : null}
+        </div>
+      </section>
+    </main>
   )
 }
 
-
-function AuthenticatedOnlyToast() {
-  const { user } = usePerfil()
-  if (!user) return null
-  return <ModeradorMatchToast />
-}
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
-  useEffect(() => {
-    document.documentElement.classList.remove('dark')
-    document.body.classList.remove('dark')
-    document.documentElement.style.colorScheme = 'light dark'
-    document.body.style.colorScheme = 'light dark'
-    document.documentElement.style.background = '#f5f7fb'
-    document.body.style.background = '#f5f7fb'
-
-    let colorSchemeMeta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
-    if (!colorSchemeMeta) {
-      colorSchemeMeta = document.createElement('meta')
-      colorSchemeMeta.name = 'color-scheme'
-      document.head.appendChild(colorSchemeMeta)
-    }
-    colorSchemeMeta.content = 'light dark'
-
-    let supportedMeta = document.querySelector('meta[name="supported-color-schemes"]') as HTMLMetaElement | null
-    if (!supportedMeta) {
-      supportedMeta = document.createElement('meta')
-      supportedMeta.name = 'supported-color-schemes'
-      document.head.appendChild(supportedMeta)
-    }
-    supportedMeta.content = 'light dark'
-  }, [pathname])
-
+function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <html
-      lang="pt-br"
-      suppressHydrationWarning
-      className="light"
-      style={{ colorScheme: 'light dark' as any, background: '#f5f7fb' }}
-    >
-      <head>
-        <meta name="color-scheme" content="light dark" />
-        <meta name="supported-color-schemes" content="light dark" />
-        <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: dark)" />
-      </head>
-      <body
-        className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950"
-        style={{ colorScheme: 'light dark' as any, background: '#f5f7fb' }}
-      >
-        <PerfilProvider>
-          <div className="relative min-h-screen">
-            <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
-            <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.10),transparent_55%)]" />
-
-            <NavbarContent />
-
-            <AuthenticatedOnlyToast />
-
-            <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
-              {children}
-            </main>
-          </div>
-        </PerfilProvider>
-      </body>
-    </html>
+    <div className="lealt-public-info-item min-w-0 border-r border-[#d8e1ee] px-2 py-2 last:border-r-0 sm:px-3">
+      <div className="lealt-public-info-label flex items-center gap-1 text-[10px] font-black uppercase leading-none text-[#64748b]">
+        <span className="text-[#2563eb]">{icon}</span>
+        {label}
+      </div>
+      <div className="lealt-public-info-value mt-1 truncate text-[13px] font-black leading-none text-[#0f172a] sm:text-sm">{value}</div>
+    </div>
   )
 }
