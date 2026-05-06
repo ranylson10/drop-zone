@@ -34,8 +34,8 @@ export default function Page() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-        <div className="text-[#7cfc00] font-black uppercase italic tracking-widest">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="font-black uppercase tracking-widest text-emerald-700">
           Carregando xtreino...
         </div>
       </div>
@@ -43,7 +43,7 @@ export default function Page() {
   }
 
   if (modo === 'jogo_unico') {
-    return <DiarioDetalhePage />
+    return <DiarioDetalhePage tipoForcado="xtreino" />
   }
 
   return <CampeonatoDetalhePage tipoForcado="xtreino" />

@@ -447,6 +447,16 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
   const tipoCompeticaoAtual = String(tipoForcado || camp?.tipo_competicao || camp?.modelo_competicao || camp?.tipo || '').toLowerCase()
   const tipoVisual = getTipoVisual(tipoCompeticaoAtual)
+  const lealtHeaderGradient =
+    tipoVisual.key === 'xtreino'
+      ? 'border-l-emerald-500 bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-900'
+      : tipoVisual.key === 'copa'
+        ? 'border-l-violet-500 bg-gradient-to-r from-violet-700 via-violet-600 to-violet-900'
+        : tipoVisual.key === 'liga'
+          ? 'border-l-amber-500 bg-gradient-to-r from-amber-600 via-amber-500 to-amber-800'
+          : tipoVisual.key === 'confronto'
+            ? 'border-l-red-500 bg-gradient-to-r from-red-700 via-red-600 to-red-900'
+            : 'border-l-sky-500 bg-gradient-to-r from-sky-700 via-blue-700 to-sky-900'
   const isXtreino = tipoCompeticaoAtual === 'xtreino'
   const xtreinoModo = String(xtreinoConfig?.modo_xtreino || '').toLowerCase()
 
@@ -1377,7 +1387,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             </button>
           </div>
 
-          <div className={`border-l-4 ${tipoVisual.borderStrong} bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-4 py-4 text-white md:px-6`}>
+          <div className={`border-l-4 ${lealtHeaderGradient} px-4 py-4 text-white md:px-6`}>
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_150px_150px_150px_150px] md:items-center">
               <div className="flex min-w-0 items-center gap-4">
                 <div className="h-16 w-16 shrink-0 border border-white/20 bg-white p-1">
