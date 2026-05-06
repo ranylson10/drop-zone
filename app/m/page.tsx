@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { CreditCard, Gamepad2, ShieldCheck, Trophy, UserPlus, Users, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -33,6 +34,7 @@ function tipoInfo(campeonato: Campeonato) {
 }
 
 export default function MobileHomePage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [logado, setLogado] = useState(false)
   const [saldo, setSaldo] = useState(0)
@@ -45,6 +47,12 @@ export default function MobileHomePage() {
       const user = sessionData.session?.user
       if (!ativo) return
       setLogado(Boolean(user))
+
+      if (!user) {
+        setLoading(false)
+        router.replace('/m/cadastro')
+        return
+      }
 
       if (user) {
         const { data: saldoData } = await supabase.from('wallet_saldo').select('saldo').eq('user_id', user.id).maybeSingle()
@@ -65,27 +73,14 @@ export default function MobileHomePage() {
     }
     carregar()
     return () => { ativo = false }
-  }, [])
+  }, [router])
 
   if (loading) {
     return <div className="border border-slate-200 bg-white p-4 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-500">Carregando mobile...</div>
   }
 
   if (!logado) {
-    return (
-      <div className="space-y-3">
-        <MobileCard className="bg-gradient-to-br from-blue-600 to-slate-950 text-white">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">LEALT Mobile</p>
-          <h1 className="mt-2 text-2xl font-black uppercase tracking-[-0.05em]">Jogue, monte line e entre em campeonatos pelo celular.</h1>
-          <p className="mt-2 text-xs font-semibold leading-5 text-blue-100">Versão organizada para quem quer usar rápido, mas mantendo as ferramentas avançadas em menus.</p>
-        </MobileCard>
-        <div className="grid grid-cols-1 gap-2">
-          <MobileAction href="/m/login" label="Entrar na conta" desc="Acessar perfil, equipe e carteira" icon={ShieldCheck} />
-          <MobileAction href="/m/cadastro" label="Criar conta" desc="Cadastro rápido pelo celular" icon={UserPlus} />
-          <MobileAction href="/m/campeonatos" label="Ver campeonatos" desc="Diários, copas, ligas e xtreinos" icon={Trophy} />
-        </div>
-      </div>
-    )
+    return <div className="border border-slate-200 bg-white p-4 text-center text-[12px] font-black uppercase tracking-[0.16em] text-slate-500">Abrindo cadastro...</div>
   }
 
   return (

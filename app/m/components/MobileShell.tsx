@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
-import { Bell, ChevronRight, CircleUserRound, CreditCard, Gamepad2, Home, LogOut, Menu, Shield, Trophy, Users, Wallet } from 'lucide-react'
+import { Bell, ChevronRight, CircleUserRound, CreditCard, Gamepad2, Home, LogOut, Menu, Shield, Trophy, UserRound, Users, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { DropZoneLogo } from '@/app/components/DropZoneLogo'
 
@@ -19,11 +19,53 @@ function dinheiro(valor: number | null | undefined) {
 
 const mainLinks = [
   { href: '/m', label: 'Início', icon: Home },
+  { href: '/m/equipe', label: 'Equipes', icon: Users },
+  { href: '/m/jogadores', label: 'Jogadores', icon: UserRound },
   { href: '/m/campeonatos', label: 'Campeonatos', icon: Trophy },
-  { href: '/m/equipe', label: 'Equipe', icon: Users },
-  { href: '/m/carteira', label: 'Carteira', icon: Wallet },
   { href: '/m/menu', label: 'Menu', icon: Menu },
 ]
+
+
+function MobileBrandMark({ size = 'sm', animated = false }: { size?: 'sm' | 'lg'; animated?: boolean }) {
+  const box = size === 'lg' ? 'h-24 w-24' : 'h-10 w-10'
+  const scale = size === 'lg' ? 'scale-[0.72]' : 'scale-[0.34]'
+  return (
+    <div className={`${box} relative shrink-0 overflow-hidden border border-slate-200 bg-white`}>
+      <div className={`absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 ${scale}`}>
+        <DropZoneLogo size="md" animated={animated} />
+      </div>
+    </div>
+  )
+}
+
+function MobileSplash({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onDone, 1350)
+    return () => window.clearTimeout(t)
+  }, [onDone])
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-white">
+      <style jsx>{`
+        @keyframes dzEnter {
+          0% { opacity: 0; transform: translateY(18px) scale(.82); filter: blur(8px); }
+          55% { opacity: 1; transform: translateY(0) scale(1.04); filter: blur(0); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        @keyframes dzLine {
+          0% { transform: scaleX(0); opacity: .15; }
+          100% { transform: scaleX(1); opacity: 1; }
+        }
+      `}</style>
+      <div className="flex flex-col items-center" style={{ animation: 'dzEnter 900ms cubic-bezier(.2,.9,.2,1) both' }}>
+        <MobileBrandMark size="lg" animated />
+        <h1 className="mt-4 text-2xl font-black uppercase tracking-[-0.06em] text-slate-950">Drop Zone</h1>
+        <p className="mt-1 text-[10px] font-black uppercase tracking-[0.28em] text-blue-600">Mobile competitivo</p>
+        <div className="mt-5 h-[3px] w-32 origin-left bg-blue-600" style={{ animation: 'dzLine 850ms ease 250ms both' }} />
+      </div>
+    </div>
+  )
+}
 
 const menuGroups = [
   {
@@ -38,6 +80,7 @@ const menuGroups = [
     title: 'Equipe',
     items: [
       { href: '/m/equipe', label: 'Minha equipe', desc: 'Editar dados e elenco', icon: Users },
+      { href: '/m/jogadores', label: 'Jogadores', desc: 'Cadastrar e organizar elenco', icon: UserRound },
       { href: '/m/lines', label: 'Lines', desc: 'Titulares, reservas e configuração', icon: Gamepad2 },
       { href: '/equipe', label: 'Equipe avançado', desc: 'Abrir painel completo', icon: ChevronRight },
     ],
@@ -65,6 +108,14 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
   const [saldo, setSaldo] = useState(0)
   const [userName, setUserName] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('dropzone_mobile_splash_seen')) {
+      sessionStorage.setItem('dropzone_mobile_splash_seen', '1')
+      setShowSplash(true)
+    }
+  }, [])
 
   useEffect(() => {
     let ativo = true
@@ -96,12 +147,12 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
     >
       <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:22px_22px]" />
 
+      {showSplash && <MobileSplash onDone={() => setShowSplash(false)} />}
+
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex h-14 items-center justify-between px-3">
           <Link href="/m" className="flex min-w-0 items-center gap-2">
-            <div className="grid h-9 w-9 shrink-0 place-items-center border border-slate-200 bg-white">
-              <DropZoneLogo size="sm" animated />
-            </div>
+            <MobileBrandMark />
             <div className="min-w-0">
               <p className="truncate text-[13px] font-black uppercase leading-none tracking-[-0.02em]">{title}</p>
               <p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{subtitle}</p>
