@@ -741,21 +741,59 @@ function AuthenticatedOnlyToast() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isMobileLite = pathname?.startsWith('/m')
+
+  useEffect(() => {
+    document.documentElement.classList.remove('dark')
+    document.body.classList.remove('dark')
+    document.documentElement.style.colorScheme = 'light'
+    document.body.style.colorScheme = 'light'
+    document.documentElement.style.background = '#f5f7fb'
+    document.body.style.background = '#f5f7fb'
+
+    let colorSchemeMeta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
+    if (!colorSchemeMeta) {
+      colorSchemeMeta = document.createElement('meta')
+      colorSchemeMeta.name = 'color-scheme'
+      document.head.appendChild(colorSchemeMeta)
+    }
+    colorSchemeMeta.content = 'light only'
+
+    let supportedMeta = document.querySelector('meta[name="supported-color-schemes"]') as HTMLMetaElement | null
+    if (!supportedMeta) {
+      supportedMeta = document.createElement('meta')
+      supportedMeta.name = 'supported-color-schemes'
+      document.head.appendChild(supportedMeta)
+    }
+    supportedMeta.content = 'light'
+  }, [pathname])
 
   return (
-    <html lang="pt-br">
-      <body className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950">
+    <html
+      lang="pt-br"
+      suppressHydrationWarning
+      className="light"
+      style={{ colorScheme: 'light', background: '#f5f7fb' }}
+    >
+      <head>
+        <meta name="color-scheme" content="light only" />
+        <meta name="supported-color-schemes" content="light" />
+        <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: dark)" />
+      </head>
+      <body
+        className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950"
+        style={{ colorScheme: 'light', background: '#f5f7fb' }}
+      >
         <PerfilProvider>
           <div className="relative min-h-screen">
             <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
             <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.10),transparent_55%)]" />
 
-            {!isMobileLite && <NavbarContent />}
+            <NavbarContent />
 
-            {!isMobileLite && <AuthenticatedOnlyToast />}
+            <AuthenticatedOnlyToast />
 
-            <main className={isMobileLite ? 'w-full' : 'mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5'}>
+            <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
               {children}
             </main>
           </div>

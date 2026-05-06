@@ -870,26 +870,75 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
   }
 }
 
-/* ===== LEALT FORCE LIGHT MODE DEFINITIVO =====
-   Impede que navegadores mobile apliquem Auto Dark Mode nas páginas LEALT. */
+/* =========================================================
+   LEALT FORCE LIGHT DEFINITIVO ANDROID/SAMSUNG
+   Correção global completa, preservando o CSS original.
+   O valor correto é: light only. NÃO usar "only light".
+   ========================================================= */
 :root,
 html,
 body {
-  color-scheme: only light !important;
-  forced-color-adjust: none;
+  color-scheme: light only !important;
+  background-color: #f5f7fb !important;
+}
+
+html.light,
+html:not(.dark),
+body {
+  color-scheme: light only !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root,
   html,
   body {
-    color-scheme: only light !important;
-    background: #f5f7fb !important;
+    color-scheme: light only !important;
+    background-color: #f5f7fb !important;
     color: #0f172a !important;
   }
 
-  body,
-  body *:not(svg):not(path) {
-    forced-color-adjust: none;
+  .lealt-force-light,
+  .lealt-force-light * {
+    color-scheme: light only !important;
+  }
+}
+
+/* =========================================================
+   LINK PÚBLICO PRODUTORA — CARD COMPACTO MOBILE
+   Cancela o global antigo que transformava grid-cols-3 em 1 coluna no celular.
+   ========================================================= */
+.lealt-public-card-info {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.lealt-public-card-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.lealt-public-card-info > *,
+.lealt-public-card-actions > * {
+  min-width: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .lealt-public-card-info {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .lealt-public-card-info .lealt-info-label {
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+
+  .lealt-public-card-info .lealt-info-value {
+    font-size: 12px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .lealt-public-card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

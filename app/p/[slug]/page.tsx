@@ -73,8 +73,8 @@ export default function LinkPublicoProdutoraPage() {
   const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
 
   useEffect(() => {
-    document.documentElement.style.colorScheme = 'only light'
-    document.body.style.colorScheme = 'only light'
+    document.documentElement.style.colorScheme = 'light'
+    document.body.style.colorScheme = 'light'
     document.documentElement.classList.remove('dark')
     document.body.classList.remove('dark')
     document.body.style.background = '#f5f7fb'
@@ -86,7 +86,7 @@ export default function LinkPublicoProdutoraPage() {
       meta.name = 'color-scheme'
       document.head.appendChild(meta)
     }
-    meta.content = 'only light'
+    meta.content = 'light'
   }, [])
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function LinkPublicoProdutoraPage() {
     () => ({
       background: '#f5f7fb',
       color: '#0f172a',
-      colorScheme: 'only light' as const,
+      colorScheme: 'light' as const,
       minHeight: '100vh',
     }),
     [],
@@ -139,7 +139,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (loading) {
     return (
-      <main style={pageStyle} className="px-3 py-6">
+      <main style={pageStyle} className="lealt-force-light px-3 py-6">
         <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
           Carregando link oficial...
         </div>
@@ -149,7 +149,7 @@ export default function LinkPublicoProdutoraPage() {
 
   if (!produtora) {
     return (
-      <main style={pageStyle} className="px-3 py-6">
+      <main style={pageStyle} className="lealt-force-light px-3 py-6">
         <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
           Produtora não encontrada.
         </div>
@@ -158,7 +158,7 @@ export default function LinkPublicoProdutoraPage() {
   }
 
   return (
-    <main style={pageStyle} className="px-3 pb-8 pt-3 sm:px-4">
+    <main style={pageStyle} className="lealt-force-light px-3 pb-8 pt-3 sm:px-4">
       <section className="mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
         <div className="relative h-[116px] border-b border-[#d8e1ee] bg-[#eaf1f8]">
           {banner ? (
@@ -225,13 +225,13 @@ export default function LinkPublicoProdutoraPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 border-b border-[#d8e1ee] bg-[#fbfdff]">
+                <div className="lealt-public-card-info grid grid-cols-3 border-b border-[#d8e1ee] bg-[#fbfdff]">
                   <InfoItem icon={<CalendarDays size={15} />} label="Data" value={dataCurta(camp.data_inicio)} />
                   <InfoItem icon={<Trophy size={15} />} label="Prêmio" value={moeda(camp.valor_premiacao)} />
                   <InfoItem icon={<Users size={15} />} label="Inscrição" value={moeda(camp.valor_vaga)} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 bg-white p-3">
+                <div className="lealt-public-card-actions grid grid-cols-2 gap-2 bg-white p-3">
                   <Link
                     href={`/escala/${camp.id}`}
                     className="flex h-11 items-center justify-center gap-2 text-center text-[13px] font-black uppercase tracking-[-0.01em] text-white"
