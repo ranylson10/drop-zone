@@ -873,33 +873,33 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 /* =========================================================
    LEALT FORCE LIGHT DEFINITIVO ANDROID/SAMSUNG
    Correção global completa, preservando o CSS original.
-   O valor correto é: light only. NÃO usar "only light".
+   O valor correto é: only light. NÃO usar "only light".
    ========================================================= */
 :root,
 html,
 body {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
   background-color: #f5f7fb !important;
 }
 
 html.light,
 html:not(.dark),
 body {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root,
   html,
   body {
-    color-scheme: light only !important;
+    color-scheme: only light !important;
     background-color: #f5f7fb !important;
     color: #0f172a !important;
   }
 
   .lealt-force-light,
   .lealt-force-light * {
-    color-scheme: light only !important;
+    color-scheme: only light !important;
   }
 }
 
@@ -949,13 +949,13 @@ body {
 html,
 body,
 #__next {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
   background: #f5f7fb !important;
 }
 
 .lealt-public-page,
 .lealt-public-page * {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
   forced-color-adjust: none !important;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1028,5 +1028,98 @@ main.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"],
     font-size: 12px !important;
     line-height: 1.05 !important;
     white-space: nowrap !important;
+  }
+}
+
+/* =========================================================
+   FIX DEFINITIVO ANDROID/SAMSUNG FORCE DARK
+   O valor correto é "only light" (não "light only").
+   Também usa background-image porque alguns navegadores escurecem background-color.
+   ========================================================= */
+:root,
+html,
+body {
+  color-scheme: only light !important;
+  forced-color-adjust: none !important;
+  background-color: #f5f7fb !important;
+  background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
+  color: #0f172a !important;
+}
+
+html.dark,
+body.dark {
+  color-scheme: only light !important;
+  background-color: #f5f7fb !important;
+  background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
+  color: #0f172a !important;
+}
+
+.lealt-public-page,
+.lealt-public-page section,
+.lealt-public-page article,
+.lealt-public-page div {
+  color-scheme: only light !important;
+  forced-color-adjust: none !important;
+}
+
+.lealt-public-page {
+  background-color: #f5f7fb !important;
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(#f5f7fb, #f5f7fb) !important;
+  background-size: 28px 28px, 28px 28px, 100% 100% !important;
+  color: #0f172a !important;
+}
+
+.lealt-public-page h1,
+.lealt-public-page h2,
+.lealt-public-page h3,
+.lealt-public-page p,
+.lealt-public-page span,
+.lealt-public-page a,
+.lealt-public-page button {
+  forced-color-adjust: none !important;
+}
+
+.lealt-public-box,
+.lealt-public-card,
+.lealt-public-card-head,
+.lealt-public-card-actions,
+.lealt-public-card-info,
+.lealt-public-info-item {
+  background-color: #ffffff !important;
+  background-image: linear-gradient(#ffffff, #ffffff) !important;
+  color: #0f172a !important;
+  border-color: #d8e1ee !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  html,
+  body,
+  html.dark,
+  body.dark {
+    color-scheme: only light !important;
+    forced-color-adjust: none !important;
+    background-color: #f5f7fb !important;
+    background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
+    color: #0f172a !important;
+  }
+
+  .lealt-public-page {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .lealt-public-box,
+  .lealt-public-card,
+  .lealt-public-card-head,
+  .lealt-public-card-actions,
+  .lealt-public-card-info,
+  .lealt-public-info-item {
+    background-color: #ffffff !important;
+    background-image: linear-gradient(#ffffff, #ffffff) !important;
+    color: #0f172a !important;
   }
 }

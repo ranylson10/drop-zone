@@ -745,8 +745,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     document.documentElement.classList.remove('dark')
     document.body.classList.remove('dark')
-    document.documentElement.style.colorScheme = 'light'
-    document.body.style.colorScheme = 'light'
+    document.documentElement.style.colorScheme = 'only light'
+    document.body.style.colorScheme = 'only light'
     document.documentElement.style.background = '#f5f7fb'
     document.body.style.background = '#f5f7fb'
 
@@ -756,7 +756,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       colorSchemeMeta.name = 'color-scheme'
       document.head.appendChild(colorSchemeMeta)
     }
-    colorSchemeMeta.content = 'light only'
+    colorSchemeMeta.content = 'only light'
 
     let supportedMeta = document.querySelector('meta[name="supported-color-schemes"]') as HTMLMetaElement | null
     if (!supportedMeta) {
@@ -772,17 +772,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="pt-br"
       suppressHydrationWarning
       className="light"
-      style={{ colorScheme: 'light', background: '#f5f7fb' }}
+      style={{ colorScheme: 'only light' as any, background: '#f5f7fb' }}
     >
       <head>
-        <meta name="color-scheme" content="light only" />
+        <meta name="color-scheme" content="only light" />
         <meta name="supported-color-schemes" content="light" />
         <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: dark)" />
       </head>
       <body
         className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950"
-        style={{ colorScheme: 'light', background: '#f5f7fb' }}
+        style={{ colorScheme: 'only light' as any, background: '#f5f7fb' }}
       >
         <PerfilProvider>
           <div className="relative min-h-screen">
