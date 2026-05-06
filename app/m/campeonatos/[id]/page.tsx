@@ -65,19 +65,33 @@ export default function MobileCampeonatoDetalhePage() {
             </div>
             <div className="min-w-0 flex-1">
               <span className={`inline-flex border px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${info.cls}`}>{info.label}</span>
-              <h1 className="mt-2 text-2xl font-black uppercase leading-none tracking-[-0.06em]">{camp.nome}</h1>
+              <h1 className="mt-2 text-[24px] font-black uppercase leading-[0.95] tracking-[-0.045em] text-slate-950">{camp.nome}</h1>
               <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 line-clamp-2">{camp.descricao || 'Campeonato competitivo Drop Zone.'}</p>
             </div>
           </div>
         </div>
       </MobileCard>
 
-      <div className="grid grid-cols-2 gap-2">
-        <MobileCard><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Vagas</p><p className="mt-1 text-lg font-black">{camp.vagas || camp.quantidade_equipes || '-'}</p></MobileCard>
-        <MobileCard><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Inscrição</p><p className="mt-1 text-lg font-black">{dinheiro(valor)}</p></MobileCard>
-        <MobileCard><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Premiação</p><p className="mt-1 text-lg font-black">{dinheiro(camp.valor_premiacao)}</p></MobileCard>
-        <MobileCard><p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Saldo</p><p className="mt-1 text-lg font-black">{dinheiro(saldo)}</p></MobileCard>
-      </div>
+      <MobileCard className="p-0">
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200">
+          <div className="p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Vagas</p>
+            <p className="mt-1 text-lg font-black">{camp.vagas || camp.quantidade_equipes || '-'}</p>
+          </div>
+          <div className="p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Inscrição</p>
+            <p className="mt-1 text-lg font-black">{dinheiro(valor)}</p>
+          </div>
+          <div className="p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Premiação</p>
+            <p className="mt-1 text-lg font-black">{dinheiro(camp.valor_premiacao)}</p>
+          </div>
+          <div className="p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">Saldo</p>
+            <p className="mt-1 text-lg font-black">{dinheiro(saldo)}</p>
+          </div>
+        </div>
+      </MobileCard>
 
       <MobileCard className={podePagar ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}>
         <div className="flex items-start gap-3">

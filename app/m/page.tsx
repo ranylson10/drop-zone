@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { CreditCard, Gamepad2, ShieldCheck, Trophy, UserPlus, Users, Wallet } from 'lucide-react'
+import { CreditCard, Gamepad2, Rss, Trophy, Users, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { MobileAction, MobileCard, MobileSectionTitle } from './components/MobileShell'
 
@@ -85,20 +85,21 @@ export default function MobileHomePage() {
 
   return (
     <div className="space-y-3">
-      <MobileCard className="bg-slate-950 text-white">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">Resumo da conta</p>
+      <MobileCard>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Resumo da conta</p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase text-slate-300">Saldo disponível</p>
+            <p className="text-[11px] font-bold uppercase text-slate-500">Saldo disponível</p>
             <h1 className="mt-1 text-2xl font-black tracking-[-0.05em]">{dinheiro(saldo)}</h1>
           </div>
-          <Link href="/m/carteira" className="border border-blue-300 bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-[0.1em]">Depositar</Link>
+          <Link href="/m/carteira" className="border border-blue-600 bg-blue-600 px-3 py-2 text-[11px] font-black uppercase tracking-[0.1em] text-white">Depositar</Link>
         </div>
       </MobileCard>
 
       <section>
         <MobileSectionTitle title="Ações rápidas" subtitle="O essencial na primeira tela." />
         <div className="grid grid-cols-2 gap-2">
+          <MobileAction href="/m/feed" label="Feed" desc="Postagens" icon={Rss} />
           <MobileAction href="/m/campeonatos" label="Inscrever" desc="Vagas abertas" icon={Trophy} />
           <MobileAction href="/m/equipe" label="Equipe" desc="Elenco" icon={Users} />
           <MobileAction href="/m/lines" label="Lines" desc="Titulares" icon={Gamepad2} />

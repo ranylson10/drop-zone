@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
-import { Bell, ChevronRight, CircleUserRound, CreditCard, Gamepad2, Home, LogOut, Menu, Shield, Trophy, UserRound, Users, Wallet } from 'lucide-react'
+import { Bell, ChevronRight, CircleUserRound, CreditCard, Gamepad2, Home, LogOut, Menu, Rss, Shield, Trophy, UserRound, Users, Wallet } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { DropZoneLogo } from '@/app/components/DropZoneLogo'
 
@@ -19,7 +19,8 @@ function dinheiro(valor: number | null | undefined) {
 
 const mainLinks = [
   { href: '/m', label: 'Início', icon: Home },
-  { href: '/m/equipe', label: 'Equipes', icon: Users },
+  { href: '/m/feed', label: 'Feed', icon: Rss },
+  { href: '/m/equipe', label: 'Equipe', icon: Users },
   { href: '/m/jogadores', label: 'Jogadores', icon: UserRound },
   { href: '/m/campeonatos', label: 'Campeonatos', icon: Trophy },
   { href: '/m/menu', label: 'Menu', icon: Menu },
@@ -27,13 +28,11 @@ const mainLinks = [
 
 
 function MobileBrandMark({ size = 'sm', animated = false }: { size?: 'sm' | 'lg'; animated?: boolean }) {
-  const box = size === 'lg' ? 'h-24 w-24' : 'h-10 w-10'
-  const scale = size === 'lg' ? 'scale-[0.72]' : 'scale-[0.34]'
+  const box = size === 'lg' ? 'h-24 w-24' : 'h-11 w-11'
+  const logoSize = size === 'lg' ? 'md' : 'sm'
   return (
-    <div className={`${box} relative shrink-0 overflow-hidden border border-slate-200 bg-white`}>
-      <div className={`absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 ${scale}`}>
-        <DropZoneLogo size="md" animated={animated} />
-      </div>
+    <div className={`${box} relative grid shrink-0 place-items-center overflow-hidden border border-slate-200 bg-white`}>
+      <DropZoneLogo size={logoSize as any} animated={animated} />
     </div>
   )
 }
@@ -88,6 +87,7 @@ const menuGroups = [
   {
     title: 'Competitivo',
     items: [
+      { href: '/m/feed', label: 'Feed', desc: 'Postagens da comunidade', icon: Rss },
       { href: '/m/campeonatos', label: 'Campeonatos', desc: 'Inscrição rápida pelo celular', icon: Trophy },
       { href: '/apostados', label: 'Apostados', desc: 'Filas e confrontos', icon: Trophy },
       { href: '/moderadores', label: 'Moderação', desc: 'Área avançada', icon: Shield },
@@ -107,6 +107,7 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
   const router = useRouter()
   const [saldo, setSaldo] = useState(0)
   const [userName, setUserName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showSplash, setShowSplash] = useState(false)
 
@@ -123,7 +124,21 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
       const { data: sessionData } = await supabase.auth.getSession()
       const user = sessionData.session?.user
       if (!ativo || !user) return
-      setUserName(user.user_metadata?.username || user.email?.split('@')[0] || 'Perfil')
+      setUserName(user.user_metadata?.username || user.user_metadata?.name || user.email?.split('@')[0] || 'Perfil')
+      setAvatarUrl(user.user_metadata?.avatar_url || user.user_metadata?.picture || null)
+
+      const { data: perfilData } = await supabase
+        .from('profiles')
+        .select('nome_exibicao, username, foto_url')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (ativo && perfilData) {
+        const perfil = perfilData as any
+        setUserName(perfil.nome_exibicao || perfil.username || user.user_metadata?.username || user.email?.split('@')[0] || 'Perfil')
+        setAvatarUrl(perfil.foto_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null)
+      }
+
       const { data } = await supabase.from('wallet_saldo').select('saldo').eq('user_id', user.id).maybeSingle()
       if (ativo && data) setSaldo(Number((data as any).saldo || 0))
     }
@@ -142,15 +157,22 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
   return (
     <div
       data-lealt-mobile="light"
-      className="min-h-screen bg-[#f8fafc] pb-20 text-[#0f172a]"
+      className="min-h-screen bg-[#f8fafc] pb-24 text-[#0f172a]"
       style={{ colorScheme: 'light' }}
     >
+      <style jsx global>{`
+        html, body { color-scheme: light !important; background: #f8fafc !important; }
+        body { color: #0f172a !important; }
+        [data-lealt-mobile='light'], [data-lealt-mobile='light'] * { forced-color-adjust: none; }
+        [data-lealt-mobile='light'] input, [data-lealt-mobile='light'] textarea, [data-lealt-mobile='light'] select { background: #ffffff !important; color: #0f172a !important; }
+      `}</style>
+
       <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:22px_22px]" />
 
       {showSplash && <MobileSplash onDone={() => setShowSplash(false)} />}
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="flex h-14 items-center justify-between px-3">
+        <div className="flex h-16 items-center justify-between px-4">
           <Link href="/m" className="flex min-w-0 items-center gap-2">
             <MobileBrandMark />
             <div className="min-w-0">
@@ -161,6 +183,9 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
 
           {!isAuthPage && (
             <div className="flex items-center gap-2">
+              <Link href="/m/perfil-jogo" className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden border border-slate-200 bg-slate-50" aria-label="Perfil">
+                {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <UserRound size={17} className="text-slate-500" />}
+              </Link>
               <Link href="/m/carteira" className="border border-blue-200 bg-blue-50 px-2 py-1 text-right">
                 <p className="text-[8px] font-black uppercase tracking-[0.16em] text-blue-600">Saldo</p>
                 <p className="text-[11px] font-black text-slate-950">{dinheiro(saldo)}</p>
@@ -176,16 +201,16 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto w-full max-w-[520px] px-3 py-3">{children}</main>
+      <main className="relative z-10 mx-auto w-full max-w-[520px] px-4 py-3">{children}</main>
 
       {!isAuthPage && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white">
-          <div className="mx-auto grid h-16 max-w-[520px] grid-cols-5">
+          <div className="mx-auto grid h-16 max-w-[520px] grid-cols-6">
             {mainLinks.map((item) => {
               const Icon = item.icon
               const active = pathname === item.href || (item.href !== '/m' && pathname?.startsWith(item.href))
               return (
-                <Link key={item.href} href={item.href} onClick={(e) => { if (item.href === '/m/menu') { e.preventDefault(); setMenuOpen(true) } }} className={['flex flex-col items-center justify-center gap-1 border-l border-slate-100 text-[9px] font-black uppercase tracking-[0.06em]', active ? 'bg-blue-50 text-blue-600' : 'text-slate-500'].join(' ')}>
+                <Link key={item.href} href={item.href} onClick={(e) => { if (item.href === '/m/menu') { e.preventDefault(); setMenuOpen(true) } }} className={['flex flex-col items-center justify-center gap-1 border-l border-slate-100 px-0.5 text-[8px] font-black uppercase tracking-[0.02em]', active ? 'bg-blue-50 text-blue-600' : 'text-slate-500'].join(' ')}>
                   <Icon size={18} />
                   {item.label}
                 </Link>
@@ -240,7 +265,7 @@ export function MobileShell({ title = 'Drop Zone', subtitle = 'LEALT Mobile', ch
 }
 
 export function MobileCard({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`border border-slate-200 bg-white p-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)] ${className}`}>{children}</div>
+  return <div className={`border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] ${className}`}>{children}</div>
 }
 
 export function MobileSectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
@@ -254,7 +279,7 @@ export function MobileSectionTitle({ title, subtitle }: { title: string; subtitl
 
 export function MobileAction({ href, label, desc, icon: Icon }: { href: string; label: string; desc?: string; icon: any }) {
   return (
-    <Link href={href} className="flex items-center gap-3 border border-slate-200 bg-white p-3 active:bg-slate-50">
+    <Link href={href} className="flex items-center gap-3 border border-slate-200 bg-white p-3.5 active:bg-slate-50">
       <div className="grid h-10 w-10 shrink-0 place-items-center border border-blue-200 bg-blue-50 text-blue-600"><Icon size={18} /></div>
       <div className="min-w-0 flex-1">
         <p className="text-[12px] font-black uppercase text-slate-950">{label}</p>
