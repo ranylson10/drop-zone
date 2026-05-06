@@ -1,5 +1,51 @@
 @import "tailwindcss";
 
+/* =========================================================
+   LEALT LIGHT THEME REAL — ANDROID/SAMSUNG
+   Estratégia usada por sites grandes: declarar suporte a light/dark
+   e fazer o tema dark carregar a MESMA paleta clara.
+   Isso evita que Samsung Internet/Chrome Android tentem gerar dark automático.
+   ========================================================= */
+:root {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: light dark;
+    --dz-bg: #f5f7fb;
+    --dz-bg-2: #eef3f8;
+    --dz-surface: #ffffff;
+    --dz-surface-2: #f8fafc;
+    --dz-line: #dde5ef;
+    --dz-line-strong: #c8d4e3;
+    --dz-text: #0f172a;
+    --dz-muted: #64748b;
+    --dz-faint: #94a3b8;
+    --dz-primary: #14d9ff;
+    --dz-primary-2: #2563eb;
+    --dz-accent: #7c3aed;
+    --dz-success: #22c55e;
+    --dz-danger: #ef4444;
+    --dz-warning: #f59e0b;
+  }
+
+  html,
+  body {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  body {
+    background-image:
+      linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+      radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
+      radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
+  }
+}
+
+
 :root {
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
@@ -873,33 +919,33 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 /* =========================================================
    LEALT FORCE LIGHT DEFINITIVO ANDROID/SAMSUNG
    Correção global completa, preservando o CSS original.
-   O valor correto é: only light. NÃO usar "only light".
+   O valor correto é: light dark. NÃO usar "light dark".
    ========================================================= */
 :root,
 html,
 body {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   background-color: #f5f7fb !important;
 }
 
 html.light,
 html:not(.dark),
 body {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root,
   html,
   body {
-    color-scheme: only light !important;
+    color-scheme: light dark !important;
     background-color: #f5f7fb !important;
     color: #0f172a !important;
   }
 
   .lealt-force-light,
   .lealt-force-light * {
-    color-scheme: only light !important;
+    color-scheme: light dark !important;
   }
 }
 
@@ -949,13 +995,13 @@ body {
 html,
 body,
 #__next {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   background: #f5f7fb !important;
 }
 
 .lealt-public-page,
 .lealt-public-page * {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   forced-color-adjust: none !important;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1033,13 +1079,13 @@ main.lealt-public-page .lealt-public-card-actions[class*="grid-cols-2"],
 
 /* =========================================================
    FIX DEFINITIVO ANDROID/SAMSUNG FORCE DARK
-   O valor correto é "only light" (não "light only").
+   Samsung/Chrome Android: dark theme declarado com a mesma paleta clara para evitar auto-dark.
    Também usa background-image porque alguns navegadores escurecem background-color.
    ========================================================= */
 :root,
 html,
 body {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   forced-color-adjust: none !important;
   background-color: #f5f7fb !important;
   background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
@@ -1048,7 +1094,7 @@ body {
 
 html.dark,
 body.dark {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   background-color: #f5f7fb !important;
   background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
   color: #0f172a !important;
@@ -1058,7 +1104,7 @@ body.dark {
 .lealt-public-page section,
 .lealt-public-page article,
 .lealt-public-page div {
-  color-scheme: only light !important;
+  color-scheme: light dark !important;
   forced-color-adjust: none !important;
 }
 
@@ -1100,7 +1146,7 @@ body.dark {
   body,
   html.dark,
   body.dark {
-    color-scheme: only light !important;
+    color-scheme: light dark !important;
     forced-color-adjust: none !important;
     background-color: #f5f7fb !important;
     background-image: linear-gradient(#f5f7fb, #f5f7fb) !important;
@@ -1120,6 +1166,55 @@ body.dark {
   .lealt-public-info-item {
     background-color: #ffffff !important;
     background-image: linear-gradient(#ffffff, #ffffff) !important;
+    color: #0f172a !important;
+  }
+}
+
+
+/* =========================================================
+   /p/[slug] — DARK MODE COMO PALETA CLARA
+   Mantém card compacto e LEALT claro mesmo com celular em modo escuro.
+   ========================================================= */
+@media (prefers-color-scheme: dark) {
+  .lealt-public-page,
+  .lealt-public-page * {
+    color-scheme: light dark !important;
+  }
+
+  .lealt-public-page {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .lealt-public-box,
+  .lealt-public-card,
+  .lealt-public-card-head,
+  .lealt-public-card-info,
+  .lealt-public-card-actions,
+  .lealt-public-info-item {
+    background-color: #ffffff !important;
+    background-image: linear-gradient(#ffffff, #ffffff) !important;
+    color: #0f172a !important;
+    border-color: #d8e1ee !important;
+  }
+
+  .lealt-public-page h1,
+  .lealt-public-page h2,
+  .lealt-public-page h3,
+  .lealt-public-page p,
+  .lealt-public-page span,
+  .lealt-public-page a,
+  .lealt-public-page button {
+    color-scheme: light dark !important;
+  }
+
+  .lealt-public-muted,
+  .lealt-public-info-label {
+    color: #64748b !important;
+  }
+
+  .lealt-public-info-value,
+  .lealt-public-card-title {
     color: #0f172a !important;
   }
 }
