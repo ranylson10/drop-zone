@@ -1,333 +1,274 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import { CalendarDays, ExternalLink, ShieldCheck, Trophy, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getCampeonatoHref } from '@/app/campeonatos/utils/getCampeonatoHref'
-import { resolverTipoCompeticao } from '@/app/campeonatos/components/tiposCompeticao'
-import { CalendarDays, ExternalLink, Loader2, ShieldCheck, Trophy, Users } from 'lucide-react'
 
-type ProdutoraPublica = {
+type Produtora = {
   id: string
-  nome: string
-  slug: string | null
-  descricao: string | null
-  logo_url: string | null
-  capa_url: string | null
+  nome?: string | null
+  slug?: string | null
+  descricao?: string | null
+  logo_url?: string | null
+  banner_url?: string | null
+  whatsapp?: string | null
   whatsapp_suporte?: string | null
+  contato_whatsapp?: string | null
   instagram_url?: string | null
-  discord_url?: string | null
 }
 
-type CampeonatoPublico = {
+type Campeonato = {
   id: string
   nome: string
-  slug: string | null
-  logo_url: string | null
-  banner_url: string | null
-  status: string | null
-  modelo_competicao: string | null
-  tipo_competicao: string | null
-  formato: string | null
-  valor_vaga: number | null
-  valor_premiacao: number | null
-  vagas: number | null
-  data_inicio: string | null
-  horario_inicio: string | null
-  whatsapp_suporte: string | null
-  plataforma: string | null
-  categoria: string | null
-  regiao: string | null
+  modelo_competicao?: string | null
+  tipo?: string | null
+  status?: string | null
+  logo_url?: string | null
+  banner_url?: string | null
+  data_inicio?: string | null
+  horario_inicio?: string | null
+  vagas?: number | null
+  quantidade_equipes?: number | null
+  valor_vaga?: number | null
+  valor_premiacao?: number | null
+  whatsapp_suporte?: string | null
+  created_at?: string | null
 }
 
-function formatarMoeda(valor: number | null | undefined) {
-  const numero = Number(valor || 0)
-  if (!numero) return 'Grátis'
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numero)
+const tipoVisual: Record<string, { label: string; cor: string; bg: string; border: string }> = {
+  diario: { label: 'DIÁRIO', cor: '#009FE3', bg: '#EAF7FF', border: '#009FE3' },
+  xtreino: { label: 'XTREINO', cor: '#00B96B', bg: '#E9FFF4', border: '#00B96B' },
+  copa: { label: 'COPA', cor: '#7C3AED', bg: '#F3EEFF', border: '#7C3AED' },
+  liga: { label: 'LIGA', cor: '#F59E0B', bg: '#FFF7E6', border: '#F59E0B' },
+  confronto: { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
+  '4x4': { label: 'CONFRONTO', cor: '#DC2626', bg: '#FFF0F0', border: '#DC2626' },
 }
 
-function dataCurta(valor?: string | null) {
-  if (!valor) return 'A definir'
-  const data = new Date(valor)
-  if (Number.isNaN(data.getTime())) return 'A definir'
-  return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+function moeda(valor?: number | null) {
+  const n = Number(valor || 0)
+  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function normalizarTipo(tipo: string) {
-  const t = tipo.toLowerCase()
-  if (t.includes('diario') || t.includes('diário')) return 'DIÁRIO'
-  if (t.includes('xtreino')) return 'XTREINO'
-  if (t.includes('copa')) return 'COPA'
-  if (t.includes('liga')) return 'LIGA'
-  if (t.includes('confronto') || t.includes('4x4')) return 'CONFRONTO'
-  return tipo.toUpperCase()
+function dataCurta(data?: string | null) {
+  if (!data) return 'A definir'
+  const d = new Date(data)
+  if (Number.isNaN(d.getTime())) return 'A definir'
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-function corTipo(tipo: string) {
-  const t = tipo.toLowerCase()
-  if (t.includes('diario') || t.includes('diário')) return '#0ea5e9'
-  if (t.includes('xtreino')) return '#10b981'
-  if (t.includes('copa')) return '#8b5cf6'
-  if (t.includes('liga')) return '#f59e0b'
-  if (t.includes('confronto') || t.includes('4x4')) return '#ef4444'
-  return '#2563eb'
-}
-
-function ForcarModoClaro() {
-  useEffect(() => {
-    const root = document.documentElement
-    const body = document.body
-
-    root.classList.remove('dark')
-    root.style.colorScheme = 'only light'
-    body.style.colorScheme = 'only light'
-    body.style.backgroundColor = '#ffffff'
-
-    const metas = [
-      ['color-scheme', 'light'],
-      ['supported-color-schemes', 'light'],
-      ['theme-color', '#ffffff'],
-      ['msapplication-TileColor', '#ffffff'],
-    ]
-
-    metas.forEach(([name, content]) => {
-      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null
-      if (!meta) {
-        meta = document.createElement('meta')
-        meta.name = name
-        document.head.appendChild(meta)
-      }
-      meta.content = content
-    })
-  }, [])
-
-  return (
-    <style jsx global>{`
-      :root,
-      html,
-      body {
-        color-scheme: only light !important;
-        background: #ffffff !important;
-      }
-
-      .lealt-public-link,
-      .lealt-public-link * {
-        color-scheme: only light !important;
-      }
-
-      .lealt-public-link {
-        background: #ffffff !important;
-        color: #142340 !important;
-      }
-
-      .lealt-public-link input,
-      .lealt-public-link select,
-      .lealt-public-link textarea,
-      .lealt-public-link button,
-      .lealt-public-link a,
-      .lealt-public-link article,
-      .lealt-public-link section,
-      .lealt-public-link div {
-        forced-color-adjust: none;
-      }
-    `}</style>
-  )
+function getTipo(camp: Campeonato) {
+  const chave = String(camp.modelo_competicao || camp.tipo || 'diario').toLowerCase()
+  return tipoVisual[chave] || { label: chave.toUpperCase(), cor: '#2563EB', bg: '#EFF6FF', border: '#2563EB' }
 }
 
 export default function LinkPublicoProdutoraPage() {
   const params = useParams<{ slug: string }>()
-  const identificador = decodeURIComponent(String(params?.slug || '')).trim()
+  const slug = decodeURIComponent(String(params?.slug || ''))
 
   const [loading, setLoading] = useState(true)
-  const [produtora, setProdutora] = useState<ProdutoraPublica | null>(null)
-  const [campeonatos, setCampeonatos] = useState<CampeonatoPublico[]>([])
-  const [erro, setErro] = useState('')
+  const [produtora, setProdutora] = useState<Produtora | null>(null)
+  const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
+
+  useEffect(() => {
+    document.documentElement.style.colorScheme = 'only light'
+    document.body.style.colorScheme = 'only light'
+    document.documentElement.classList.remove('dark')
+    document.body.classList.remove('dark')
+    document.body.style.background = '#f5f7fb'
+    document.body.style.color = '#0f172a'
+
+    let meta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'color-scheme'
+      document.head.appendChild(meta)
+    }
+    meta.content = 'only light'
+  }, [])
 
   useEffect(() => {
     async function carregar() {
-      if (!identificador) return
       setLoading(true)
-      setErro('')
-
       try {
-        const { data: prodPorSlug, error: erroSlug } = await supabase
-          .from('produtoras')
-          .select('*')
-          .eq('slug', identificador)
-          .maybeSingle()
+        let query = supabase.from('produtoras').select('*')
 
-        if (erroSlug) throw erroSlug
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slug)
+        if (isUuid) query = query.eq('id', slug)
+        else query = query.or(`slug.eq.${slug},nome.ilike.${slug.replace(/-/g, ' ')}`)
 
-        let prod = prodPorSlug as ProdutoraPublica | null
-
+        const { data: prod } = await query.limit(1).maybeSingle()
         if (!prod) {
-          const { data: prodPorId, error: erroId } = await supabase
-            .from('produtoras')
-            .select('*')
-            .eq('id', identificador)
-            .maybeSingle()
-
-          if (erroId) throw erroId
-          prod = prodPorId as ProdutoraPublica | null
-        }
-
-        if (!prod) {
-          setErro('Produtora não encontrada.')
           setProdutora(null)
           setCampeonatos([])
           return
         }
 
-        setProdutora(prod)
+        setProdutora(prod as Produtora)
 
-        const { data: campeonatosData, error: erroCampeonatos } = await supabase
+        const { data: camps } = await supabase
           .from('campeonatos')
-          .select('id, nome, slug, logo_url, banner_url, status, modelo_competicao, tipo_competicao, formato, valor_vaga, valor_premiacao, vagas, data_inicio, horario_inicio, whatsapp_suporte, plataforma, categoria, regiao')
+          .select('id,nome,modelo_competicao,tipo,status,logo_url,banner_url,data_inicio,horario_inicio,vagas,quantidade_equipes,valor_vaga,valor_premiacao,whatsapp_suporte,created_at')
           .eq('produtora_id', prod.id)
           .in('status', ['rascunho', 'inscricoes', 'em_andamento'])
           .order('created_at', { ascending: false })
 
-        if (erroCampeonatos) throw erroCampeonatos
-        setCampeonatos((campeonatosData || []) as CampeonatoPublico[])
-      } catch (error: any) {
-        console.error('Erro ao carregar link público da produtora:', error)
-        setErro(error?.message || 'Erro ao carregar link público.')
+        setCampeonatos((camps || []) as Campeonato[])
       } finally {
         setLoading(false)
       }
     }
 
-    carregar()
-  }, [identificador])
+    if (slug) carregar()
+  }, [slug])
 
-  const iniciais = useMemo(() => {
-    return (produtora?.nome || 'DZ').slice(0, 2).toUpperCase()
-  }, [produtora?.nome])
+  const logo = produtora?.logo_url || '/logo.png'
+  const banner = produtora?.banner_url || null
+
+  const pageStyle = useMemo(
+    () => ({
+      background: '#f5f7fb',
+      color: '#0f172a',
+      colorScheme: 'only light' as const,
+      minHeight: '100vh',
+    }),
+    [],
+  )
 
   if (loading) {
     return (
-      <main className="lealt-public-link light flex min-h-screen items-center justify-center bg-white text-[#142340]" style={{ colorScheme: 'only light', backgroundColor: '#ffffff' }}>
-        <ForcarModoClaro />
-        <Loader2 className="animate-spin text-[#2563eb]" size={32} />
+      <main style={pageStyle} className="px-3 py-6">
+        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
+          Carregando link oficial...
+        </div>
       </main>
     )
   }
 
-  if (erro || !produtora) {
+  if (!produtora) {
     return (
-      <main className="lealt-public-link light min-h-screen bg-white px-4 py-8 text-[#142340]" style={{ colorScheme: 'only light', backgroundColor: '#ffffff' }}>
-        <ForcarModoClaro />
-        <div className="mx-auto max-w-lg border border-zinc-200 bg-white p-6 text-center">
-          <h1 className="text-lg font-semibold uppercase text-[#142340]">Link indisponível</h1>
-          <p className="mt-2 text-sm text-zinc-500">{erro || 'Produtora não encontrada.'}</p>
+      <main style={pageStyle} className="px-3 py-6">
+        <div className="mx-auto max-w-[760px] border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#0f172a]">
+          Produtora não encontrada.
         </div>
       </main>
     )
   }
 
   return (
-    <main className="lealt-public-link light min-h-screen bg-white text-[#142340]" style={{ colorScheme: 'only light', backgroundColor: '#ffffff' }}>
-      <ForcarModoClaro />
-
-      <div className="mx-auto max-w-3xl px-3 py-3 pb-10">
-        <section className="overflow-hidden border border-zinc-200 bg-white shadow-sm">
-          <div className="h-28 bg-zinc-100 md:h-40">
-            {produtora.capa_url ? (
-              <img src={produtora.capa_url} alt={produtora.nome} className="h-full w-full object-cover" />
-            ) : (
-              <div className="h-full w-full bg-[linear-gradient(135deg,#f8fafc,#dbeafe)]" />
-            )}
-          </div>
-
-          <div className="px-4 pb-4">
-            <div className="-mt-10 flex items-end gap-3">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border-4 border-white bg-zinc-100 text-2xl font-black uppercase text-zinc-500 shadow-sm">
-                {produtora.logo_url ? <img src={produtora.logo_url} alt={produtora.nome} className="h-full w-full object-cover" /> : iniciais}
-              </div>
-
-              <div className="min-w-0 pb-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2563eb]">Link oficial Drop Zone</p>
-                <h1 className="truncate text-2xl font-black uppercase leading-none text-[#07111f]">{produtora.nome}</h1>
-              </div>
+    <main style={pageStyle} className="px-3 pb-8 pt-3 sm:px-4">
+      <section className="mx-auto max-w-[760px] overflow-hidden border border-[#d8e1ee] bg-white shadow-sm">
+        <div className="relative h-[116px] border-b border-[#d8e1ee] bg-[#eaf1f8]">
+          {banner ? (
+            <Image src={banner} alt="Banner da produtora" fill className="object-cover" unoptimized />
+          ) : (
+            <div className="h-full w-full bg-[linear-gradient(120deg,#eaf1f8,#ffffff,#e8f6ff)]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-white/95 via-white/30 to-transparent" />
+          <div className="absolute bottom-[-28px] left-4 flex items-end gap-3">
+            <div className="h-[72px] w-[72px] border-4 border-white bg-white shadow-sm">
+              <Image src={logo} alt={produtora.nome || 'Produtora'} width={72} height={72} className="h-full w-full object-cover" unoptimized />
             </div>
-
-            {produtora.descricao ? <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{produtora.descricao}</p> : null}
-          </div>
-        </section>
-
-        <section className="mt-3 border border-zinc-200 bg-white p-3 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3 border-b border-zinc-100 pb-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-black uppercase leading-tight text-[#07111f]">Campeonatos com vagas e inscrições</h2>
-              <p className="mt-1 text-xs font-medium leading-4 text-slate-500">Escolha o campeonato para se inscrever, escalar sua equipe ou ver detalhes.</p>
+            <div className="pb-7">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#009FE3]">Link oficial Drop Zone</p>
+              <h1 className="text-2xl font-black uppercase leading-none text-[#0f172a]">{produtora.nome}</h1>
             </div>
-            <span className="shrink-0 border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-black uppercase text-slate-600">{campeonatos.length}</span>
           </div>
+        </div>
+
+        <div className="px-4 pb-4 pt-10">
+          {produtora.descricao ? <p className="text-sm font-semibold leading-5 text-[#64748b]">{produtora.descricao}</p> : null}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-4 max-w-[760px] border-t border-[#d8e1ee] pt-4">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-[26px] font-black uppercase leading-[0.95] tracking-[-0.04em] text-[#0f172a]">
+              Campeonatos com vagas
+              <br />e inscrições
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-5 text-[#64748b]">Escolha o campeonato para se inscrever, escalar sua equipe ou ver detalhes.</p>
+          </div>
+          <div className="border border-[#cbd5e1] bg-white px-3 py-2 text-sm font-black text-[#0f172a]">{campeonatos.length}</div>
+        </div>
+
+        <div className="space-y-3">
+          {campeonatos.map((camp) => {
+            const tipo = getTipo(camp)
+            const vagas = camp.vagas || camp.quantidade_equipes || 0
+            return (
+              <article key={camp.id} className="overflow-hidden border border-[#d8e1ee] bg-white shadow-sm" style={{ borderLeft: `5px solid ${tipo.cor}` }}>
+                <div className="flex items-center gap-3 border-b border-[#d8e1ee] bg-white p-3">
+                  <div className="h-[58px] w-[58px] shrink-0 border border-[#d8e1ee] bg-[#f8fafc]">
+                    {camp.logo_url ? (
+                      <Image src={camp.logo_url} alt={camp.nome} width={58} height={58} className="h-full w-full object-cover" unoptimized />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[10px] font-black text-[#94a3b8]">DZ</div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="border px-2 py-1 text-[10px] font-black uppercase leading-none" style={{ borderColor: tipo.cor, color: tipo.cor, background: tipo.bg }}>
+                        {tipo.label}
+                      </span>
+                      <span className="text-[11px] font-black uppercase text-[#94a3b8]">{camp.status || 'rascunho'}</span>
+                    </div>
+                    <h3 className="mt-1 truncate text-xl font-black uppercase leading-none tracking-[-0.03em] text-[#0f172a]">{camp.nome}</h3>
+                  </div>
+
+                  <div className="shrink-0 border border-[#cbd5e1] bg-[#f8fafc] px-2 py-2 text-center text-sm font-black uppercase leading-none text-[#0f172a]">
+                    {vagas} vagas
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 border-b border-[#d8e1ee] bg-[#fbfdff]">
+                  <InfoItem icon={<CalendarDays size={15} />} label="Data" value={dataCurta(camp.data_inicio)} />
+                  <InfoItem icon={<Trophy size={15} />} label="Prêmio" value={moeda(camp.valor_premiacao)} />
+                  <InfoItem icon={<Users size={15} />} label="Inscrição" value={moeda(camp.valor_vaga)} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 bg-white p-3">
+                  <Link
+                    href={`/escala/${camp.id}`}
+                    className="flex h-11 items-center justify-center gap-2 text-center text-[13px] font-black uppercase tracking-[-0.01em] text-white"
+                    style={{ background: tipo.cor }}
+                  >
+                    <ShieldCheck size={17} />
+                    Inscreva-se
+                  </Link>
+                  <Link
+                    href={`/campeonatos/${camp.id}`}
+                    className="flex h-11 items-center justify-center gap-2 border border-[#cbd5e1] bg-white text-center text-[13px] font-black uppercase tracking-[-0.01em] text-[#0f172a]"
+                  >
+                    <ExternalLink size={17} />
+                    Saiba mais
+                  </Link>
+                </div>
+              </article>
+            )
+          })}
 
           {campeonatos.length === 0 ? (
-            <div className="border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-sm font-semibold text-zinc-500">Nenhum campeonato aberto no momento.</div>
-          ) : (
-            <div className="space-y-2">
-              {campeonatos.map((camp) => {
-                const tipo = resolverTipoCompeticao(camp as any) || camp.modelo_competicao || 'campeonato'
-                const tipoLabel = normalizarTipo(String(tipo))
-                const tipoCor = corTipo(String(tipo))
-                const hrefCompleto = getCampeonatoHref(camp.id, String(tipo))
-
-                return (
-                  <article key={camp.id} className="overflow-hidden border border-zinc-200 bg-white shadow-sm">
-                    <div className="flex items-stretch border-b border-zinc-100 bg-white">
-                      <div className="w-1 shrink-0" style={{ backgroundColor: tipoCor }} />
-
-                      <div className="flex min-w-0 flex-1 items-center gap-2 p-2.5">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50">
-                          {camp.logo_url ? <img src={camp.logo_url} alt={camp.nome} className="h-full w-full object-cover" /> : <ShieldCheck size={20} className="text-zinc-300" />}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <span className="border px-1.5 py-0.5 text-[9px] font-black uppercase leading-none tracking-wide" style={{ borderColor: tipoCor, color: tipoCor, backgroundColor: '#ffffff' }}>{tipoLabel}</span>
-                            <span className="truncate text-[9px] font-black uppercase leading-none tracking-wide text-slate-400">{camp.status || 'rascunho'}</span>
-                          </div>
-                          <h3 className="mt-1 truncate text-base font-black uppercase leading-tight text-[#07111f]">{camp.nome}</h3>
-                        </div>
-
-                        <span className="shrink-0 border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-black uppercase text-[#142340]">{camp.vagas || 0} vagas</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 bg-[#f8fafc] text-[10px]">
-                      <div className="min-w-0 border-r border-zinc-200 p-2">
-                        <div className="flex items-center gap-1 font-black uppercase text-slate-400"><CalendarDays size={12} /> Data</div>
-                        <p className="mt-0.5 truncate text-xs font-black uppercase text-[#07111f]">{dataCurta(camp.data_inicio)}</p>
-                      </div>
-                      <div className="min-w-0 border-r border-zinc-200 p-2">
-                        <div className="flex items-center gap-1 font-black uppercase text-slate-400"><Trophy size={12} /> Prêmio</div>
-                        <p className="mt-0.5 truncate text-xs font-black uppercase text-[#07111f]">{formatarMoeda(camp.valor_premiacao)}</p>
-                      </div>
-                      <div className="min-w-0 p-2">
-                        <div className="flex items-center gap-1 font-black uppercase text-slate-400"><Users size={12} /> Inscrição</div>
-                        <p className="mt-0.5 truncate text-xs font-black uppercase text-[#07111f]">{formatarMoeda(camp.valor_vaga)}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 border-t border-zinc-200 bg-white">
-                      <Link href={`/escala/${camp.id}`} className="flex h-10 items-center justify-center gap-2 px-3 text-[11px] font-black uppercase tracking-wide text-white" style={{ backgroundColor: tipoCor }}>
-                        <ShieldCheck size={14} /> Inscreva-se
-                      </Link>
-
-                      <Link href={hrefCompleto} className="flex h-10 items-center justify-center gap-2 border-l border-zinc-200 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-[#142340]">
-                        <ExternalLink size={14} /> Saiba mais
-                      </Link>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+            <div className="border border-[#d8e1ee] bg-white p-4 text-sm font-black uppercase text-[#64748b]">Nenhum campeonato disponível no momento.</div>
+          ) : null}
+        </div>
+      </section>
     </main>
+  )
+}
+
+function InfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-r border-[#d8e1ee] px-2 py-2 last:border-r-0 sm:px-3">
+      <div className="flex items-center gap-1 text-[10px] font-black uppercase leading-none text-[#64748b]">
+        <span className="text-[#2563eb]">{icon}</span>
+        {label}
+      </div>
+      <div className="mt-1 truncate text-[13px] font-black leading-none text-[#0f172a] sm:text-sm">{value}</div>
+    </div>
   )
 }
