@@ -1489,7 +1489,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
               <div className="p-3">
                 <div className="border border-zinc-200 bg-white">
-                  <div className="grid grid-cols-3 border-b border-zinc-200 bg-zinc-50 p-2">
+                  <div className={`grid ${podeGerenciar ? 'grid-cols-4' : 'grid-cols-3'} border-b border-zinc-200 bg-zinc-50 p-2`}>
                     <button
                       onClick={() => setAbaDireita('equipes')}
                       className={`h-11 border text-[11px] font-semibold uppercase tracking-[0.14em] ${
@@ -1504,13 +1504,26 @@ export default function CampeonatoDiarioDetalhePage() {
                     <button
                       onClick={() => setAbaDireita('tabela')}
                       className={`h-11 border text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                        abaDireita === 'tabela' || abaDireita === 'sumula'
+                        abaDireita === 'tabela'
                           ? 'border-sky-500 bg-sky-500 text-white'
                           : 'border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
                       }`}
                     >
                       Tabela
                     </button>
+
+                    {podeGerenciar ? (
+                      <button
+                        onClick={() => setAbaDireita('sumula')}
+                        className={`h-11 border text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                          abaDireita === 'sumula'
+                            ? 'border-sky-500 bg-sky-500 text-white'
+                            : 'border-zinc-200 bg-white text-zinc-600 hover:border-sky-200 hover:text-sky-700'
+                        }`}
+                      >
+                        Súmula
+                      </button>
+                    ) : null}
 
                     <button
                       onClick={() => setAbaDireita('mvp')}
@@ -1656,14 +1669,6 @@ export default function CampeonatoDiarioDetalhePage() {
                             <p className="text-[12px] text-zinc-500">Classificação pública das equipes neste horário.</p>
                           </div>
 
-                          {podeGerenciar ? (
-                            <button
-                              onClick={() => setAbaDireita('sumula')}
-                              className="h-9 border border-orange-200 bg-orange-50 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-600 hover:bg-orange-100"
-                            >
-                              Súmula admin
-                            </button>
-                          ) : null}
                         </div>
 
                         <div className="overflow-hidden border border-zinc-200">
