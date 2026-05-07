@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export default function Layout({
+export default function AdminEventoCadastroLayout({
   children,
 }: {
   children: ReactNode

@@ -2,18 +2,18 @@ import Link from 'next/link'
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen bg-[#f5f7fb] px-4 py-10 text-[#0f172a]">
+    <main className="min-h-[70vh] bg-[#f5f7fb] px-4 py-10 text-[#0f172a]">
       <section className="mx-auto max-w-3xl border border-slate-200 bg-white p-6">
         <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#2563eb]">
           Drop Zone
         </p>
 
-        <h1 className="mt-3 text-3xl font-black uppercase tracking-tight text-[#0f172a]">
+        <h1 className="mt-3 text-3xl font-black uppercase tracking-tight">
           Página não encontrada
         </h1>
 
         <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-          O link acessado não existe ou foi movido. Volte para o início ou veja os campeonatos disponíveis.
+          O link acessado não existe ou foi movido.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
