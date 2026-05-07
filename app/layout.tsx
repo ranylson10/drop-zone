@@ -200,6 +200,47 @@ function ApostadosHeaderCard({ compacto = false }: { compacto?: boolean }) {
   )
 }
 
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('lealt-theme') as 'light' | 'dark' | null
+      const initial = saved || 'dark'
+      setTheme(initial)
+      document.documentElement.setAttribute('data-theme', initial)
+      document.documentElement.style.colorScheme = initial
+    } catch {
+      document.documentElement.setAttribute('data-theme', 'dark')
+      document.documentElement.style.colorScheme = 'dark'
+    }
+  }, [])
+
+  function trocarTema() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    try {
+      window.localStorage.setItem('lealt-theme', next)
+    } catch {}
+    document.documentElement.setAttribute('data-theme', next)
+    document.documentElement.style.colorScheme = next
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={trocarTema}
+      className="lealt-theme-toggle"
+      aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+      title={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+    >
+      {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+      <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
+    </button>
+  )
+}
+
 function NavbarContent() {
   const pathname = usePathname()
   const router = useRouter()
@@ -735,40 +776,6 @@ function NavbarContent() {
 }
 
 
-
-function ThemeToggleButton() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('lealt-theme') : null
-    const initial = saved === 'dark' || saved === 'light' ? saved : 'light'
-    setTheme(initial)
-    document.documentElement.setAttribute('data-theme', initial)
-    document.documentElement.style.colorScheme = initial
-  }, [])
-
-  function alternarTema() {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    setTheme(next)
-    document.documentElement.setAttribute('data-theme', next)
-    document.documentElement.style.colorScheme = next
-    window.localStorage.setItem('lealt-theme', next)
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={alternarTema}
-      className="lealt-theme-toggle fixed bottom-[76px] right-3 z-[500] flex h-11 items-center gap-2 border px-3 text-[11px] font-black uppercase tracking-[0.12em] shadow-lg md:bottom-4"
-      aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-      title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-    >
-      {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-      <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
-    </button>
-  )
-}
-
 function AuthenticatedOnlyToast() {
   const { user } = usePerfil()
   if (!user) return null
@@ -776,31 +783,29 @@ function AuthenticatedOnlyToast() {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-
   return (
-    <html lang="pt-br" data-theme="light" suppressHydrationWarning>
+    <html lang="pt-br" suppressHydrationWarning data-theme="dark" style={{ colorScheme: 'dark' }}>
       <head>
-        <meta name="color-scheme" content="light dark" />
-        <meta name="supported-color-schemes" content="light dark" />
-        <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+        <meta name="color-scheme" content="dark light" />
+        <meta name="supported-color-schemes" content="dark light" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020817" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f5f7fb" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('lealt-theme')||'light';if(t!=='dark'&&t!=='light')t='light';document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('lealt-theme')||'dark';document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.colorScheme='dark';}})();`,
           }}
         />
       </head>
       <body className="min-h-screen bg-[var(--dz-bg)] text-[var(--dz-text)] font-sans selection:bg-blue-200 selection:text-slate-950">
         <PerfilProvider>
           <div className="relative min-h-screen">
-            <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
-            <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.10),transparent_55%)]" />
+            <div className="lealt-bg-grid" />
+            <div className="lealt-bg-glow" />
 
+            <ThemeToggle />
             <NavbarContent />
 
             <AuthenticatedOnlyToast />
-            <ThemeToggleButton />
 
             <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
               {children}
