@@ -59,16 +59,19 @@ type PerfilJogo = {
 type MembroEquipe = {
  id: string
  equipe_id: string
- perfil_jogo_id: string
+ perfil_jogo_id: string | null
+ user_id: string | null
  tipo: 'dono' | 'admin' | 'manager' | 'membro'
  ativo: boolean
  entrou_em: string | null
  saiu_em: string | null
  perfis_jogo: PerfilJogo | PerfilJogo[] | null
+ profiles?: ProfileResumo | ProfileResumo[] | null
 }
 
-type MembroEquipeNormalizado = Omit<MembroEquipe, 'perfis_jogo'> & {
+type MembroEquipeNormalizado = Omit<MembroEquipe, 'perfis_jogo' | 'profiles'> & {
  perfil: (PerfilJogo & { profile: ProfileResumo | null }) | null
+ profileConta: ProfileResumo | null
 }
 
 type LiderComando = {
@@ -412,10 +415,17 @@ export default function PerfilEquipePage() {
  id,
  equipe_id,
  perfil_jogo_id,
+ user_id,
  tipo,
  ativo,
  entrou_em,
  saiu_em,
+ profiles:user_id (
+ id,
+ username,
+ nome_exibicao,
+ foto_url
+ ),
  perfis_jogo:perfil_jogo_id (
  id,
  nick,
@@ -463,12 +473,13 @@ export default function PerfilEquipePage() {
  return membros.map((membro) => ({
  ...membro,
  perfil: normalizarPerfilJogo(membro.perfis_jogo),
+ profileConta: normalizarProfile(membro.profiles),
  }))
  }, [membros])
 
  const meuVinculo = useMemo(() => {
  if (!user?.id) return null
- return membrosNormalizados.find((m) => m.perfil?.user_id === user.id) || null
+ return membrosNormalizados.find((m) => m.user_id === user.id || m.perfil?.user_id === user.id) || null
  }, [membrosNormalizados, user?.id])
 
  const isDonoEquipe = useMemo(() => {
@@ -480,18 +491,18 @@ export default function PerfilEquipePage() {
  const podeGerenciar = useMemo(() => {
  if (!user?.id || !equipe) return false
  if (equipe.criado_por === user.id) return true
- return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin'
+ return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin' || meuVinculo?.tipo === 'manager'
  }, [equipe, meuVinculo, user?.id])
 
  const lideres = useMemo<LiderComando[]>(
  () =>
  membrosNormalizados
- .filter((m) => m.tipo === 'dono' || m.tipo === 'manager')
+ .filter((m) => m.tipo === 'dono' || m.tipo === 'admin' || m.tipo === 'manager')
  .map((m) => ({
  id: m.id,
  tipo: m.tipo,
  entrou_em: m.entrou_em,
- perfilUsuario: m.perfil?.profile || null,
+ perfilUsuario: m.profileConta || m.perfil?.profile || null,
  perfilJogo: m.perfil
  ? {
  id: m.perfil.id,
