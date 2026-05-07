@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { Crown, Shield, UserPlus, UserMinus, Loader2 } from 'lucide-react'
+import { Crown, Shield, UserCog, UserPlus, UserMinus, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type ProfileResumo = {
@@ -14,7 +14,7 @@ type ProfileResumo = {
 
 type LiderComando = {
  id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: 'dono' | 'admin' | 'manager' | 'membro'
  entrou_em: string | null
  perfilUsuario: ProfileResumo | null
  perfilJogo: { id: string; nick: string | null; foto_capa: string | null; funcao: string | null } | null
@@ -24,7 +24,7 @@ type MembroEquipeNormalizado = {
  id: string
  equipe_id: string
  perfil_jogo_id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: 'dono' | 'admin' | 'manager' | 'membro'
  ativo: boolean
  entrou_em: string | null
  saiu_em: string | null
@@ -73,14 +73,16 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  const disponiveis = useMemo(
  () =>
  todosMembros
- .filter((m) => m.ativo && m.tipo !== 'dono' && m.tipo !== 'admin')
+ .filter((m) => m.ativo && m.tipo !== 'dono' && m.tipo !== 'admin' && m.tipo !== 'manager')
  .sort((a, b) => nomeMembro(a).localeCompare(nomeMembro(b), 'pt-BR')),
  [todosMembros]
  )
 
  const admins = useMemo(() => membros.filter((m) => m.tipo === 'admin'), [membros])
+ const managers = useMemo(() => membros.filter((m) => m.tipo === 'manager'), [membros])
+ const [tipoCargo, setTipoCargo] = useState<'admin' | 'manager'>('manager')
 
- async function mudarTipo(membroId: string, tipo: 'admin' | 'membro') {
+ async function mudarTipo(membroId: string, tipo: 'admin' | 'manager' | 'membro') {
  if (!canManageAdmins || !membroId) return
 
  try {
@@ -99,7 +101,7 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  if (error) throw error
 
  setSelecionado('')
- setMsg(tipo === 'admin' ? 'Administrador adicionado.' : 'Administrador removido.')
+ setMsg(tipo === 'manager' ? 'Manager adicionado.' : tipo === 'admin' ? 'Administrador adicionado.' : 'Cargo removido.')
  await onAtualizado?.()
  } catch (e: any) {
  setErro(e?.message || 'Não foi possível atualizar o comando.')
@@ -109,27 +111,27 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  }
 
  return (
- <div className="space-y-8">
+ <div className="space-y-5">
  <div>
  <h2 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // Comando da organização
  </h2>
  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
- Dono e administradores da equipe
+ Dono, managers e administradores da equipe
  </p>
  </div>
 
  {canManageAdmins ? (
- <div className="border border-zinc-200 bg-[#f8f8f8] p-4">
- <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
- <div className="flex-1">
+ <div className="border border-zinc-200 bg-[#f8fafc] p-3">
+ <div className="grid gap-3 lg:grid-cols-[1fr_190px_190px] lg:items-end">
+ <div>
  <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8ea0be]">
- Adicionar ADM
+ Adicionar manager ou ADM
  </label>
  <select
  value={selecionado}
  onChange={(e) => setSelecionado(e.target.value)}
- className="h-12 w-full border border-zinc-300 bg-white px-3 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#142340] outline-none"
+ className="h-10 w-full border border-zinc-300 bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#142340] outline-none"
  >
  <option value="">Selecione um membro da equipe</option>
  {disponiveis.map((m) => (
@@ -140,20 +142,34 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  </select>
  </div>
 
+ <div>
+ <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.25em] text-[#8ea0be]">
+ Cargo
+ </label>
+ <select
+ value={tipoCargo}
+ onChange={(e) => setTipoCargo(e.target.value as 'admin' | 'manager')}
+ className="h-10 w-full border border-zinc-300 bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#142340] outline-none"
+ >
+ <option value="manager">Manager</option>
+ <option value="admin">Administrador</option>
+ </select>
+ </div>
+
  <button
  type="button"
  disabled={!selecionado || salvando}
- onClick={() => mudarTipo(selecionado, 'admin')}
- className="inline-flex h-12 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#142340] disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500"
+ onClick={() => mudarTipo(selecionado, tipoCargo)}
+ className="inline-flex h-10 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500"
  >
  {salvando ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
- Adicionar ADM
+ Adicionar
  </button>
  </div>
 
  {disponiveis.length === 0 ? (
  <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
- Nenhum membro comum disponível para virar administrador.
+ Nenhum membro comum disponível para virar manager ou administrador.
  </p>
  ) : null}
 
@@ -171,19 +187,20 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  </div>
  ) : null}
 
- <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+ <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
  {membros.map((m) => {
  const nome = nomeLider(m)
  const foto = m.perfilUsuario?.foto_url || null
  const dono = m.tipo === 'dono'
+ const manager = m.tipo === 'manager'
  const gamer = m.perfilJogo?.nick || null
 
  return (
  <div key={m.id} className="border border-zinc-200 bg-white">
- <div className={`h-2 ${dono ? 'bg-[#2563eb]' : 'bg-white'}`} />
+ <div className={`h-1.5 ${dono ? 'bg-[#2563eb]' : manager ? 'bg-violet-600' : 'bg-zinc-200'}`} />
 
- <div className="flex gap-4 p-5">
- <div className="relative h-[90px] w-[90px] shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
+ <div className="flex gap-3 p-4">
+ <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
  {foto ? (
  <Image src={foto} alt={nome} fill className="object-cover" />
  ) : (
@@ -194,17 +211,17 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  </div>
 
  <div className="min-w-0 flex-1">
- <h3 className="truncate text-2xl font-semibold uppercase tracking-tight text-[#142340]">
+ <h3 className="truncate text-[18px] font-semibold uppercase tracking-tight text-[#142340]">
  {nome}
  </h3>
 
- <div className="mt-2 inline-flex items-center gap-1 bg-yellow-300 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#142340]">
- {dono ? <Crown size={12} /> : <Shield size={12} />}
- {dono ? 'Dono' : 'Administrador'}
+ <div className={`mt-2 inline-flex items-center gap-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${dono ? 'bg-yellow-300 text-[#142340]' : manager ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>
+ {dono ? <Crown size={12} /> : manager ? <UserCog size={12} /> : <Shield size={12} />}
+ {dono ? 'Dono' : manager ? 'Manager' : 'Administrador'}
  </div>
 
  {m.perfilUsuario?.username ? (
- <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8ea0be]">
+ <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8ea0be]">
  Perfil de usuário: @{m.perfilUsuario.username}
  </p>
  ) : null}
@@ -215,14 +232,14 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  </p>
  ) : null}
 
- <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+ <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
  Entrou em {dataBR(m.entrou_em)}
  </p>
  </div>
  </div>
 
  {canManageAdmins && !dono ? (
- <div className="border-t border-zinc-200 p-4">
+ <div className="border-t border-zinc-200 p-3">
  <button
  type="button"
  disabled={salvando}
@@ -230,7 +247,7 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  className="inline-flex h-10 w-full items-center justify-center gap-2 border border-red-300 bg-red-50 px-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
  >
  {salvando ? <Loader2 size={13} className="animate-spin" /> : <UserMinus size={13} />}
- Remover ADM
+ Remover cargo
  </button>
  </div>
  ) : null}
@@ -247,9 +264,9 @@ export default function AbaLideres({ equipeId, membros, todosMembros, canManageA
  </div>
  ) : null}
 
- {canManageAdmins && admins.length === 0 ? (
- <div className="border border-zinc-200 bg-[#f8f8f8] p-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
- Esta equipe ainda não possui administradores além do dono.
+ {canManageAdmins && admins.length === 0 && managers.length === 0 ? (
+ <div className="border border-zinc-200 bg-[#f8f8f8] p-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+ Esta equipe ainda não possui managers ou administradores além do dono.
  </div>
  ) : null}
  </div>

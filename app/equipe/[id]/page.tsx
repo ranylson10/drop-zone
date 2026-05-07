@@ -60,7 +60,7 @@ type MembroEquipe = {
  id: string
  equipe_id: string
  perfil_jogo_id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: 'dono' | 'admin' | 'manager' | 'membro'
  ativo: boolean
  entrou_em: string | null
  saiu_em: string | null
@@ -73,7 +73,7 @@ type MembroEquipeNormalizado = Omit<MembroEquipe, 'perfis_jogo'> & {
 
 type LiderComando = {
  id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: 'dono' | 'admin' | 'manager' | 'membro'
  entrou_em: string | null
  perfilUsuario: ProfileResumo | null
  perfilJogo: {
@@ -480,13 +480,13 @@ export default function PerfilEquipePage() {
  const podeGerenciar = useMemo(() => {
  if (!user?.id || !equipe) return false
  if (equipe.criado_por === user.id) return true
- return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin'
+ return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin' || meuVinculo?.tipo === 'manager'
  }, [equipe, meuVinculo, user?.id])
 
  const lideres = useMemo<LiderComando[]>(
  () =>
  membrosNormalizados
- .filter((m) => m.tipo === 'dono' || m.tipo === 'admin')
+ .filter((m) => m.tipo === 'dono' || m.tipo === 'admin' || m.tipo === 'manager')
  .map((m) => ({
  id: m.id,
  tipo: m.tipo,
@@ -535,31 +535,29 @@ export default function PerfilEquipePage() {
  return (
  <div className="min-h-screen bg-[#f7f7f7] text-[#142340] max-md:bg-white">
  <div className="mx-auto max-w-[1500px] border-x border-zinc-200 bg-white max-md:border-0">
- <section className="border-b border-zinc-200 px-6 py-8 md:px-10 max-md:border-0 max-md:px-0 max-md:py-0">
+ <section className="border-b border-zinc-200 px-4 py-4 md:px-8 max-md:border-0 max-md:px-0 max-md:py-0">
  <button
  onClick={() => router.back()}
- className="mb-4 inline-flex items-center gap-2 border border-zinc-300 bg-white px-3 py-2 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-zinc-50 max-md:hidden"
+ className="mb-3 inline-flex items-center gap-2 border border-zinc-300 bg-white px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-zinc-50 max-md:hidden"
  >
  <ArrowLeft size={14} />
  Voltar
  </button>
 
  <div className="overflow-hidden border border-zinc-200 max-md:border-0">
- <div className="relative h-[170px] w-full overflow-hidden bg-zinc-100 md:h-[210px] max-md:h-[118px]">
- {equipe.cover_url ? (
- <Image
- src={equipe.cover_url}
- alt={equipe.nome}
- fill
- className="object-cover opacity-90"
- />
- ) : null}
+ <div className="relative h-[82px] w-full overflow-hidden border-b border-zinc-200 bg-[#142340] md:h-[96px] max-md:h-[74px]">
+ <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.32)_0%,rgba(20,35,64,0.95)_45%,rgba(15,23,42,1)_100%)]" />
+ <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.28)_1px,transparent_0)] [background-size:18px_18px]" />
+ <div className="absolute -right-16 -top-20 h-56 w-56 border border-white/10 bg-white/5 rotate-12" />
+ <div className="absolute left-6 top-5 text-[10px] font-bold uppercase tracking-[0.35em] text-white/55 max-md:left-4 max-md:top-4">
+ Drop Zone Team
+ </div>
  </div>
 
- <div className="border-t border-zinc-200 bg-[#f8f8f8] px-6 pb-8 pt-0 md:px-10 max-md:border-0 max-md:bg-white max-md:px-4 max-md:pb-4">
- <div className="-mt-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between max-md:-mt-10 max-md:gap-2">
- <div className="flex flex-col gap-6 md:flex-row md:items-end max-md:gap-3">
- <div className="relative h-[118px] w-[118px] overflow-hidden border border-zinc-300 bg-white max-md:h-[86px] max-md:w-[86px]">
+ <div className="bg-white px-5 pb-4 pt-0 md:px-8 max-md:border-0 max-md:px-4 max-md:pb-3">
+ <div className="-mt-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between max-md:-mt-9 max-md:gap-2">
+ <div className="flex flex-col gap-4 md:flex-row md:items-end max-md:gap-2">
+ <div className="relative h-[86px] w-[86px] overflow-hidden border border-zinc-300 bg-white shadow-sm max-md:h-[74px] max-md:w-[74px]">
  {equipe.logo_url ? (
  <Image
  src={equipe.logo_url}
@@ -576,7 +574,7 @@ export default function PerfilEquipePage() {
 
  <div className="pb-2 max-md:pb-0">
  <div className="flex items-center gap-4 max-md:gap-2">
- <h1 className="text-[24px] font-semibold uppercase tracking-tight text-[#142340] md:text-[30px] max-md:text-[22px]">
+ <h1 className="text-[20px] font-semibold uppercase tracking-tight text-[#142340] md:text-[24px] max-md:text-[19px]">
  {equipe.tag || equipe.nome}
  </h1>
  <div className="flex h-10 w-10 items-center justify-center border border-zinc-300 bg-white max-md:h-8 max-md:w-8">
@@ -584,12 +582,12 @@ export default function PerfilEquipePage() {
  </div>
  </div>
 
- <p className="mt-2 text-[13px] font-medium uppercase tracking-wide text-zinc-500 max-md:mt-1 max-md:text-[12px]">
+ <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-zinc-500 max-md:text-[10px]">
  // {equipe.nome}
  </p>
 
  {localidade ? (
- <p className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 max-md:mt-2 max-md:text-[10px] max-md:tracking-wide">
+ <p className="mt-2 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500 max-md:mt-1 max-md:text-[10px] max-md:tracking-wide">
  <MapPin size={13} />
  {localidade}
  </p>
@@ -608,7 +606,7 @@ export default function PerfilEquipePage() {
  ) : null}
  </div>
 
- <div className="mt-4 border border-zinc-200 bg-white px-3 py-2 max-md:mt-3 max-md:border-0 max-md:border-y max-md:px-0">
+ <div className="mt-3 border border-zinc-200 bg-[#f8fafc] px-3 py-2 max-md:mt-2 max-md:border-0 max-md:border-y max-md:px-0">
  <div className="flex flex-wrap items-center justify-between gap-3 max-md:block">
  <div className="flex flex-wrap items-center gap-4 text-[12px] text-[#142340] max-md:grid max-md:grid-cols-4 max-md:gap-0 max-md:text-[11px]">
  <span className="inline-flex items-center gap-1">
@@ -654,9 +652,9 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="border-b border-zinc-200 px-6 py-6 md:px-10 max-md:px-4 max-md:py-4">
- <div className="border border-zinc-200 bg-white p-4 max-md:border-0 max-md:p-0">
- <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between max-md:mb-3">
+ <section className="border-b border-zinc-200 px-4 py-4 md:px-8 max-md:px-4 max-md:py-3">
+ <div className="border border-zinc-200 bg-white p-3 max-md:border-0 max-md:p-0">
+ <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between max-md:mb-2">
  <div>
  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#2563eb]">
  Estatísticas médias
@@ -684,7 +682,7 @@ export default function PerfilEquipePage() {
  </div>
  </div>
 
- <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8 max-md:grid-cols-4 max-md:gap-1">
+ <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8 max-md:grid-cols-4 max-md:gap-1">
  {[
  { label: 'Títulos', value: estatisticas.titulos },
  { label: 'Finais', value: estatisticas.finais },
@@ -695,11 +693,11 @@ export default function PerfilEquipePage() {
  { label: 'Média Kills', value: estatisticas.mediaAbates.toFixed(1) },
  { label: 'Taxa título', value: `${estatisticas.taxaTitulos.toFixed(0)}%` },
  ].map((item) => (
- <div key={item.label} className="border border-zinc-200 bg-[#f8fafc] p-3 max-md:border-0 max-md:bg-zinc-50 max-md:p-2">
+ <div key={item.label} className="border border-zinc-200 bg-[#f8fafc] px-3 py-2 max-md:border-0 max-md:bg-zinc-50 max-md:p-2">
  <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
  {item.label}
  </p>
- <p className="mt-2 text-[20px] font-semibold text-[#142340] max-md:mt-1 max-md:text-[16px]">
+ <p className="mt-1 text-[18px] font-semibold text-[#142340] max-md:text-[15px]">
  {item.value}
  </p>
  </div>
@@ -762,8 +760,8 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="border-b border-zinc-200 px-6 md:px-10">
- <div className="flex flex-wrap gap-8 py-5">
+ <section className="sticky top-[72px] z-20 border-b border-zinc-200 bg-white px-4 md:px-8">
+ <div className="flex flex-wrap gap-5 py-3">
  {[
  { key: 'lideres', label: 'Comando', icon: Shield },
  { key: 'jogadores', label: 'Atletas', icon: Users },
@@ -778,7 +776,7 @@ export default function PerfilEquipePage() {
  <button
  key={tab.key}
  onClick={() => setTabAtiva(tab.key as TabKey)}
- className={`relative inline-flex items-center gap-2 pb-4 text-[16px] font-semibold uppercase tracking-[0.2em] transition ${
+ className={`relative inline-flex items-center gap-2 pb-3 text-[13px] font-semibold uppercase tracking-[0.18em] transition ${
  ativa ? 'text-[#2563eb]' : 'text-[#8ea0be] hover:text-[#142340]'
  }`}
  >
@@ -791,7 +789,7 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="px-6 py-10 md:px-10">
+ <section className="px-4 py-6 md:px-8">
  {tabAtiva === 'lideres' && (
  <AbaLideres
  equipeId={equipe.id}
@@ -830,7 +828,7 @@ export default function PerfilEquipePage() {
  {tabAtiva === 'agenda' && <AbaAgenda equipeId={equipe.id} />}
  </section>
 
- <section className="border-t border-zinc-200 px-6 py-8 md:px-10">
+ <section className="border-t border-zinc-200 px-4 py-6 md:px-8">
  <h3 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#8ea0be]">
  Sobre a equipe
  </h3>
