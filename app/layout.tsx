@@ -198,6 +198,54 @@ function ApostadosHeaderCard({ compacto = false }: { compacto?: boolean }) {
   )
 }
 
+
+
+function ManagerHeaderCard({ compacto = false }: { compacto?: boolean }) {
+  const pathname = usePathname()
+  const ativo = pathname === '/manager' || pathname?.startsWith('/manager/') || pathname === '/managers' || pathname?.startsWith('/managers/')
+
+  if (compacto) {
+    return (
+      <Link
+        href="/manager"
+        className={[
+          'flex min-h-11 items-center justify-between border border-violet-200 bg-violet-50 px-3 py-2 text-[13px] font-semibold uppercase tracking-wide text-violet-700',
+          ativo ? 'ring-1 ring-violet-300' : '',
+        ].join(' ')}
+      >
+        <span className="flex items-center gap-2">
+          <UserCog size={16} />
+          Manager
+        </span>
+        <span className="border border-violet-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+          Central
+        </span>
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      href="/manager"
+      className={[
+        'relative hidden h-10 items-center gap-2 border px-3 text-[12px] font-semibold uppercase tracking-wide transition lg:inline-flex',
+        ativo
+          ? 'border-violet-300 bg-violet-100 text-violet-800'
+          : 'border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100',
+      ].join(' ')}
+    >
+      <span className="flex h-6 w-6 items-center justify-center border border-violet-300 bg-white text-violet-600">
+        <UserCog size={14} />
+      </span>
+      <span>Manager</span>
+      <span className="border border-violet-400 bg-violet-600 px-1.5 py-0.5 text-[9px] leading-none text-white">
+        HUB
+      </span>
+      <span className="absolute -right-1 -top-1 h-2 w-2 bg-violet-600" />
+    </Link>
+  )
+}
+
 function NavbarContent() {
   const pathname = usePathname()
   const router = useRouter()
@@ -219,6 +267,7 @@ function NavbarContent() {
   const [saldoCarteira, setSaldoCarteira] = useState(0)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
   const [isModerador, setIsModerador] = useState(false)
+  const [isManager, setIsManager] = useState(false)
 
   const isActive = (path: string) =>
     pathname === path || pathname?.startsWith(`${path}/`)
@@ -265,6 +314,7 @@ function NavbarContent() {
           setSaldoCarteira(0)
           setIsSiteAdmin(false)
           setIsModerador(false)
+          setIsManager(false)
           return
         }
 
@@ -307,6 +357,50 @@ function NavbarContent() {
       ativo = false
     }
   }, [])
+
+
+
+  useEffect(() => {
+    let ativo = true
+
+    async function carregarStatusManager() {
+      try {
+        if (!user || !perfisJogo?.length) {
+          if (!ativo) return
+          setIsManager(false)
+          return
+        }
+
+        const perfilIds = perfisJogo.map((perfil) => perfil.id).filter(Boolean)
+
+        if (!perfilIds.length) {
+          if (!ativo) return
+          setIsManager(false)
+          return
+        }
+
+        const { data } = await supabase
+          .from('membros_equipe')
+          .select('id')
+          .in('perfil_jogo_id', perfilIds)
+          .eq('ativo', true)
+          .eq('tipo', 'manager')
+          .limit(1)
+
+        if (!ativo) return
+        setIsManager(Boolean(data && data.length > 0))
+      } catch {
+        if (!ativo) return
+        setIsManager(false)
+      }
+    }
+
+    carregarStatusManager()
+
+    return () => {
+      ativo = false
+    }
+  }, [user, perfisJogo])
 
   async function encerrarSessao() {
     await supabase.auth.signOut()
@@ -453,8 +547,7 @@ function NavbarContent() {
           </button>
 
           <ApostadosHeaderCard />
-
-
+          {usuarioLogado && isManager && <ManagerHeaderCard />}
 
           {usuarioLogado ? (
             <>
@@ -689,6 +782,7 @@ function NavbarContent() {
           <nav className="mx-auto flex max-w-[1500px] flex-col border border-zinc-200 bg-white">
             <div className="border-b border-zinc-100 p-2">
               <ApostadosHeaderCard compacto />
+              {usuarioLogado && isManager && <div className="mt-2"><ManagerHeaderCard compacto /></div>}
             </div>
             {navItems.map((item) => {
               const ativo = isActive(item.href)
