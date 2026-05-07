@@ -480,7 +480,7 @@ export default function PerfilEquipePage() {
  const podeGerenciar = useMemo(() => {
  if (!user?.id || !equipe) return false
  if (equipe.criado_por === user.id) return true
- return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin' || meuVinculo?.tipo === 'manager'
+ return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin'
  }, [equipe, meuVinculo, user?.id])
 
  const lideres = useMemo<LiderComando[]>(
@@ -535,7 +535,7 @@ export default function PerfilEquipePage() {
  return (
  <div className="min-h-screen bg-[#f7f7f7] text-[#142340] max-md:bg-white">
  <div className="mx-auto max-w-[1500px] border-x border-zinc-200 bg-white max-md:border-0">
- <section className="border-b border-zinc-200 px-6 py-4 md:px-10 max-md:border-0 max-md:px-0 max-md:py-0">
+ <section className="border-b border-zinc-200 px-6 py-8 md:px-10 max-md:border-0 max-md:px-0 max-md:py-0">
  <button
  onClick={() => router.back()}
  className="mb-4 inline-flex items-center gap-2 border border-zinc-300 bg-white px-3 py-2 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-zinc-50 max-md:hidden"
@@ -545,16 +545,21 @@ export default function PerfilEquipePage() {
  </button>
 
  <div className="overflow-hidden border border-zinc-200 max-md:border-0">
- <div className="relative h-[96px] w-full overflow-hidden bg-[#142340] md:h-[118px] max-md:h-[86px]">
- <div className="absolute inset-0 bg-[linear-gradient(135deg,#142340_0%,#1d4ed8_48%,#0f172a_100%)]" />
- <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
- <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.14))]" />
+ <div className="relative h-[170px] w-full overflow-hidden bg-zinc-100 md:h-[210px] max-md:h-[118px]">
+ {equipe.cover_url ? (
+ <Image
+ src={equipe.cover_url}
+ alt={equipe.nome}
+ fill
+ className="object-cover opacity-90"
+ />
+ ) : null}
  </div>
 
- <div className="border-t border-zinc-200 bg-[#f8f8f8] px-6 pb-4 pt-0 md:px-10 max-md:border-0 max-md:bg-white max-md:px-4 max-md:pb-4">
- <div className="-mt-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between max-md:-mt-7 max-md:gap-2">
- <div className="flex flex-col gap-4 md:flex-row md:items-end max-md:gap-3">
- <div className="relative h-[86px] w-[86px] overflow-hidden border border-zinc-300 bg-white max-md:h-[70px] max-md:w-[70px]">
+ <div className="border-t border-zinc-200 bg-[#f8f8f8] px-6 pb-8 pt-0 md:px-10 max-md:border-0 max-md:bg-white max-md:px-4 max-md:pb-4">
+ <div className="-mt-14 flex flex-col gap-4 md:flex-row md:items-end md:justify-between max-md:-mt-10 max-md:gap-2">
+ <div className="flex flex-col gap-6 md:flex-row md:items-end max-md:gap-3">
+ <div className="relative h-[118px] w-[118px] overflow-hidden border border-zinc-300 bg-white max-md:h-[86px] max-md:w-[86px]">
  {equipe.logo_url ? (
  <Image
  src={equipe.logo_url}
@@ -603,7 +608,7 @@ export default function PerfilEquipePage() {
  ) : null}
  </div>
 
- <div className="mt-3 border border-zinc-200 bg-white px-3 py-2 max-md:mt-3 max-md:border-0 max-md:border-y max-md:px-0">
+ <div className="mt-4 border border-zinc-200 bg-white px-3 py-2 max-md:mt-3 max-md:border-0 max-md:border-y max-md:px-0">
  <div className="flex flex-wrap items-center justify-between gap-3 max-md:block">
  <div className="flex flex-wrap items-center gap-4 text-[12px] text-[#142340] max-md:grid max-md:grid-cols-4 max-md:gap-0 max-md:text-[11px]">
  <span className="inline-flex items-center gap-1">
@@ -649,7 +654,7 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="border-b border-zinc-200 px-6 py-4 md:px-10 max-md:px-4 max-md:py-3">
+ <section className="border-b border-zinc-200 px-6 py-6 md:px-10 max-md:px-4 max-md:py-4">
  <div className="border border-zinc-200 bg-white p-4 max-md:border-0 max-md:p-0">
  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between max-md:mb-3">
  <div>
@@ -758,7 +763,7 @@ export default function PerfilEquipePage() {
  </section>
 
  <section className="border-b border-zinc-200 px-6 md:px-10">
- <div className="flex flex-wrap gap-6 py-3">
+ <div className="flex flex-wrap gap-8 py-5">
  {[
  { key: 'lideres', label: 'Comando', icon: Shield },
  { key: 'jogadores', label: 'Atletas', icon: Users },
@@ -773,7 +778,7 @@ export default function PerfilEquipePage() {
  <button
  key={tab.key}
  onClick={() => setTabAtiva(tab.key as TabKey)}
- className={`relative inline-flex items-center gap-2 pb-3 text-[13px] font-semibold uppercase tracking-[0.2em] transition ${
+ className={`relative inline-flex items-center gap-2 pb-4 text-[16px] font-semibold uppercase tracking-[0.2em] transition ${
  ativa ? 'text-[#2563eb]' : 'text-[#8ea0be] hover:text-[#142340]'
  }`}
  >
@@ -786,7 +791,7 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="px-6 py-6 md:px-10">
+ <section className="px-6 py-10 md:px-10">
  {tabAtiva === 'lideres' && (
  <AbaLideres
  equipeId={equipe.id}
