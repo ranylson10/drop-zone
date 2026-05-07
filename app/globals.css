@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: only light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
   --dz-surface: #ffffff;
@@ -25,8 +24,6 @@
 }
 
 html {
-  color-scheme: only light !important;
-  background-color: #f5f7fb !important;
   scroll-behavior: smooth;
 }
 
@@ -38,14 +35,14 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background-color: #f5f7fb !important;
+  background-color: var(--dz-bg);
   background-image:
     linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
     radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%);
   background-size: 28px 28px, 28px 28px, 100% 100%, 100% 100%;
-  color: #0f172a !important;
+  color: var(--dz-text);
   font-family: Inter, "Plus Jakarta Sans", "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 13px;
   line-height: 1.35;
@@ -74,41 +71,6 @@ a {
   background: var(--dz-primary);
   color: #03101a;
 }
-
-/* =========================================================
-   FORÇAR TEMA CLARO (ANTI-AUTO DARK MODE MOBILE)
-   ========================================================= */
-html,
-body {
-  color-scheme: only light !important;
-  background-color: #f5f7fb !important;
-  color: #0f172a !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: only light !important;
-  }
-
-  html,
-  body {
-    background-color: #f5f7fb !important;
-    color: #0f172a !important;
-  }
-
-  .dz-page,
-  .dz-card,
-  .dz-card-compact,
-  .glass-card,
-  .panel-card,
-  .soft-card,
-  .lealt-public-page,
-  .lealt-public-box,
-  .lealt-public-card {
-    color-scheme: only light !important;
-  }
-}
-
 
 /* ===== DESIGN SYSTEM GLOBAL ===== */
 .dz-page {
@@ -905,5 +867,300 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
   .custom-scrollbar {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+}
+
+
+/* =========================================================
+   LEALT TEMA CLARO/ESCURO REAL (CORREÇÃO MOBILE DEFINITIVA)
+   Em vez de lutar contra o modo escuro forçado do Android,
+   o site passa a entregar uma paleta dark oficial e legível.
+   ========================================================= */
+html {
+  color-scheme: light dark;
+}
+
+:root {
+  --lealt-bg: #f5f7fb;
+  --lealt-bg-2: #eef3f8;
+  --lealt-surface: #ffffff;
+  --lealt-surface-2: #f8fafc;
+  --lealt-surface-3: #eef2f7;
+  --lealt-border: #dbe3ef;
+  --lealt-border-strong: #c8d4e3;
+  --lealt-text: #0f172a;
+  --lealt-text-2: #334155;
+  --lealt-muted: #64748b;
+  --lealt-faint: #94a3b8;
+  --lealt-primary: #2563eb;
+  --lealt-cyan: #14d9ff;
+  --lealt-red: #b30000;
+  --lealt-red-2: #dc2626;
+
+  --dz-bg: var(--lealt-bg);
+  --dz-bg-2: var(--lealt-bg-2);
+  --dz-surface: var(--lealt-surface);
+  --dz-surface-2: var(--lealt-surface-2);
+  --dz-line: var(--lealt-border);
+  --dz-line-strong: var(--lealt-border-strong);
+  --dz-text: var(--lealt-text);
+  --dz-muted: var(--lealt-muted);
+  --dz-faint: var(--lealt-faint);
+}
+
+body {
+  background-color: var(--lealt-bg) !important;
+  color: var(--lealt-text) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --lealt-bg: #0b0f14;
+    --lealt-bg-2: #101720;
+    --lealt-surface: #151a21;
+    --lealt-surface-2: #1b222c;
+    --lealt-surface-3: #222b36;
+    --lealt-border: #334155;
+    --lealt-border-strong: #475569;
+    --lealt-text: #f8fafc;
+    --lealt-text-2: #e2e8f0;
+    --lealt-muted: #cbd5e1;
+    --lealt-faint: #94a3b8;
+    --lealt-primary: #60a5fa;
+    --lealt-cyan: #38bdf8;
+    --lealt-red: #b30000;
+    --lealt-red-2: #ef4444;
+
+    --dz-bg: var(--lealt-bg);
+    --dz-bg-2: var(--lealt-bg-2);
+    --dz-surface: var(--lealt-surface);
+    --dz-surface-2: var(--lealt-surface-2);
+    --dz-line: var(--lealt-border);
+    --dz-line-strong: var(--lealt-border-strong);
+    --dz-text: var(--lealt-text);
+    --dz-muted: var(--lealt-muted);
+    --dz-faint: var(--lealt-faint);
+  }
+
+  html,
+  body {
+    background: var(--lealt-bg) !important;
+    background-color: var(--lealt-bg) !important;
+    color: var(--lealt-text) !important;
+  }
+
+  body {
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px) !important;
+    background-size: 24px 24px, 24px 24px !important;
+  }
+
+  main,
+  section,
+  .dz-page,
+  .min-h-screen,
+  .lealt-public-page,
+  .lealt-public-box,
+  .lealt-public-card {
+    background-color: var(--lealt-bg) !important;
+    color: var(--lealt-text) !important;
+  }
+
+  .dz-card,
+  .glass-card,
+  .panel-card,
+  .soft-card,
+  .dz-card-compact,
+  .dz-table-wrap,
+  .lealt-public-card,
+  .bg-white,
+  .bg-white\/95,
+  .bg-white\/90,
+  .bg-white\/80,
+  .bg-slate-50,
+  .bg-zinc-50,
+  .bg-gray-50,
+  .bg-\[\#f5f7fb\],
+  .bg-\[\#f7f7f7\],
+  .bg-\[\#ffffff\] {
+    background: var(--lealt-surface) !important;
+    background-color: var(--lealt-surface) !important;
+    color: var(--lealt-text) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  .bg-slate-100,
+  .bg-zinc-100,
+  .bg-gray-100,
+  .bg-slate-200,
+  .bg-zinc-200,
+  .bg-gray-200,
+  .bg-\[\#f8fafc\],
+  .bg-\[\#eef3f8\] {
+    background: var(--lealt-surface-2) !important;
+    background-color: var(--lealt-surface-2) !important;
+    color: var(--lealt-text) !important;
+  }
+
+  .text-slate-950,
+  .text-slate-900,
+  .text-zinc-950,
+  .text-zinc-900,
+  .text-gray-950,
+  .text-gray-900,
+  .text-\[\#0f172a\],
+  .text-\[\#111827\],
+  .text-\[\#142340\] {
+    color: var(--lealt-text) !important;
+  }
+
+  .text-slate-800,
+  .text-slate-700,
+  .text-zinc-800,
+  .text-zinc-700,
+  .text-gray-800,
+  .text-gray-700 {
+    color: var(--lealt-text-2) !important;
+  }
+
+  .text-slate-600,
+  .text-slate-500,
+  .text-zinc-600,
+  .text-zinc-500,
+  .text-gray-600,
+  .text-gray-500,
+  .text-muted,
+  .dz-subtitle,
+  .mobile-app-meta,
+  .lealt-app-subtitle {
+    color: var(--lealt-muted) !important;
+  }
+
+  .text-slate-400,
+  .text-zinc-400,
+  .text-gray-400,
+  .text-faint {
+    color: var(--lealt-faint) !important;
+  }
+
+  .border-slate-100,
+  .border-slate-200,
+  .border-slate-300,
+  .border-zinc-100,
+  .border-zinc-200,
+  .border-zinc-300,
+  .border-gray-100,
+  .border-gray-200,
+  .border-gray-300,
+  .border-\[\#e5e7eb\],
+  .border-\[\#e4e4e7\],
+  .border-\[\#dbe3ef\] {
+    border-color: var(--lealt-border) !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea,
+  .dz-input,
+  .input-base {
+    background: var(--lealt-surface-2) !important;
+    background-color: var(--lealt-surface-2) !important;
+    color: var(--lealt-text) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--lealt-faint) !important;
+  }
+
+  table,
+  .dz-table {
+    color: var(--lealt-text) !important;
+    background: var(--lealt-surface) !important;
+  }
+
+  table th,
+  .dz-table th {
+    background: var(--lealt-surface-2) !important;
+    color: var(--lealt-muted) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  table td,
+  .dz-table td {
+    color: var(--lealt-text) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  table tr:hover td,
+  .dz-table tr:hover td {
+    background: var(--lealt-surface-2) !important;
+  }
+
+  header,
+  nav,
+  .sticky.top-0 {
+    background: var(--lealt-surface) !important;
+    background-color: var(--lealt-surface) !important;
+    color: var(--lealt-text) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  .nav-link-top:hover,
+  .nav-link-top.active,
+  .dropdown-user-btn:hover {
+    background: var(--lealt-surface-2) !important;
+    color: var(--lealt-text) !important;
+  }
+
+  .dz-btn-secondary,
+  .button-secondary {
+    background: var(--lealt-surface-2) !important;
+    color: var(--lealt-text) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  .dz-badge {
+    background: var(--lealt-surface-2) !important;
+    color: var(--lealt-muted) !important;
+    border-color: var(--lealt-border) !important;
+  }
+
+  .bg-red-600,
+  .bg-red-700,
+  .bg-\[\#b30000\] {
+    background: var(--lealt-red) !important;
+    color: #ffffff !important;
+  }
+
+  .text-blue-500,
+  .text-blue-600,
+  .text-cyan-400,
+  .text-cyan-500,
+  .text-\[\#14d9ff\] {
+    color: var(--lealt-cyan) !important;
+  }
+
+  .from-white,
+  .to-white,
+  .via-white,
+  .from-slate-50,
+  .to-slate-50,
+  .via-slate-50 {
+    --tw-gradient-from: var(--lealt-surface) var(--tw-gradient-from-position) !important;
+    --tw-gradient-to: var(--lealt-surface) var(--tw-gradient-to-position) !important;
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--lealt-bg) !important;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--lealt-border-strong) !important;
   }
 }

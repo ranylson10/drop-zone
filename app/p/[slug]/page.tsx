@@ -73,12 +73,10 @@ export default function LinkPublicoProdutoraPage() {
   const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
 
   useEffect(() => {
-    document.documentElement.style.colorScheme = 'light'
-    document.body.style.colorScheme = 'light'
-    document.documentElement.classList.remove('dark')
-    document.body.classList.remove('dark')
-    document.body.style.background = '#f5f7fb'
-    document.body.style.color = '#0f172a'
+    // O LEALT agora tem tema claro/escuro real via globals.css.
+    // Não força mais fundo claro aqui, porque isso fazia o mobile escuro inverter cores.
+    document.documentElement.style.colorScheme = 'light dark'
+    document.body.style.colorScheme = 'light dark'
 
     let meta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null
     if (!meta) {
@@ -86,7 +84,7 @@ export default function LinkPublicoProdutoraPage() {
       meta.name = 'color-scheme'
       document.head.appendChild(meta)
     }
-    meta.content = 'light'
+    meta.content = 'light dark'
   }, [])
 
   useEffect(() => {
