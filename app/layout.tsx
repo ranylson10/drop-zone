@@ -685,7 +685,7 @@ function NavbarContent() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t border-zinc-200 bg-white px-4 py-3 xl:hidden">
+        <div className="border-t border-zinc-200 bg-white px-2 py-2 xl:hidden">
           <nav className="mx-auto flex max-w-[1500px] flex-col border border-zinc-200 bg-white">
             <div className="border-b border-zinc-100 p-2">
               <ApostadosHeaderCard compacto />
@@ -743,29 +743,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname()
 
   return (
-    <html lang="pt-br" suppressHydrationWarning>
-      <head>
-        <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
-        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#050914" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                try {
-                  var mobile = window.matchMedia('(max-width: 767px)').matches;
-                  var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var saved = localStorage.getItem('lealt-theme');
-                  var theme = mobile ? (dark ? 'dark' : 'light') : (saved || (dark ? 'dark' : 'light'));
-                  document.documentElement.dataset.theme = theme;
-                  document.documentElement.style.colorScheme = theme;
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body className="min-h-screen bg-[var(--dz-bg)] text-[var(--dz-text)] font-sans selection:bg-blue-200 selection:text-slate-950">
+    <html lang="pt-br">
+      <body className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950">
         <PerfilProvider>
           <div className="relative min-h-screen">
             <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
@@ -775,7 +754,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <AuthenticatedOnlyToast />
 
-            <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
+            <main className="mx-auto w-full max-w-[1500px] px-2 py-2 md:px-5 md:py-5">
               {children}
             </main>
           </div>

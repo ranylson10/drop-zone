@@ -871,376 +871,202 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 }
 
 /* =========================================================
-   LEALT MOBILE COMPACTO GERAL + TEMA AUTOMATICO MOBILE
-   Correção aplicada em cima dos arquivos originais.
-   - Mobile segue o tema do sistema automaticamente.
-   - Desktop pode continuar com tema manual/localStorage se existir.
-   - KPIs, métricas e cards com pouca informação ficam lado a lado.
-   - Reduz padding/altura para parar de empurrar conteúdo para baixo.
+   LEALT MOBILE COMPACTO GERAL - CHECKUP 07/05
+   Reduz margens em ~50% e transforma blocos com pouca informação
+   em grids compactos no mobile, sem mexer na lógica das páginas.
    ========================================================= */
-:root,
-html[data-theme='light'] {
-  --dz-bg: #ffffff;
-  --dz-bg-2: #f6f8fb;
-  --dz-surface: #ffffff;
-  --dz-surface-2: #f8fafc;
-  --dz-line: #dbe3ef;
-  --dz-line-strong: #c8d4e3;
-  --dz-text: #0f172a;
-  --dz-muted: #64748b;
-  --dz-faint: #94a3b8;
-  color-scheme: light;
-}
-
-html[data-theme='dark'] {
-  --dz-bg: #050914;
-  --dz-bg-2: #07101f;
-  --dz-surface: #0d1524;
-  --dz-surface-2: #101b2e;
-  --dz-line: #22314a;
-  --dz-line-strong: #334765;
-  --dz-text: #f8fafc;
-  --dz-muted: #b7c3d4;
-  --dz-faint: #8291a8;
-  color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme]),
-  html[data-theme='dark'] {
-    --dz-bg: #050914;
-    --dz-bg-2: #07101f;
-    --dz-surface: #0d1524;
-    --dz-surface-2: #101b2e;
-    --dz-line: #22314a;
-    --dz-line-strong: #334765;
-    --dz-text: #f8fafc;
-    --dz-muted: #b7c3d4;
-    --dz-faint: #8291a8;
-    color-scheme: dark;
-  }
-}
-
-html,
-body {
-  background-color: var(--dz-bg) !important;
-  color: var(--dz-text) !important;
-}
-
-html[data-theme='dark'] body {
-  background-image:
-    radial-gradient(circle at 20% 0%, rgba(20,217,255,.10), transparent 32%),
-    linear-gradient(180deg, #050914 0%, #07101f 100%) !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme]) body {
-    background-image:
-      radial-gradient(circle at 20% 0%, rgba(20,217,255,.10), transparent 32%),
-      linear-gradient(180deg, #050914 0%, #07101f 100%) !important;
-  }
-}
-
-html[data-theme='dark'] .bg-white,
-html[data-theme='dark'] .bg-slate-50,
-html[data-theme='dark'] .bg-gray-50,
-html[data-theme='dark'] .dz-card,
-html[data-theme='dark'] .glass-card,
-html[data-theme='dark'] .panel-card,
-html[data-theme='dark'] .soft-card,
-html[data-theme='dark'] section[class*='bg-white'],
-html[data-theme='dark'] div[class*='bg-white'] {
-  background-color: var(--dz-surface) !important;
-  color: var(--dz-text) !important;
-  border-color: var(--dz-line) !important;
-}
-
-html[data-theme='dark'] .bg-slate-100,
-html[data-theme='dark'] .bg-zinc-50,
-html[data-theme='dark'] [class*='bg-[#F5F7FA]'],
-html[data-theme='dark'] [class*='bg-[#f5f8fb]'],
-html[data-theme='dark'] [class*='bg-[#f7f7f7]'] {
-  background-color: var(--dz-surface-2) !important;
-  color: var(--dz-text) !important;
-}
-
-html[data-theme='dark'] .text-slate-950,
-html[data-theme='dark'] .text-slate-900,
-html[data-theme='dark'] .text-slate-800,
-html[data-theme='dark'] [class*='text-[#142340]'],
-html[data-theme='dark'] .text-black,
-html[data-theme='dark'] h1,
-html[data-theme='dark'] h2,
-html[data-theme='dark'] h3 {
-  color: var(--dz-text) !important;
-}
-
-html[data-theme='dark'] .text-zinc-500,
-html[data-theme='dark'] .text-slate-500,
-html[data-theme='dark'] .text-slate-600,
-html[data-theme='dark'] .text-gray-500 {
-  color: var(--dz-muted) !important;
-}
-
-html[data-theme='dark'] .border-slate-100,
-html[data-theme='dark'] .border-slate-200,
-html[data-theme='dark'] .border-slate-300,
-html[data-theme='dark'] .border-zinc-100,
-html[data-theme='dark'] .border-zinc-200 {
-  border-color: var(--dz-line) !important;
-}
-
 @media (max-width: 767px) {
-  html,
+  :root {
+    --dz-header-h: 52px;
+    --dz-radius: 0px;
+    --dz-radius-sm: 0px;
+  }
+
   body {
     font-size: 12px !important;
-    line-height: 1.24 !important;
-    overflow-x: hidden !important;
-  }
-
-  body {
-    background-color: var(--dz-bg) !important;
-    color: var(--dz-text) !important;
+    line-height: 1.25 !important;
   }
 
   main {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 8px 8px calc(72px + env(safe-area-inset-bottom)) !important;
-    margin: 0 !important;
-    background-color: var(--dz-bg) !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    padding-top: 8px !important;
+    padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important;
   }
 
+  .dz-container,
   main > div,
-  main [class*='max-w-'],
-  main [class*='mx-auto'] {
+  main > section {
     width: 100% !important;
     max-width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
   }
 
-  main section,
-  main article,
-  .dz-card,
-  .glass-card,
-  .panel-card,
-  .soft-card {
-    border-radius: 0 !important;
-    box-shadow: none !important;
+  main [class*="max-w-[1520px]"],
+  main [class*="max-w-[1500px]"],
+  main [class*="max-w-7xl"],
+  main [class*="max-w-6xl"],
+  main [class*="max-w-5xl"] {
+    max-width: 100% !important;
   }
 
-  h1,
-  main [class*='text-[22px]'],
-  main [class*='text-[24px]'],
-  main [class*='text-[26px]'],
-  main [class*='text-[28px]'],
-  main [class*='text-4xl'],
-  main [class*='text-5xl'] {
+  main [class*="px-8"], main [class*="px-7"], main [class*="px-6"], main [class*="px-5"], main [class*="px-4"] {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  main [class*="py-10"], main [class*="py-9"], main [class*="py-8"], main [class*="py-7"], main [class*="py-6"], main [class*="py-5"], main [class*="py-4"] {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+
+  main [class*="p-8"], main [class*="p-7"], main [class*="p-6"], main [class*="p-5"], main [class*="p-4"] {
+    padding: 10px !important;
+  }
+
+  main [class*="mt-8"], main [class*="mt-7"], main [class*="mt-6"], main [class*="mt-5"], main [class*="mt-4"] { margin-top: 10px !important; }
+  main [class*="mb-8"], main [class*="mb-7"], main [class*="mb-6"], main [class*="mb-5"], main [class*="mb-4"], main [class*="mb-3"] { margin-bottom: 8px !important; }
+  main [class*="gap-8"], main [class*="gap-7"], main [class*="gap-6"], main [class*="gap-5"], main [class*="gap-4"], main [class*="gap-3"] { gap: 8px !important; }
+
+  main [class*="space-y-8"] > :not([hidden]) ~ :not([hidden]),
+  main [class*="space-y-7"] > :not([hidden]) ~ :not([hidden]),
+  main [class*="space-y-6"] > :not([hidden]) ~ :not([hidden]),
+  main [class*="space-y-5"] > :not([hidden]) ~ :not([hidden]),
+  main [class*="space-y-4"] > :not([hidden]) ~ :not([hidden]),
+  main [class*="space-y-3"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 8px !important;
+  }
+
+  main h1,
+  main [class*="text-[32px]"], main [class*="text-[30px]"], main [class*="text-[28px]"],
+  main [class*="text-3xl"], main [class*="text-4xl"], main [class*="text-5xl"] {
     font-size: 22px !important;
     line-height: 1.05 !important;
     letter-spacing: -0.04em !important;
   }
 
-  h2,
-  main [class*='text-[18px]'],
-  main [class*='text-[20px]'] {
-    font-size: 16px !important;
+  main h2,
+  main [class*="text-[24px]"], main [class*="text-[22px]"], main [class*="text-2xl"] {
+    font-size: 18px !important;
     line-height: 1.1 !important;
   }
 
-  main .p-4,
-  main .p-5,
-  main .p-6,
-  main .p-8,
-  main [class*='p-4'],
-  main [class*='p-5'],
-  main [class*='p-6'],
-  main [class*='p-8'] {
-    padding: 10px !important;
+  main p { line-height: 1.25 !important; }
+
+  main .lealt-mobile-stats,
+  main .dz-stat-grid,
+  main [data-lealt-stats="true"],
+  main [class*="grid-cols-1"][class*="md:grid-cols-"],
+  main [class*="grid-cols-1"][class*="lg:grid-cols-"],
+  main [class*="grid-cols-1"][class*="xl:grid-cols-"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
   }
 
-  main .py-4,
-  main .py-5,
-  main .py-6,
-  main .py-8,
-  main [class*='py-4'],
-  main [class*='py-5'],
-  main [class*='py-6'],
-  main [class*='py-8'] {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+  main .lealt-mobile-stats-3,
+  main [data-lealt-stats="3"],
+  main [class*="grid-cols-3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
   }
 
-  main .px-4,
-  main .px-5,
-  main .px-6,
-  main .px-8,
-  main [class*='px-4'],
-  main [class*='px-5'],
-  main [class*='px-6'],
-  main [class*='px-8'] {
+  main form [class*="grid-cols-1"],
+  main [class*="modal"] [class*="grid-cols-1"],
+  main [role="dialog"] [class*="grid-cols-1"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dz-card, .glass-card, .panel-card, .soft-card, .dz-card-compact,
+  main [class*="border"][class*="bg-white"],
+  main [class*="border"][class*="bg-[#f7f7f7]"],
+  main [class*="border"][class*="bg-zinc-50"],
+  main [class*="border"][class*="bg-slate-50"] {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  main [class*="grid"] > [class*="border"][class*="bg-white"],
+  main [class*="grid"] > [class*="border"][class*="bg-[#f7f7f7]"],
+  main [class*="grid"] > [class*="border"][class*="bg-zinc-50"],
+  main [class*="grid"] > [class*="border"][class*="bg-slate-50"] {
+    min-height: 58px !important;
+    padding: 8px !important;
+  }
+
+  main [class*="grid"] > [class*="border"] svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  main button,
+  main a[class*="bg-[#2563eb]"],
+  main a[class*="bg-blue"],
+  main a[class*="border"],
+  main button[class*="border"] {
+    min-height: 38px !important;
     padding-left: 10px !important;
     padding-right: 10px !important;
-  }
-
-  main .gap-4,
-  main .gap-5,
-  main .gap-6,
-  main .gap-8,
-  main [class*='gap-4'],
-  main [class*='gap-5'],
-  main [class*='gap-6'],
-  main [class*='gap-8'] {
-    gap: 8px !important;
-  }
-
-  main .mb-4,
-  main .mb-5,
-  main .mb-6,
-  main .mt-4,
-  main .mt-5,
-  main .mt-6 {
-    margin-top: 10px !important;
-    margin-bottom: 10px !important;
-  }
-
-  /* O erro principal: grids pequenos estavam virando lista vertical. Agora voltam a ser compactos. */
-  main section > .grid[class*='grid-cols-2'],
-  main section > .grid[class*='grid-cols-3'],
-  main section > .grid[class*='grid-cols-4'],
-  main section > .grid[class*='grid-cols-5'],
-  main section > .grid[class*='grid-cols-6'],
-  main .lealt-mobile-kpi-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-  }
-
-  main .lealt-mobile-kpi-row,
-  main .lealt-mobile-camp-info {
-    display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px !important;
-  }
-
-  main .lealt-mobile-kpi-row > *,
-  main .lealt-mobile-kpi-grid > *,
-  main .lealt-mobile-camp-info > *,
-  main .lealt-mobile-kpi-card {
-    min-height: 48px !important;
-    padding: 8px !important;
-    border-radius: 0 !important;
-    background-color: var(--dz-surface-2) !important;
-    border-color: var(--dz-line) !important;
-  }
-
-  main .lealt-mobile-kpi-row [class*='text-[18px]'],
-  main .lealt-mobile-kpi-grid [class*='text-[24px]'],
-  main .lealt-mobile-kpi-card [class*='text-[24px]'] {
-    font-size: 18px !important;
-    line-height: 1 !important;
-    margin-top: 0 !important;
-  }
-
-  main .lealt-mobile-kpi-row [class*='text-[9px]'],
-  main .lealt-mobile-kpi-grid [class*='text-[11px]'],
-  main .lealt-mobile-kpi-card [class*='text-[11px]'] {
-    font-size: 9px !important;
-    line-height: 1.1 !important;
-  }
-
-  .lealt-mobile-page-hero {
-    padding: 12px 10px !important;
-  }
-
-  .lealt-mobile-page-hero p {
     font-size: 12px !important;
-    line-height: 1.25 !important;
-    margin-top: 4px !important;
+    line-height: 1 !important;
+    border-radius: 0 !important;
   }
 
-  .lealt-mobile-page-hero .flex.flex-wrap {
+  main [class*="flex"][class*="flex-wrap"] > button,
+  main [class*="flex"][class*="flex-wrap"] > a {
+    flex: 1 1 calc(50% - 4px) !important;
+    justify-content: center !important;
+  }
+
+  main img[class*="object-cover"],
+  main [style*="background-image"] {
+    max-height: 128px !important;
+  }
+
+  main [class*="h-32"] { height: 96px !important; }
+  main [class*="h-36"], main [class*="h-40"], main [class*="h-44"], main [class*="h-48"] { height: 112px !important; }
+
+  main .lealt-mobile-grid-2,
+  main [data-lealt-grid="2"] {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    width: 100% !important;
+    gap: 8px !important;
   }
 
-  .lealt-mobile-page-hero a,
-  .lealt-mobile-page-hero button {
-    width: 100% !important;
-    height: 38px !important;
-    justify-content: center !important;
+  main, main * { max-width: 100%; }
+
+  main [class*="overflow-x-auto"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  header, header > div, header nav { min-height: 52px !important; }
+  header [class*="h-10"], header [class*="w-10"], header [class*="h-11"], header [class*="w-11"] {
+    height: 36px !important;
+    width: 36px !important;
+  }
+  header [class*="px-4"], header [class*="px-3"], header [class*="py-3"], header [class*="py-2"] {
     padding-left: 8px !important;
     padding-right: 8px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 
-  .lealt-mobile-feed-cards {
-    padding: 8px !important;
+  .lealt-app-list-item {
+    min-height: 48px !important;
+    padding: 6px 8px !important;
+    grid-template-columns: 38px minmax(0, 1fr) auto !important;
   }
 
-  .lealt-mobile-feed-cards article {
-    margin-bottom: 8px !important;
-  }
-
-  .lealt-mobile-camp-banner {
-    height: 72px !important;
-  }
-
-  main article .grid[class*='grid-cols-[1fr_auto]'] {
-    grid-template-columns: 1fr !important;
-    gap: 6px !important;
-  }
-
-  main article a,
-  main article button {
-    min-height: 34px !important;
-  }
-
-  /* Cards de campeonato: dados financeiros lado a lado, botão menor. */
-  main article .lealt-mobile-camp-info + a,
-  main article .lealt-mobile-camp-info + button {
-    width: 100% !important;
-  }
-
-  input,
-  select,
-  textarea,
-  button,
-  .dz-btn,
-  .button-primary,
-  .button-secondary {
-    min-height: 36px !important;
-    border-radius: 0 !important;
-  }
-
-  textarea {
-    min-height: 44px !important;
-  }
-
-  header {
-    background-color: var(--dz-surface) !important;
-    color: var(--dz-text) !important;
-    border-color: var(--dz-line) !important;
-  }
-
-  header [class*='h-10'],
-  header [class*='h-11'],
-  header [class*='h-12'] {
+  .lealt-app-logo,
+  main [class*="h-14"][class*="w-14"],
+  main [class*="h-16"][class*="w-16"] {
+    width: 38px !important;
     height: 38px !important;
   }
+
+  main ::-webkit-scrollbar { height: 4px; }
 }
 
-@media (max-width: 380px) {
-  main .lealt-mobile-kpi-row,
-  main .lealt-mobile-camp-info {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-
-  main .lealt-mobile-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
+@media (max-width: 420px) {
   main {
     padding-left: 6px !important;
     padding-right: 6px !important;
