@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Crown, Shield, UserPlus, UserMinus, Loader2 } from "lucide-react";
+import { Crown, Shield, UserMinus, Loader2, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type ProfileResumo = {
@@ -189,7 +189,7 @@ export default function AbaLideres({
     };
   }, [busca, idsJaVinculados, selecionado]);
 
-  async function adicionarManager() {
+  async function enviarConviteManager() {
     if (!canManageAdmins || !selecionado?.id) return;
 
     try {
@@ -202,13 +202,40 @@ export default function AbaLideres({
         return;
       }
 
-      const { error } = await supabase.from("membros_equipe").insert({
+      const { data: sessao } = await supabase.auth.getUser();
+      const convidadoPor = sessao?.user?.id;
+
+      if (!convidadoPor) {
+        setErro("Sessão expirada. Entre novamente para enviar o convite.");
+        return;
+      }
+
+      const { data: conviteExistente, error: erroBuscaConvite } = await supabase
+        .from("equipe_manager_convites")
+        .select("id, status")
+        .eq("equipe_id", equipeId)
+        .eq("convidado_user_id", selecionado.id)
+        .in("status", ["pendente", "aceito"])
+        .limit(1)
+        .maybeSingle();
+
+      if (erroBuscaConvite) throw erroBuscaConvite;
+
+      if (conviteExistente?.status === "pendente") {
+        setErro("Este usuário já possui convite pendente para ser manager desta equipe.");
+        return;
+      }
+
+      if (conviteExistente?.status === "aceito") {
+        setErro("Este usuário já aceitou convite para esta equipe.");
+        return;
+      }
+
+      const { error } = await supabase.from("equipe_manager_convites").insert({
         equipe_id: equipeId,
-        user_id: selecionado.id,
-        perfil_jogo_id: null,
-        tipo: "manager",
-        ativo: true,
-        entrou_em: new Date().toISOString(),
+        convidado_user_id: selecionado.id,
+        convidado_por_user_id: convidadoPor,
+        status: "pendente",
       });
 
       if (error) throw error;
@@ -216,10 +243,10 @@ export default function AbaLideres({
       setBusca("");
       setResultados([]);
       setSelecionado(null);
-      setMsg("Manager adicionado.");
+      setMsg("Convite de manager enviado. O usuário precisa aceitar no perfil dele.");
       await onAtualizado?.();
     } catch (e: any) {
-      setErro(e?.message || "Não foi possível adicionar o manager.");
+      setErro(e?.message || "Não foi possível enviar o convite de manager.");
     } finally {
       setSalvando(false);
     }
@@ -341,21 +368,20 @@ export default function AbaLideres({
             <button
               type="button"
               disabled={!selecionado || salvando}
-              onClick={adicionarManager}
+              onClick={enviarConviteManager}
               className="inline-flex h-12 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white disabled:cursor-not-allowed disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-500"
             >
               {salvando ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
-                <UserPlus size={14} />
+                <Send size={14} />
               )}
-              Adicionar manager
+              Enviar convite
             </button>
           </div>
 
           <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
-            Manager usa somente a conta geral do site. Não precisa de perfil
-            gamer.
+            Manager usa a conta geral do site. O usuário só entra como manager depois de aceitar o convite no próprio perfil.
           </p>
 
           {erro ? (
@@ -464,7 +490,7 @@ export default function AbaLideres({
 
       {canManageAdmins && managers.length === 0 ? (
         <div className="border border-zinc-200 bg-[#f8f8f8] p-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-          Esta equipe ainda não possui managers além do dono.
+          Esta equipe ainda não possui managers ativos além do dono.
         </div>
       ) : null}
     </div>
