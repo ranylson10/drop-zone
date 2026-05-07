@@ -871,33 +871,35 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 }
 
 /* =========================================================
-   LEALT THEME REAL - anti inversão mobile/Vercel
-   Estratégia usada por sites grandes: entregar DARK real por padrão,
-   antes do React carregar, e deixar o usuário alternar para LIGHT.
+   LEALT THEME FIX DEFINITIVO
+   - Tema real claro/escuro via data-lealt-theme
+   - O tema escuro é o padrão inicial para evitar inversão automática
+     do Chrome/Samsung Internet no Vercel/mobile antes do React carregar.
    ========================================================= */
+
 :root,
-html[data-theme="dark"] {
+html[data-lealt-theme='dark'] {
   color-scheme: dark;
-  --dz-bg: #020817;
-  --dz-bg-2: #07111f;
-  --dz-surface: #0b1220;
-  --dz-surface-2: #111827;
-  --dz-line: #263247;
-  --dz-line-strong: #3a475e;
+  --dz-bg: #070b14;
+  --dz-bg-2: #0b1220;
+  --dz-surface: #111a27;
+  --dz-surface-2: #162235;
+  --dz-line: #2b3a50;
+  --dz-line-strong: #3a4d68;
   --dz-text: #f8fafc;
   --dz-muted: #cbd5e1;
   --dz-faint: #94a3b8;
   --dz-primary: #38bdf8;
-  --dz-primary-2: #60a5fa;
+  --dz-primary-2: #2563eb;
   --dz-accent: #a78bfa;
   --dz-success: #4ade80;
-  --dz-danger: #f87171;
+  --dz-danger: #fb7185;
   --dz-warning: #fbbf24;
-  --dz-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --dz-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.24);
+  --dz-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  --dz-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.24);
 }
 
-html[data-theme="light"] {
+html[data-lealt-theme='light'] {
   color-scheme: light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
@@ -927,170 +929,165 @@ body {
 body {
   background-color: var(--dz-bg) !important;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.11), transparent 34%),
-    radial-gradient(circle at top right, rgba(167, 139, 250, 0.09), transparent 32%) !important;
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
 }
 
-.lealt-bg-grid {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  opacity: .42;
-  background-image: radial-gradient(circle at 1px 1px, rgba(148,163,184,.13) 1px, transparent 0);
-  background-size: 24px 24px;
+html[data-lealt-theme='light'] body {
+  background-color: #f5f7fb !important;
+  background-image:
+    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
 }
 
-.lealt-bg-glow {
-  pointer-events: none;
-  position: fixed;
-  inset-inline: 0;
-  top: 0;
-  height: 220px;
-  background: radial-gradient(circle at top, rgba(37,99,235,.12), transparent 55%);
-}
-
+/* Botão fixo de tema */
 .lealt-theme-toggle {
-  position: fixed;
-  right: 14px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--dz-line-strong);
-  background: var(--dz-surface-2);
-  color: var(--dz-text);
-  box-shadow: var(--dz-shadow-sm);
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-}
-
-@media (min-width: 1024px) {
-  .lealt-theme-toggle {
-    right: 18px;
-    bottom: 18px;
-  }
-}
-
-/* Corrige utilitários Tailwind fixos que estavam virando letra da mesma cor. */
-html[data-theme="dark"] body,
-html[data-theme="dark"] main,
-html[data-theme="dark"] header,
-html[data-theme="dark"] nav,
-html[data-theme="dark"] aside,
-html[data-theme="dark"] section,
-html[data-theme="dark"] article {
-  color: var(--dz-text) !important;
-  border-color: var(--dz-line) !important;
-}
-
-html[data-theme="dark"] .bg-white,
-html[data-theme="dark"] .bg-zinc-50,
-html[data-theme="dark"] .bg-slate-50,
-html[data-theme="dark"] .bg-gray-50,
-html[data-theme="dark"] .bg-\[\#f5f7fb\],
-html[data-theme="dark"] .bg-\[\#f8fafc\],
-html[data-theme="dark"] .bg-\[\#ffffff\] {
-  background-color: var(--dz-surface) !important;
-  color: var(--dz-text) !important;
-}
-
-html[data-theme="dark"] .bg-zinc-100,
-html[data-theme="dark"] .bg-slate-100,
-html[data-theme="dark"] .bg-gray-100,
-html[data-theme="dark"] .bg-blue-50,
-html[data-theme="dark"] .bg-orange-50 {
-  background-color: var(--dz-surface-2) !important;
-  color: var(--dz-text) !important;
-}
-
-html[data-theme="dark"] .text-slate-950,
-html[data-theme="dark"] .text-slate-900,
-html[data-theme="dark"] .text-slate-800,
-html[data-theme="dark"] .text-zinc-950,
-html[data-theme="dark"] .text-zinc-900,
-html[data-theme="dark"] .text-gray-950,
-html[data-theme="dark"] .text-gray-900,
-html[data-theme="dark"] .text-\[\#142340\],
-html[data-theme="dark"] .text-\[\#111827\],
-html[data-theme="dark"] .text-\[\#0f172a\] {
-  color: var(--dz-text) !important;
-}
-
-html[data-theme="dark"] .text-slate-700,
-html[data-theme="dark"] .text-slate-600,
-html[data-theme="dark"] .text-slate-500,
-html[data-theme="dark"] .text-zinc-700,
-html[data-theme="dark"] .text-zinc-600,
-html[data-theme="dark"] .text-zinc-500,
-html[data-theme="dark"] .text-gray-700,
-html[data-theme="dark"] .text-gray-600,
-html[data-theme="dark"] .text-gray-500 {
-  color: var(--dz-muted) !important;
-}
-
-html[data-theme="dark"] .border-slate-200,
-html[data-theme="dark"] .border-zinc-100,
-html[data-theme="dark"] .border-zinc-200,
-html[data-theme="dark"] .border-gray-200,
-html[data-theme="dark"] .border-white,
-html[data-theme="dark"] .border-white\/10,
-html[data-theme="dark"] .border-white\/20 {
-  border-color: var(--dz-line) !important;
-}
-
-html[data-theme="dark"] .dz-card,
-html[data-theme="dark"] .glass-card,
-html[data-theme="dark"] .panel-card,
-html[data-theme="dark"] .soft-card,
-html[data-theme="dark"] .dz-card-compact,
-html[data-theme="dark"] .lealt-public-page,
-html[data-theme="dark"] .lealt-public-box,
-html[data-theme="dark"] .lealt-public-card {
   background: var(--dz-surface) !important;
-  border-color: var(--dz-line) !important;
-  color: var(--dz-text) !important;
-  box-shadow: var(--dz-shadow-sm) !important;
-}
-
-html[data-theme="dark"] input,
-html[data-theme="dark"] textarea,
-html[data-theme="dark"] select {
-  background: #020817 !important;
   color: var(--dz-text) !important;
   border-color: var(--dz-line-strong) !important;
 }
 
-html[data-theme="dark"] input::placeholder,
-html[data-theme="dark"] textarea::placeholder {
-  color: #94a3b8 !important;
+html[data-lealt-theme='dark'] .lealt-theme-toggle {
+  box-shadow: 0 14px 28px rgba(0,0,0,.45) !important;
 }
 
-/* Botões neutros precisam aparecer no tema escuro. */
-html[data-theme="dark"] button:not(.bg-blue-600):not(.bg-orange-500):not(.bg-red-600):not(.bg-green-600),
-html[data-theme="dark"] a:not(.bg-blue-600):not(.bg-orange-500):not(.bg-red-600):not(.bg-green-600) {
-  border-color: var(--dz-line) ;
+/* Neutraliza classes hardcoded do Tailwind que estavam brigando com o tema */
+html[data-lealt-theme='dark'] .bg-white,
+html[data-lealt-theme='dark'] .bg-zinc-50,
+html[data-lealt-theme='dark'] .bg-zinc-100,
+html[data-lealt-theme='dark'] .bg-slate-50,
+html[data-lealt-theme='dark'] .bg-slate-100,
+html[data-lealt-theme='dark'] .bg-gray-50,
+html[data-lealt-theme='dark'] .bg-gray-100 {
+  background-color: var(--dz-surface) !important;
 }
 
-/* Mantém imagens/banners/logos com cores originais. */
-html[data-theme="dark"] img,
-html[data-theme="dark"] picture,
-html[data-theme="dark"] video,
-html[data-theme="dark"] canvas,
-html[data-theme="dark"] svg {
-  filter: none !important;
-  mix-blend-mode: normal !important;
+html[data-lealt-theme='dark'] .bg-blue-50,
+html[data-lealt-theme='dark'] .bg-\[\#eaf6ff\] {
+  background-color: rgba(37, 99, 235, 0.18) !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
+html[data-lealt-theme='dark'] .bg-orange-50,
+html[data-lealt-theme='dark'] .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.16) !important;
+}
+
+html[data-lealt-theme='dark'] .text-slate-950,
+html[data-lealt-theme='dark'] .text-slate-900,
+html[data-lealt-theme='dark'] .text-slate-800,
+html[data-lealt-theme='dark'] .text-zinc-950,
+html[data-lealt-theme='dark'] .text-zinc-900,
+html[data-lealt-theme='dark'] .text-zinc-800,
+html[data-lealt-theme='dark'] .text-gray-950,
+html[data-lealt-theme='dark'] .text-gray-900,
+html[data-lealt-theme='dark'] .text-gray-800,
+html[data-lealt-theme='dark'] .text-\[\#142340\] {
+  color: var(--dz-text) !important;
+}
+
+html[data-lealt-theme='dark'] .text-slate-700,
+html[data-lealt-theme='dark'] .text-slate-600,
+html[data-lealt-theme='dark'] .text-zinc-700,
+html[data-lealt-theme='dark'] .text-zinc-600,
+html[data-lealt-theme='dark'] .text-gray-700,
+html[data-lealt-theme='dark'] .text-gray-600 {
+  color: var(--dz-muted) !important;
+}
+
+html[data-lealt-theme='dark'] .text-slate-500,
+html[data-lealt-theme='dark'] .text-slate-400,
+html[data-lealt-theme='dark'] .text-zinc-500,
+html[data-lealt-theme='dark'] .text-zinc-400,
+html[data-lealt-theme='dark'] .text-gray-500,
+html[data-lealt-theme='dark'] .text-gray-400 {
+  color: var(--dz-faint) !important;
+}
+
+html[data-lealt-theme='dark'] .border-zinc-100,
+html[data-lealt-theme='dark'] .border-zinc-200,
+html[data-lealt-theme='dark'] .border-slate-100,
+html[data-lealt-theme='dark'] .border-slate-200,
+html[data-lealt-theme='dark'] .border-gray-100,
+html[data-lealt-theme='dark'] .border-gray-200 {
+  border-color: var(--dz-line) !important;
+}
+
+html[data-lealt-theme='dark'] .hover\:bg-zinc-50:hover,
+html[data-lealt-theme='dark'] .hover\:bg-slate-50:hover,
+html[data-lealt-theme='dark'] .hover\:bg-gray-50:hover {
+  background-color: var(--dz-surface-2) !important;
+}
+
+html[data-lealt-theme='dark'] input,
+html[data-lealt-theme='dark'] textarea,
+html[data-lealt-theme='dark'] select {
+  background-color: #0b1220 !important;
+  color: #f8fafc !important;
+  border-color: var(--dz-line-strong) !important;
+}
+
+/* Tema claro precisa ser realmente claro, não cinza/preto herdado do dark */
+html[data-lealt-theme='light'] .bg-black,
+html[data-lealt-theme='light'] .bg-slate-950,
+html[data-lealt-theme='light'] .bg-slate-900,
+html[data-lealt-theme='light'] .bg-zinc-950,
+html[data-lealt-theme='light'] .bg-zinc-900,
+html[data-lealt-theme='light'] .bg-gray-950,
+html[data-lealt-theme='light'] .bg-gray-900 {
+  background-color: #ffffff !important;
+}
+
+html[data-lealt-theme='light'] .text-white,
+html[data-lealt-theme='light'] .text-slate-50,
+html[data-lealt-theme='light'] .text-zinc-50 {
+  color: #0f172a !important;
+}
+
+/* Mantém botões e badges de ação com texto branco de verdade no tema claro */
+html[data-lealt-theme='light'] .bg-blue-600,
+html[data-lealt-theme='light'] .bg-blue-700,
+html[data-lealt-theme='light'] .bg-red-600,
+html[data-lealt-theme='light'] .bg-red-700,
+html[data-lealt-theme='light'] .bg-orange-500,
+html[data-lealt-theme='light'] .bg-orange-600,
+html[data-lealt-theme='light'] .bg-green-600,
+html[data-lealt-theme='light'] .bg-green-700 {
+  color: #ffffff !important;
+}
+
+/* Classes públicas antigas */
+.lealt-public-page,
+.lealt-public-box,
+.lealt-public-card,
+.dz-card,
+.glass-card,
+.panel-card,
+.soft-card,
+.dz-card-compact,
+.dz-table-wrap {
+  background-color: var(--dz-surface) !important;
+  border-color: var(--dz-line) !important;
+  color: var(--dz-text) !important;
+}
+
+.dz-subtitle,
+.text-muted,
+.dz-kicker {
+  color: var(--dz-muted) !important;
+}
+
+/* Evita animação estranha quando o navegador troca tema */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .dz-card,
+  .glass-card,
+  .panel-card,
+  .soft-card,
+  .lealt-theme-toggle {
+    transition: background-color .16s ease, color .16s ease, border-color .16s ease;
   }
 }
