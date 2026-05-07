@@ -743,8 +743,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname()
 
   return (
-    <html lang="pt-br">
-      <body className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950">
+    <html
+      lang="pt-br"
+      suppressHydrationWarning
+      className="light"
+      style={{ colorScheme: 'light', background: '#f5f7fb' }}
+    >
+      <head>
+        <meta name="color-scheme" content="only light" />
+        <meta name="supported-color-schemes" content="light" />
+        <meta name="theme-color" content="#f5f7fb" />
+      </head>
+      <body
+        className="min-h-screen bg-[var(--dz-bg)] text-slate-950 font-sans selection:bg-blue-200 selection:text-slate-950"
+        style={{ colorScheme: 'light', background: '#f5f7fb', color: '#0f172a' }}
+      >
         <PerfilProvider>
           <div className="relative min-h-screen">
             <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />

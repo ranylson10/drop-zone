@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: only light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
   --dz-surface: #ffffff;
@@ -24,6 +25,8 @@
 }
 
 html {
+  color-scheme: only light !important;
+  background-color: #f5f7fb !important;
   scroll-behavior: smooth;
 }
 
@@ -35,14 +38,14 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background-color: var(--dz-bg);
+  background-color: #f5f7fb !important;
   background-image:
     linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
     radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%);
   background-size: 28px 28px, 28px 28px, 100% 100%, 100% 100%;
-  color: var(--dz-text);
+  color: #0f172a !important;
   font-family: Inter, "Plus Jakarta Sans", "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 13px;
   line-height: 1.35;
@@ -71,6 +74,41 @@ a {
   background: var(--dz-primary);
   color: #03101a;
 }
+
+/* =========================================================
+   FORÇAR TEMA CLARO (ANTI-AUTO DARK MODE MOBILE)
+   ========================================================= */
+html,
+body {
+  color-scheme: only light !important;
+  background-color: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: only light !important;
+  }
+
+  html,
+  body {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .dz-page,
+  .dz-card,
+  .dz-card-compact,
+  .glass-card,
+  .panel-card,
+  .soft-card,
+  .lealt-public-page,
+  .lealt-public-box,
+  .lealt-public-card {
+    color-scheme: only light !important;
+  }
+}
+
 
 /* ===== DESIGN SYSTEM GLOBAL ===== */
 .dz-page {
