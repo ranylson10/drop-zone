@@ -486,7 +486,7 @@ export default function PerfilEquipePage() {
  const lideres = useMemo<LiderComando[]>(
  () =>
  membrosNormalizados
- .filter((m) => m.tipo === 'dono' || m.tipo === 'admin' || m.tipo === 'manager')
+ .filter((m) => m.tipo === 'dono' || m.tipo === 'manager')
  .map((m) => ({
  id: m.id,
  tipo: m.tipo,
@@ -545,18 +545,16 @@ export default function PerfilEquipePage() {
  </button>
 
  <div className="overflow-hidden border border-zinc-200 max-md:border-0">
- <div className="relative h-[96px] w-full overflow-hidden border-b border-zinc-200 bg-[#142340] md:h-[112px] max-md:h-[82px]">
- <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(37,99,235,0.38)_0%,rgba(20,35,64,0.92)_45%,rgba(255,255,255,0.08)_100%)]" />
- <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.55)_1px,transparent_0)] [background-size:14px_14px]" />
- <div className="absolute bottom-3 left-6 text-[11px] font-semibold uppercase tracking-[0.35em] text-white/80 md:left-10">
- {equipe.tag || equipe.nome}
- </div>
+ <div className="relative h-[96px] w-full overflow-hidden bg-[#142340] md:h-[118px] max-md:h-[86px]">
+ <div className="absolute inset-0 bg-[linear-gradient(135deg,#142340_0%,#1d4ed8_48%,#0f172a_100%)]" />
+ <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_1px_1px,white_1px,transparent_0)] [background-size:18px_18px]" />
+ <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.14))]" />
  </div>
 
  <div className="border-t border-zinc-200 bg-[#f8f8f8] px-6 pb-4 pt-0 md:px-10 max-md:border-0 max-md:bg-white max-md:px-4 max-md:pb-4">
- <div className="-mt-10 flex flex-col gap-3 md:flex-row md:items-end md:justify-between max-md:-mt-10 max-md:gap-2">
+ <div className="-mt-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between max-md:-mt-7 max-md:gap-2">
  <div className="flex flex-col gap-4 md:flex-row md:items-end max-md:gap-3">
- <div className="relative h-[92px] w-[92px] overflow-hidden border border-zinc-300 bg-white max-md:h-[86px] max-md:w-[86px]">
+ <div className="relative h-[86px] w-[86px] overflow-hidden border border-zinc-300 bg-white max-md:h-[70px] max-md:w-[70px]">
  {equipe.logo_url ? (
  <Image
  src={equipe.logo_url}
@@ -651,7 +649,7 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="border-b border-zinc-200 px-6 py-4 md:px-10 max-md:px-4 max-md:py-4">
+ <section className="border-b border-zinc-200 px-6 py-4 md:px-10 max-md:px-4 max-md:py-3">
  <div className="border border-zinc-200 bg-white p-4 max-md:border-0 max-md:p-0">
  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between max-md:mb-3">
  <div>
@@ -704,7 +702,7 @@ export default function PerfilEquipePage() {
  </div>
 
  {historicoAberto ? (
- <div className="mt-3 border border-zinc-200">
+ <div className="mt-4 border border-zinc-200">
  <div className="flex items-center justify-between border-b border-zinc-200 bg-[#f8fafc] px-3 py-2">
  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
  {historicoAberto === 'titulos' ? 'Campeonatos vencidos' : 'Histórico competitivo'}
@@ -775,7 +773,7 @@ export default function PerfilEquipePage() {
  <button
  key={tab.key}
  onClick={() => setTabAtiva(tab.key as TabKey)}
- className={`relative inline-flex items-center gap-2 pb-3 text-[14px] font-semibold uppercase tracking-[0.2em] transition ${
+ className={`relative inline-flex items-center gap-2 pb-3 text-[13px] font-semibold uppercase tracking-[0.2em] transition ${
  ativa ? 'text-[#2563eb]' : 'text-[#8ea0be] hover:text-[#142340]'
  }`}
  >
@@ -827,7 +825,7 @@ export default function PerfilEquipePage() {
  {tabAtiva === 'agenda' && <AbaAgenda equipeId={equipe.id} />}
  </section>
 
- <section className="border-t border-zinc-200 px-6 py-4 md:px-10">
+ <section className="border-t border-zinc-200 px-6 py-8 md:px-10">
  <h3 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#8ea0be]">
  Sobre a equipe
  </h3>
