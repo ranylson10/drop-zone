@@ -871,35 +871,12 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
 }
 
 /* =========================================================
-   LEALT THEME FIX DEFINITIVO
-   - Tema real claro/escuro via data-lealt-theme
-   - O tema escuro é o padrão inicial para evitar inversão automática
-     do Chrome/Samsung Internet no Vercel/mobile antes do React carregar.
+   LEALT TEMA REAL CLARO/ESCURO - CORREÇÃO MOBILE VERCEL
+   O problema no mobile não é inversão: é escurecimento automático.
+   Por isso o site precisa entregar um dark real quando o sistema está em dark.
    ========================================================= */
-
 :root,
-html[data-lealt-theme='dark'] {
-  color-scheme: dark;
-  --dz-bg: #070b14;
-  --dz-bg-2: #0b1220;
-  --dz-surface: #111a27;
-  --dz-surface-2: #162235;
-  --dz-line: #2b3a50;
-  --dz-line-strong: #3a4d68;
-  --dz-text: #f8fafc;
-  --dz-muted: #cbd5e1;
-  --dz-faint: #94a3b8;
-  --dz-primary: #38bdf8;
-  --dz-primary-2: #2563eb;
-  --dz-accent: #a78bfa;
-  --dz-success: #4ade80;
-  --dz-danger: #fb7185;
-  --dz-warning: #fbbf24;
-  --dz-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  --dz-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.24);
-}
-
-html[data-lealt-theme='light'] {
+html[data-theme='light'] {
   color-scheme: light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
@@ -918,176 +895,199 @@ html[data-lealt-theme='light'] {
   --dz-warning: #f59e0b;
   --dz-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   --dz-shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.05);
+  --dz-grid: rgba(15, 23, 42, 0.08);
+  --dz-top-glow: rgba(37, 99, 235, 0.10);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --dz-bg: #050914;
+  --dz-bg-2: #08111f;
+  --dz-surface: #0d1628;
+  --dz-surface-2: #111d33;
+  --dz-line: #26364f;
+  --dz-line-strong: #3b5274;
+  --dz-text: #f8fafc;
+  --dz-muted: #b7c3d4;
+  --dz-faint: #8ea0b8;
+  --dz-primary: #38e8ff;
+  --dz-primary-2: #4da3ff;
+  --dz-accent: #a78bfa;
+  --dz-success: #35f27a;
+  --dz-danger: #ff5a5a;
+  --dz-warning: #ffc247;
+  --dz-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+  --dz-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.26);
+  --dz-grid: rgba(148, 163, 184, 0.08);
+  --dz-top-glow: rgba(56, 232, 255, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    color-scheme: dark;
+    --dz-bg: #050914;
+    --dz-bg-2: #08111f;
+    --dz-surface: #0d1628;
+    --dz-surface-2: #111d33;
+    --dz-line: #26364f;
+    --dz-line-strong: #3b5274;
+    --dz-text: #f8fafc;
+    --dz-muted: #b7c3d4;
+    --dz-faint: #8ea0b8;
+    --dz-primary: #38e8ff;
+    --dz-primary-2: #4da3ff;
+    --dz-accent: #a78bfa;
+    --dz-success: #35f27a;
+    --dz-danger: #ff5a5a;
+    --dz-warning: #ffc247;
+    --dz-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+    --dz-shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.26);
+    --dz-grid: rgba(148, 163, 184, 0.08);
+    --dz-top-glow: rgba(56, 232, 255, 0.12);
+  }
 }
 
 html,
 body {
-  background: var(--dz-bg) !important;
+  background-color: var(--dz-bg) !important;
   color: var(--dz-text) !important;
 }
 
 body {
-  background-color: var(--dz-bg) !important;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    radial-gradient(circle at top left, rgba(56, 189, 248, 0.14), transparent 32%),
-    radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--dz-primary) 18%, transparent), transparent 32%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--dz-accent) 12%, transparent), transparent 30%) !important;
 }
 
-html[data-lealt-theme='light'] body {
-  background-color: #f5f7fb !important;
-  background-image:
-    linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
-    radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%) !important;
-}
-
-/* Botão fixo de tema */
-.lealt-theme-toggle {
-  background: var(--dz-surface) !important;
+html[data-theme='dark'] .dz-card,
+html[data-theme='dark'] .glass-card,
+html[data-theme='dark'] .panel-card,
+html[data-theme='dark'] .soft-card {
+  background: color-mix(in srgb, var(--dz-surface) 94%, transparent) !important;
+  border-color: var(--dz-line) !important;
   color: var(--dz-text) !important;
-  border-color: var(--dz-line-strong) !important;
 }
 
-html[data-lealt-theme='dark'] .lealt-theme-toggle {
-  box-shadow: 0 14px 28px rgba(0,0,0,.45) !important;
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .dz-card,
+  html:not([data-theme='light']) .glass-card,
+  html:not([data-theme='light']) .panel-card,
+  html:not([data-theme='light']) .soft-card {
+    background: color-mix(in srgb, var(--dz-surface) 94%, transparent) !important;
+    border-color: var(--dz-line) !important;
+    color: var(--dz-text) !important;
+  }
 }
 
-/* Neutraliza classes hardcoded do Tailwind que estavam brigando com o tema */
-html[data-lealt-theme='dark'] .bg-white,
-html[data-lealt-theme='dark'] .bg-zinc-50,
-html[data-lealt-theme='dark'] .bg-zinc-100,
-html[data-lealt-theme='dark'] .bg-slate-50,
-html[data-lealt-theme='dark'] .bg-slate-100,
-html[data-lealt-theme='dark'] .bg-gray-50,
-html[data-lealt-theme='dark'] .bg-gray-100 {
+/* Overrides das classes Tailwind claras que estavam deixando texto e fundo iguais no mobile. */
+html[data-theme='dark'] .bg-white,
+html[data-theme='dark'] .bg-zinc-50,
+html[data-theme='dark'] .bg-slate-50,
+html[data-theme='dark'] .bg-gray-50 {
   background-color: var(--dz-surface) !important;
 }
 
-html[data-lealt-theme='dark'] .bg-blue-50,
-html[data-lealt-theme='dark'] .bg-\[\#eaf6ff\] {
-  background-color: rgba(37, 99, 235, 0.18) !important;
-}
-
-html[data-lealt-theme='dark'] .bg-orange-50,
-html[data-lealt-theme='dark'] .bg-orange-100 {
-  background-color: rgba(249, 115, 22, 0.16) !important;
-}
-
-html[data-lealt-theme='dark'] .text-slate-950,
-html[data-lealt-theme='dark'] .text-slate-900,
-html[data-lealt-theme='dark'] .text-slate-800,
-html[data-lealt-theme='dark'] .text-zinc-950,
-html[data-lealt-theme='dark'] .text-zinc-900,
-html[data-lealt-theme='dark'] .text-zinc-800,
-html[data-lealt-theme='dark'] .text-gray-950,
-html[data-lealt-theme='dark'] .text-gray-900,
-html[data-lealt-theme='dark'] .text-gray-800,
-html[data-lealt-theme='dark'] .text-\[\#142340\] {
-  color: var(--dz-text) !important;
-}
-
-html[data-lealt-theme='dark'] .text-slate-700,
-html[data-lealt-theme='dark'] .text-slate-600,
-html[data-lealt-theme='dark'] .text-zinc-700,
-html[data-lealt-theme='dark'] .text-zinc-600,
-html[data-lealt-theme='dark'] .text-gray-700,
-html[data-lealt-theme='dark'] .text-gray-600 {
-  color: var(--dz-muted) !important;
-}
-
-html[data-lealt-theme='dark'] .text-slate-500,
-html[data-lealt-theme='dark'] .text-slate-400,
-html[data-lealt-theme='dark'] .text-zinc-500,
-html[data-lealt-theme='dark'] .text-zinc-400,
-html[data-lealt-theme='dark'] .text-gray-500,
-html[data-lealt-theme='dark'] .text-gray-400 {
-  color: var(--dz-faint) !important;
-}
-
-html[data-lealt-theme='dark'] .border-zinc-100,
-html[data-lealt-theme='dark'] .border-zinc-200,
-html[data-lealt-theme='dark'] .border-slate-100,
-html[data-lealt-theme='dark'] .border-slate-200,
-html[data-lealt-theme='dark'] .border-gray-100,
-html[data-lealt-theme='dark'] .border-gray-200 {
-  border-color: var(--dz-line) !important;
-}
-
-html[data-lealt-theme='dark'] .hover\:bg-zinc-50:hover,
-html[data-lealt-theme='dark'] .hover\:bg-slate-50:hover,
-html[data-lealt-theme='dark'] .hover\:bg-gray-50:hover {
+html[data-theme='dark'] .bg-zinc-100,
+html[data-theme='dark'] .bg-slate-100,
+html[data-theme='dark'] .bg-gray-100 {
   background-color: var(--dz-surface-2) !important;
 }
 
-html[data-lealt-theme='dark'] input,
-html[data-lealt-theme='dark'] textarea,
-html[data-lealt-theme='dark'] select {
-  background-color: #0b1220 !important;
-  color: #f8fafc !important;
-  border-color: var(--dz-line-strong) !important;
+html[data-theme='dark'] .text-slate-950,
+html[data-theme='dark'] .text-slate-900,
+html[data-theme='dark'] .text-zinc-950,
+html[data-theme='dark'] .text-zinc-900,
+html[data-theme='dark'] .text-gray-950,
+html[data-theme='dark'] .text-gray-900,
+html[data-theme='dark'] .text-\[\#142340\] {
+  color: var(--dz-text) !important;
 }
 
-/* Tema claro precisa ser realmente claro, não cinza/preto herdado do dark */
-html[data-lealt-theme='light'] .bg-black,
-html[data-lealt-theme='light'] .bg-slate-950,
-html[data-lealt-theme='light'] .bg-slate-900,
-html[data-lealt-theme='light'] .bg-zinc-950,
-html[data-lealt-theme='light'] .bg-zinc-900,
-html[data-lealt-theme='light'] .bg-gray-950,
-html[data-lealt-theme='light'] .bg-gray-900 {
-  background-color: #ffffff !important;
+html[data-theme='dark'] .text-slate-800,
+html[data-theme='dark'] .text-slate-700,
+html[data-theme='dark'] .text-zinc-800,
+html[data-theme='dark'] .text-zinc-700,
+html[data-theme='dark'] .text-gray-800,
+html[data-theme='dark'] .text-gray-700 {
+  color: #dbe7f6 !important;
 }
 
-html[data-lealt-theme='light'] .text-white,
-html[data-lealt-theme='light'] .text-slate-50,
-html[data-lealt-theme='light'] .text-zinc-50 {
-  color: #0f172a !important;
+html[data-theme='dark'] .text-slate-600,
+html[data-theme='dark'] .text-slate-500,
+html[data-theme='dark'] .text-zinc-600,
+html[data-theme='dark'] .text-zinc-500,
+html[data-theme='dark'] .text-gray-600,
+html[data-theme='dark'] .text-gray-500 {
+  color: var(--dz-muted) !important;
 }
 
-/* Mantém botões e badges de ação com texto branco de verdade no tema claro */
-html[data-lealt-theme='light'] .bg-blue-600,
-html[data-lealt-theme='light'] .bg-blue-700,
-html[data-lealt-theme='light'] .bg-red-600,
-html[data-lealt-theme='light'] .bg-red-700,
-html[data-lealt-theme='light'] .bg-orange-500,
-html[data-lealt-theme='light'] .bg-orange-600,
-html[data-lealt-theme='light'] .bg-green-600,
-html[data-lealt-theme='light'] .bg-green-700 {
-  color: #ffffff !important;
+html[data-theme='dark'] .border-slate-200,
+html[data-theme='dark'] .border-slate-200\/80,
+html[data-theme='dark'] .border-zinc-200,
+html[data-theme='dark'] .border-zinc-100,
+html[data-theme='dark'] .border-gray-200,
+html[data-theme='dark'] .border-gray-100 {
+  border-color: var(--dz-line) !important;
 }
 
-/* Classes públicas antigas */
-.lealt-public-page,
-.lealt-public-box,
-.lealt-public-card,
-.dz-card,
-.glass-card,
-.panel-card,
-.soft-card,
-.dz-card-compact,
-.dz-table-wrap {
-  background-color: var(--dz-surface) !important;
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background-color: var(--dz-surface-2) !important;
   border-color: var(--dz-line) !important;
   color: var(--dz-text) !important;
 }
 
-.dz-subtitle,
-.text-muted,
-.dz-kicker {
-  color: var(--dz-muted) !important;
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: var(--dz-faint) !important;
 }
 
-/* Evita animação estranha quando o navegador troca tema */
-@media (prefers-reduced-motion: no-preference) {
-  body,
-  .dz-card,
-  .glass-card,
-  .panel-card,
-  .soft-card,
-  .lealt-theme-toggle {
-    transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+html[data-theme='dark'] header,
+html[data-theme='dark'] nav,
+html[data-theme='dark'] [class*='bg-white'] {
+  color: var(--dz-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .bg-white,
+  html:not([data-theme='light']) .bg-zinc-50,
+  html:not([data-theme='light']) .bg-slate-50,
+  html:not([data-theme='light']) .bg-gray-50 {
+    background-color: var(--dz-surface) !important;
   }
+
+  html:not([data-theme='light']) .text-slate-950,
+  html:not([data-theme='light']) .text-slate-900,
+  html:not([data-theme='light']) .text-zinc-950,
+  html:not([data-theme='light']) .text-zinc-900,
+  html:not([data-theme='light']) .text-gray-950,
+  html:not([data-theme='light']) .text-gray-900,
+  html:not([data-theme='light']) .text-\[\#142340\] {
+    color: var(--dz-text) !important;
+  }
+
+  html:not([data-theme='light']) .text-slate-600,
+  html:not([data-theme='light']) .text-slate-500,
+  html:not([data-theme='light']) .text-zinc-600,
+  html:not([data-theme='light']) .text-zinc-500,
+  html:not([data-theme='light']) .text-gray-600,
+  html:not([data-theme='light']) .text-gray-500 {
+    color: var(--dz-muted) !important;
+  }
+
+  html:not([data-theme='light']) .border-slate-200,
+  html:not([data-theme='light']) .border-slate-200\/80,
+  html:not([data-theme='light']) .border-zinc-200,
+  html:not([data-theme='light']) .border-zinc-100,
+  html:not([data-theme='light']) .border-gray-200,
+  html:not([data-theme='light']) .border-gray-100 {
+    border-color: var(--dz-line) !important;
+  }
+}
+
+.lealt-theme-toggle {
+  border-radius: 0 !important;
 }

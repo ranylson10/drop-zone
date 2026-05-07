@@ -201,56 +201,37 @@ function ApostadosHeaderCard({ compacto = false }: { compacto?: boolean }) {
 }
 
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+function ThemeToggleButton() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem('lealt-theme')
-      const initial = saved === 'light' || saved === 'dark' ? saved : 'dark'
-      aplicarTema(initial)
-      setTheme(initial)
-    } catch {
-      aplicarTema('dark')
-      setTheme('dark')
-    }
+    const stored = window.localStorage.getItem('lealt-theme')
+    const nextTheme = stored === 'light' || stored === 'dark'
+      ? stored
+      : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+
+    document.documentElement.dataset.theme = nextTheme
+    document.documentElement.style.colorScheme = nextTheme
+    setTheme(nextTheme)
   }, [])
-
-  function aplicarTema(nextTheme: 'dark' | 'light') {
-    const root = document.documentElement
-    root.setAttribute('data-lealt-theme', nextTheme)
-    root.classList.remove('light', 'dark')
-    root.classList.add(nextTheme)
-    root.style.colorScheme = nextTheme
-    document.body?.setAttribute('data-lealt-theme', nextTheme)
-    document.body.style.colorScheme = nextTheme
-
-    const metaTheme = document.querySelector('meta[name="theme-color"]')
-    if (metaTheme) {
-      metaTheme.setAttribute('content', nextTheme === 'dark' ? '#070b14' : '#f5f7fb')
-    }
-  }
 
   function alternarTema() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    window.localStorage.setItem('lealt-theme', nextTheme)
+    document.documentElement.dataset.theme = nextTheme
+    document.documentElement.style.colorScheme = nextTheme
     setTheme(nextTheme)
-    try {
-      window.localStorage.setItem('lealt-theme', nextTheme)
-    } catch {}
-    aplicarTema(nextTheme)
   }
-
-  const isDark = theme === 'dark'
 
   return (
     <button
       type="button"
       onClick={alternarTema}
-      aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
-      className="lealt-theme-toggle fixed bottom-20 right-4 z-[9999] inline-flex h-12 items-center gap-2 border px-4 text-[12px] font-black uppercase tracking-[0.12em] shadow-lg transition active:scale-95 md:bottom-5 md:right-5"
+      className="lealt-theme-toggle inline-flex h-10 w-10 items-center justify-center border border-[var(--dz-line)] bg-[var(--dz-surface)] text-[var(--dz-text)] transition hover:bg-[var(--dz-surface-2)]"
+      aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+      title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
     >
-      {isDark ? <Sun size={17} /> : <Moon size={17} />}
-      {isDark ? 'Claro' : 'Escuro'}
+      {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   )
 }
@@ -511,7 +492,7 @@ function NavbarContent() {
 
           <ApostadosHeaderCard />
 
-
+          <ThemeToggleButton />
 
           {usuarioLogado ? (
             <>
@@ -799,47 +780,36 @@ function AuthenticatedOnlyToast() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
+  const themeScript = `
+    (function () {
+      try {
+        var stored = localStorage.getItem('lealt-theme');
+        var theme = stored === 'light' || stored === 'dark'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch (e) {
+        document.documentElement.dataset.theme = 'dark';
+        document.documentElement.style.colorScheme = 'dark';
+      }
+    })();
+  `
+
   return (
-    <html
-      lang="pt-br"
-      suppressHydrationWarning
-      data-lealt-theme="dark"
-      className="dark"
-      style={{ colorScheme: 'dark' }}
-    >
+    <html lang="pt-br" suppressHydrationWarning data-theme="dark" style={{ colorScheme: 'dark' }}>
       <head>
         <meta name="color-scheme" content="dark light" />
-        <meta name="supported-color-schemes" content="dark light" />
-        <meta name="theme-color" content="#070b14" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                try {
-                  var t = localStorage.getItem('lealt-theme');
-                  if (t !== 'light' && t !== 'dark') t = 'dark';
-                  var r = document.documentElement;
-                  r.setAttribute('data-lealt-theme', t);
-                  r.classList.remove('light', 'dark');
-                  r.classList.add(t);
-                  r.style.colorScheme = t;
-                  var m = document.querySelector('meta[name=\"theme-color\"]');
-                  if (m) m.setAttribute('content', t === 'dark' ? '#070b14' : '#f5f7fb');
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
+        <meta name="theme-color" content="#050914" />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body data-lealt-theme="dark" className="min-h-screen bg-[var(--dz-bg)] text-[var(--dz-text)] font-sans selection:bg-blue-200 selection:text-slate-950">
+      <body className="min-h-screen bg-[var(--dz-bg)] text-[var(--dz-text)] font-sans selection:bg-blue-200 selection:text-slate-950">
         <PerfilProvider>
           <div className="relative min-h-screen">
-            <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,rgba(15,23,42,0.08)_1px,transparent_0)] [background-size:24px_24px]" />
-            <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.10),transparent_55%)]" />
+            <div className="pointer-events-none fixed inset-0 opacity-[0.55] [background-image:radial-gradient(circle_at_1px_1px,var(--dz-grid)_1px,transparent_0)] [background-size:24px_24px]" />
+            <div className="pointer-events-none fixed inset-x-0 top-0 h-[220px] bg-[radial-gradient(circle_at_top,var(--dz-top-glow),transparent_55%)]" />
 
             <NavbarContent />
-
-            <ThemeToggle />
 
             <AuthenticatedOnlyToast />
 
