@@ -685,7 +685,7 @@ function NavbarContent() {
       </div>
 
       {mobileMenuOpen && (
-        <div className="border-t border-zinc-200 bg-white px-2 py-2 xl:hidden">
+        <div className="border-t border-zinc-200 bg-white px-4 py-3 xl:hidden">
           <nav className="mx-auto flex max-w-[1500px] flex-col border border-zinc-200 bg-white">
             <div className="border-b border-zinc-100 p-2">
               <ApostadosHeaderCard compacto />
@@ -754,7 +754,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <AuthenticatedOnlyToast />
 
-            <main className="mx-auto w-full max-w-[1500px] px-2 py-2 md:px-5 md:py-5">
+            <main className="mx-auto w-full max-w-[1500px] px-4 py-4 md:px-5 md:py-5">
               {children}
             </main>
           </div>

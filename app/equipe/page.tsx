@@ -594,8 +594,8 @@ export default function EquipePage() {
 
   return (
     <main className="min-h-screen bg-[#f5f8fb] text-slate-900">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <section className="lealt-mobile-page-hero mb-4 flex flex-col gap-3 border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto max-w-6xl px-2 py-3">
+        <section className="mb-4 flex flex-col gap-3 border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600">
               <Shield size={15} />
@@ -727,7 +727,7 @@ export default function EquipePage() {
           </section>
         )}
 
-        <section className="lealt-mobile-kpi-grid mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {[
             { label: "Equipes", value: totalEquipes, desc: "cadastradas", icon: Shield },
             { label: "Lines", value: lines.length, desc: "no app", icon: Waypoints },
@@ -738,7 +738,7 @@ export default function EquipePage() {
           ].map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className="lealt-mobile-kpi-card border border-slate-200 bg-white p-3">
+              <div key={item.label} className="border border-slate-200 bg-white p-3">
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-zinc-500">
                   <Icon size={14} className="text-sky-500" />
                   {item.label}

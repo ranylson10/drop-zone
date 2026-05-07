@@ -676,12 +676,19 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
     line-height: 1.25;
   }
 
-  /* Grids largos passam a ser app list. */
+  /* KPIs e blocos curtos ficam lado a lado no mobile.
+     Antes tudo era forçado para 1 coluna e deixava as páginas longas/amadoras. */
   main [class*="grid-cols-2"],
   main [class*="grid-cols-3"],
   main [class*="grid-cols-4"],
   main [class*="grid-cols-5"],
   main [class*="grid-cols-6"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Blocos explicitamente de lista/coluna continuam 1 coluna. */
+  main [class*="grid-cols-1"]:not([class*="grid-cols-2"]):not([class*="grid-cols-3"]):not([class*="grid-cols-4"]):not([class*="grid-cols-5"]):not([class*="grid-cols-6"]),
+  main .lealt-mobile-one-col {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -870,205 +877,193 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
   }
 }
 
+
 /* =========================================================
-   LEALT MOBILE COMPACTO GERAL - CHECKUP 07/05
-   Reduz margens em ~50% e transforma blocos com pouca informação
-   em grids compactos no mobile, sem mexer na lógica das páginas.
+   LEALT MOBILE COMPACTO FINAL
+   - reduz margem em ~50%
+   - mantém KPI/cards curtos lado a lado
+   - não quebra feed/hero/carrossel
+   - corrige textos invisíveis no claro/escuro
    ========================================================= */
 @media (max-width: 767px) {
   :root {
-    --dz-header-h: 52px;
-    --dz-radius: 0px;
-    --dz-radius-sm: 0px;
-  }
-
-  body {
-    font-size: 12px !important;
-    line-height: 1.25 !important;
-  }
-
-  main {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    padding-top: 8px !important;
-    padding-bottom: calc(52px + env(safe-area-inset-bottom)) !important;
+    --dz-header-h: 54px;
   }
 
   .dz-container,
-  main > div,
-  main > section {
-    width: 100% !important;
-    max-width: 100% !important;
+  main > .mx-auto,
+  .mx-auto.max-w-\[1440px\],
+  .mx-auto.max-w-\[1500px\],
+  .mx-auto.max-w-7xl,
+  .mx-auto.max-w-6xl,
+  .mx-auto.max-w-5xl {
+    width: min(100%, calc(100vw - 16px)) !important;
+    max-width: calc(100vw - 16px) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 
-  main [class*="max-w-[1520px]"],
-  main [class*="max-w-[1500px]"],
-  main [class*="max-w-7xl"],
-  main [class*="max-w-6xl"],
-  main [class*="max-w-5xl"] {
-    max-width: 100% !important;
+  main,
+  .dz-page {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
   }
 
-  main [class*="px-8"], main [class*="px-7"], main [class*="px-6"], main [class*="px-5"], main [class*="px-4"] {
+  main section,
+  main article {
+    margin-bottom: 10px !important;
+  }
+
+  main [class*=" px-4"],
+  main [class^="px-4"],
+  main [class*=" px-5"],
+  main [class^="px-5"],
+  main [class*=" px-6"],
+  main [class^="px-6"] {
     padding-left: 10px !important;
     padding-right: 10px !important;
   }
 
-  main [class*="py-10"], main [class*="py-9"], main [class*="py-8"], main [class*="py-7"], main [class*="py-6"], main [class*="py-5"], main [class*="py-4"] {
+  main [class*=" py-4"],
+  main [class^="py-4"],
+  main [class*=" py-5"],
+  main [class^="py-5"],
+  main [class*=" py-6"],
+  main [class^="py-6"] {
     padding-top: 10px !important;
     padding-bottom: 10px !important;
   }
 
-  main [class*="p-8"], main [class*="p-7"], main [class*="p-6"], main [class*="p-5"], main [class*="p-4"] {
+  main [class*=" p-4"],
+  main [class^="p-4"],
+  main [class*=" p-5"],
+  main [class^="p-5"],
+  main [class*=" p-6"],
+  main [class^="p-6"] {
     padding: 10px !important;
   }
 
-  main [class*="mt-8"], main [class*="mt-7"], main [class*="mt-6"], main [class*="mt-5"], main [class*="mt-4"] { margin-top: 10px !important; }
-  main [class*="mb-8"], main [class*="mb-7"], main [class*="mb-6"], main [class*="mb-5"], main [class*="mb-4"], main [class*="mb-3"] { margin-bottom: 8px !important; }
-  main [class*="gap-8"], main [class*="gap-7"], main [class*="gap-6"], main [class*="gap-5"], main [class*="gap-4"], main [class*="gap-3"] { gap: 8px !important; }
-
-  main [class*="space-y-8"] > :not([hidden]) ~ :not([hidden]),
-  main [class*="space-y-7"] > :not([hidden]) ~ :not([hidden]),
-  main [class*="space-y-6"] > :not([hidden]) ~ :not([hidden]),
-  main [class*="space-y-5"] > :not([hidden]) ~ :not([hidden]),
-  main [class*="space-y-4"] > :not([hidden]) ~ :not([hidden]),
-  main [class*="space-y-3"] > :not([hidden]) ~ :not([hidden]) {
-    margin-top: 8px !important;
-  }
-
-  main h1,
-  main [class*="text-[32px]"], main [class*="text-[30px]"], main [class*="text-[28px]"],
-  main [class*="text-3xl"], main [class*="text-4xl"], main [class*="text-5xl"] {
-    font-size: 22px !important;
-    line-height: 1.05 !important;
-    letter-spacing: -0.04em !important;
-  }
-
-  main h2,
-  main [class*="text-[24px]"], main [class*="text-[22px]"], main [class*="text-2xl"] {
-    font-size: 18px !important;
-    line-height: 1.1 !important;
-  }
-
-  main p { line-height: 1.25 !important; }
-
-  main .lealt-mobile-stats,
-  main .dz-stat-grid,
-  main [data-lealt-stats="true"],
-  main [class*="grid-cols-1"][class*="md:grid-cols-"],
-  main [class*="grid-cols-1"][class*="lg:grid-cols-"],
-  main [class*="grid-cols-1"][class*="xl:grid-cols-"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  main [class*="gap-3"],
+  main [class*="gap-4"],
+  main [class*="gap-5"],
+  main [class*="gap-6"] {
     gap: 8px !important;
   }
 
-  main .lealt-mobile-stats-3,
-  main [data-lealt-stats="3"],
-  main [class*="grid-cols-3"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 6px !important;
+  /* Cards de métricas compactos em 2 colunas. */
+  main section[class*="grid"][class*="grid-cols-2"],
+  main section[class*="grid"][class*="grid-cols-3"],
+  main section[class*="grid"][class*="grid-cols-4"],
+  main section[class*="grid"][class*="grid-cols-5"],
+  main div[class*="grid"][class*="grid-cols-3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
-  main form [class*="grid-cols-1"],
-  main [class*="modal"] [class*="grid-cols-1"],
-  main [role="dialog"] [class*="grid-cols-1"] {
+  /* Exceções: hero/feed principal e layouts grandes não podem virar 2 colunas forçadas. */
+  main > div > div[class*="xl:grid-cols"],
+  main div[class*="xl:grid-cols-["],
+  main section[class*="xl:grid-cols"],
+  main div[class*="grid-cols-1"][class*="xl:grid-cols"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .dz-card, .glass-card, .panel-card, .soft-card, .dz-card-compact,
-  main [class*="border"][class*="bg-white"],
-  main [class*="border"][class*="bg-[#f7f7f7]"],
-  main [class*="border"][class*="bg-zinc-50"],
-  main [class*="border"][class*="bg-slate-50"] {
-    border-radius: 0 !important;
-    box-shadow: none !important;
+  /* Linha de KPIs do feed: 3 itens pequenos cabem melhor lado a lado. */
+  main section:first-of-type div[class*="grid-cols-3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
-  main [class*="grid"] > [class*="border"][class*="bg-white"],
-  main [class*="grid"] > [class*="border"][class*="bg-[#f7f7f7]"],
-  main [class*="grid"] > [class*="border"][class*="bg-zinc-50"],
-  main [class*="grid"] > [class*="border"][class*="bg-slate-50"] {
-    min-height: 58px !important;
-    padding: 8px !important;
+  /* Não truncar título principal no mobile. */
+  main h1.truncate,
+  main .truncate.text-\[22px\] {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
   }
 
-  main [class*="grid"] > [class*="border"] svg {
-    width: 15px !important;
-    height: 15px !important;
+  main h1 {
+    font-size: clamp(20px, 7vw, 26px) !important;
+    line-height: 1.05 !important;
+  }
+
+  main p {
+    font-size: 12px !important;
+  }
+
+  /* Cards de campeonato: informações em linha/grade compacta. */
+  main article [class*="grid-cols-3"],
+  main article [class*="grid-cols-2"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  main article [class*="grid-cols-3"] > *,
+  main article [class*="grid-cols-2"] > * {
+    min-width: 0 !important;
   }
 
   main button,
+  main a[role="button"],
   main a[class*="bg-[#2563eb]"],
   main a[class*="bg-blue"],
-  main a[class*="border"],
-  main button[class*="border"] {
-    min-height: 38px !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    font-size: 12px !important;
-    line-height: 1 !important;
-    border-radius: 0 !important;
+  main button[class*="bg-[#2563eb]"] {
+    min-height: 34px !important;
+    font-size: 11px !important;
   }
 
-  main [class*="flex"][class*="flex-wrap"] > button,
-  main [class*="flex"][class*="flex-wrap"] > a {
-    flex: 1 1 calc(50% - 4px) !important;
-    justify-content: center !important;
+  /* Corrige textos que estavam sumindo por cor herdada. */
+  .text-white:not([class*="bg-[#2563eb]"]):not([class*="bg-blue"]):not([class*="bg-red"]),
+  .text-black,
+  .text-slate-950,
+  .text-slate-900,
+  .text-[#142340],
+  .text-[#111827] {
+    color: var(--dz-text) !important;
   }
 
-  main img[class*="object-cover"],
-  main [style*="background-image"] {
-    max-height: 128px !important;
+  .bg-white,
+  .bg-slate-50,
+  .bg-zinc-50,
+  .bg-gray-50 {
+    background-color: var(--dz-surface) !important;
   }
 
-  main [class*="h-32"] { height: 96px !important; }
-  main [class*="h-36"], main [class*="h-40"], main [class*="h-44"], main [class*="h-48"] { height: 112px !important; }
-
-  main .lealt-mobile-grid-2,
-  main [data-lealt-grid="2"] {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
+  .border-zinc-200,
+  .border-slate-200,
+  .border-gray-200 {
+    border-color: var(--dz-line) !important;
   }
 
-  main, main * { max-width: 100%; }
-
-  main [class*="overflow-x-auto"] {
+  /* Scroll horizontal só onde faz sentido, sem esmagar a página toda. */
+  main .overflow-x-auto {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
-  header, header > div, header nav { min-height: 52px !important; }
-  header [class*="h-10"], header [class*="w-10"], header [class*="h-11"], header [class*="w-11"] {
-    height: 36px !important;
-    width: 36px !important;
+  main .min-w-max {
+    min-width: max-content !important;
   }
-  header [class*="px-4"], header [class*="px-3"], header [class*="py-3"], header [class*="py-2"] {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
-  }
-
-  .lealt-app-list-item {
-    min-height: 48px !important;
-    padding: 6px 8px !important;
-    grid-template-columns: 38px minmax(0, 1fr) auto !important;
-  }
-
-  .lealt-app-logo,
-  main [class*="h-14"][class*="w-14"],
-  main [class*="h-16"][class*="w-16"] {
-    width: 38px !important;
-    height: 38px !important;
-  }
-
-  main ::-webkit-scrollbar { height: 4px; }
 }
 
-@media (max-width: 420px) {
-  main {
-    padding-left: 6px !important;
-    padding-right: 6px !important;
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  :root {
+    --dz-bg: #050914;
+    --dz-bg-2: #080f1d;
+    --dz-surface: #0d1524;
+    --dz-surface-2: #101b2e;
+    --dz-line: #26364f;
+    --dz-line-strong: #38506f;
+    --dz-text: #f8fafc;
+    --dz-muted: #b7c3d4;
+    --dz-faint: #94a3b8;
+    --dz-primary: #38e8ff;
+    --dz-primary-2: #4da3ff;
+    --dz-success: #35f27a;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--dz-bg) !important;
+    color: var(--dz-text) !important;
   }
 }

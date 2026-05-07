@@ -677,7 +677,7 @@ export default function Feed() {
 
  return (
  <div className="min-h-screen bg-[#F5F7FA] text-[#142340]" style={{ backgroundImage: 'none' }}>
- <div className="mx-auto max-w-[1440px] px-3 py-4 lg:px-5">
+ <div className="mx-auto max-w-[1440px] px-2 py-3 lg:px-5">
  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[210px_minmax(520px,640px)_310px]">
  <aside className="hidden xl:block">
  <div className="sticky top-20 space-y-3">
@@ -758,11 +758,11 @@ export default function Feed() {
  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
  <div className="min-w-0">
  <div className="mb-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0284C7]"><TrendingUp size={15} />Feed da arena</div>
- <h1 className="truncate text-[22px] font-semibold uppercase tracking-[-0.04em] text-slate-950 md:text-[28px]">Comunidade competitiva</h1>
+ <h1 className="text-[21px] font-semibold uppercase leading-none tracking-[-0.04em] text-slate-950 md:text-[28px]">Comunidade competitiva</h1>
  <p className="mt-1 text-[12px] font-medium text-zinc-500">Posts, campeonatos, equipes e jogadores em formato compacto.</p>
  </div>
 
- <div className="lealt-mobile-kpi-row grid grid-cols-3 gap-2 text-center">
+ <div className="grid grid-cols-3 gap-2 text-center">
  <div className="border border-slate-200 bg-slate-50 px-3 py-2"><div className="text-[18px] font-semibold text-[#0284C7]">{posts.length}</div><div className="text-[9px] font-semibold uppercase text-zinc-500">posts</div></div>
  <div className="border border-slate-200 bg-slate-50 px-3 py-2"><div className="text-[18px] font-semibold text-[#7C3AED]">{topEquipesMock.length}</div><div className="text-[9px] font-semibold uppercase text-zinc-500">equipes</div></div>
  <div className="border border-slate-200 bg-slate-50 px-3 py-2"><div className="text-[18px] font-semibold text-[#22C55E]">{tiposCampeonatoMock.length}</div><div className="text-[9px] font-semibold uppercase text-zinc-500">modos</div></div>
@@ -806,7 +806,7 @@ export default function Feed() {
  </div>
  <Link href="/campeonatos" className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500 hover:text-[#0284C7]">Ver todos</Link>
  </div>
- <div className="lealt-mobile-feed-cards space-y-2 p-3">
+ <div className="space-y-2 p-3">
  {campeonatosFeed.map((camp) => {
  const expandido = campeonatoExpandidoId === camp.id
  const href = getCampeonatoHrefFeed(camp)
@@ -815,7 +815,7 @@ export default function Feed() {
  <article key={camp.id} className="overflow-hidden border border-slate-200 bg-slate-50">
  <button type="button" onClick={() => setCampeonatoExpandidoId(expandido ? null : camp.id)} className="relative block w-full overflow-hidden bg-[#f7f7f7] text-left" title="Expandir banner">
  {banner ? (
- <img src={banner} alt={camp.nome} className={`w-full object-cover transition-all duration-300 ${expandido ? 'h-[210px]' : 'h-[74px]'} lealt-mobile-camp-banner`} />
+ <img src={banner} alt={camp.nome} className={`w-full object-cover transition-all duration-300 ${expandido ? 'h-[210px]' : 'h-[74px]'}`} />
  ) : (
  <div className={`flex w-full items-center justify-center bg-white text-[11px] font-semibold uppercase text-zinc-500 transition-all duration-300 ${expandido ? 'h-[210px]' : 'h-[74px]'}`}>Sem banner</div>
  )}
@@ -829,7 +829,7 @@ export default function Feed() {
  </div>
  </button>
  <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-t border-slate-200 bg-white p-2">
- <div className="lealt-mobile-camp-info grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase">
+ <div className="grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase">
  <div className="border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="text-[8px] tracking-[0.12em] text-zinc-500">Vaga</div><div className="truncate text-[#0284C7]">{formatarMoeda(camp.valor_vaga)}</div></div>
  <div className="border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="text-[8px] tracking-[0.12em] text-zinc-500">Premiação</div><div className="truncate text-[#22C55E]">{formatarMoeda(camp.valor_premiacao)}</div></div>
  <div className="border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="text-[8px] tracking-[0.12em] text-zinc-500">Vagas</div><div className="truncate text-slate-950">{camp.vagas || '-'} • {camp.status || 'aberto'}</div></div>
