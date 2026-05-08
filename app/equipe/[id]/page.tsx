@@ -23,6 +23,7 @@ import AbaJogadores from './components/AbaJogadores'
 import AbaLideres from './components/AbaLideres'
 import AbaLines from './components/AbaLines'
 import SocialActions from '@/app/components/SocialActions'
+import RankingTierBadge from '@/app/components/RankingTierBadge'
 
 type Equipe = {
  id: string
@@ -386,6 +387,7 @@ export default function PerfilEquipePage() {
  const [loading, setLoading] = useState(true)
  const [tabAtiva, setTabAtiva] = useState<TabKey>('lideres')
  const [equipe, setEquipe] = useState<Equipe | null>(null)
+ const [ranking, setRanking] = useState<any | null>(null)
  const [membros, setMembros] = useState<MembroEquipe[]>([])
  const [eventosCount, setEventosCount] = useState(0)
  const [estatisticas, setEstatisticas] = useState<EstatisticasEquipe>(estatisticasVazias)
