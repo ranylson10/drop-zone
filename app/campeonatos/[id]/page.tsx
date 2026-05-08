@@ -34,6 +34,7 @@ import { TableThemeProvider } from '@/app/contexts/TableThemeContext'
 
 import AvaliacaoCampeonato from '@/app/components/AvaliacaoCampeonato'
 import SocialActions from '@/app/components/SocialActions'
+import RankingTierBadge from '@/app/components/RankingTierBadge'
 import AbaJogadores from './components/AbaJogadores'
 import GerenciarEquipes from './components/GerenciarEquipes'
 import GerenciarGrupos from './components/GerenciarGrupos'
@@ -435,6 +436,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const idEhUuid = UUID_REGEX.test(id)
 
   const [camp, setCamp] = useState<any>(null)
+  const [rankingCampeonato, setRankingCampeonato] = useState<any | null>(null)
   const [vagasPreenchidas, setVagasPreenchidas] = useState(0)
   const [loading, setLoading] = useState(true)
   const [abaAtiva, setAbaAtiva] = useState<AbaTipo>('informacoes')
@@ -1039,6 +1041,14 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
       setCamp(campeonatoData)
 
+      const { data: rankingData } = await supabase
+        .from('vw_lealt_ranking_campeonatos')
+        .select('posicao, tier, score_total')
+        .eq('campeonato_id', id)
+        .maybeSingle()
+
+      setRankingCampeonato(rankingData || null)
+
       if (String(campeonatoData?.tipo_competicao || '').toLowerCase() === 'xtreino') {
         const { data: xtreinoData, error: xtreinoError } = await supabase
           .from('campeonatos_xtreinos_config')
@@ -1402,6 +1412,9 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                     <span className="inline-flex h-6 items-center border border-white/20 bg-white/10 px-2 text-[10px] font-black uppercase tracking-[0.22em] text-white/80">
                       {camp?.plataforma || camp?.modo_jogo || camp?.formato || 'Free Fire'}
                     </span>
+                    {rankingCampeonato ? (
+                      <RankingTierBadge tier={rankingCampeonato.tier} posicao={rankingCampeonato.posicao} score={rankingCampeonato.score_total} tipo="campeonato" compacto />
+                    ) : null}
                   </div>
                   <h1 className="truncate text-3xl font-semibold uppercase tracking-tight md:text-4xl">
                     {camp?.nome}

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { usePerfil } from '@/app/contexts/PerfilContext'
 import Image from 'next/image'
 import SocialActions from '@/app/components/SocialActions'
+import RankingTierBadge from '@/app/components/RankingTierBadge'
 import {
  ArrowLeft,
  Shield,
@@ -117,6 +118,7 @@ export default function PerfilPublicoAtleta() {
  const { user } = usePerfil()
 
  const [atleta, setAtleta] = useState<PerfilJogo | null>(null)
+ const [ranking, setRanking] = useState<any | null>(null)
  const [loading, setLoading] = useState(true)
  const [processandoId, setProcessandoId] = useState<string | null>(null)
  const [enviandoPedido, setEnviandoPedido] = useState<string | null>(null)
@@ -166,6 +168,14 @@ export default function PerfilPublicoAtleta() {
 
  if (error) throw error
  setAtleta((data as PerfilJogo | null) || null)
+
+ const { data: rankingData } = await supabase
+ .from('vw_lealt_ranking_jogadores')
+ .select('posicao, tier, score_total')
+ .eq('perfil_jogo_id', perfilId)
+ .maybeSingle()
+
+ setRanking(rankingData || null)
  } catch (error) {
  console.error('Erro ao carregar atleta:', error)
  } finally {
@@ -381,6 +391,9 @@ export default function PerfilPublicoAtleta() {
  </div>
 
  <div className="mt-5 flex flex-wrap items-center gap-3">
+ {ranking ? (
+ <RankingTierBadge tier={ranking.tier} posicao={ranking.posicao} score={ranking.score_total} tipo="jogador" />
+ ) : null}
  <div className="inline-flex items-center gap-2 border border-zinc-200 bg-zinc-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
  {getRoleIcon(atleta.funcao || null)}
  {atleta.funcao || 'Sem função'}

@@ -17,6 +17,7 @@ import {
  Users,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import RankingTierBadge, { formatScore } from '@/app/components/RankingTierBadge'
 import { TIPOS_COMPETICAO, resolverTipoCompeticao } from './components/tiposCompeticao'
 import { getCampeonatoHref } from './utils/getCampeonatoHref'
 
@@ -148,7 +149,30 @@ export default function ListaCampeonatos() {
  .order('created_at', { ascending: false })
 
  if (error) throw error
- setCampeonatos(camps || [])
+
+ const { data: rankingData, error: rankingError } = await supabase
+ .from('vw_lealt_ranking_campeonatos')
+ .select('campeonato_id, posicao, tier, score_total')
+ .order('posicao', { ascending: true })
+
+ if (rankingError) console.error('Erro ao carregar ranking oficial dos campeonatos:', rankingError)
+
+ const rankingMap = new Map<string, any>()
+ ;(rankingData || []).forEach((row: any) => {
+ if (row?.campeonato_id) rankingMap.set(String(row.campeonato_id), row)
+ })
+
+ const campsComRanking = (camps || []).map((camp: any) => {
+ const ranking = rankingMap.get(String(camp.id))
+ return {
+ ...camp,
+ rank_posicao: ranking?.posicao || null,
+ tier: ranking?.tier || 'E',
+ score_total: Number(ranking?.score_total || 0),
+ }
+ })
+
+ setCampeonatos(campsComRanking)
  } catch (err) {
  console.error('Erro ao carregar campeonatos:', err)
  } finally {
@@ -509,10 +533,10 @@ export default function ListaCampeonatos() {
  <div className="flex items-center justify-between px-4 py-2">
  <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
  <Trophy size={16} className="text-[#2563eb]" />
- Todos os campeonatos
+ Ranking oficial dos campeonatos
  </div>
  <span className="text-[10px] font-medium uppercase text-zinc-500">
- {campeonatosFiltrados.length} encontrados
+ clique para abrir perfil
  </span>
  </div>
 
@@ -551,6 +575,7 @@ export default function ListaCampeonatos() {
  <span className="min-w-0 flex-1 truncate text-[14px] font-semibold uppercase leading-tight text-[#142340]">
  {camp.nome || 'Campeonato sem nome'}
  </span>
+ <RankingTierBadge tier={camp.tier} posicao={camp.rank_posicao} score={camp.score_total} tipo="campeonato" compacto />
 
  <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center border ${visual.badge}`} title={tipoCompeticao}>
  <TipoIcone size={13} strokeWidth={2.2} />
@@ -572,13 +597,15 @@ export default function ListaCampeonatos() {
 
  <div className="hidden overflow-x-auto px-3 pb-3 md:block">
  <div className="min-w-[1120px]">
- <div className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_140px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+ <div className="grid grid-cols-[2.2fr_120px_120px_130px_120px_130px_130px_130px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
  <div>Campeonato</div>
+ <div>Tier</div>
  <div>Tipo</div>
  <div>Produtora</div>
  <div>Plataforma</div>
  <div>Inscrição</div>
  <div>Premiação</div>
+ <div>Score</div>
  <div>Ações</div>
  </div>
 
@@ -592,7 +619,7 @@ export default function ListaCampeonatos() {
  <Link
  key={camp.id}
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="grid grid-cols-[2.2fr_140px_150px_130px_130px_150px_140px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
+ className="grid grid-cols-[2.2fr_120px_120px_130px_120px_130px_130px_130px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
  >
  <div className="flex min-w-0 items-center gap-3">
  <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100">
@@ -621,6 +648,10 @@ export default function ListaCampeonatos() {
  </div>
 
  <div>
+ <RankingTierBadge tier={camp.tier} posicao={camp.rank_posicao} score={camp.score_total} tipo="campeonato" compacto />
+ </div>
+
+ <div>
  <span className="inline-flex border border-zinc-200 bg-[#2563eb]/10 px-2.5 py-1 text-[10px] font-semibold uppercase text-[#2563eb]">
  {meta?.titulo || 'Tipo'}
  </span>
@@ -640,6 +671,10 @@ export default function ListaCampeonatos() {
 
  <div className="font-semibold text-emerald-600">
  {formatarMoeda(camp.valor_premiacao || 0)}
+ </div>
+
+ <div className="font-black text-[#2563eb]">
+ {formatScore(camp.score_total || 0)}
  </div>
 
  <div className="flex justify-end">

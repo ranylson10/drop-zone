@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import Image from 'next/image'
 import MessageShortcut from '@/app/components/chat/MessageShortcut'
+import RankingTierBadge, { formatScore } from '@/app/components/RankingTierBadge'
 import {
   BarChart3,
   Clock3,
@@ -44,6 +45,8 @@ type JogadorRow = {
   rank_score?: number
   rank_posicao?: number
   score_bruto?: number
+  tier?: string | null
+  score_total?: number | null
 }
 
 function normalizarEquipe(equipe: JogadorRow['equipes']) {
@@ -114,53 +117,30 @@ export default function JogadoresPage() {
       setLoading(true)
 
       const { data, error } = await supabase
-        .from('perfis_jogo')
-        .select(`
-          id,
-          nick,
-          uid_jogo,
-          servidor,
-          funcao,
-          plataforma,
-          foto_capa,
-          equipe_id,
-          created_at,
-          equipes:equipe_id (
-            id,
-            nome,
-            tag,
-            logo_url
-          )
-        `)
-        .eq('ativo', true)
-        .order('created_at', { ascending: false })
+        .from('vw_lealt_ranking_jogadores')
+        .select('*')
+        .order('posicao', { ascending: true })
         .limit(300)
 
       if (error) throw error
 
-      const base = (data || []) as JogadorRow[]
-      const maxScore = Math.max(...base.map(calcularScoreJogador), 1)
-
-      const jogadoresRankeados = base
-        .map((jogador) => {
-          const scoreBruto = calcularScoreJogador(jogador)
-          return {
-            ...jogador,
-            score_bruto: scoreBruto,
-            rank_score: Math.round((scoreBruto / maxScore) * 100),
-          }
-        })
-        .sort((a, b) => {
-          if ((b.rank_score || 0) !== (a.rank_score || 0)) {
-            return (b.rank_score || 0) - (a.rank_score || 0)
-          }
-
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-        })
-        .map((jogador, index) => ({
-          ...jogador,
-          rank_posicao: index + 1,
-        }))
+      const jogadoresRankeados = ((data || []) as any[]).map((row) => ({
+        id: row.perfil_jogo_id,
+        nick: row.nick,
+        uid_jogo: row.uid_jogo,
+        servidor: null,
+        funcao: row.funcao,
+        plataforma: row.plataforma,
+        foto_capa: row.foto_capa || row.foto_url,
+        equipe_id: null,
+        created_at: row.calculado_em,
+        equipes: null,
+        rank_posicao: row.posicao,
+        rank_score: Number(row.score_total || 0),
+        score_bruto: Number(row.score_skill || 0),
+        score_total: Number(row.score_total || 0),
+        tier: row.tier,
+      })) as JogadorRow[]
 
       setJogadores(jogadoresRankeados)
     } catch (error) {
@@ -339,9 +319,9 @@ export default function JogadoresPage() {
               <div className="flex items-center justify-between px-3 py-2">
                 <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
                   <Trophy size={16} className="text-[#2563eb]" />
-                  Ranking dos melhores jogadores
+                  Ranking oficial dos jogadores
                 </div>
-                <span className="text-[10px] font-medium uppercase text-zinc-500">top 6</span>
+                <Link href="/ranking?tab=jogadores" className="text-[10px] font-black uppercase tracking-[0.12em] text-[#2563eb] hover:underline">ver ranking geral</Link>
               </div>
 
               <div className="overflow-x-auto px-3 pb-3">
@@ -376,7 +356,7 @@ export default function JogadoresPage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</div>
+                            <div className="flex items-center gap-2"><span className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</span><RankingTierBadge tier={jogador.tier} posicao={jogador.rank_posicao} score={jogador.score_total || jogador.rank_score} tipo="jogador" compacto /></div>
                             <div className="text-[10px] font-medium uppercase text-zinc-500">ID: {jogador.uid_jogo || 'N/I'}</div>
                           </div>
                         </div>
@@ -385,9 +365,9 @@ export default function JogadoresPage() {
                         <div className="flex items-center gap-2 font-semibold uppercase">{getRoleIcon(jogador.funcao)} {jogador.funcao || 'N/I'}</div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="w-9 font-semibold text-[#2563eb]">{jogador.rank_score || 0}</span>
+                            <span className="w-14 font-semibold text-[#2563eb]">{formatScore(jogador.score_total || jogador.rank_score || 0)}</span>
                             <div className="h-1.5 w-[110px] bg-zinc-200">
-                              <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, jogador.rank_score || 0))}%` }} />
+                              <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, Number(jogador.score_total || jogador.rank_score || 0)))}%` }} />
                             </div>
                           </div>
                         </div>
@@ -451,7 +431,7 @@ export default function JogadoresPage() {
                           href={`/jogadores/${jogador.id}`}
                           className="grid grid-cols-[62px_2fr_1.25fr_120px_120px_170px_120px_96px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
                         >
-                          <div className="font-semibold">#{jogador.rank_posicao || '-'}</div>
+                          <div className="font-semibold">#{jogador.rank_posicao || '-'}<div className="mt-1"><RankingTierBadge tier={jogador.tier} compacto /></div></div>
                           <div className="flex min-w-0 items-center gap-2">
                             <div className="relative h-8 w-8 shrink-0 overflow-hidden bg-zinc-100">
                               {jogador.foto_capa ? (
@@ -463,7 +443,7 @@ export default function JogadoresPage() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</div>
+                              <div className="flex items-center gap-2"><span className="truncate font-semibold uppercase">{jogador.nick || 'Sem nick'}</span><RankingTierBadge tier={jogador.tier} posicao={jogador.rank_posicao} score={jogador.score_total || jogador.rank_score} tipo="jogador" compacto /></div>
                               <div className="text-[10px] font-medium uppercase text-zinc-500">ID: {jogador.uid_jogo || 'N/I'}</div>
                             </div>
                           </div>
@@ -472,9 +452,9 @@ export default function JogadoresPage() {
                           <div className="flex items-center gap-2 font-semibold uppercase">{getRoleIcon(jogador.funcao)} {jogador.funcao || 'N/I'}</div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="w-9 font-semibold text-[#2563eb]">{jogador.rank_score || 0}</span>
+                              <span className="w-14 font-semibold text-[#2563eb]">{formatScore(jogador.score_total || jogador.rank_score || 0)}</span>
                               <div className="h-1.5 w-[110px] bg-zinc-200">
-                                <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, jogador.rank_score || 0))}%` }} />
+                                <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, Number(jogador.score_total || jogador.rank_score || 0)))}%` }} />
                               </div>
                             </div>
                           </div>

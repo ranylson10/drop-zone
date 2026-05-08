@@ -7,6 +7,7 @@ import { usePerfil } from "../contexts/PerfilContext";
 import Image from "next/image";
 import Link from "next/link";
 import MessageShortcut from "../components/chat/MessageShortcut";
+import RankingTierBadge, { formatScore } from "../components/RankingTierBadge";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -50,6 +51,8 @@ type Equipe = {
   rank_score?: number;
   rank_posicao?: number;
   score_bruto?: number;
+  tier?: string | null;
+  score_total?: number | null;
 };
 
 type Line = {
@@ -343,29 +346,42 @@ export default function EquipePage() {
       }
 
       const equipesBase = Array.from(mapa.values());
-      const maxScore = Math.max(...equipesBase.map((equipe) => calcularScoreBruto(equipe)), 1);
+
+      const { data: rankingData, error: rankingError } = await supabase
+        .from("vw_lealt_ranking_equipes")
+        .select("equipe_id, posicao, tier, score_total")
+        .order("posicao", { ascending: true });
+
+      if (rankingError) {
+        console.error("Erro ao carregar ranking oficial de equipes:", rankingError);
+      }
+
+      const rankingMap = new Map<string, any>();
+      (rankingData || []).forEach((row: any) => {
+        if (row?.equipe_id) rankingMap.set(String(row.equipe_id), row);
+      });
 
       const equipesFormatadas = equipesBase
         .map((equipe) => {
+          const ranking = rankingMap.get(String(equipe.id));
           const scoreBruto = calcularScoreBruto(equipe);
 
           return {
             ...equipe,
             score_bruto: scoreBruto,
-            rank_score: Math.round((scoreBruto / maxScore) * 100),
+            rank_score: Number(ranking?.score_total || 0),
+            score_total: Number(ranking?.score_total || 0),
+            rank_posicao: ranking?.posicao || null,
+            tier: ranking?.tier || "E",
           };
         })
         .sort((a, b) => {
-          if ((b.rank_score || 0) !== (a.rank_score || 0)) {
-            return (b.rank_score || 0) - (a.rank_score || 0);
+          if ((a.rank_posicao || 999999) !== (b.rank_posicao || 999999)) {
+            return (a.rank_posicao || 999999) - (b.rank_posicao || 999999);
           }
 
           return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-        })
-        .map((equipe, index) => ({
-          ...equipe,
-          rank_posicao: index + 1,
-        }));
+        });
 
       setEquipes(equipesFormatadas);
     } catch (error: any) {
@@ -920,9 +936,9 @@ export default function EquipePage() {
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                 <div className="flex items-center gap-2 text-[13px] font-semibold uppercase text-slate-800">
                   <Trophy size={15} className="text-sky-500" />
-                  Ranking das melhores equipes
+                  Ranking oficial das equipes
                 </div>
-                <span className="text-[11px] uppercase text-zinc-500">top 6</span>
+                <Link href="/ranking?tab=equipes" className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-600 hover:underline">ver ranking geral</Link>
               </div>
 
               <div className="md:hidden">
@@ -942,7 +958,7 @@ export default function EquipePage() {
                         </div>
                       )}
                     </div>
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold uppercase text-[#142340]">{equipe.nome}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold uppercase text-[#142340]">{equipe.nome}</span><RankingTierBadge tier={equipe.tier} posicao={equipe.rank_posicao} score={equipe.score_total || equipe.rank_score} tipo="equipe" compacto />
                     <span className="shrink-0 text-[16px]">{getCountryFlagEmoji(equipe.pais)}</span>
                     <MessageShortcut referenciaTipo="equipe" referenciaId={equipe.id} titulo={equipe.nome || "Equipe"} avatarUrl={equipe.logo_url} tipo="equipe" />
                     <ChevronRight size={17} className="shrink-0 text-zinc-300" />
@@ -979,7 +995,7 @@ export default function EquipePage() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate text-[13px] font-semibold text-slate-900">{equipe.nome}</div>
+                              <div className="flex items-center gap-2"><span className="truncate text-[13px] font-semibold text-slate-900">{equipe.nome}</span><RankingTierBadge tier={equipe.tier} posicao={equipe.rank_posicao} score={equipe.score_total || equipe.rank_score} tipo="equipe" compacto /></div>
                               <div className="flex items-center gap-1 text-[11px] text-zinc-500">
                                 <span className="truncate">{equipe.tag || "SEM TAG"}</span>
                                 <BadgeFuncao funcao={equipe.minha_funcao} />
@@ -995,9 +1011,9 @@ export default function EquipePage() {
                         <td className="px-3 py-2 text-center whitespace-nowrap text-slate-700">{equipe.interacoes_count || 0}</td>
                         <td className="px-3 py-2">
                           <div className="flex min-w-[150px] items-center gap-2">
-                            <span className="w-8 text-[13px] font-semibold text-sky-600">{equipe.rank_score || 0}</span>
+                            <span className="w-14 text-[13px] font-semibold text-sky-600">{formatScore(equipe.score_total || equipe.rank_score || 0)}</span>
                             <div className="h-1.5 flex-1 bg-slate-200">
-                              <div className="h-full bg-sky-500" style={{ width: `${Math.max(0, Math.min(100, equipe.rank_score || 0))}%` }} />
+                              <div className="h-full bg-sky-500" style={{ width: `${Math.max(0, Math.min(100, Number(equipe.score_total || equipe.rank_score || 0)))}%` }} />
                             </div>
                           </div>
                         </td>
@@ -1084,9 +1100,9 @@ export default function EquipePage() {
                             <td className="px-3 py-2 text-center whitespace-nowrap text-slate-700">{equipe.interacoes_count || 0}</td>
                             <td className="px-3 py-2">
                               <div className="flex min-w-[150px] items-center gap-2">
-                                <span className="w-8 text-[13px] font-semibold text-sky-600">{equipe.rank_score || 0}</span>
+                                <span className="w-14 text-[13px] font-semibold text-sky-600">{formatScore(equipe.score_total || equipe.rank_score || 0)}</span>
                                 <div className="h-1.5 flex-1 bg-slate-200">
-                                  <div className="h-full bg-sky-500" style={{ width: `${Math.max(0, Math.min(100, equipe.rank_score || 0))}%` }} />
+                                  <div className="h-full bg-sky-500" style={{ width: `${Math.max(0, Math.min(100, Number(equipe.score_total || equipe.rank_score || 0)))}%` }} />
                                 </div>
                               </div>
                             </td>
