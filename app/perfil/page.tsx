@@ -653,11 +653,18 @@ function PerfilContent() {
 
  <div className="mx-auto max-w-6xl space-y-3">
  <section className="overflow-hidden border border-zinc-200 bg-white">
- <div className="group relative h-[76px] overflow-hidden bg-[#f5f9ff] md:h-[86px]">
+ <div className="group relative h-[122px] overflow-hidden bg-[#f5f9ff] md:h-[150px]">
+ {urlCapa ? (
+ <img src={urlCapa} className="absolute inset-0 h-full w-full object-cover" alt="Capa do perfil" />
+ ) : (
+ <>
  <div className="absolute inset-0 bg-[linear-gradient(135deg,#eef6ff_0%,#ffffff_45%,#eef2ff_100%)]" />
  <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(#2563eb_0.6px,transparent_0.6px)] [background-size:14px_14px]" />
  <div className="absolute left-4 top-4 h-8 w-28 border-l-4 border-[#2563eb] bg-white/60" />
  <div className="absolute bottom-3 right-4 h-8 w-40 border-r-4 border-violet-500 bg-white/50" />
+ </>
+ )}
+ <div className="absolute inset-0 bg-gradient-to-t from-white/85 via-white/15 to-transparent" />
 
  {isEditing ? (
  <button
@@ -665,7 +672,7 @@ function PerfilContent() {
  className="absolute inset-0 flex items-center justify-center gap-2 bg-white/70 text-[11px] font-medium uppercase tracking-[0.18em] text-[#142340] opacity-0 transition group-hover:opacity-100"
  >
  <Camera size={18} />
- Alterar textura
+ Alterar capa
  </button>
  ) : null}
 

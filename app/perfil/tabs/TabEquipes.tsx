@@ -8,9 +8,8 @@ import { supabase } from '@/lib/supabase'
 type EquipeResumo = {
  id: string
  nome: string | null
- slug?: string | null
  logo_url?: string | null
- banner_url?: string | null
+ cover_url?: string | null
  criado_por?: string | null
 }
 
@@ -39,9 +38,8 @@ type OrganizacaoRpc = {
  vinculo_id: string | null
  equipe_id: string
  nome: string | null
- slug: string | null
  logo_url: string | null
- banner_url: string | null
+ cover_url: string | null
  criado_por: string | null
  entrou_em: string | null
 }
@@ -98,9 +96,8 @@ export default function TabEquipes() {
     const equipe: EquipeResumo = {
      id: item.equipe_id,
      nome: item.nome,
-     slug: item.slug,
      logo_url: item.logo_url,
-     banner_url: item.banner_url,
+     cover_url: item.cover_url,
      criado_por: item.criado_por,
     }
 
@@ -130,14 +127,14 @@ export default function TabEquipes() {
 
   const { data: donoDireto, error: donoDiretoError } = await supabase
    .from('equipes')
-   .select('id, nome, slug, logo_url, banner_url, criado_por')
+   .select('id, nome, logo_url, cover_url, criado_por')
    .eq('criado_por', uid)
    .order('created_at', { ascending: false })
 
   if (donoDiretoError) console.error('Erro ao carregar equipes criadas:', donoDiretoError)
   ;((donoDireto || []) as EquipeResumo[]).forEach((equipe) => adicionarEquipeUnica(equipesDonoMap, equipe))
 
-  const selectVinculo = 'id, equipe_id, tipo, ativo, entrou_em, equipes(id, nome, slug, logo_url, banner_url, criado_por)'
+  const selectVinculo = 'id, equipe_id, tipo, ativo, entrou_em, equipes(id, nome, logo_url, cover_url, criado_por)'
 
   const { data: vinculosPorUser, error: vinculosPorUserError } = await supabase
    .from('membros_equipe')
@@ -171,7 +168,7 @@ export default function TabEquipes() {
 
   const { data: convitesData, error: convitesError } = await supabase
    .from('equipe_manager_convites')
-   .select('id, equipe_id, convidado_user_id, convidado_por_user_id, status, mensagem, created_at, equipes(id, nome, slug, logo_url, banner_url, criado_por)')
+   .select('id, equipe_id, convidado_user_id, convidado_por_user_id, status, mensagem, created_at, equipes(id, nome, logo_url, cover_url, criado_por)')
    .eq('convidado_user_id', uid)
    .eq('status', 'pendente')
    .order('created_at', { ascending: false })
