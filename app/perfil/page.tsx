@@ -105,6 +105,85 @@ const SELOS_ATUACAO: Record<SeloCargoKey, { label: string; desc: string; tone: s
  streamer: { label: 'Streamer', desc: 'Cria conteúdo e transmite jogos/eventos.', tone: 'border-teal-200 bg-teal-50 text-teal-700' },
 }
 
+
+function adicionarSeloUnico(lista: SeloAtuacao[], cargo: SeloCargoKey, origem_tipo: string, origem_id: string, verificado = false) {
+ const key = `${cargo}-${origem_tipo}-${origem_id}`
+ if (lista.some((item) => `${item.cargo}-${item.origem_tipo}-${item.origem_id}` === key)) return
+ lista.push({
+  id: key,
+  cargo,
+  origem: 'automatico',
+  origem_tipo,
+  origem_id,
+  verificado,
+ })
+}
+
+async function carregarSelosFallback(userId: string): Promise<SeloAtuacao[]> {
+ const selos: SeloAtuacao[] = []
+
+ const { data: perfis } = await supabase
+  .from('perfis_jogo')
+  .select('id')
+  .eq('user_id', userId)
+
+ const perfilIds = (perfis || []).map((p: any) => p.id).filter(Boolean)
+ perfilIds.forEach((id: string) => adicionarSeloUnico(selos, 'jogador', 'perfil_jogo', id, false))
+
+ const { data: equipesCriadas } = await supabase
+  .from('equipes')
+  .select('id')
+  .eq('criado_por', userId)
+ ;
+ (equipesCriadas || []).forEach((equipe: any) => adicionarSeloUnico(selos, 'lider_equipe', 'equipe', equipe.id, true))
+
+ const vinculosDono: any[] = []
+ const vinculosManager: any[] = []
+
+ const { data: membrosPorUser } = await supabase
+  .from('membros_equipe')
+  .select('id, tipo, equipe_id')
+  .eq('user_id', userId)
+  .eq('ativo', true)
+
+ ;(membrosPorUser || []).forEach((membro: any) => {
+  if (String(membro.tipo) === 'manager') vinculosManager.push(membro)
+  if (['dono', 'admin'].includes(String(membro.tipo))) vinculosDono.push(membro)
+ })
+
+ if (perfilIds.length > 0) {
+  const { data: membrosPorPerfil } = await supabase
+   .from('membros_equipe')
+   .select('id, tipo, equipe_id, perfil_jogo_id')
+   .in('perfil_jogo_id', perfilIds)
+   .eq('ativo', true)
+
+  ;(membrosPorPerfil || []).forEach((membro: any) => {
+   if (String(membro.tipo) === 'manager') vinculosManager.push(membro)
+   if (['dono', 'admin'].includes(String(membro.tipo))) vinculosDono.push(membro)
+  })
+ }
+
+ vinculosDono.forEach((membro: any) => adicionarSeloUnico(selos, 'lider_equipe', 'membro_equipe', membro.id, true))
+ vinculosManager.forEach((membro: any) => adicionarSeloUnico(selos, 'manager', 'membro_equipe', membro.id, true))
+
+ if (perfilIds.length > 0) {
+  const { data: slots } = await supabase
+   .from('equipes_lines_jogadores')
+   .select('id, tipo_slot, perfil_jogo_id')
+   .in('perfil_jogo_id', perfilIds)
+
+  ;(slots || []).forEach((slot: any) => {
+   const cargo = String(slot.tipo_slot || '').toLowerCase()
+   if (cargo === 'coach' || cargo === 'analista') {
+    adicionarSeloUnico(selos, cargo as SeloCargoKey, 'line_slot', slot.id, true)
+   }
+  })
+ }
+
+ return selos
+}
+
 const LOCALIDADES_BASE: SugestaoLocal[] = [
  { label: 'Abaetetuba, Pará, Brasil', cidade: 'Abaetetuba', estado: 'Pará', pais: 'Brasil' },
  { label: 'Belém, Pará, Brasil', cidade: 'Belém', estado: 'Pará', pais: 'Brasil' },
@@ -348,16 +427,24 @@ function PerfilContent() {
 
  try {
  await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: user.id })
- } catch {}
+ } catch (rpcError) {
+ console.warn('Não foi possível sincronizar selos automaticamente:', rpcError)
+ }
 
- const { data: atuacoesData } = await supabase
+ const { data: atuacoesData, error: atuacoesError } = await supabase
  .from('lealt_usuario_atuacoes')
  .select('id, cargo, origem, verificado, origem_tipo, origem_id')
  .eq('user_id', user.id)
  .eq('status', 'ativo')
  .order('created_at', { ascending: true })
 
- setSelosAtuacao(((atuacoesData || []) as SeloAtuacao[]).filter((item) => item.cargo in SELOS_ATUACAO))
+ let selos = ((atuacoesData || []) as SeloAtuacao[]).filter((item) => item.cargo in SELOS_ATUACAO)
+
+ if (atuacoesError || selos.length === 0) {
+  selos = await carregarSelosFallback(user.id)
+ }
+
+ setSelosAtuacao(selos)
  } catch (error) {
  console.error('Erro ao carregar perfil:', error)
  } finally {

@@ -232,8 +232,9 @@ export default function SocialActions({
  }
 
  return (
- <section className={`border ${compact ? 'p-2' : 'p-4'} ${cardClass}`}>
- <div className={`${compact ? 'mb-2' : 'mb-4'} flex flex-col gap-2 md:flex-row md:items-center md:justify-between`}>
+ <section className={`border ${compact ? 'p-1.5' : 'p-4'} ${cardClass}`}>
+ {!compact ? (
+ <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
  <div>
  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${isDark ? 'text-[#2563eb]' : 'text-[#2563eb]'}`}>
  // {title}
@@ -248,8 +249,9 @@ export default function SocialActions({
  Apoio · rivalidade · alcance
  </div>
  </div>
+ ) : null}
 
- <div className={`grid gap-2 ${compact ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'}`}>
+ <div className={`grid gap-1.5 ${compact ? 'grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'}`}>
  {actions.map(({ type, label, activeLabel, description, Icon }) => {
  const active = myActions.includes(type)
  const disabled = savingAction !== null
@@ -261,17 +263,26 @@ export default function SocialActions({
  onClick={() => toggleAction(type)}
  disabled={disabled}
  title={description}
- className={`relative border text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${compact ? 'min-h-[48px] px-2 py-2' : 'min-h-[82px] p-3'} ${active ? activeButton : buttonBase}`}
+ className={`relative border text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${compact ? 'h-9 px-2 py-1 text-center' : 'min-h-[82px] p-3'} ${active ? activeButton : buttonBase}`}
  >
+ {compact ? (
+ <div className="flex h-full items-center justify-center gap-1.5">
+ <span className="text-[9px] font-black uppercase tracking-[0.10em]">{active ? activeLabel : label}</span>
+ <span className="text-[11px] font-black">{formatCount(stats[type])}</span>
+ </div>
+ ) : (
+ <>
  <div className="flex items-start justify-between gap-2">
- <Icon size={compact ? 15 : 19} fill={active ? 'currentColor' : 'none'} />
- <span className={`${compact ? 'text-[12px]' : 'text-[18px]'} font-semibold`}>{formatCount(stats[type])}</span>
+ <Icon size={19} fill={active ? 'currentColor' : 'none'} />
+ <span className="text-[18px] font-semibold">{formatCount(stats[type])}</span>
  </div>
 
- <div className={compact ? 'mt-1' : 'mt-3'}>
- <p className={`${compact ? 'text-[10px]' : 'text-[11px]'} font-bold uppercase tracking-[0.12em]`}>{active ? activeLabel : label}</p>
- {!compact ? <p className="mt-1 text-[9px] font-bold uppercase leading-4 text-zinc-500">{description}</p> : null}
+ <div className="mt-3">
+ <p className="text-[11px] font-bold uppercase tracking-[0.12em]">{active ? activeLabel : label}</p>
+ <p className="mt-1 text-[9px] font-bold uppercase leading-4 text-zinc-500">{description}</p>
  </div>
+ </>
+ )}
 
  {savingAction === type ? <Loader2 size={14} className="absolute bottom-2 right-2 animate-spin text-zinc-500" /> : null}
  </button>
