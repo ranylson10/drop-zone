@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: only light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
   --dz-surface: #ffffff;
@@ -24,6 +25,8 @@
 }
 
 html {
+  color-scheme: only light !important;
+  background-color: #f5f7fb !important;
   scroll-behavior: smooth;
 }
 
@@ -35,14 +38,14 @@ body {
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
-  background-color: var(--dz-bg);
+  background-color: #f5f7fb !important;
   background-image:
     linear-gradient(rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     radial-gradient(circle at top left, rgba(20, 217, 255, 0.16), transparent 32%),
     radial-gradient(circle at top right, rgba(124, 58, 237, 0.10), transparent 30%);
   background-size: 28px 28px, 28px 28px, 100% 100%, 100% 100%;
-  color: var(--dz-text);
+  color: #0f172a !important;
   font-family: Inter, "Plus Jakarta Sans", "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 13px;
   line-height: 1.35;
@@ -71,6 +74,41 @@ a {
   background: var(--dz-primary);
   color: #03101a;
 }
+
+/* =========================================================
+   FORÇAR TEMA CLARO (ANTI-AUTO DARK MODE MOBILE)
+   ========================================================= */
+html,
+body {
+  color-scheme: only light !important;
+  background-color: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: only light !important;
+  }
+
+  html,
+  body {
+    background-color: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .dz-page,
+  .dz-card,
+  .dz-card-compact,
+  .glass-card,
+  .panel-card,
+  .soft-card,
+  .lealt-public-page,
+  .lealt-public-box,
+  .lealt-public-card {
+    color-scheme: only light !important;
+  }
+}
+
 
 /* ===== DESIGN SYSTEM GLOBAL ===== */
 .dz-page {
@@ -676,19 +714,12 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
     line-height: 1.25;
   }
 
-  /* KPIs e blocos curtos ficam lado a lado no mobile.
-     Antes tudo era forçado para 1 coluna e deixava as páginas longas/amadoras. */
+  /* Grids largos passam a ser app list. */
   main [class*="grid-cols-2"],
   main [class*="grid-cols-3"],
   main [class*="grid-cols-4"],
   main [class*="grid-cols-5"],
   main [class*="grid-cols-6"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  /* Blocos explicitamente de lista/coluna continuam 1 coluna. */
-  main [class*="grid-cols-1"]:not([class*="grid-cols-2"]):not([class*="grid-cols-3"]):not([class*="grid-cols-4"]):not([class*="grid-cols-5"]):not([class*="grid-cols-6"]),
-  main .lealt-mobile-one-col {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -874,196 +905,5 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
   .custom-scrollbar {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-  }
-}
-
-
-/* =========================================================
-   LEALT MOBILE COMPACTO FINAL
-   - reduz margem em ~50%
-   - mantém KPI/cards curtos lado a lado
-   - não quebra feed/hero/carrossel
-   - corrige textos invisíveis no claro/escuro
-   ========================================================= */
-@media (max-width: 767px) {
-  :root {
-    --dz-header-h: 54px;
-  }
-
-  .dz-container,
-  main > .mx-auto,
-  .mx-auto.max-w-\[1440px\],
-  .mx-auto.max-w-\[1500px\],
-  .mx-auto.max-w-7xl,
-  .mx-auto.max-w-6xl,
-  .mx-auto.max-w-5xl {
-    width: min(100%, calc(100vw - 16px)) !important;
-    max-width: calc(100vw - 16px) !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-  }
-
-  main,
-  .dz-page {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-  }
-
-  main section,
-  main article {
-    margin-bottom: 10px !important;
-  }
-
-  main [class*=" px-4"],
-  main [class^="px-4"],
-  main [class*=" px-5"],
-  main [class^="px-5"],
-  main [class*=" px-6"],
-  main [class^="px-6"] {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-
-  main [class*=" py-4"],
-  main [class^="py-4"],
-  main [class*=" py-5"],
-  main [class^="py-5"],
-  main [class*=" py-6"],
-  main [class^="py-6"] {
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
-  }
-
-  main [class*=" p-4"],
-  main [class^="p-4"],
-  main [class*=" p-5"],
-  main [class^="p-5"],
-  main [class*=" p-6"],
-  main [class^="p-6"] {
-    padding: 10px !important;
-  }
-
-  main [class*="gap-3"],
-  main [class*="gap-4"],
-  main [class*="gap-5"],
-  main [class*="gap-6"] {
-    gap: 8px !important;
-  }
-
-  /* Cards de métricas compactos em 2 colunas. */
-  main section[class*="grid"][class*="grid-cols-2"],
-  main section[class*="grid"][class*="grid-cols-3"],
-  main section[class*="grid"][class*="grid-cols-4"],
-  main section[class*="grid"][class*="grid-cols-5"],
-  main div[class*="grid"][class*="grid-cols-3"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
-  /* Exceções: hero/feed principal e layouts grandes não podem virar 2 colunas forçadas. */
-  main > div > div[class*="xl:grid-cols"],
-  main div[class*="xl:grid-cols-["],
-  main section[class*="xl:grid-cols"],
-  main div[class*="grid-cols-1"][class*="xl:grid-cols"] {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  /* Linha de KPIs do feed: 3 itens pequenos cabem melhor lado a lado. */
-  main section:first-of-type div[class*="grid-cols-3"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-
-  /* Não truncar título principal no mobile. */
-  main h1.truncate,
-  main .truncate.text-\[22px\] {
-    overflow: visible !important;
-    text-overflow: clip !important;
-    white-space: normal !important;
-  }
-
-  main h1 {
-    font-size: clamp(20px, 7vw, 26px) !important;
-    line-height: 1.05 !important;
-  }
-
-  main p {
-    font-size: 12px !important;
-  }
-
-  /* Cards de campeonato: informações em linha/grade compacta. */
-  main article [class*="grid-cols-3"],
-  main article [class*="grid-cols-2"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-
-  main article [class*="grid-cols-3"] > *,
-  main article [class*="grid-cols-2"] > * {
-    min-width: 0 !important;
-  }
-
-  main button,
-  main a[role="button"],
-  main a[class*="bg-[#2563eb]"],
-  main a[class*="bg-blue"],
-  main button[class*="bg-[#2563eb]"] {
-    min-height: 34px !important;
-    font-size: 11px !important;
-  }
-
-  /* Corrige textos que estavam sumindo por cor herdada. */
-  .text-white:not([class*="bg-[#2563eb]"]):not([class*="bg-blue"]):not([class*="bg-red"]),
-  .text-black,
-  .text-slate-950,
-  .text-slate-900,
-  .text-[#142340],
-  .text-[#111827] {
-    color: var(--dz-text) !important;
-  }
-
-  .bg-white,
-  .bg-slate-50,
-  .bg-zinc-50,
-  .bg-gray-50 {
-    background-color: var(--dz-surface) !important;
-  }
-
-  .border-zinc-200,
-  .border-slate-200,
-  .border-gray-200 {
-    border-color: var(--dz-line) !important;
-  }
-
-  /* Scroll horizontal só onde faz sentido, sem esmagar a página toda. */
-  main .overflow-x-auto {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  main .min-w-max {
-    min-width: max-content !important;
-  }
-}
-
-@media (max-width: 767px) and (prefers-color-scheme: dark) {
-  :root {
-    --dz-bg: #050914;
-    --dz-bg-2: #080f1d;
-    --dz-surface: #0d1524;
-    --dz-surface-2: #101b2e;
-    --dz-line: #26364f;
-    --dz-line-strong: #38506f;
-    --dz-text: #f8fafc;
-    --dz-muted: #b7c3d4;
-    --dz-faint: #94a3b8;
-    --dz-primary: #38e8ff;
-    --dz-primary-2: #4da3ff;
-    --dz-success: #35f27a;
-    color-scheme: dark;
-  }
-
-  body {
-    background-color: var(--dz-bg) !important;
-    color: var(--dz-text) !important;
   }
 }

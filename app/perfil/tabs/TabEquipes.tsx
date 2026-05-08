@@ -1,25 +1,26 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
-import { Check, Loader2, LogOut, Shield, Users, X } from 'lucide-react'
+import { BriefcaseBusiness, Check, Crown, Loader2, LogOut, Shield, Users as UsersIcon, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-
-type ProfileResumo = {
- id: string
- username: string | null
- nome_exibicao: string | null
- foto_url: string | null
-}
 
 type EquipeResumo = {
  id: string
- nome: string
- tag: string | null
- logo_url: string | null
- criado_por: string | null
+ nome: string | null
+ slug?: string | null
+ logo_url?: string | null
+ banner_url?: string | null
+ criado_por?: string | null
+}
+
+type VinculoEquipe = {
+ id: string
+ equipe_id: string
+ tipo: string | null
+ ativo: boolean
+ entrou_em: string | null
+ equipes?: EquipeResumo | null
 }
 
 type ConviteManager = {
@@ -28,322 +29,307 @@ type ConviteManager = {
  convidado_user_id: string
  convidado_por_user_id: string
  status: string
- mensagem: string | null
- created_at: string | null
- equipes: EquipeResumo | EquipeResumo[] | null
- convidado_por: ProfileResumo | ProfileResumo[] | null
+ mensagem?: string | null
+ created_at: string
+ equipes?: EquipeResumo | null
 }
 
-type VinculoEquipe = {
- id: string
- equipe_id: string
- user_id: string | null
- tipo: 'dono' | 'admin' | 'manager' | 'membro'
- ativo: boolean
- entrou_em: string | null
- equipes: EquipeResumo | EquipeResumo[] | null
-}
-
-function normalizar<T>(valor: T | T[] | null | undefined): T | null {
- if (!valor) return null
- return Array.isArray(valor) ? valor[0] || null : valor
-}
-
-function dataBR(data?: string | null) {
- if (!data) return 'N/I'
- const d = new Date(data)
- return Number.isNaN(d.getTime()) ? 'N/I' : new Intl.DateTimeFormat('pt-BR').format(d)
-}
-
-function nomeProfile(profile?: ProfileResumo | null) {
- return profile?.nome_exibicao || profile?.username || 'Usuário'
+function formatarData(valor?: string | null) {
+ if (!valor) return 'N/I'
+ return new Intl.DateTimeFormat('pt-BR').format(new Date(valor))
 }
 
 export default function TabEquipes() {
  const [userId, setUserId] = useState<string | null>(null)
  const [loading, setLoading] = useState(true)
- const [processando, setProcessando] = useState<string | null>(null)
- const [convites, setConvites] = useState<ConviteManager[]>([])
+ const [salvando, setSalvando] = useState<string | null>(null)
+ const [equipesDono, setEquipesDono] = useState<EquipeResumo[]>([])
  const [vinculos, setVinculos] = useState<VinculoEquipe[]>([])
- const [minhasEquipes, setMinhasEquipes] = useState<EquipeResumo[]>([])
+ const [convites, setConvites] = useState<ConviteManager[]>([])
  const [erro, setErro] = useState<string | null>(null)
- const [msg, setMsg] = useState<string | null>(null)
 
  const carregar = useCallback(async () => {
-  try {
-   setLoading(true)
-   setErro(null)
+ setLoading(true)
+ setErro(null)
 
-   const { data: authData, error: authError } = await supabase.auth.getUser()
-   if (authError) throw authError
+ const { data: auth } = await supabase.auth.getUser()
+ const uid = auth?.user?.id || null
+ setUserId(uid)
 
-   const uid = authData?.user?.id || null
-   setUserId(uid)
+ if (!uid) {
+ setLoading(false)
+ return
+ }
 
-   if (!uid) {
-    setConvites([])
-    setVinculos([])
-    setMinhasEquipes([])
-    return
-   }
+ const { data: donoData, error: donoError } = await supabase
+ .from('equipes')
+ .select('id, nome, slug, logo_url, banner_url, criado_por')
+ .eq('criado_por', uid)
+ .order('created_at', { ascending: false })
 
-   const [convitesRes, vinculosRes, minhasEquipesRes] = await Promise.all([
-    supabase
-     .from('equipe_manager_convites')
-     .select(`
-      id,
-      equipe_id,
-      convidado_user_id,
-      convidado_por_user_id,
-      status,
-      mensagem,
-      created_at,
-      equipes:equipe_id (
-       id,
-       nome,
-       tag,
-       logo_url,
-       criado_por
-      ),
-      convidado_por:convidado_por_user_id (
-       id,
-       username,
-       nome_exibicao,
-       foto_url
-      )
-     `)
-     .eq('convidado_user_id', uid)
-     .eq('status', 'pendente')
-     .order('created_at', { ascending: false }),
+ if (donoError) {
+ console.error('Erro ao carregar equipes do dono:', donoError)
+ }
 
-    supabase
-     .from('membros_equipe')
-     .select(`
-      id,
-      equipe_id,
-      user_id,
-      tipo,
-      ativo,
-      entrou_em,
-      equipes:equipe_id (
-       id,
-       nome,
-       tag,
-       logo_url,
-       criado_por
-      )
-     `)
-     .eq('user_id', uid)
-     .eq('ativo', true)
-     .in('tipo', ['manager', 'admin', 'dono'])
-     .order('entrou_em', { ascending: false }),
+ const { data: vinculosData, error: vinculosError } = await supabase
+ .from('membros_equipe')
+ .select('id, equipe_id, tipo, ativo, entrou_em, equipes(id, nome, slug, logo_url, banner_url, criado_por)')
+ .eq('user_id', uid)
+ .eq('ativo', true)
+ .in('tipo', ['manager', 'admin'])
+ .order('entrou_em', { ascending: false })
 
-    supabase
-     .from('equipes')
-     .select('id, nome, tag, logo_url, criado_por')
-     .eq('criado_por', uid)
-     .order('nome', { ascending: true }),
-   ])
+ if (vinculosError) {
+ console.error('Erro ao carregar vínculos de manager:', vinculosError)
+ }
 
-   if (convitesRes.error) throw convitesRes.error
-   if (vinculosRes.error) throw vinculosRes.error
-   if (minhasEquipesRes.error) throw minhasEquipesRes.error
+ const { data: convitesData, error: convitesError } = await supabase
+ .from('equipe_manager_convites')
+ .select('id, equipe_id, convidado_user_id, convidado_por_user_id, status, mensagem, created_at, equipes(id, nome, slug, logo_url, banner_url, criado_por)')
+ .eq('convidado_user_id', uid)
+ .eq('status', 'pendente')
+ .order('created_at', { ascending: false })
 
-   setConvites((convitesRes.data || []) as ConviteManager[])
-   setVinculos((vinculosRes.data || []) as VinculoEquipe[])
-   setMinhasEquipes((minhasEquipesRes.data || []) as EquipeResumo[])
-  } catch (e: any) {
-   setErro(e?.message || 'Não foi possível carregar suas equipes.')
-  } finally {
-   setLoading(false)
-  }
+ if (convitesError) {
+ console.warn('Convites de manager ainda não disponíveis. Rode o SQL 02 se necessário.', convitesError)
+ }
+
+ setEquipesDono((donoData || []) as EquipeResumo[])
+ setVinculos((vinculosData || []) as unknown as VinculoEquipe[])
+ setConvites((convitesData || []) as unknown as ConviteManager[])
+ setLoading(false)
  }, [])
 
  useEffect(() => {
-  carregar()
+ carregar()
  }, [carregar])
 
- const equipesDono = useMemo(() => {
-  const mapa = new Map<string, EquipeResumo>()
-  minhasEquipes.forEach((e) => mapa.set(e.id, e))
-  vinculos.forEach((v) => {
-   const equipe = normalizar(v.equipes)
-   if (v.tipo === 'dono' && equipe) mapa.set(equipe.id, equipe)
-  })
-  return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
- }, [minhasEquipes, vinculos])
+ const equipesManager = useMemo(() => {
+ const idsDono = new Set(equipesDono.map((e) => e.id))
+ return vinculos.filter((v) => v.tipo === 'manager' && !idsDono.has(v.equipe_id))
+ }, [vinculos, equipesDono])
 
- const equipesManager = useMemo(
-  () =>
-   vinculos
-    .filter((v) => v.tipo === 'manager')
-    .map((v) => ({ vinculo: v, equipe: normalizar(v.equipes) }))
-    .filter((item) => !!item.equipe),
-  [vinculos]
+ async function aceitarConvite(convite: ConviteManager) {
+ if (!userId || salvando) return
+
+ setSalvando(convite.id)
+ setErro(null)
+
+ const { error: insertError } = await supabase
+ .from('membros_equipe')
+ .upsert(
+ {
+ equipe_id: convite.equipe_id,
+ user_id: userId,
+ perfil_jogo_id: null,
+ tipo: 'manager',
+ ativo: true,
+ entrou_em: new Date().toISOString(),
+ saiu_em: null,
+ },
+ { onConflict: 'equipe_id,user_id,tipo' }
  )
 
- async function responderConvite(conviteId: string, aceitar: boolean) {
-  try {
-   setProcessando(conviteId)
-   setErro(null)
-   setMsg(null)
-
-   const { error } = await supabase.rpc(
-    aceitar ? 'fn_aceitar_convite_manager_equipe' : 'fn_recusar_convite_manager_equipe',
-    { p_convite_id: conviteId }
-   )
-
-   if (error) throw error
-
-   setMsg(aceitar ? 'Convite aceito. A equipe foi adicionada à sua lista de managers.' : 'Convite recusado.')
-   await carregar()
-  } catch (e: any) {
-   setErro(e?.message || 'Não foi possível responder o convite.')
-  } finally {
-   setProcessando(null)
-  }
+ if (insertError) {
+ console.error('Erro ao aceitar convite:', insertError)
+ setErro(insertError.message || 'Não foi possível aceitar o convite.')
+ setSalvando(null)
+ return
  }
 
- async function sairComoManager(vinculoId: string) {
-  const confirmar = window.confirm('Sair como manager desta equipe?')
-  if (!confirmar) return
+ const { error: updateError } = await supabase
+ .from('equipe_manager_convites')
+ .update({ status: 'aceito', respondido_em: new Date().toISOString() })
+ .eq('id', convite.id)
 
-  try {
-   setProcessando(vinculoId)
-   setErro(null)
-   setMsg(null)
+ if (updateError) {
+ console.error('Erro ao atualizar convite:', updateError)
+ }
 
-   const { error } = await supabase.rpc('fn_sair_manager_equipe', { p_membro_id: vinculoId })
-   if (error) throw error
+ await carregar()
+ setSalvando(null)
+ }
 
-   setMsg('Você saiu como manager da equipe.')
-   await carregar()
-  } catch (e: any) {
-   setErro(e?.message || 'Não foi possível sair como manager.')
-  } finally {
-   setProcessando(null)
-  }
+ async function recusarConvite(convite: ConviteManager) {
+ if (salvando) return
+
+ setSalvando(convite.id)
+ setErro(null)
+
+ const { error } = await supabase
+ .from('equipe_manager_convites')
+ .update({ status: 'recusado', respondido_em: new Date().toISOString() })
+ .eq('id', convite.id)
+
+ if (error) {
+ console.error('Erro ao recusar convite:', error)
+ setErro(error.message || 'Não foi possível recusar o convite.')
+ }
+
+ await carregar()
+ setSalvando(null)
+ }
+
+ async function sairDaEquipe(vinculo: VinculoEquipe) {
+ if (!confirm('Tem certeza que deseja sair como manager desta equipe?')) return
+
+ setSalvando(vinculo.id)
+ setErro(null)
+
+ const { error } = await supabase
+ .from('membros_equipe')
+ .update({ ativo: false, saiu_em: new Date().toISOString() })
+ .eq('id', vinculo.id)
+
+ if (error) {
+ console.error('Erro ao sair da equipe:', error)
+ setErro(error.message || 'Não foi possível sair da equipe.')
+ }
+
+ await carregar()
+ setSalvando(null)
  }
 
  if (loading) {
-  return (
-   <div className="border border-zinc-200 bg-white p-8 text-center">
-    <Loader2 className="mx-auto mb-4 animate-spin text-[#2563eb]" size={28} />
-    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Carregando equipes...</p>
-   </div>
-  )
- }
-
- if (!userId) {
-  return (
-   <div className="border border-zinc-200 bg-white p-8 text-center">
-    <Users className="mx-auto mb-4 opacity-20" size={40} />
-    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Entre na conta para ver suas equipes.</p>
-   </div>
-  )
- }
-
  return (
-  <div className="space-y-5 bg-white p-4 md:p-5">
-   <div className="flex flex-wrap items-start justify-between gap-3 border border-zinc-200 bg-[#f8f8f8] p-4">
-    <div>
-     <h2 className="text-[12px] font-black uppercase tracking-[0.28em] text-[#2563eb]">// Minhas organizações</h2>
-     <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
-      Equipes que você é dono e equipes onde atua como manager.
-     </p>
-    </div>
-    <Link href="/manager" className="inline-flex h-10 items-center gap-2 border border-violet-300 bg-violet-50 px-4 text-[10px] font-black uppercase tracking-[0.16em] text-violet-800 hover:bg-violet-100">
-     <Shield size={14} /> Central do manager
-    </Link>
-   </div>
-
-   {erro ? <div className="border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-red-700">{erro}</div> : null}
-   {msg ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">{msg}</div> : null}
-
-   {convites.length > 0 ? (
-    <section className="border border-violet-200 bg-violet-50/60 p-4">
-     <h3 className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-violet-800">Convites para manager</h3>
-     <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-      {convites.map((convite) => {
-       const equipe = normalizar(convite.equipes)
-       const convidador = normalizar(convite.convidado_por)
-       return (
-        <div key={convite.id} className="border border-violet-200 bg-white p-3">
-         <div className="flex gap-3">
-          <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
-           {equipe?.logo_url ? <Image src={equipe.logo_url} alt={equipe.nome} fill className="object-cover" /> : <div className="flex h-full items-center justify-center text-[11px] font-black text-zinc-500">{(equipe?.nome || 'EQ').slice(0, 2).toUpperCase()}</div>}
-          </div>
-          <div className="min-w-0 flex-1">
-           <p className="truncate text-[14px] font-black uppercase text-[#142340]">{equipe?.nome || 'Equipe'}</p>
-           <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">Enviado por {nomeProfile(convidador)} em {dataBR(convite.created_at)}</p>
-          </div>
-         </div>
-         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" disabled={processando === convite.id} onClick={() => responderConvite(convite.id, true)} className="inline-flex h-10 items-center justify-center gap-2 border border-emerald-300 bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 disabled:opacity-50">
-           {processando === convite.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Aceitar
-          </button>
-          <button type="button" disabled={processando === convite.id} onClick={() => responderConvite(convite.id, false)} className="inline-flex h-10 items-center justify-center gap-2 border border-red-300 bg-red-50 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 disabled:opacity-50">
-           <X size={13} /> Recusar
-          </button>
-         </div>
-        </div>
-       )
-      })}
-     </div>
-    </section>
-   ) : null}
-
-   <section>
-    <h3 className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-[#2563eb]">Equipes que sou dono</h3>
-    {equipesDono.length > 0 ? (
-     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {equipesDono.map((equipe) => <EquipeCard key={equipe.id} equipe={equipe} tag="Dono" />)}
-     </div>
-    ) : (
-     <div className="border border-zinc-200 bg-[#f8f8f8] p-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Você ainda não é dono de nenhuma equipe.</div>
-    )}
-   </section>
-
-   <section>
-    <h3 className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-violet-700">Equipes que gerencio</h3>
-    {equipesManager.length > 0 ? (
-     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {equipesManager.map(({ vinculo, equipe }) => (
-       <EquipeCard key={vinculo.id} equipe={equipe!} tag="Manager" extra={`Entrou em ${dataBR(vinculo.entrou_em)}`}>
-        <button type="button" disabled={processando === vinculo.id} onClick={() => sairComoManager(vinculo.id)} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 border border-red-300 bg-red-50 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 disabled:opacity-50">
-         {processando === vinculo.id ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />} Sair como manager
-        </button>
-       </EquipeCard>
-      ))}
-     </div>
-    ) : (
-     <div className="border border-zinc-200 bg-[#f8f8f8] p-4 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Você ainda não gerencia nenhuma equipe.</div>
-    )}
-   </section>
-  </div>
+ <div className="flex items-center justify-center gap-2 p-6 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+ <Loader2 size={15} className="animate-spin" />
+ Carregando organizações...
+ </div>
  )
-}
+ }
 
-function EquipeCard({ equipe, tag, extra, children }: { equipe: EquipeResumo; tag: string; extra?: string; children?: ReactNode }) {
  return (
-  <div className="border border-zinc-200 bg-white p-3">
-   <div className="flex gap-3">
-    <div className="relative h-14 w-14 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
-     {equipe.logo_url ? <Image src={equipe.logo_url} alt={equipe.nome} fill className="object-cover" /> : <div className="flex h-full items-center justify-center text-[12px] font-black text-zinc-500">{equipe.nome.slice(0, 2).toUpperCase()}</div>}
-    </div>
-    <div className="min-w-0 flex-1">
-     <div className="flex items-center gap-2">
-      <p className="truncate text-[15px] font-black uppercase text-[#142340]">{equipe.nome}</p>
-      <span className={tag === 'Manager' ? 'bg-violet-100 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-violet-800' : 'bg-yellow-200 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#142340]'}>{tag}</span>
-     </div>
-     <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">{equipe.tag ? `TAG ${equipe.tag}` : 'Sem tag cadastrada'}</p>
-     {extra ? <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#8ea0be]">{extra}</p> : null}
-    </div>
-   </div>
-   <Link href={`/equipe/${equipe.id}`} className="mt-3 inline-flex h-9 w-full items-center justify-center border border-zinc-300 bg-[#f8f8f8] text-[10px] font-black uppercase tracking-[0.14em] text-[#142340] hover:bg-zinc-100">
-    Abrir equipe
-   </Link>
-   {children}
-  </div>
+ <div className="space-y-4 p-4">
+ <div className="flex flex-wrap items-center justify-between gap-3">
+ <div>
+ <h2 className="text-[15px] font-black uppercase tracking-[0.18em] text-[#2563eb]">// Minhas organizações</h2>
+ <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+ Equipes que você é dono, convites de manager e equipes onde atua como manager.
+ </p>
+ </div>
+
+ <Link
+ href="/manager"
+ className="inline-flex items-center gap-2 border border-violet-300 bg-violet-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-violet-700 hover:bg-violet-100"
+ >
+ <Shield size={14} />
+ Central do Manager
+ </Link>
+ </div>
+
+ {erro ? (
+ <div className="border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-600">
+ {erro}
+ </div>
+ ) : null}
+
+ {convites.length > 0 ? (
+ <section className="border border-violet-200 bg-violet-50 p-3">
+ <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-violet-700">Convites pendentes</div>
+ <div className="grid gap-2 md:grid-cols-2">
+ {convites.map((convite) => (
+ <div key={convite.id} className="border border-violet-200 bg-white p-3">
+ <div className="flex items-center gap-3">
+ <div className="flex h-12 w-12 items-center justify-center border border-zinc-200 bg-zinc-50 text-[11px] font-black uppercase text-zinc-500">
+ {convite.equipes?.logo_url ? <img src={convite.equipes.logo_url} className="h-full w-full object-cover" alt="" /> : (convite.equipes?.nome || 'EQ').slice(0, 2)}
+ </div>
+ <div className="min-w-0 flex-1">
+ <div className="truncate text-sm font-black uppercase text-[#142340]">{convite.equipes?.nome || 'Equipe'}</div>
+ <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Convite para atuar como manager</div>
+ </div>
+ </div>
+
+ {convite.mensagem ? (
+ <p className="mt-3 text-xs font-medium text-zinc-600">{convite.mensagem}</p>
+ ) : null}
+
+ <div className="mt-3 grid grid-cols-2 gap-2">
+ <button
+ onClick={() => aceitarConvite(convite)}
+ disabled={salvando === convite.id}
+ className="inline-flex items-center justify-center gap-2 border border-emerald-300 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 disabled:opacity-60"
+ >
+ <Check size={13} /> Aceitar
+ </button>
+ <button
+ onClick={() => recusarConvite(convite)}
+ disabled={salvando === convite.id}
+ className="inline-flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 disabled:opacity-60"
+ >
+ <X size={13} /> Recusar
+ </button>
+ </div>
+ </div>
+ ))}
+ </div>
+ </section>
+ ) : null}
+
+ <section>
+ <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#142340]">
+ <Crown size={14} className="text-amber-500" />
+ Equipes que sou dono
+ </div>
+
+ {equipesDono.length > 0 ? (
+ <div className="grid gap-2 md:grid-cols-2">
+ {equipesDono.map((equipe) => (
+ <Link key={equipe.id} href={`/equipe/${equipe.id}`} className="flex items-center gap-3 border border-zinc-200 bg-white p-3 hover:border-[#2563eb]">
+ <div className="flex h-12 w-12 items-center justify-center border border-zinc-200 bg-zinc-50 text-[11px] font-black uppercase text-zinc-500">
+ {equipe.logo_url ? <img src={equipe.logo_url} className="h-full w-full object-cover" alt="" /> : (equipe.nome || 'EQ').slice(0, 2)}
+ </div>
+ <div className="min-w-0">
+ <div className="truncate text-sm font-black uppercase text-[#142340]">{equipe.nome || 'Equipe'}</div>
+ <div className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-600">Dono da equipe</div>
+ </div>
+ </Link>
+ ))}
+ </div>
+ ) : (
+ <div className="border border-zinc-200 bg-zinc-50 p-4 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+ Você ainda não possui equipes como dono.
+ </div>
+ )}
+ </section>
+
+ <section>
+ <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#142340]">
+ <BriefcaseBusiness size={14} className="text-violet-600" />
+ Equipes onde sou manager
+ </div>
+
+ {equipesManager.length > 0 ? (
+ <div className="grid gap-2 md:grid-cols-2">
+ {equipesManager.map((vinculo) => (
+ <div key={vinculo.id} className="border border-zinc-200 bg-white p-3">
+ <div className="flex items-center gap-3">
+ <Link href={`/equipe/${vinculo.equipe_id}`} className="flex h-12 w-12 items-center justify-center border border-zinc-200 bg-zinc-50 text-[11px] font-black uppercase text-zinc-500">
+ {vinculo.equipes?.logo_url ? <img src={vinculo.equipes.logo_url} className="h-full w-full object-cover" alt="" /> : (vinculo.equipes?.nome || 'EQ').slice(0, 2)}
+ </Link>
+ <div className="min-w-0 flex-1">
+ <Link href={`/equipe/${vinculo.equipe_id}`} className="truncate text-sm font-black uppercase text-[#142340] hover:text-[#2563eb]">
+ {vinculo.equipes?.nome || 'Equipe'}
+ </Link>
+ <div className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-violet-600">Manager desde {formatarData(vinculo.entrou_em)}</div>
+ </div>
+ <button
+ onClick={() => sairDaEquipe(vinculo)}
+ disabled={salvando === vinculo.id}
+ className="inline-flex items-center gap-1 border border-red-200 bg-red-50 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-red-600 disabled:opacity-60"
+ >
+ <LogOut size={12} /> Sair
+ </button>
+ </div>
+ </div>
+ ))}
+ </div>
+ ) : (
+ <div className="border border-zinc-200 bg-zinc-50 p-4 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+ Você ainda não atua como manager em nenhuma equipe.
+ </div>
+ )}
+ </section>
+ </div>
  )
 }

@@ -26,6 +26,9 @@ import {
  Search,
  Globe,
  Gamepad2,
+ BadgeCheck,
+ Crown,
+ BriefcaseBusiness,
 } from 'lucide-react'
 import Cropper from 'react-easy-crop'
 
@@ -60,6 +63,46 @@ type SugestaoLocal = {
  cidade: string
  estado: string
  pais: string
+}
+
+type SeloCargoKey =
+ | 'jogador'
+ | 'coach'
+ | 'analista'
+ | 'manager'
+ | 'lider_equipe'
+ | 'narrador'
+ | 'comentarista'
+ | 'produtor'
+ | 'moderador'
+ | 'organizador'
+ | 'designer'
+ | 'editor'
+ | 'streamer'
+
+type SeloAtuacao = {
+ id: string
+ cargo: SeloCargoKey
+ origem?: string | null
+ verificado?: boolean | null
+ origem_tipo?: string | null
+ origem_id?: string | null
+}
+
+const SELOS_ATUACAO: Record<SeloCargoKey, { label: string; desc: string; tone: string }> = {
+ jogador: { label: 'Jogador', desc: 'Possui perfil gamer ativo no site.', tone: 'border-blue-200 bg-blue-50 text-blue-700' },
+ coach: { label: 'Coach', desc: 'Atua como coach em line ou equipe.', tone: 'border-cyan-200 bg-cyan-50 text-cyan-700' },
+ analista: { label: 'Analista', desc: 'Atua como analista de desempenho ou estratégia.', tone: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
+ manager: { label: 'Manager', desc: 'Gerencia uma ou mais equipes no LEALT.', tone: 'border-violet-200 bg-violet-50 text-violet-700' },
+ lider_equipe: { label: 'Líder', desc: 'Dono ou responsável por equipe cadastrada.', tone: 'border-amber-200 bg-amber-50 text-amber-700' },
+ narrador: { label: 'Narrador', desc: 'Atua em narração de eventos e transmissões.', tone: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700' },
+ comentarista: { label: 'Comentarista', desc: 'Atua com comentários, análises e pré-jogo.', tone: 'border-pink-200 bg-pink-50 text-pink-700' },
+ produtor: { label: 'Produtor', desc: 'Opera transmissão, GC, OBS/vMix ou produção.', tone: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+ moderador: { label: 'Moderador', desc: 'Modera eventos, apostados, resultados ou disputas.', tone: 'border-red-200 bg-red-50 text-red-700' },
+ organizador: { label: 'Organizador', desc: 'Cria campeonatos, copas, ligas e eventos.', tone: 'border-orange-200 bg-orange-50 text-orange-700' },
+ designer: { label: 'Designer', desc: 'Cria banners, artes e identidade visual.', tone: 'border-purple-200 bg-purple-50 text-purple-700' },
+ editor: { label: 'Editor', desc: 'Edita vídeos, cortes e materiais de mídia.', tone: 'border-zinc-200 bg-zinc-50 text-zinc-700' },
+ streamer: { label: 'Streamer', desc: 'Cria conteúdo e transmite jogos/eventos.', tone: 'border-teal-200 bg-teal-50 text-teal-700' },
 }
 
 const LOCALIDADES_BASE: SugestaoLocal[] = [
@@ -160,6 +203,7 @@ function PerfilContent() {
  const [carregandoPerfil, setCarregandoPerfil] = useState(true)
  const [isEditing, setIsEditing] = useState(false)
  const [userId, setUserId] = useState<string | null>(null)
+ const [selosAtuacao, setSelosAtuacao] = useState<SeloAtuacao[]>([])
 
  const [username, setUsername] = useState('')
  const [nomeExibicao, setNomeExibicao] = useState('')
@@ -258,6 +302,7 @@ function PerfilContent() {
  setPais('')
  setDataNascimento('')
  setLocalBusca('')
+ setSelosAtuacao([])
  return
  }
 
@@ -286,6 +331,7 @@ function PerfilContent() {
  setPais('')
  setDataNascimento('')
  setLocalBusca('')
+ setSelosAtuacao([])
  return
  }
 
@@ -299,6 +345,19 @@ function PerfilContent() {
  setPais(data.pais || '')
  setDataNascimento(data.data_nascimento || '')
  setLocalBusca(montarLocalidade(data.cidade || '', data.estado || '', data.pais || ''))
+
+ try {
+ await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: user.id })
+ } catch {}
+
+ const { data: atuacoesData } = await supabase
+ .from('lealt_usuario_atuacoes')
+ .select('id, cargo, origem, verificado, origem_tipo, origem_id')
+ .eq('user_id', user.id)
+ .eq('status', 'ativo')
+ .order('created_at', { ascending: true })
+
+ setSelosAtuacao(((atuacoesData || []) as SeloAtuacao[]).filter((item) => item.cargo in SELOS_ATUACAO))
  } catch (error) {
  console.error('Erro ao carregar perfil:', error)
  } finally {
@@ -481,7 +540,7 @@ function PerfilContent() {
 
  <div className="mx-auto max-w-6xl space-y-3">
  <section className="overflow-hidden border border-zinc-200 bg-white">
- <div className="group relative h-[170px] overflow-hidden bg-zinc-100 md:h-[210px]">
+ <div className="group relative h-[120px] overflow-hidden bg-zinc-100 md:h-[150px]">
  {urlCapa ? (
  <img
  src={urlCapa}
@@ -512,9 +571,9 @@ function PerfilContent() {
  </div>
 
  <div className="px-4 pb-4 pt-0 md:px-5">
- <div className="-mt-14 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+ <div className="-mt-10 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
  <div className="flex flex-col gap-3 md:flex-row md:items-end">
- <div className="group relative h-[118px] w-[118px] overflow-hidden border border-zinc-300 bg-white">
+ <div className="group relative h-[92px] w-[92px] overflow-hidden border border-zinc-300 bg-white">
  {urlAvatar ? (
  <img src={urlAvatar} className="h-full w-full object-cover" alt="Avatar" />
  ) : (
@@ -639,12 +698,26 @@ function PerfilContent() {
  ) : (
  <>
  <div className="flex flex-wrap items-center gap-3">
- <h1 className="text-[24px] font-semibold uppercase tracking-tight text-[#142340] md:text-[30px]">
+ <h1 className="text-[22px] font-semibold uppercase tracking-tight text-[#142340] md:text-[26px]">
  {nomePrincipalExibido}
  </h1>
- <span className=" border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-[#2563eb]">
- Pro player
+ {selosAtuacao.length > 0 ? (
+ <div className="flex flex-wrap items-center gap-1.5">
+ {selosAtuacao.map((selo) => {
+ const meta = SELOS_ATUACAO[selo.cargo]
+ return (
+ <span
+ key={`${selo.cargo}-${selo.id}`}
+ title={meta.desc}
+ className={`inline-flex items-center gap-1 border px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${meta.tone}`}
+ >
+ {selo.cargo === 'lider_equipe' ? <Crown size={11} /> : selo.cargo === 'manager' ? <BriefcaseBusiness size={11} /> : <BadgeCheck size={11} />}
+ {meta.label}
  </span>
+ )
+ })}
+ </div>
+ ) : null}
  </div>
 
  <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
@@ -663,11 +736,22 @@ function PerfilContent() {
  </div>
  </div>
 
- <div className="flex gap-2">
+ <div className="flex w-full flex-col gap-2 lg:w-[410px]">
+ {userId && !isEditing ? (
+ <SocialActions
+ entityId={userId}
+ entityType="perfil"
+ variant="light"
+ compact
+ title="Social"
+ />
+ ) : null}
+
+ <div className="flex justify-end gap-2">
  {!isEditing ? (
  <button
  onClick={() => setIsEditing(true)}
- className="inline-flex items-center gap-2 border border-zinc-300 bg-white px-6 py-3 text-[10px] font-medium uppercase tracking-[0.16em] text-[#142340] transition hover:bg-zinc-50"
+ className="inline-flex items-center gap-2 border border-zinc-300 bg-white px-4 py-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#142340] transition hover:bg-zinc-50"
  >
  <Edit3 size={14} className="text-[#2563eb]" />
  Editar perfil
@@ -680,7 +764,7 @@ function PerfilContent() {
  setLocalBusca(montarLocalidade(cidade, estado, pais))
  carregarDadosPerfil()
  }}
- className="inline-flex items-center gap-2 border border-zinc-300 bg-white px-6 py-3 text-[10px] font-medium uppercase tracking-[0.16em] text-[#142340] transition hover:bg-zinc-50"
+ className="inline-flex items-center gap-2 border border-zinc-300 bg-white px-4 py-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#142340] transition hover:bg-zinc-50"
  >
  <X size={14} />
  Cancelar
@@ -689,13 +773,14 @@ function PerfilContent() {
  <button
  onClick={salvarPerfil}
  disabled={loading}
- className="inline-flex h-10 items-center gap-2 border border-[#2563eb] bg-[#2563eb] px-4 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-[#1d4ed8] disabled:opacity-60"
+ className="inline-flex h-9 items-center gap-2 border border-[#2563eb] bg-[#2563eb] px-4 text-[11px] font-medium uppercase tracking-wide text-white transition hover:bg-[#1d4ed8] disabled:opacity-60"
  >
  <Save size={14} />
- {loading ? 'Sincronizando...' : 'Salvar alterações'}
+ {loading ? 'Sincronizando...' : 'Salvar'}
  </button>
  </>
  )}
+ </div>
  </div>
  </div>
  </div>
@@ -721,26 +806,14 @@ function PerfilContent() {
  )}
  </section>
 
- {userId ? (
- <SocialActions
- entityId={userId}
- entityType="perfil"
- variant="light"
- title="Ações sociais"
- />
- ) : null}
-
-
- <section className="border border-cyan-200 bg-cyan-50 p-3">
- <div className="flex flex-wrap items-center justify-between gap-3">
+ <section className="flex flex-wrap items-center justify-between gap-2 border border-zinc-200 bg-white px-3 py-2">
  <div>
- <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-cyan-700">Atuação profissional</div>
- <p className="mt-1 text-xs font-medium text-cyan-900">Configure seus selos, funções, agenda stream e disponibilidade para eventos.</p>
+ <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2563eb]">Selos automáticos</div>
+ <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.10em] text-zinc-500">Criados por perfil gamer, equipe, manager, line e funções.</p>
  </div>
- <Link href="/perfil/atuacao" className="inline-flex items-center gap-2 border border-cyan-500 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-wide text-cyan-700 hover:bg-cyan-100">
- <Shield size={14} /> Gerenciar atuações
+ <Link href="/perfil/atuacao" className="inline-flex items-center gap-2 border border-zinc-300 bg-zinc-50 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-white">
+ <Shield size={13} /> Funções
  </Link>
- </div>
  </section>
 
  <nav className="flex overflow-hidden border border-zinc-200 bg-white p-1">
