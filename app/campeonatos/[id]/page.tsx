@@ -71,6 +71,7 @@ type AbaTipo =
   | 'tabela'
   | 'watchparty'
   | 'regras'
+  | 'configuracoes'
 
 type SubAbaTabela = 'classificacao' | 'mvp' | 'sumula' | 'config'
 
@@ -479,6 +480,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const [loadingPainelTransparencia, setLoadingPainelTransparencia] = useState(false)
 
   const [usuarioAtual, setUsuarioAtual] = useState<any>(null)
+  const [podeGerenciarCampeonato, setPodeGerenciarCampeonato] = useState(false)
   const [saldoCarteira, setSaldoCarteira] = useState<number>(0)
   const [minhasEquipesCompra, setMinhasEquipesCompra] = useState<CompraEquipeOption[]>([])
   const [equipeCompraId, setEquipeCompraId] = useState('')
@@ -535,10 +537,26 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       setUsuarioAtual(user)
 
       if (!user) {
+        setPodeGerenciarCampeonato(false)
+
         setSaldoCarteira(0)
         setMinhasEquipesCompra([])
         setEquipeCompraId('')
         return
+      }
+
+      try {
+        const { data: permissaoData, error: permissaoError } = await supabase.rpc('fn_usuario_admin_do_campeonato', {
+          p_campeonato_id: id,
+        })
+
+        if (!permissaoError) {
+          setPodeGerenciarCampeonato(Boolean(permissaoData))
+        } else {
+          setPodeGerenciarCampeonato(Boolean(camp?.criado_por && camp.criado_por === user.id))
+        }
+      } catch {
+        setPodeGerenciarCampeonato(Boolean(camp?.criado_por && camp.criado_por === user.id))
       }
 
       const { data: saldoData, error: saldoError } = await supabase
@@ -636,7 +654,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     } catch (err) {
       logErroSupabase('Erro ao carregar painel de compra de vaga', err)
     }
-  }, [])
+  }, [id, camp?.criado_por])
 
   function abrirConfirmacaoCompra() {
     setMensagemCompraVaga('')
@@ -1255,12 +1273,12 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   }, [avaliacaoResumo, denunciaMetricas])
 
   useEffect(() => {
-    if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela'].includes(abaAtiva)) {
+    if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
     }
 
-    if (usaAbasLiga && !['informacoes', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela'].includes(abaAtiva)) {
+    if (usaAbasLiga && !['informacoes', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
     }
@@ -1273,6 +1291,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         { id: 'jogadores', label: 'Jogadores' },
         { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
         { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
+        ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
       ]
     : usaAbasLiga
       ? [
@@ -1282,6 +1301,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
           { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
       : [
           { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
@@ -1294,6 +1314,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           { id: 'tabela', label: 'Tabela & MVP', icon: <List size={14} /> },
           { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
           { id: 'regras', label: 'Regras' },
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
 
   if (!idEhUuid) {
@@ -1395,6 +1416,16 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             >
               <ChevronLeft size={14} /> Voltar
             </button>
+
+            {podeGerenciarCampeonato && (
+              <button
+                type="button"
+                onClick={() => setAbaAtiva('configuracoes')}
+                className="mb-3 inline-flex h-9 items-center gap-2 border border-zinc-200 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-[#142340] transition hover:border-[#2563eb] hover:text-[#2563eb]"
+              >
+                <Settings size={14} /> Configurações
+              </button>
+            )}
           </div>
 
           <div className={`border-l-4 ${lealtHeaderGradient} px-4 py-4 text-white md:px-6`}>
@@ -1571,12 +1602,296 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
             {abaAtiva === 'watchparty' && <GerenciarWatchParty campeonatoId={id} />}
             {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} />}
+            {abaAtiva === 'configuracoes' && podeGerenciarCampeonato && (
+              <PainelConfiguracoesCampeonato
+                camp={camp}
+                campeonatoId={id}
+                vagasPreenchidas={vagasPreenchidas}
+                valorVagaCompra={valorVagaCompra}
+                vagasRestantesCompra={vagasRestantesCompra}
+                onSalvar={salvarAlteracao}
+              />
+            )}
           </main>
         </div>
       </div>
     </TableThemeProvider>
   )
 }
+
+
+function PainelConfiguracoesCampeonato({
+  camp,
+  campeonatoId,
+  vagasPreenchidas,
+  valorVagaCompra,
+  vagasRestantesCompra,
+  onSalvar,
+}: {
+  camp: any
+  campeonatoId: string
+  vagasPreenchidas: number
+  valorVagaCompra: number
+  vagasRestantesCompra: number
+  onSalvar: (campo: string, valor: any) => Promise<void>
+}) {
+  const [salvandoCampo, setSalvandoCampo] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+
+  const origem = typeof window !== 'undefined' ? window.location.origin : ''
+  const linkMobile = `${origem}/escala/${campeonatoId}`
+  const limiteTitulares = Number(camp?.jogadores_por_equipe || 0)
+  const limiteReservas = Number(camp?.reservas_permitidos || 0)
+  const limiteTotalJogadores = Math.max(0, limiteTitulares + limiteReservas)
+  const statusAtual = normalizarStatusCampeonato(camp?.status)
+
+  async function salvar(campo: string, valor: any) {
+    setSalvandoCampo(campo)
+    try {
+      await onSalvar(campo, valor)
+    } finally {
+      setSalvandoCampo(null)
+    }
+  }
+
+  async function copiarLink() {
+    try {
+      await navigator.clipboard.writeText(linkMobile)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1800)
+    } catch {
+      alert('Não foi possível copiar o link. Copie manualmente pelo campo.')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="border border-zinc-200 bg-[#f8fafc] p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#2563eb]">Central do organizador</div>
+            <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-[#142340]">Configurações do campeonato</h2>
+            <p className="mt-1 text-xs font-semibold text-zinc-500">Altere status, vagas, limite de jogadores, datas e link mobile sem mexer no banco.</p>
+          </div>
+          <div className={`inline-flex h-9 items-center border px-3 text-[10px] font-black uppercase tracking-wide ${statusAtual.classes}`}>
+            {statusAtual.label}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="space-y-4">
+          <ConfigCard titulo="Status e inscrições" descricao="Controle se o campeonato está com vagas abertas, em andamento ou finalizado.">
+            <div className="grid gap-3 md:grid-cols-3">
+              <ConfigSelect
+                label="Status público"
+                value={statusAtual.value}
+                options={STATUS_CAMPEONATO_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
+                onChange={(valor) => salvar('status', valor)}
+                loading={salvandoCampo === 'status'}
+              />
+              <ConfigDateTime
+                label="Abertura inscrições"
+                value={camp?.data_abertura_inscricoes}
+                onChange={(valor) => salvar('data_abertura_inscricoes', valor)}
+                loading={salvandoCampo === 'data_abertura_inscricoes'}
+              />
+              <ConfigDateTime
+                label="Encerramento inscrições"
+                value={camp?.data_encerramento_inscricoes}
+                onChange={(valor) => salvar('data_encerramento_inscricoes', valor)}
+                loading={salvandoCampo === 'data_encerramento_inscricoes'}
+              />
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <ConfigNumber label="Vagas/equipes" value={camp?.vagas || camp?.quantidade_equipes || 0} min={0} onSave={(valor) => salvar('vagas', valor)} loading={salvandoCampo === 'vagas'} />
+              <ConfigNumber label="Valor da vaga" value={valorVagaCompra} min={0} step="0.01" onSave={(valor) => salvar('valor_vaga', valor)} loading={salvandoCampo === 'valor_vaga'} />
+              <ConfigNumber label="Premiação" value={camp?.valor_premiacao || 0} min={0} step="0.01" onSave={(valor) => salvar('valor_premiacao', valor)} loading={salvandoCampo === 'valor_premiacao'} />
+            </div>
+          </ConfigCard>
+
+          <ConfigCard titulo="Limite de jogadores" descricao="Esses campos já existem na tabela campeonatos. Não foi criada tabela duplicada.">
+            <div className="grid gap-3 md:grid-cols-3">
+              <ConfigNumber label="Titulares por equipe" value={camp?.jogadores_por_equipe || 0} min={0} onSave={(valor) => salvar('jogadores_por_equipe', valor)} loading={salvandoCampo === 'jogadores_por_equipe'} />
+              <ConfigNumber label="Reservas permitidos" value={camp?.reservas_permitidos || 0} min={0} onSave={(valor) => salvar('reservas_permitidos', valor)} loading={salvandoCampo === 'reservas_permitidos'} />
+              <div className="border border-zinc-200 bg-white p-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Total por equipe</div>
+                <div className="mt-2 text-2xl font-black text-[#142340]">{limiteTotalJogadores || '---'}</div>
+                <p className="mt-1 text-[11px] font-semibold text-zinc-500">Titulares + reservas.</p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <ConfigSelect
+                label="Troca jogadores"
+                value={camp?.troca_jogadores || ''}
+                options={[{ value: '', label: 'Não definido' }, { value: 'livre', label: 'Livre' }, { value: 'com_aprovacao', label: 'Com aprovação' }, { value: 'bloqueada', label: 'Bloqueada' }]}
+                onChange={(valor) => salvar('troca_jogadores', valor || null)}
+                loading={salvandoCampo === 'troca_jogadores'}
+              />
+              <ConfigToggle label="Substitutos" checked={Boolean(camp?.substitutos_permitidos)} onChange={(valor) => salvar('substitutos_permitidos', valor)} loading={salvandoCampo === 'substitutos_permitidos'} />
+              <ConfigToggle label="Check-in obrigatório" checked={Boolean(camp?.checkin_obrigatorio)} onChange={(valor) => salvar('checkin_obrigatorio', valor)} loading={salvandoCampo === 'checkin_obrigatorio'} />
+            </div>
+          </ConfigCard>
+
+          <ConfigCard titulo="Dados principais" descricao="Ajustes rápidos que aparecem no topo e nas listas públicas.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <ConfigText label="Nome do campeonato" value={camp?.nome || ''} onSave={(valor) => salvar('nome', valor)} loading={salvandoCampo === 'nome'} />
+              <ConfigText label="Plataforma" value={camp?.plataforma || ''} onSave={(valor) => salvar('plataforma', valor || null)} loading={salvandoCampo === 'plataforma'} />
+              <ConfigDateTime label="Início" value={camp?.data_inicio} onChange={(valor) => salvar('data_inicio', valor)} loading={salvandoCampo === 'data_inicio'} />
+              <ConfigDateTime label="Fim" value={camp?.data_fim} onChange={(valor) => salvar('data_fim', valor)} loading={salvandoCampo === 'data_fim'} />
+            </div>
+          </ConfigCard>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="border border-zinc-200 bg-white p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2563eb]">Link mobile</div>
+            <div className="mt-1 text-lg font-black uppercase text-[#142340]">Inscrição e escalação</div>
+            <p className="mt-1 text-xs font-semibold text-zinc-500">Use esse link na descrição dos grupos. Ele abre a área mobile do campeonato.</p>
+            <input readOnly value={linkMobile} className="mt-3 h-10 w-full border border-zinc-200 bg-zinc-50 px-3 text-xs font-bold text-[#142340] outline-none" />
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" onClick={copiarLink} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-wide text-white">
+                {copiado ? 'Copiado' : 'Copiar link'}
+              </button>
+              <a href={linkMobile} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center justify-center border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340]">
+                Abrir
+              </a>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <ConfigMetric label="Inscritas" value={String(vagasPreenchidas)} />
+            <ConfigMetric label="Restantes" value={String(vagasRestantesCompra)} />
+            <ConfigMetric label="Vagas" value={String(camp?.vagas || camp?.quantidade_equipes || 0)} />
+            <ConfigMetric label="Jogadores" value={limiteTotalJogadores ? String(limiteTotalJogadores) : '---'} />
+          </div>
+
+          <div className="border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-900">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em]">Importante</div>
+            <p className="mt-2">Para pausar novas inscrições agora, altere o status para rascunho, em andamento, finalizado ou ajuste a data de encerramento. A trava manual separada só deve ser criada depois do SQL confirmar que não existe campo equivalente.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function ConfigCard({ titulo, descricao, children }: { titulo: string; descricao?: string; children: any }) {
+  return (
+    <section className="border border-zinc-200 bg-white p-4">
+      <div className="mb-3 border-b border-zinc-200 pb-3">
+        <h3 className="text-sm font-black uppercase tracking-wide text-[#142340]">{titulo}</h3>
+        {descricao ? <p className="mt-1 text-xs font-semibold text-zinc-500">{descricao}</p> : null}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function ConfigMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-zinc-200 bg-white p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+      <div className="mt-2 text-2xl font-black text-[#142340]">{value}</div>
+    </div>
+  )
+}
+
+function ConfigNumber({ label, value, onSave, min = 0, step = '1', loading = false }: any) {
+  const [local, setLocal] = useState(String(value ?? ''))
+
+  useEffect(() => {
+    setLocal(String(value ?? ''))
+  }, [value])
+
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <div className="mt-2 flex gap-2">
+        <input type="number" min={min} step={step} value={local} onChange={(event) => setLocal(event.target.value)} className="h-9 min-w-0 flex-1 border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]" />
+        <button type="button" disabled={loading} onClick={() => onSave(Number(local || 0))} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white disabled:opacity-60">
+          {loading ? '...' : 'Salvar'}
+        </button>
+      </div>
+    </label>
+  )
+}
+
+function ConfigText({ label, value, onSave, loading = false }: any) {
+  const [local, setLocal] = useState(String(value ?? ''))
+
+  useEffect(() => {
+    setLocal(String(value ?? ''))
+  }, [value])
+
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <div className="mt-2 flex gap-2">
+        <input value={local} onChange={(event) => setLocal(event.target.value)} className="h-9 min-w-0 flex-1 border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]" />
+        <button type="button" disabled={loading} onClick={() => onSave(local.trim())} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white disabled:opacity-60">
+          {loading ? '...' : 'Salvar'}
+        </button>
+      </div>
+    </label>
+  )
+}
+
+function ConfigDateTime({ label, value, onChange, loading = false }: any) {
+  const [local, setLocal] = useState('')
+
+  useEffect(() => {
+    if (!value) {
+      setLocal('')
+      return
+    }
+    const data = new Date(value)
+    if (Number.isNaN(data.getTime())) {
+      setLocal('')
+      return
+    }
+    const offset = data.getTimezoneOffset() * 60000
+    setLocal(new Date(data.getTime() - offset).toISOString().slice(0, 16))
+  }, [value])
+
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <div className="mt-2 flex gap-2">
+        <input type="datetime-local" value={local} onChange={(event) => setLocal(event.target.value)} className="h-9 min-w-0 flex-1 border border-zinc-200 bg-zinc-50 px-2 text-xs font-bold text-[#142340] outline-none focus:border-[#2563eb]" />
+        <button type="button" disabled={loading} onClick={() => onChange(local)} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white disabled:opacity-60">
+          {loading ? '...' : 'Salvar'}
+        </button>
+      </div>
+    </label>
+  )
+}
+
+function ConfigSelect({ label, value, options, onChange, loading = false }: any) {
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <select disabled={loading} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-xs font-bold uppercase text-[#142340] outline-none focus:border-[#2563eb] disabled:opacity-60">
+        {options.map((item: any) => <option key={item.value} value={item.value}>{item.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function ConfigToggle({ label, checked, onChange, loading = false }: any) {
+  return (
+    <button type="button" disabled={loading} onClick={() => onChange(!checked)} className={`flex h-full min-h-[82px] items-center justify-between gap-3 border p-3 text-left transition disabled:opacity-60 ${checked ? 'border-[#2563eb] bg-blue-50' : 'border-zinc-200 bg-white'}`}>
+      <span>
+        <span className="block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+        <span className="mt-2 block text-sm font-black uppercase text-[#142340]">{checked ? 'Ativado' : 'Desativado'}</span>
+      </span>
+      <span className={`h-5 w-9 border p-0.5 ${checked ? 'border-[#2563eb] bg-[#2563eb]' : 'border-zinc-300 bg-zinc-100'}`}>
+        <span className={`block h-full w-4 bg-white transition ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+      </span>
+    </button>
+  )
+}
+
 
 function PainelReputacaoCampeonato({
   camp,
