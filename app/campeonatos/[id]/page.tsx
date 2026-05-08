@@ -1639,7 +1639,7 @@ function PainelConfiguracoesCampeonato({
   const [copiado, setCopiado] = useState(false)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
-  const linkMobile = `${origem}/mobile/${camp?.slug || campeonatoId}`
+  const linkMobile = `${origem}/escala/${campeonatoId}`
   const limiteTitulares = Number(camp?.jogadores_por_equipe || 0)
   const limiteReservas = Number(camp?.reservas_permitidos || 0)
   const limiteTotalJogadores = Math.max(0, limiteTitulares + limiteReservas)
@@ -1747,7 +1747,7 @@ function PainelConfiguracoesCampeonato({
           <div className="border border-zinc-200 bg-white p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2563eb]">Link mobile</div>
             <div className="mt-1 text-lg font-black uppercase text-[#142340]">Inscrição e escalação</div>
-            <p className="mt-1 text-xs font-semibold text-zinc-500">Use esse link na descrição dos grupos. Ele abre a página mobile do campeonato para WhatsApp.</p>
+            <p className="mt-1 text-xs font-semibold text-zinc-500">Use esse link na descrição dos grupos. Ele abre a página mobile do campeonato para WhatsApp usando o ID real do campeonato.</p>
             <input readOnly value={linkMobile} className="mt-3 h-10 w-full border border-zinc-200 bg-zinc-50 px-3 text-xs font-bold text-[#142340] outline-none" />
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" onClick={copiarLink} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-wide text-white">
