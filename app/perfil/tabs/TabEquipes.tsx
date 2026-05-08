@@ -34,6 +34,18 @@ type ConviteManager = {
  equipes?: EquipeResumo | null
 }
 
+type OrganizacaoRpc = {
+ relacao: string
+ vinculo_id: string | null
+ equipe_id: string
+ nome: string | null
+ slug: string | null
+ logo_url: string | null
+ banner_url: string | null
+ criado_por: string | null
+ entrou_em: string | null
+}
+
 function formatarData(valor?: string | null) {
  if (!valor) return 'N/I'
  return new Intl.DateTimeFormat('pt-BR').format(new Date(valor))
@@ -77,6 +89,37 @@ export default function TabEquipes() {
 
   const equipesDonoMap = new Map<string, EquipeResumo>()
   const vinculosMap = new Map<string, VinculoEquipe>()
+
+  const { data: organizacoesRpc, error: organizacoesRpcError } = await supabase
+   .rpc('fn_lealt_perfil_organizacoes_usuario', { p_user_id: uid })
+
+  if (!organizacoesRpcError && Array.isArray(organizacoesRpc)) {
+   ;(organizacoesRpc as OrganizacaoRpc[]).forEach((item) => {
+    const equipe: EquipeResumo = {
+     id: item.equipe_id,
+     nome: item.nome,
+     slug: item.slug,
+     logo_url: item.logo_url,
+     banner_url: item.banner_url,
+     criado_por: item.criado_por,
+    }
+
+    if (item.relacao === 'manager') {
+     adicionarVinculoUnico(vinculosMap, {
+      id: item.vinculo_id || `manager-${item.equipe_id}`,
+      equipe_id: item.equipe_id,
+      tipo: 'manager',
+      ativo: true,
+      entrou_em: item.entrou_em,
+      equipes: equipe,
+     })
+    } else {
+     adicionarEquipeUnica(equipesDonoMap, equipe)
+    }
+   })
+  } else if (organizacoesRpcError) {
+   console.warn('RPC de organizações do perfil indisponível, usando fallback:', organizacoesRpcError)
+  }
 
   const { data: perfis } = await supabase
    .from('perfis_jogo')
@@ -185,7 +228,9 @@ export default function TabEquipes() {
 
   if (updateError) console.error('Erro ao atualizar convite:', updateError)
 
-  await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: userId }).catch(() => null)
+  try {
+   await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: userId })
+  } catch {}
   await carregar()
   setSalvando(null)
  }
@@ -226,7 +271,11 @@ export default function TabEquipes() {
    setErro(error.message || 'Não foi possível sair da equipe.')
   }
 
-  if (userId) await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: userId }).catch(() => null)
+  if (userId) {
+   try {
+    await supabase.rpc('fn_lealt_sincronizar_selos_usuario', { p_user_id: userId })
+   } catch {}
+  }
   await carregar()
   setSalvando(null)
  }

@@ -184,6 +184,32 @@ async function carregarSelosFallback(userId: string): Promise<SeloAtuacao[]> {
  return selos
 }
 
+
+function compactarSelosPorCargo(selos: SeloAtuacao[]) {
+ const ordem: SeloCargoKey[] = [
+  'jogador',
+  'lider_equipe',
+  'manager',
+  'coach',
+  'analista',
+  'narrador',
+  'comentarista',
+  'produtor',
+  'moderador',
+  'organizador',
+  'designer',
+  'editor',
+  'streamer',
+ ]
+ const map = new Map<SeloCargoKey, SeloAtuacao>()
+ selos.forEach((selo) => {
+  if (!(selo.cargo in SELOS_ATUACAO)) return
+  const atual = map.get(selo.cargo)
+  if (!atual || selo.verificado) map.set(selo.cargo, selo)
+ })
+ return ordem.map((cargo) => map.get(cargo)).filter(Boolean) as SeloAtuacao[]
+}
+
 const LOCALIDADES_BASE: SugestaoLocal[] = [
  { label: 'Abaetetuba, Pará, Brasil', cidade: 'Abaetetuba', estado: 'Pará', pais: 'Brasil' },
  { label: 'Belém, Pará, Brasil', cidade: 'Belém', estado: 'Pará', pais: 'Brasil' },
@@ -444,7 +470,7 @@ function PerfilContent() {
   selos = await carregarSelosFallback(user.id)
  }
 
- setSelosAtuacao(selos)
+ setSelosAtuacao(compactarSelosPorCargo(selos))
  } catch (error) {
  console.error('Erro ao carregar perfil:', error)
  } finally {
@@ -627,16 +653,11 @@ function PerfilContent() {
 
  <div className="mx-auto max-w-6xl space-y-3">
  <section className="overflow-hidden border border-zinc-200 bg-white">
- <div className="group relative h-[120px] overflow-hidden bg-zinc-100 md:h-[150px]">
- {urlCapa ? (
- <img
- src={urlCapa}
- className="h-full w-full object-cover opacity-90"
- alt="Capa"
- />
- ) : (
- <div className="h-full w-full bg-zinc-100" />
- )}
+ <div className="group relative h-[76px] overflow-hidden bg-[#f5f9ff] md:h-[86px]">
+ <div className="absolute inset-0 bg-[linear-gradient(135deg,#eef6ff_0%,#ffffff_45%,#eef2ff_100%)]" />
+ <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(#2563eb_0.6px,transparent_0.6px)] [background-size:14px_14px]" />
+ <div className="absolute left-4 top-4 h-8 w-28 border-l-4 border-[#2563eb] bg-white/60" />
+ <div className="absolute bottom-3 right-4 h-8 w-40 border-r-4 border-violet-500 bg-white/50" />
 
  {isEditing ? (
  <button
@@ -644,7 +665,7 @@ function PerfilContent() {
  className="absolute inset-0 flex items-center justify-center gap-2 bg-white/70 text-[11px] font-medium uppercase tracking-[0.18em] text-[#142340] opacity-0 transition group-hover:opacity-100"
  >
  <Camera size={18} />
- Alterar capa
+ Alterar textura
  </button>
  ) : null}
 
@@ -657,15 +678,13 @@ function PerfilContent() {
  />
  </div>
 
- <div className="px-4 pb-4 pt-0 md:px-5">
- <div className="-mt-10 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
- <div className="flex flex-col gap-3 md:flex-row md:items-end">
- <div className="group relative h-[92px] w-[92px] overflow-hidden border border-zinc-300 bg-white">
+ <div className="grid gap-3 px-3 py-3 md:grid-cols-[auto_1fr_auto] md:items-center md:px-4">
+ <div className="group relative h-[76px] w-[76px] overflow-hidden border border-zinc-300 bg-white md:h-[84px] md:w-[84px]">
  {urlAvatar ? (
  <img src={urlAvatar} className="h-full w-full object-cover" alt="Avatar" />
  ) : (
  <div className="flex h-full w-full items-center justify-center text-zinc-600">
- <User size={48} />
+ <User size={42} />
  </div>
  )}
 
@@ -674,7 +693,7 @@ function PerfilContent() {
  onClick={() => fileInputAvatar.current?.click()}
  className="absolute inset-0 flex items-center justify-center bg-white/70 text-[#142340] opacity-0 transition group-hover:opacity-100"
  >
- <Camera size={24} />
+ <Camera size={22} />
  </button>
  ) : null}
 
@@ -687,33 +706,32 @@ function PerfilContent() {
  />
 
  <div className="absolute bottom-1 right-1 border border-zinc-200 bg-white p-1">
- <Shield size={16} className="text-[#2563eb]" />
+ <Shield size={14} className="text-[#2563eb]" />
  </div>
  </div>
 
- <div className="w-full pb-2">
+ <div className="min-w-0">
  {isEditing ? (
- <div className="space-y-3">
+ <div className="grid gap-2 md:grid-cols-2">
  <input
  value={nomeExibicao}
  onChange={(e) => setNomeExibicao(e.target.value)}
  placeholder="Nome de exibição"
- className="w-full max-w-xl border border-zinc-300 bg-white px-4 py-3 text-2xl font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb] md:text-3xl"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-lg font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
 
  <input
  value={username}
  onChange={(e) => setUsername(e.target.value)}
  placeholder="Username"
- className="w-full max-w-xl border border-zinc-300 bg-white px-4 py-3 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
 
- <div className="grid max-w-2xl grid-cols-1 gap-3 md:grid-cols-2">
  <input
  type="date"
  value={dataNascimento}
  onChange={(e) => setDataNascimento(e.target.value)}
- className="w-full border border-zinc-300 bg-white px-4 py-3 text-xs font-medium uppercase text-[#142340] outline-none focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-xs font-medium uppercase text-[#142340] outline-none focus:border-[#2563eb]"
  />
 
  <div className="relative" ref={localidadeBoxRef}>
@@ -726,12 +744,9 @@ function PerfilContent() {
  }}
  onFocus={() => setMostrarSugestoes(true)}
  placeholder="Digite cidade, estado ou país"
- className="w-full border border-zinc-300 bg-white px-4 py-3 pr-10 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 pr-10 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
- <Search
- size={16}
- className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500"
- />
+ <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500" />
  </div>
 
  {mostrarSugestoes && sugestoesLocalidade.length > 0 ? (
@@ -746,12 +761,8 @@ function PerfilContent() {
  <div className="flex items-start gap-2">
  <Globe size={14} className="mt-0.5 shrink-0 text-[#2563eb]" />
  <div>
- <div className="text-[11px] font-medium uppercase text-[#142340]">
- {item.label}
- </div>
- <div className="mt-1 text-[9px] font-medium uppercase text-zinc-500">
- {montarLocalidade(item.cidade, item.estado, item.pais) || 'Local'}
- </div>
+ <div className="text-[11px] font-medium uppercase text-[#142340]">{item.label}</div>
+ <div className="mt-1 text-[9px] font-medium uppercase text-zinc-500">{montarLocalidade(item.cidade, item.estado, item.pais) || 'Local'}</div>
  </div>
  </div>
  </button>
@@ -759,46 +770,41 @@ function PerfilContent() {
  </div>
  ) : null}
  </div>
- </div>
 
- <div className="grid max-w-3xl grid-cols-1 gap-3 md:grid-cols-3">
  <input
  value={cidade}
  onChange={(e) => setCidade(e.target.value)}
  placeholder="Cidade"
- className="w-full border border-zinc-300 bg-white px-4 py-3 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
  <input
  value={estado}
  onChange={(e) => setEstado(e.target.value)}
  placeholder="Estado"
- className="w-full border border-zinc-300 bg-white px-4 py-3 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
  <input
  value={pais}
  onChange={(e) => setPais(e.target.value)}
  placeholder="País"
- className="w-full border border-zinc-300 bg-white px-4 py-3 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
+ className="w-full border border-zinc-300 bg-white px-3 py-2 text-xs font-medium uppercase text-[#142340] outline-none placeholder:text-zinc-500 focus:border-[#2563eb]"
  />
- </div>
  </div>
  ) : (
  <>
- <div className="flex flex-wrap items-center gap-3">
- <h1 className="text-[22px] font-semibold uppercase tracking-tight text-[#142340] md:text-[26px]">
- {nomePrincipalExibido}
- </h1>
+ <div className="flex flex-wrap items-center gap-2">
+ <h1 className="text-[22px] font-semibold uppercase leading-none tracking-tight text-[#142340] md:text-[26px]">{nomePrincipalExibido}</h1>
  {selosAtuacao.length > 0 ? (
- <div className="flex flex-wrap items-center gap-1.5">
+ <div className="flex flex-wrap items-center gap-1">
  {selosAtuacao.map((selo) => {
  const meta = SELOS_ATUACAO[selo.cargo]
  return (
  <span
- key={`${selo.cargo}-${selo.id}`}
+ key={selo.cargo}
  title={meta.desc}
- className={`inline-flex items-center gap-1 border px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${meta.tone}`}
+ className={`inline-flex h-6 items-center gap-1 border px-2 text-[8px] font-black uppercase tracking-[0.11em] ${meta.tone}`}
  >
- {selo.cargo === 'lider_equipe' ? <Crown size={11} /> : selo.cargo === 'manager' ? <BriefcaseBusiness size={11} /> : <BadgeCheck size={11} />}
+ {selo.cargo === 'lider_equipe' ? <Crown size={10} /> : selo.cargo === 'manager' ? <BriefcaseBusiness size={10} /> : <BadgeCheck size={10} />}
  {meta.label}
  </span>
  )
@@ -808,30 +814,16 @@ function PerfilContent() {
  </div>
 
  <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
- <span className="flex items-center gap-1.5">
- <Cake size={14} className="text-[#2563eb]" />
- {dataNascimento ? `${calcularIdade(dataNascimento)} anos` : 'N/I'}
- </span>
-
- <span className="flex items-center gap-1.5">
- <MapPin size={14} className="text-[#2563eb]" />
- {localidadeFormatada || 'Local não informado'}
- </span>
+ <span className="flex items-center gap-1.5"><Cake size={13} className="text-[#2563eb]" />{dataNascimento ? `${calcularIdade(dataNascimento)} anos` : 'N/I'}</span>
+ <span className="flex items-center gap-1.5"><MapPin size={13} className="text-[#2563eb]" />{localidadeFormatada || 'Local não informado'}</span>
  </div>
  </>
  )}
  </div>
- </div>
 
- <div className="flex w-full flex-col gap-2 lg:w-[410px]">
+ <div className="flex w-full flex-col gap-2 md:w-[390px]">
  {userId && !isEditing ? (
- <SocialActions
- entityId={userId}
- entityType="perfil"
- variant="light"
- compact
- title="Social"
- />
+ <SocialActions entityId={userId} entityType="perfil" variant="light" compact title="Social" />
  ) : null}
 
  <div className="flex justify-end gap-2">
@@ -853,8 +845,7 @@ function PerfilContent() {
  }}
  className="inline-flex items-center gap-2 border border-zinc-300 bg-white px-4 py-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#142340] transition hover:bg-zinc-50"
  >
- <X size={14} />
- Cancelar
+ <X size={14} /> Cancelar
  </button>
 
  <button
@@ -862,12 +853,10 @@ function PerfilContent() {
  disabled={loading}
  className="inline-flex h-9 items-center gap-2 border border-[#2563eb] bg-[#2563eb] px-4 text-[11px] font-medium uppercase tracking-wide text-white transition hover:bg-[#1d4ed8] disabled:opacity-60"
  >
- <Save size={14} />
- {loading ? 'Sincronizando...' : 'Salvar'}
+ <Save size={14} /> {loading ? 'Sincronizando...' : 'Salvar'}
  </button>
  </>
  )}
- </div>
  </div>
  </div>
  </div>
@@ -891,16 +880,6 @@ function PerfilContent() {
  {bio || 'Nenhuma biografia cadastrada no protocolo atual.'}
  </div>
  )}
- </section>
-
- <section className="flex flex-wrap items-center justify-between gap-2 border border-zinc-200 bg-white px-3 py-2">
- <div>
- <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#2563eb]">Selos automáticos</div>
- <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.10em] text-zinc-500">Criados por perfil gamer, equipe, manager, line e funções.</p>
- </div>
- <Link href="/perfil/atuacao" className="inline-flex items-center gap-2 border border-zinc-300 bg-zinc-50 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-white">
- <Shield size={13} /> Funções
- </Link>
  </section>
 
  <nav className="flex overflow-hidden border border-zinc-200 bg-white p-1">
