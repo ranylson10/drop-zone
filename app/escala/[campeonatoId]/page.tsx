@@ -433,12 +433,6 @@ export default function EscalaCampeonatoPage() {
     [campeonato],
   );
   const abertas = inscricoesAbertas(campeonato);
-  const equipesInscritasIds = useMemo(
-    () =>
-      new Set(inscricoesEquipe.map((item) => item.equipe_id).filter(Boolean)),
-    [inscricoesEquipe],
-  );
-
   async function copiarLink() {
     if (!linkAtual) return;
     await navigator.clipboard.writeText(linkAtual);
@@ -601,7 +595,6 @@ export default function EscalaCampeonatoPage() {
                     (item) => item.equipe_id === equipe.id,
                   );
                   const inscrita = inscricoes.length > 0;
-                  const elenco = elencoPorEquipe[equipe.id] || [];
                   const primeiraVaga = inscricoes[0];
 
                   return (
@@ -692,100 +685,12 @@ export default function EscalaCampeonatoPage() {
                             />
                           </div>
 
-                          {(() => {
-                            const vagaPrincipal = primeiraVaga || inscricoes[0];
-                            const jogadoresUnicosMap = new Map<
-                              string,
-                              JogadorEquipe
-                            >();
-
-                            inscricoes.forEach((inscricao) => {
-                              (jogadoresPorEquipe[inscricao.id] || []).forEach(
-                                (jogador) => {
-                                  jogadoresUnicosMap.set(jogador.id, jogador);
-                                },
-                              );
-                            });
-
-                            const jogadores = Array.from(
-                              jogadoresUnicosMap.values(),
-                            );
-                            const totalSlots = Math.max(
-                              limiteJogadores || 8,
-                              jogadores.length,
-                            );
-                            const slots = Array.from({
-                              length: totalSlots,
-                            }).map((_, index) => jogadores[index] || null);
-
-                            return (
-                              <div className="border border-slate-200 bg-white">
-                                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2">
-                                  <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                                      Escalação do campeonato
-                                    </p>
-                                    <p className="text-xs font-black uppercase text-slate-900">
-                                      {jogadores.length}/{totalSlots} jogadores
-                                    </p>
-                                  </div>
-                                  {vagaPrincipal ? (
-                                    <Link
-                                      href={`/escala/vaga/${vagaPrincipal.id}`}
-                                      className="flex h-8 w-8 items-center justify-center border border-blue-600 bg-blue-600 text-white"
-                                      title="Adicionar jogador"
-                                    >
-                                      <PlusCircle size={16} />
-                                    </Link>
-                                  ) : null}
-                                </div>
-
-                                <div className="divide-y divide-slate-200">
-                                  {slots.map((jogador, index) => (
-                                    <Link
-                                      key={jogador?.id || `slot-livre-${index}`}
-                                      href={
-                                        vagaPrincipal
-                                          ? `/escala/vaga/${vagaPrincipal.id}`
-                                          : getCampeonatoHref(campeonato as any)
-                                      }
-                                      className="grid min-h-10 grid-cols-[34px_1fr_auto] items-center gap-2 px-3 py-2 hover:bg-blue-50"
-                                    >
-                                      <div className="text-[11px] font-black uppercase text-slate-400">
-                                        {String(index + 1).padStart(2, "0")}
-                                      </div>
-
-                                      {jogador ? (
-                                        <div className="min-w-0">
-                                          <div className="truncate text-xs font-black uppercase text-slate-900">
-                                            {getNomePerfil(
-                                              jogador.perfil,
-                                              jogador.nick_snapshot,
-                                            )}
-                                          </div>
-                                          <div className="truncate text-[10px] font-black uppercase text-slate-400">
-                                            UID{" "}
-                                            {getUidPerfil(
-                                              jogador.perfil,
-                                              jogador.uid_jogo_snapshot,
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="text-xs font-black uppercase text-slate-400">
-                                          Slot disponível
-                                        </div>
-                                      )}
-
-                                      <div className="flex h-7 w-7 items-center justify-center border border-slate-200 bg-white text-blue-600">
-                                        <PlusCircle size={14} />
-                                      </div>
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })()}
+                          <EscalacaoCards
+                            campeonato={campeonato}
+                            inscricoes={inscricoes}
+                            jogadoresPorEquipe={jogadoresPorEquipe}
+                            limiteJogadores={limiteJogadores || 8}
+                          />
                         </div>
                       )}
                     </div>
@@ -874,6 +779,242 @@ export default function EscalaCampeonatoPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function normalizarTier(valor?: any) {
+  const tier = String(valor || "")
+    .trim()
+    .toUpperCase();
+  if (["SS", "S", "A", "B", "C", "D", "E"].includes(tier)) return tier;
+  return "C";
+}
+
+function tierClasses(tier: string, avulso: boolean) {
+  if (avulso) {
+    return {
+      borda: "border-zinc-400",
+      fundo: "from-zinc-200 via-zinc-100 to-zinc-300",
+      texto: "text-zinc-900",
+      selo: "bg-zinc-900 text-white",
+      glow: "shadow-zinc-300/50",
+    };
+  }
+
+  switch (tier) {
+    case "SS":
+      return {
+        borda: "border-yellow-400",
+        fundo: "from-yellow-200 via-amber-300 to-yellow-500",
+        texto: "text-yellow-950",
+        selo: "bg-yellow-950 text-yellow-200",
+        glow: "shadow-yellow-300/60",
+      };
+    case "S":
+      return {
+        borda: "border-amber-400",
+        fundo: "from-amber-100 via-yellow-300 to-amber-500",
+        texto: "text-amber-950",
+        selo: "bg-amber-950 text-amber-200",
+        glow: "shadow-amber-300/60",
+      };
+    case "A":
+      return {
+        borda: "border-violet-400",
+        fundo: "from-violet-200 via-purple-400 to-violet-700",
+        texto: "text-white",
+        selo: "bg-white text-violet-700",
+        glow: "shadow-violet-300/60",
+      };
+    case "B":
+      return {
+        borda: "border-blue-400",
+        fundo: "from-blue-200 via-blue-500 to-blue-800",
+        texto: "text-white",
+        selo: "bg-white text-blue-700",
+        glow: "shadow-blue-300/60",
+      };
+    case "D":
+      return {
+        borda: "border-slate-400",
+        fundo: "from-slate-100 via-slate-300 to-slate-500",
+        texto: "text-slate-950",
+        selo: "bg-slate-950 text-white",
+        glow: "shadow-slate-300/60",
+      };
+    case "E":
+      return {
+        borda: "border-zinc-500",
+        fundo: "from-zinc-200 via-zinc-400 to-zinc-700",
+        texto: "text-white",
+        selo: "bg-white text-zinc-800",
+        glow: "shadow-zinc-300/60",
+      };
+    case "C":
+    default:
+      return {
+        borda: "border-emerald-400",
+        fundo: "from-emerald-200 via-emerald-500 to-emerald-800",
+        texto: "text-white",
+        selo: "bg-white text-emerald-700",
+        glow: "shadow-emerald-300/60",
+      };
+  }
+}
+
+function getTierJogador(jogador?: JogadorEquipe | null) {
+  const perfilAny = (jogador?.perfil || {}) as any;
+  const jogadorAny = (jogador || {}) as any;
+  return normalizarTier(
+    perfilAny.tier ||
+      perfilAny.ranking_tier ||
+      perfilAny.tier_atual ||
+      perfilAny.overall_tier ||
+      jogadorAny.tier ||
+      jogadorAny.tier_snapshot,
+  );
+}
+
+function EscalacaoCards({
+  campeonato,
+  inscricoes,
+  jogadoresPorEquipe,
+  limiteJogadores,
+}: {
+  campeonato: Campeonato;
+  inscricoes: CampeonatoEquipe[];
+  jogadoresPorEquipe: Record<string, JogadorEquipe[]>;
+  limiteJogadores: number;
+}) {
+  const vagaPrincipal = inscricoes[0];
+  const jogadoresUnicosMap = new Map<string, JogadorEquipe>();
+
+  inscricoes.forEach((inscricao) => {
+    (jogadoresPorEquipe[inscricao.id] || []).forEach((jogador) => {
+      jogadoresUnicosMap.set(jogador.id, jogador);
+    });
+  });
+
+  const jogadores = Array.from(jogadoresUnicosMap.values());
+  const totalSlots = Math.max(limiteJogadores || 8, jogadores.length, 1);
+  const slots = Array.from({ length: totalSlots }).map(
+    (_, index) => jogadores[index] || null,
+  );
+  const hrefAdicionar = vagaPrincipal
+    ? `/escala/vaga/${vagaPrincipal.id}`
+    : getCampeonatoHref(campeonato as any);
+
+  return (
+    <div className="border border-slate-200 bg-white p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">
+            Escalação
+          </p>
+          <p className="text-xs font-black uppercase text-slate-950">
+            {jogadores.length}/{totalSlots} slots usados
+          </p>
+        </div>
+
+        <Link
+          href={hrefAdicionar}
+          className="flex h-9 items-center justify-center gap-1 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase text-white"
+        >
+          <PlusCircle size={14} /> Adicionar
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {slots.map((jogador, index) => (
+          <PlayerCardSlot
+            key={jogador?.id || `card-slot-${index}`}
+            jogador={jogador}
+            index={index}
+            href={hrefAdicionar}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlayerCardSlot({
+  jogador,
+  index,
+  href,
+}: {
+  jogador: JogadorEquipe | null;
+  index: number;
+  href: string;
+}) {
+  const avulso = Boolean(
+    jogador?.jogador_avulso_id || !jogador?.perfil_jogo_id,
+  );
+  const tier = jogador ? getTierJogador(jogador) : "+";
+  const cor = tierClasses(tier, avulso && !!jogador);
+  const nome = jogador
+    ? getNomePerfil(jogador.perfil, jogador.nick_snapshot)
+    : "Adicionar";
+  const foto =
+    ((jogador?.perfil || {}) as any)?.foto_url ||
+    ((jogador?.perfil || {}) as any)?.avatar_url ||
+    ((jogador?.perfil || {}) as any)?.imagem_url ||
+    null;
+
+  return (
+    <Link
+      href={href}
+      className={`group relative flex aspect-[0.72] min-h-[116px] flex-col overflow-hidden border ${cor.borda} bg-gradient-to-br ${cor.fundo} p-1.5 text-center shadow-sm ${cor.glow}`}
+      style={{
+        clipPath:
+          "polygon(8% 5%, 50% 0%, 92% 5%, 100% 16%, 94% 86%, 50% 100%, 6% 86%, 0% 16%)",
+      }}
+    >
+      <div className="absolute inset-x-2 top-2 flex items-center justify-between">
+        <span
+          className={`grid h-5 min-w-5 place-items-center rounded-sm px-1 text-[10px] font-black ${cor.selo}`}
+        >
+          {tier}
+        </span>
+        <span className="text-[9px] font-black text-black/40">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+      </div>
+
+      <div className="mt-5 grid flex-1 place-items-center">
+        {foto ? (
+          <img
+            src={foto}
+            alt={nome}
+            className={`h-14 w-14 rounded-full object-cover ${avulso ? "grayscale" : ""}`}
+          />
+        ) : (
+          <div
+            className={`relative h-14 w-12 ${jogador ? "opacity-80" : "opacity-45"}`}
+          >
+            <div className="mx-auto h-6 w-6 rounded-full bg-black/70" />
+            <div className="mx-auto mt-1 h-8 w-11 rounded-t-full bg-black/70" />
+          </div>
+        )}
+      </div>
+
+      <div className="mb-1 bg-black/55 px-1.5 py-1 backdrop-blur-sm">
+        <p
+          className={`truncate text-[10px] font-black uppercase leading-tight ${jogador ? "text-white" : "text-white/90"}`}
+        >
+          {nome}
+        </p>
+        {!jogador ? (
+          <p className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] font-black uppercase text-white/80">
+            <PlusCircle size={9} /> jogador
+          </p>
+        ) : avulso ? (
+          <p className="mt-0.5 text-[8px] font-black uppercase text-white/70">
+            avulso
+          </p>
+        ) : null}
+      </div>
+    </Link>
   );
 }
 
