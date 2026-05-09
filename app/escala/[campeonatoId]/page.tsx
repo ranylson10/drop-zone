@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   CheckCircle2,
-  Copy,
   Eye,
   Gamepad2,
   ListChecks,
@@ -182,10 +181,7 @@ export default function EscalaCampeonatoPage() {
   const [partidasJogador, setPartidasJogador] = useState(0);
   const [posicaoMvp, setPosicaoMvp] = useState<number | null>(null);
   const [aba, setAba] = useState<"equipe" | "jogador">("equipe");
-  const [copiado, setCopiado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  const linkAtual = typeof window !== "undefined" ? window.location.href : "";
 
   async function buscarCampeonato() {
     const ehUuid =
@@ -433,12 +429,6 @@ export default function EscalaCampeonatoPage() {
     [campeonato],
   );
   const abertas = inscricoesAbertas(campeonato);
-  async function copiarLink() {
-    if (!linkAtual) return;
-    await navigator.clipboard.writeText(linkAtual);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 1800);
-  }
 
   if (loading) {
     return (
@@ -511,16 +501,6 @@ export default function EscalaCampeonatoPage() {
               label="Taxa"
               value={moeda.format(Number(campeonato.valor_vaga || 0))}
             />
-          </div>
-
-          <div className="p-4">
-            <button
-              onClick={copiarLink}
-              className="flex h-11 w-full items-center justify-center gap-2 border border-slate-200 bg-slate-50 text-xs font-black uppercase text-slate-700"
-            >
-              <Copy size={15} />{" "}
-              {copiado ? "Link copiado" : "Copiar link do grupo"}
-            </button>
           </div>
         </section>
 
@@ -964,46 +944,133 @@ function PlayerCardSlot({
     ((jogador?.perfil || {}) as any)?.imagem_url ||
     null;
 
-  const cardClass = vazio
-    ? "border-violet-500 bg-gradient-to-b from-[#171032] via-[#111827] to-[#060b16] text-violet-200 shadow-violet-950/60"
-    : `${cor.borda} bg-gradient-to-b ${cor.fundo} ${cor.texto} ${cor.glow}`;
+  const tema = vazio
+    ? {
+        fill: "#160f34",
+        fill2: "#080d1a",
+        stroke: "#8b5cf6",
+        text: "text-violet-200",
+        badge: "bg-violet-600 text-white",
+        shade: "from-violet-500/30 to-black/65",
+      }
+    : avulso
+      ? {
+          fill: "#f1f5f9",
+          fill2: "#9ca3af",
+          stroke: "#e5e7eb",
+          text: "text-zinc-900",
+          badge: "bg-zinc-900 text-white",
+          shade: "from-black/5 to-black/45",
+        }
+      : tier === "SS" || tier === "S"
+        ? {
+            fill: "#fde68a",
+            fill2: "#d97706",
+            stroke: "#facc15",
+            text: "text-yellow-950",
+            badge: "bg-yellow-950 text-yellow-200",
+            shade: "from-white/10 to-yellow-950/45",
+          }
+        : tier === "A"
+          ? {
+              fill: "#a855f7",
+              fill2: "#4c1d95",
+              stroke: "#c084fc",
+              text: "text-white",
+              badge: "bg-white text-violet-700",
+              shade: "from-white/10 to-violet-950/55",
+            }
+          : tier === "B"
+            ? {
+                fill: "#3b82f6",
+                fill2: "#1e3a8a",
+                stroke: "#60a5fa",
+                text: "text-white",
+                badge: "bg-white text-blue-700",
+                shade: "from-white/10 to-blue-950/55",
+              }
+            : tier === "C"
+              ? {
+                  fill: "#34d399",
+                  fill2: "#065f46",
+                  stroke: "#6ee7b7",
+                  text: "text-white",
+                  badge: "bg-white text-emerald-700",
+                  shade: "from-white/10 to-emerald-950/55",
+                }
+              : {
+                  fill: "#cbd5e1",
+                  fill2: "#475569",
+                  stroke: "#e2e8f0",
+                  text: "text-white",
+                  badge: "bg-slate-950 text-white",
+                  shade: "from-white/10 to-slate-950/55",
+                };
+
+  const gradientId = `cardGradient-${index}-${jogador?.id || "vazio"}`.replace(
+    /[^a-zA-Z0-9_-]/g,
+    "",
+  );
 
   return (
     <Link
       href={href}
-      className={`group relative flex aspect-[0.70] min-h-[124px] flex-col overflow-hidden border-2 p-1.5 text-center shadow-md transition active:scale-[0.98] ${cardClass}`}
-      style={{
-        clipPath:
-          "polygon(10% 4%, 26% 2%, 34% 6%, 50% 0%, 66% 6%, 74% 2%, 90% 4%, 97% 14%, 92% 82%, 50% 100%, 8% 82%, 3% 14%)",
-      }}
+      className="group relative flex aspect-[0.72] min-h-[132px] flex-col overflow-visible p-0 text-center transition active:scale-[0.98]"
     >
-      <div
-        className="pointer-events-none absolute inset-1 border border-white/20 opacity-70"
-        style={{
-          clipPath:
-            "polygon(10% 4%, 26% 2%, 34% 6%, 50% 0%, 66% 6%, 74% 2%, 90% 4%, 97% 14%, 92% 82%, 50% 100%, 8% 82%, 3% 14%)",
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(255,255,255,0.28),transparent_34%),linear-gradient(120deg,rgba(255,255,255,0.16),transparent_45%)]" />
+      <svg
+        viewBox="0 0 128 136"
+        className="absolute inset-0 h-full w-full drop-shadow-md"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={tema.fill} />
+            <stop offset="0.58" stopColor={tema.fill} />
+            <stop offset="1" stopColor={tema.fill2} />
+          </linearGradient>
+          <radialGradient id={`${gradientId}-shine`} cx="50%" cy="10%" r="80%">
+            <stop offset="0" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="0.38" stopColor="rgba(255,255,255,0.12)" />
+            <stop offset="1" stopColor="rgba(255,255,255,0)" />
+          </radialGradient>
+        </defs>
 
-      <div className="relative z-10 flex items-start justify-between px-1 pt-1">
+        <path
+          d="M16 10 C27 4 39 5 50 13 C58 4 70 4 78 13 C89 5 101 4 112 10 C122 25 119 51 114 75 C110 98 97 115 64 130 C31 115 18 98 14 75 C9 51 6 25 16 10 Z"
+          fill={`url(#${gradientId})`}
+          stroke={tema.stroke}
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M20 15 C30 10 40 11 50 18 C58 10 70 10 78 18 C88 11 98 10 108 15 C116 29 113 52 109 73 C105 94 93 109 64 123 C35 109 23 94 19 73 C15 52 12 29 20 15 Z"
+          fill="none"
+          stroke="rgba(255,255,255,0.45)"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M18 12 C45 -2 86 -1 111 13 C118 28 116 52 111 73 C103 54 89 44 64 44 C39 44 25 54 17 73 C12 52 10 28 18 12 Z"
+          fill={`url(#${gradientId}-shine)`}
+        />
+      </svg>
+
+      <div className="relative z-10 flex items-start justify-between px-3 pt-3">
         <span
-          className={`grid h-5 min-w-5 place-items-center rounded px-1 text-[10px] font-black ${vazio ? "bg-violet-500 text-white" : cor.selo}`}
+          className={`grid h-5 min-w-5 place-items-center rounded px-1 text-[10px] font-black ${vazio ? tema.badge : cor.selo}`}
         >
           {tier}
         </span>
-        <span className="text-[9px] font-black text-white/55">
+        <span className="text-[9px] font-black text-white/70 drop-shadow">
           {String(index + 1).padStart(2, "0")}
         </span>
       </div>
 
-      <div className="relative z-10 mt-1 grid flex-1 place-items-center">
+      <div className="relative z-10 mt-1 grid flex-1 place-items-center px-1">
         {foto ? (
           <img
             src={foto}
             alt={nome}
-            className={`h-[68px] w-[68px] object-cover object-top ${avulso ? "grayscale" : ""}`}
-            style={{ clipPath: "ellipse(42% 48% at 50% 50%)" }}
+            className={`h-[74px] w-[74px] rounded-full object-cover object-top ${avulso ? "grayscale" : ""}`}
           />
         ) : (
           <PlayerSilhouette muted={vazio} />
@@ -1011,20 +1078,22 @@ function PlayerCardSlot({
       </div>
 
       {!vazio ? (
-        <div className="relative z-10 mb-1 bg-black/60 px-1 py-1 backdrop-blur-sm">
-          <p className="truncate text-[10px] font-black uppercase leading-tight text-white">
+        <div
+          className={`relative z-10 mx-2 mb-3 rounded-sm bg-gradient-to-b ${tema.shade} px-1.5 py-1.5 backdrop-blur-sm`}
+        >
+          <p className="truncate text-[10px] font-black uppercase leading-tight text-white drop-shadow">
             {nome}
           </p>
-          <p className="mt-0.5 text-[8px] font-black uppercase text-white/70">
+          <p className="mt-0.5 text-[8px] font-black uppercase text-white/80">
             {avulso ? "avulso" : `tier ${tier}`}
           </p>
         </div>
       ) : (
-        <div className="relative z-10 mb-2 flex flex-col items-center justify-center gap-1">
-          <span className="grid h-7 w-7 place-items-center rounded-full border border-violet-300 bg-violet-600/40 text-violet-100">
-            <PlusCircle size={17} />
+        <div className="relative z-10 mb-5 flex flex-col items-center justify-center gap-1">
+          <span className="grid h-8 w-8 place-items-center rounded-full border border-violet-300 bg-violet-600/50 text-violet-100 shadow-lg shadow-violet-950/50">
+            <PlusCircle size={18} />
           </span>
-          <p className="text-[9px] font-black uppercase leading-tight text-violet-200">
+          <p className="text-[9px] font-black uppercase leading-tight text-violet-100 drop-shadow">
             adicionar
           </p>
         </div>
@@ -1036,27 +1105,36 @@ function PlayerCardSlot({
 function PlayerSilhouette({ muted }: { muted?: boolean }) {
   return (
     <svg
-      viewBox="0 0 120 120"
-      className={`h-[76px] w-[76px] ${muted ? "opacity-55" : "opacity-80"}`}
+      viewBox="0 0 140 150"
+      className={`h-[86px] w-[86px] ${muted ? "opacity-55" : "opacity-85"}`}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="silhouetteGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="rgba(0,0,0,0.95)" />
-          <stop offset="1" stopColor="rgba(0,0,0,0.65)" />
+        <linearGradient id="lealtSilhouetteBody" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="rgba(0,0,0,0.88)" />
+          <stop offset="1" stopColor="rgba(0,0,0,0.55)" />
         </linearGradient>
+        <radialGradient id="lealtSilhouetteLight" cx="45%" cy="18%" r="70%">
+          <stop offset="0" stopColor="rgba(255,255,255,0.16)" />
+          <stop offset="1" stopColor="rgba(255,255,255,0)" />
+        </radialGradient>
       </defs>
+
       <path
-        fill="url(#silhouetteGradient)"
-        d="M60 13c14.2 0 25 11.1 25 25.4 0 15.2-10.2 27.2-25 27.2S35 53.6 35 38.4C35 24.1 45.8 13 60 13Z"
+        fill="url(#lealtSilhouetteBody)"
+        d="M70 18 C88 18 101 32 101 51 C101 71 88 87 70 87 C52 87 39 71 39 51 C39 32 52 18 70 18 Z"
       />
       <path
-        fill="url(#silhouetteGradient)"
-        d="M21 116c2.6-28.8 18.7-44.8 39-44.8s36.4 16 39 44.8H21Z"
+        fill="url(#lealtSilhouetteBody)"
+        d="M49 89 C54 96 61 100 70 100 C79 100 86 96 91 89 C105 94 117 103 124 117 C128 125 131 134 132 145 L8 145 C9 134 12 125 16 117 C23 103 35 94 49 89 Z"
+      />
+      <path
+        fill="url(#lealtSilhouetteLight)"
+        d="M45 26 C58 14 82 14 95 28 C88 24 78 23 70 23 C61 23 52 24 45 26 Z"
       />
       <path
         fill="rgba(255,255,255,0.08)"
-        d="M41 77c5.3 5.7 11.7 8.5 19 8.5s13.7-2.8 19-8.5c-4.9-3.8-11.4-5.8-19-5.8s-14.1 2-19 5.8Z"
+        d="M49 91 C54 103 62 110 70 110 C78 110 86 103 91 91 C86 96 79 99 70 99 C61 99 54 96 49 91 Z"
       />
     </svg>
   );
