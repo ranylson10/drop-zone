@@ -1,7 +1,7 @@
 'use client'
 
 type PlayerCardTier = 'SS' | 'S' | 'A' | 'B' | 'C' | 'D' | 'E'
-type PlayerCardVariant = 'slot' | 'oficial' | 'avulso'
+type PlayerCardVariant = 'oficial' | 'avulso' | 'slot'
 
 type PlayerCardProps = {
   name?: string
@@ -22,24 +22,25 @@ const tierColors: Record<PlayerCardTier, string[]> = {
   E: ['#e4e4e7', '#a1a1aa', '#3f3f46'],
 }
 
-function getTierColor(tier: PlayerCardTier, variant: PlayerCardVariant) {
+function coresDoCard(tier: PlayerCardTier, variant: PlayerCardVariant) {
   if (variant === 'avulso') return ['#ffffff', '#d4d4d8', '#52525b']
-  if (variant === 'slot') return ['#111827', '#1f2937', '#020617']
+  if (variant === 'slot') return ['#111827', '#172033', '#050816']
   return tierColors[tier] || tierColors.C
 }
 
 export default function PlayerCard({
-  name = '',
-  tier = 'C',
+  name = 'SIX',
+  tier = 'S',
   number = 1,
-  variant = 'slot',
+  variant = 'oficial',
   onClick,
   className = ''
 }: PlayerCardProps) {
-  const c = getTierColor(tier, variant)
+  const c = coresDoCard(tier, variant)
   const isSlot = variant === 'slot'
   const isAvulso = variant === 'avulso'
-  const label = isSlot ? '+' : (name || 'JOGADOR')
+
+  const cardId = `${variant}-${tier}-${number}`.replace(/[^a-zA-Z0-9-]/g, '')
 
   return (
     <button
@@ -49,24 +50,24 @@ export default function PlayerCard({
     >
       <svg viewBox="0 0 160 222" className="w-full h-full">
         <defs>
-          <linearGradient id={`bg-${variant}-${tier}-${number}`} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={`bg-${cardId}`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor={c[0]} />
             <stop offset="50%" stopColor={c[1]} />
             <stop offset="100%" stopColor={c[2]} />
           </linearGradient>
 
-          <pattern id={`noise-${variant}-${tier}-${number}`} width="12" height="12" patternUnits="userSpaceOnUse">
+          <pattern id={`noise-${cardId}`} width="12" height="12" patternUnits="userSpaceOnUse">
             <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,.04)" />
             <circle cx="8" cy="6" r=".8" fill="rgba(255,255,255,.03)" />
             <circle cx="4" cy="10" r=".7" fill="rgba(255,255,255,.03)" />
           </pattern>
 
-          <linearGradient id={`bottomBlack-${variant}-${tier}-${number}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`bottomBlack-${cardId}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1a1a1a" />
             <stop offset="100%" stopColor="#050505" />
           </linearGradient>
 
-          <linearGradient id={`tierBadge-${variant}-${tier}-${number}`} x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={`tierBadge-${cardId}`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#991b1b" />
             <stop offset="100%" stopColor="#dc2626" />
           </linearGradient>
@@ -92,54 +93,41 @@ export default function PlayerCard({
             C65 17 72 13 80 4
             Z
           "
-          fill={isSlot ? 'transparent' : `url(#bg-${variant}-${tier}-${number})`}
-          stroke={isSlot ? '#8b95a7' : '#eab308'}
+          fill={isSlot ? '#07111f' : `url(#bg-${cardId})`}
+          stroke={isSlot ? '#eab308' : '#eab308'}
           strokeWidth="2"
-          strokeDasharray={isSlot ? '5 5' : undefined}
         />
 
         {!isSlot && (
-          <>
-            <text
-              x="128"
-              y="40"
-              textAnchor="middle"
-              fontSize="18"
-              fontWeight="900"
-              fill={isAvulso ? 'rgba(0,0,0,.72)' : 'rgba(0,0,0,.72)'}
-            >
-              {String(number).padStart(2, '0')}
-            </text>
-
-            {/* SILHUETA MAIOR E MAIS ALTA */}
-            <circle cx="80" cy="62" r="28" fill="#020617" />
-            <path
-              d="
-                M22 141
-                C26 92 48 74 80 74
-                C112 74 134 92 138 141
-                Z
-              "
-              fill="#020617"
-            />
-          </>
+          <text
+            x="128"
+            y="40"
+            textAnchor="middle"
+            fontSize="18"
+            fontWeight="900"
+            fill="rgba(0,0,0,.72)"
+          >
+            {String(number).padStart(2, '0')}
+          </text>
         )}
 
-        {isSlot && (
-          <>
-            <circle cx="80" cy="68" r="28" fill="#111827" opacity=".9" />
-            <path
-              d="
-                M22 141
-                C26 96 48 80 80 80
-                C112 80 134 96 138 141
-                Z
-              "
-              fill="#111827"
-              opacity=".9"
-            />
-          </>
-        )}
+        {/* SILHUETA MAIOR E MAIS ALTA */}
+        <circle
+          cx="80"
+          cy="62"
+          r="28"
+          fill={isSlot ? '#111827' : '#020617'}
+        />
+
+        <path
+          d="
+            M22 141
+            C26 92 48 74 80 74
+            C112 74 134 92 138 141
+            Z
+          "
+          fill={isSlot ? '#111827' : '#020617'}
+        />
 
         {/* FUNDO INFERIOR */}
         <path
@@ -155,8 +143,7 @@ export default function PlayerCard({
             C17 171 12 161 12 146
             Z
           "
-          fill={isSlot ? '#050505' : `url(#bottomBlack-${variant}-${tier}-${number})`}
-          opacity={isSlot ? '.92' : '1'}
+          fill={`url(#bottomBlack-${cardId})`}
         />
 
         {/* TEXTURA */}
@@ -173,7 +160,7 @@ export default function PlayerCard({
             C17 171 12 161 12 146
             Z
           "
-          fill={`url(#noise-${variant}-${tier}-${number})`}
+          fill={`url(#noise-${cardId})`}
           opacity=".5"
         />
 
@@ -192,13 +179,13 @@ export default function PlayerCard({
         {/* NOME OU + */}
         <text
           x="80"
-          y={isSlot ? '150' : '145'}
+          y={isSlot ? '148' : '145'}
           textAnchor="middle"
-          fontSize={isSlot ? '34' : '19'}
+          fontSize={isSlot ? '32' : '19'}
           fontWeight="900"
           fill="white"
         >
-          {label.slice(0, 12).toUpperCase()}
+          {isSlot ? '+' : name.slice(0, 12).toUpperCase()}
         </text>
 
         {!isSlot && (
@@ -213,8 +200,8 @@ export default function PlayerCard({
                 C74 186 70 182 67 174
                 Z
               "
-              fill={`url(#tierBadge-${variant}-${tier}-${number})`}
-              stroke="#eab308"
+              fill={isAvulso ? '#52525b' : `url(#tierBadge-${cardId})`}
+              stroke={isAvulso ? '#d4d4d8' : '#eab308'}
               strokeWidth="1.2"
             />
 

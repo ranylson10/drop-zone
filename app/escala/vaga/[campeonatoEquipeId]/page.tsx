@@ -76,9 +76,7 @@ export default function EscalaVagaPage({ params }: any) {
   }, [campeonato])
 
   const slots = useMemo(() => {
-    return Array.from({ length: totalSlots }).map((_, index) => {
-      return jogadoresEscalados[index] || null
-    })
+    return Array.from({ length: totalSlots }).map((_, index) => jogadoresEscalados[index] || null)
   }, [totalSlots, jogadoresEscalados])
 
   function nomeJogador(item: any) {
@@ -132,60 +130,46 @@ export default function EscalaVagaPage({ params }: any) {
             {campeonato?.nome || 'Campeonato'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            {jogadoresEscalados.length}/{totalSlots} slots usados
+            {Math.min(jogadoresEscalados.length, totalSlots)}/{totalSlots} slots usados
           </p>
         </div>
 
         <section className="p-4 bg-[#07111f]">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="text-[10px] tracking-[0.25em] uppercase text-violet-300 font-black">
-                Slots do campeonato
-              </div>
-              <div className="text-white font-black text-sm">
-                Clique no + para adicionar jogador
-              </div>
+          <div className="mb-3">
+            <div className="text-[10px] tracking-[0.25em] uppercase text-violet-300 font-black">
+              Slots do campeonato
+            </div>
+            <div className="text-white font-black text-sm">
+              Clique no + para adicionar jogador
             </div>
           </div>
 
           <div className="grid grid-cols-4 gap-3">
-            {slots.map((item, index) => {
-              if (!item) {
-                return (
-                  <PlayerCard
-                    key={`slot-${index}`}
-                    variant="slot"
-                    number={index + 1}
-                    onClick={() => {
-                      const el = document.getElementById('elenco-equipe')
-                      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }}
-                  />
-                )
-              }
-
-              return (
-                <PlayerCard
-                  key={item.id || index}
-                  name={nomeJogador(item)}
-                  tier={tierJogador(item) as any}
-                  number={index + 1}
-                  variant={item?.jogador_avulso_id ? 'avulso' : 'oficial'}
-                />
-              )
-            })}
+            {slots.map((item, index) => (
+              <PlayerCard
+                key={item?.id || `slot-${index}`}
+                name={item ? nomeJogador(item) : ''}
+                tier={(item ? tierJogador(item) : 'C') as any}
+                number={index + 1}
+                variant={item ? (item?.jogador_avulso_id ? 'avulso' : 'oficial') : 'slot'}
+                onClick={() => {
+                  if (!item) {
+                    const el = document.getElementById('elenco-equipe')
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }}
+              />
+            ))}
           </div>
         </section>
 
         <section id="elenco-equipe" className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <div className="text-[10px] tracking-[0.25em] uppercase text-slate-400 font-black">
-                Elenco da equipe
-              </div>
-              <div className="text-sm font-black">
-                Jogadores cadastrados
-              </div>
+          <div className="mb-3">
+            <div className="text-[10px] tracking-[0.25em] uppercase text-slate-400 font-black">
+              Elenco da equipe
+            </div>
+            <div className="text-sm font-black">
+              Jogadores cadastrados
             </div>
           </div>
 
