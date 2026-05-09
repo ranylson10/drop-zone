@@ -895,7 +895,9 @@ function EscalacaoCards({
     });
   });
 
-  const jogadores = Array.from(jogadoresUnicosMap.values());
+  const jogadores = Array.from(jogadoresUnicosMap.values()).filter(
+    (jogador) => jogador.status !== "removido",
+  );
   const totalSlots = Math.max(limiteJogadores || 8, jogadores.length, 1);
   const slots = Array.from({ length: totalSlots }).map(
     (_, index) => jogadores[index] || null,
@@ -905,26 +907,26 @@ function EscalacaoCards({
     : getCampeonatoHref(campeonato as any);
 
   return (
-    <div className="border border-slate-200 bg-white p-3">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="overflow-hidden border border-slate-900 bg-[#07101f] text-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-white/10 bg-[#0b1628] px-3 py-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-600">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300">
             Escalação
           </p>
-          <p className="text-xs font-black uppercase text-slate-950">
-            {jogadores.length}/{totalSlots} slots usados
+          <p className="text-xs font-black uppercase text-white">
+            {jogadores.length}/{totalSlots} cards usados
           </p>
         </div>
 
         <Link
           href={hrefAdicionar}
-          className="flex h-9 items-center justify-center gap-1 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase text-white"
+          className="flex h-9 items-center justify-center gap-1 border border-violet-400 bg-violet-600 px-3 text-[10px] font-black uppercase text-white shadow-lg shadow-violet-950/40"
         >
           <PlusCircle size={14} /> Adicionar
         </Link>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2 p-3">
         {slots.map((jogador, index) => (
           <PlayerCardSlot
             key={jogador?.id || `card-slot-${index}`}
@@ -947,11 +949,12 @@ function PlayerCardSlot({
   index: number;
   href: string;
 }) {
+  const vazio = !jogador;
   const avulso = Boolean(
-    jogador?.jogador_avulso_id || !jogador?.perfil_jogo_id,
+    jogador?.jogador_avulso_id || (jogador && !jogador.perfil_jogo_id),
   );
   const tier = jogador ? getTierJogador(jogador) : "+";
-  const cor = tierClasses(tier, avulso && !!jogador);
+  const cor = tierClasses(tier, avulso);
   const nome = jogador
     ? getNomePerfil(jogador.perfil, jogador.nick_snapshot)
     : "Adicionar";
@@ -961,60 +964,101 @@ function PlayerCardSlot({
     ((jogador?.perfil || {}) as any)?.imagem_url ||
     null;
 
+  const cardClass = vazio
+    ? "border-violet-500 bg-gradient-to-b from-[#171032] via-[#111827] to-[#060b16] text-violet-200 shadow-violet-950/60"
+    : `${cor.borda} bg-gradient-to-b ${cor.fundo} ${cor.texto} ${cor.glow}`;
+
   return (
     <Link
       href={href}
-      className={`group relative flex aspect-[0.72] min-h-[116px] flex-col overflow-hidden border ${cor.borda} bg-gradient-to-br ${cor.fundo} p-1.5 text-center shadow-sm ${cor.glow}`}
+      className={`group relative flex aspect-[0.70] min-h-[124px] flex-col overflow-hidden border-2 p-1.5 text-center shadow-md transition active:scale-[0.98] ${cardClass}`}
       style={{
         clipPath:
-          "polygon(8% 5%, 50% 0%, 92% 5%, 100% 16%, 94% 86%, 50% 100%, 6% 86%, 0% 16%)",
+          "polygon(10% 4%, 26% 2%, 34% 6%, 50% 0%, 66% 6%, 74% 2%, 90% 4%, 97% 14%, 92% 82%, 50% 100%, 8% 82%, 3% 14%)",
       }}
     >
-      <div className="absolute inset-x-2 top-2 flex items-center justify-between">
+      <div
+        className="pointer-events-none absolute inset-1 border border-white/20 opacity-70"
+        style={{
+          clipPath:
+            "polygon(10% 4%, 26% 2%, 34% 6%, 50% 0%, 66% 6%, 74% 2%, 90% 4%, 97% 14%, 92% 82%, 50% 100%, 8% 82%, 3% 14%)",
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(255,255,255,0.28),transparent_34%),linear-gradient(120deg,rgba(255,255,255,0.16),transparent_45%)]" />
+
+      <div className="relative z-10 flex items-start justify-between px-1 pt-1">
         <span
-          className={`grid h-5 min-w-5 place-items-center rounded-sm px-1 text-[10px] font-black ${cor.selo}`}
+          className={`grid h-5 min-w-5 place-items-center rounded px-1 text-[10px] font-black ${vazio ? "bg-violet-500 text-white" : cor.selo}`}
         >
           {tier}
         </span>
-        <span className="text-[9px] font-black text-black/40">
+        <span className="text-[9px] font-black text-white/55">
           {String(index + 1).padStart(2, "0")}
         </span>
       </div>
 
-      <div className="mt-5 grid flex-1 place-items-center">
+      <div className="relative z-10 mt-1 grid flex-1 place-items-center">
         {foto ? (
           <img
             src={foto}
             alt={nome}
-            className={`h-14 w-14 rounded-full object-cover ${avulso ? "grayscale" : ""}`}
+            className={`h-[68px] w-[68px] object-cover object-top ${avulso ? "grayscale" : ""}`}
+            style={{ clipPath: "ellipse(42% 48% at 50% 50%)" }}
           />
         ) : (
-          <div
-            className={`relative h-14 w-12 ${jogador ? "opacity-80" : "opacity-45"}`}
-          >
-            <div className="mx-auto h-6 w-6 rounded-full bg-black/70" />
-            <div className="mx-auto mt-1 h-8 w-11 rounded-t-full bg-black/70" />
-          </div>
+          <PlayerSilhouette muted={vazio} />
         )}
       </div>
 
-      <div className="mb-1 bg-black/55 px-1.5 py-1 backdrop-blur-sm">
-        <p
-          className={`truncate text-[10px] font-black uppercase leading-tight ${jogador ? "text-white" : "text-white/90"}`}
-        >
-          {nome}
-        </p>
-        {!jogador ? (
-          <p className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] font-black uppercase text-white/80">
-            <PlusCircle size={9} /> jogador
+      {!vazio ? (
+        <div className="relative z-10 mb-1 bg-black/60 px-1 py-1 backdrop-blur-sm">
+          <p className="truncate text-[10px] font-black uppercase leading-tight text-white">
+            {nome}
           </p>
-        ) : avulso ? (
           <p className="mt-0.5 text-[8px] font-black uppercase text-white/70">
-            avulso
+            {avulso ? "avulso" : `tier ${tier}`}
           </p>
-        ) : null}
-      </div>
+        </div>
+      ) : (
+        <div className="relative z-10 mb-2 flex flex-col items-center justify-center gap-1">
+          <span className="grid h-7 w-7 place-items-center rounded-full border border-violet-300 bg-violet-600/40 text-violet-100">
+            <PlusCircle size={17} />
+          </span>
+          <p className="text-[9px] font-black uppercase leading-tight text-violet-200">
+            adicionar
+          </p>
+        </div>
+      )}
     </Link>
+  );
+}
+
+function PlayerSilhouette({ muted }: { muted?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 120 120"
+      className={`h-[76px] w-[76px] ${muted ? "opacity-55" : "opacity-80"}`}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="silhouetteGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="rgba(0,0,0,0.95)" />
+          <stop offset="1" stopColor="rgba(0,0,0,0.65)" />
+        </linearGradient>
+      </defs>
+      <path
+        fill="url(#silhouetteGradient)"
+        d="M60 13c14.2 0 25 11.1 25 25.4 0 15.2-10.2 27.2-25 27.2S35 53.6 35 38.4C35 24.1 45.8 13 60 13Z"
+      />
+      <path
+        fill="url(#silhouetteGradient)"
+        d="M21 116c2.6-28.8 18.7-44.8 39-44.8s36.4 16 39 44.8H21Z"
+      />
+      <path
+        fill="rgba(255,255,255,0.08)"
+        d="M41 77c5.3 5.7 11.7 8.5 19 8.5s13.7-2.8 19-8.5c-4.9-3.8-11.4-5.8-19-5.8s-14.1 2-19 5.8Z"
+      />
+    </svg>
   );
 }
 
