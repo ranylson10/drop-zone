@@ -673,113 +673,119 @@ export default function EscalaCampeonatoPage() {
                         <div className="border-t border-slate-100 p-3">
                           <div className="mb-3 grid grid-cols-2 gap-2">
                             <InfoBox
-                              label="Elenco da equipe"
-                              value={String(elenco.length)}
+                              label="Slots do campeonato"
+                              value={String(limiteJogadores || 8)}
                             />
                             <InfoBox
-                              label="Slots campeonato"
-                              value={String(limiteJogadores || "-")}
+                              label="Escalados"
+                              value={String(
+                                Object.values(jogadoresPorEquipe)
+                                  .flat()
+                                  .filter((jogador: any) =>
+                                    inscricoes.some((inscricao) =>
+                                      (
+                                        jogadoresPorEquipe[inscricao.id] || []
+                                      ).some((item) => item.id === jogador.id),
+                                    ),
+                                  ).length,
+                              )}
                             />
                           </div>
 
-                          {inscricoes.map((inscricao) => {
-                            const jogadores =
-                              jogadoresPorEquipe[inscricao.id] || [];
+                          {(() => {
+                            const vagaPrincipal = primeiraVaga || inscricoes[0];
+                            const jogadoresUnicosMap = new Map<
+                              string,
+                              JogadorEquipe
+                            >();
+
+                            inscricoes.forEach((inscricao) => {
+                              (jogadoresPorEquipe[inscricao.id] || []).forEach(
+                                (jogador) => {
+                                  jogadoresUnicosMap.set(jogador.id, jogador);
+                                },
+                              );
+                            });
+
+                            const jogadores = Array.from(
+                              jogadoresUnicosMap.values(),
+                            );
                             const totalSlots = Math.max(
-                              limiteJogadores || jogadores.length || 0,
+                              limiteJogadores || 8,
                               jogadores.length,
                             );
-                            const vazios = Math.max(
-                              totalSlots - jogadores.length,
-                              0,
-                            );
+                            const slots = Array.from({
+                              length: totalSlots,
+                            }).map((_, index) => jogadores[index] || null);
 
                             return (
-                              <div
-                                key={inscricao.id}
-                                className="mb-3 last:mb-0"
-                              >
-                                <div className="mb-2 flex items-center justify-between gap-2">
+                              <div className="border border-slate-200 bg-white">
+                                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2">
                                   <div>
-                                    <p className="text-xs font-black uppercase text-slate-900">
-                                      Vaga {inscricao.numero_vaga || "-"} •{" "}
-                                      {inscricao.status_pagamento || "manual"}
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                      Escalação do campeonato
                                     </p>
-                                    <p className="mt-1 text-[10px] font-black uppercase text-slate-400">
-                                      {vazios} slots disponíveis
+                                    <p className="text-xs font-black uppercase text-slate-900">
+                                      {jogadores.length}/{totalSlots} jogadores
                                     </p>
                                   </div>
-                                  <Link
-                                    href={`/escala/vaga/${inscricao.id}`}
-                                    className="flex h-9 items-center gap-1 border border-slate-950 bg-slate-950 px-3 text-[10px] font-black uppercase text-white"
-                                  >
-                                    <PlusCircle size={14} /> Adicionar
-                                  </Link>
+                                  {vagaPrincipal ? (
+                                    <Link
+                                      href={`/escala/vaga/${vagaPrincipal.id}`}
+                                      className="flex h-8 w-8 items-center justify-center border border-blue-600 bg-blue-600 text-white"
+                                      title="Adicionar jogador"
+                                    >
+                                      <PlusCircle size={16} />
+                                    </Link>
+                                  ) : null}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
-                                  {jogadores.map((jogador) => (
-                                    <div
-                                      key={jogador.id}
-                                      className="min-h-11 border border-slate-200 bg-slate-50 px-3 py-2"
+                                <div className="divide-y divide-slate-200">
+                                  {slots.map((jogador, index) => (
+                                    <Link
+                                      key={jogador?.id || `slot-livre-${index}`}
+                                      href={
+                                        vagaPrincipal
+                                          ? `/escala/vaga/${vagaPrincipal.id}`
+                                          : getCampeonatoHref(campeonato as any)
+                                      }
+                                      className="grid min-h-10 grid-cols-[34px_1fr_auto] items-center gap-2 px-3 py-2 hover:bg-blue-50"
                                     >
-                                      <div className="truncate text-xs font-black uppercase text-slate-900">
-                                        {getNomePerfil(
-                                          jogador.perfil,
-                                          jogador.nick_snapshot,
-                                        )}
+                                      <div className="text-[11px] font-black uppercase text-slate-400">
+                                        {String(index + 1).padStart(2, "0")}
                                       </div>
-                                      <div className="mt-0.5 truncate text-[10px] font-black uppercase text-slate-400">
-                                        UID{" "}
-                                        {getUidPerfil(
-                                          jogador.perfil,
-                                          jogador.uid_jogo_snapshot,
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
 
-                                  {Array.from({ length: vazios }).map(
-                                    (_, index) => (
-                                      <Link
-                                        key={`slot-${inscricao.id}-${index}`}
-                                        href={`/escala/vaga/${inscricao.id}`}
-                                        className="flex min-h-11 items-center justify-center gap-1 border border-dashed border-blue-300 bg-blue-50 px-2 text-[10px] font-black uppercase text-blue-700"
-                                      >
-                                        <PlusCircle size={14} /> Slot livre
-                                      </Link>
-                                    ),
-                                  )}
+                                      {jogador ? (
+                                        <div className="min-w-0">
+                                          <div className="truncate text-xs font-black uppercase text-slate-900">
+                                            {getNomePerfil(
+                                              jogador.perfil,
+                                              jogador.nick_snapshot,
+                                            )}
+                                          </div>
+                                          <div className="truncate text-[10px] font-black uppercase text-slate-400">
+                                            UID{" "}
+                                            {getUidPerfil(
+                                              jogador.perfil,
+                                              jogador.uid_jogo_snapshot,
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-xs font-black uppercase text-slate-400">
+                                          Slot disponível
+                                        </div>
+                                      )}
+
+                                      <div className="flex h-7 w-7 items-center justify-center border border-slate-200 bg-white text-blue-600">
+                                        <PlusCircle size={14} />
+                                      </div>
+                                    </Link>
+                                  ))}
                                 </div>
                               </div>
                             );
-                          })}
-
-                          <div className="mt-3 border-t border-slate-100 pt-3">
-                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                              Elenco cadastrado na equipe
-                            </p>
-                            <div className="space-y-1.5">
-                              {elenco.slice(0, 10).map((perfil) => (
-                                <div
-                                  key={perfil.id}
-                                  className="flex items-center justify-between border border-slate-200 bg-white px-3 py-2"
-                                >
-                                  <span className="truncate text-xs font-black uppercase text-slate-900">
-                                    {getNomePerfil(perfil)}
-                                  </span>
-                                  <span className="ml-2 shrink-0 text-[10px] font-black uppercase text-slate-400">
-                                    UID {getUidPerfil(perfil)}
-                                  </span>
-                                </div>
-                              ))}
-                              {!elenco.length ? (
-                                <div className="border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs font-bold text-slate-500">
-                                  Nenhum jogador cadastrado no elenco da equipe.
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
+                          })()}
                         </div>
                       )}
                     </div>
