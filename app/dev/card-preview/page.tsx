@@ -6,7 +6,7 @@ export default function CardPreviewPage() {
   return (
     <main className="min-h-screen bg-[#07111f] p-6">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-5 text-xl font-black text-white">Preview PlayerCard SVG Corel</div>
+        <div className="mb-5 text-xl font-black text-white">Preview PlayerCard SVG Corel V2</div>
 
         <div className="grid grid-cols-4 gap-4">
           <PlayerCard name="SIX" tier="S" number={1} variant="oficial" />

@@ -13,7 +13,7 @@ type PlayerCardProps = {
   className?: string
 }
 
-const BASE_CARD_SVG = String.raw`<?xml version="1.0" encoding="UTF-8"?>
+const SVG_COREL = String.raw`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Creator: CorelDRAW -->
 <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="500.2mm" height="669.541mm" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
@@ -21,55 +21,45 @@ viewBox="0 0 393869.11 527212.6"
  xmlns:xlink="http://www.w3.org/1999/xlink"
  xmlns:xodm="http://www.corel.com/coreldraw/odm/2003">
  <defs>
-  <font id="FontID0" horiz-adv-x="666" font-variant="normal" style="fill-rule:nonzero" font-style="normal" font-weight="400">
-	<font-face 
-		font-family="Arial">
-		<font-face-src>
-			<font-face-name name="Arial"/>
-		</font-face-src>
-	</font-face>
-   <missing-glyph><path d="M0 0z"/></missing-glyph>
-   <glyph unicode="E" horiz-adv-x="666" d="M79.0001 0l0 716 516.999 0 0 -84.0009 -421.999 0 0 -219.999 394.999 0 0 -84.0009 -394.999 0 0 -244.001 438.999 0 0 -83.9992 -533.999 0z"/>
-   <glyph unicode="M" horiz-adv-x="832" d="M74.9992 0l0 716 142.002 0 169.333 -506.833c15.6659,-47.1675 26.9999,-82.5003 34.1666,-106 8.16652,26.0001 20.9994,64.3323 38.3339,114.834l172.332 498 126.835 0 0 -716 -91.0012 0 0 599.001 -208.999 -599.001 -85.3334 0 -206.667 610 0 -610 -91.0012 0z"/>
-   <glyph unicode="N" horiz-adv-x="722" d="M76.0007 0l0 716 97.3328 0 375.666 -562.001 0 562.001 90.9995 0 0 -716 -97.3328 0 -375.666 561.999 0 -561.999 -90.9995 0z"/>
-   <glyph unicode="O" horiz-adv-x="777" d="M47.9993 348.5c0,118.667 32.0006,211.666 95.8339,278.833 63.8333,67.1671 146.167,100.667 247.167,100.667 66.1673,0 125.667,-15.8323 178.833,-47.3322 53,-31.4999 93.4999,-75.4999 121.333,-132 27.8334,-56.3338 41.8341,-120.333 41.8341,-191.834 0,-72.5005 -14.6678,-137.5 -44,-194.667 -29.3339,-57.332 -70.8336,-100.667 -124.501,-129.999 -53.8335,-29.5003 -111.833,-44.1664 -173.999,-44.1664 -67.5015,0 -127.667,16.333 -180.835,48.8327 -53,32.4997 -93.3335,76.8341 -120.666,133.166 -27.3326,56.1675 -41.0006,115.667 -41.0006,178.501zm97.9999 -1.66691c0,-86.1668 23.167,-153.999 69.5011,-203.499 46.3324,-49.5015 104.499,-74.3338 174.5,-74.3338 71.3327,0 129.834,25.0003 176,74.9992 45.9997,50.0006 69.0003,121.001 69.0003,213 0,58.1671 -9.83343,109.001 -29.5003,152.334 -19.6669,43.3329 -48.5,77.0005 -86.3332,100.833 -37.9995,23.8341 -80.5007,35.8335 -127.667,35.8335 -67.0007,0 -124.667,-23.0007 -173.001,-69.0003 -48.3337,-45.9997 -72.5005,-122.666 -72.5005,-230.166z"/>
-   <glyph unicode="X" horiz-adv-x="666" d="M4.33363 0l276.667 371.499 -243.666 344.501 112.832 0 130.5 -183.167c27.1679,-37.9995 46.0013,-67.0007 56.8346,-87.1666 16.1667,25.0003 35.1664,51.6675 56.9993,79.8336l143 190.5 103.834 0 -248.667 -340.334 267.667 -375.666 -116.334 0 -180.667 255.333c-10.3325,14.4998 -20.1659,28.9995 -29.3322,43.3329 -16.0003,-23.9988 -27.3343,-40.8326 -34.333,-50.3333l-181.5 -248.333 -113.834 0z"/>
-  </font>
   <style type="text/css">
    <![CDATA[
-    @font-face { font-family:"Arial";font-variant:normal;font-style:normal;font-weight:normal;src:url("#FontID0") format(svg)}
-    .str1 {stroke:#4B4B4D;stroke-width:157.48;stroke-miterlimit:22.9256}
     .str0 {stroke:#373435;stroke-width:157.48;stroke-miterlimit:22.9256}
-    .fil4 {fill:#373435}
-    .fil3 {fill:#F58634}
-    .fil1 {fill:#ED3237}
     .fil0 {fill:#A8518A}
-    .fil5 {fill:#4B4B4D;fill-rule:nonzero}
-    .fil2 {fill:#373435;fill-rule:nonzero}
-    .fnt0 {font-weight:normal;font-size:46860.6px;font-family:'Arial'}
    ]]>
   </style>
  </defs>
  <g id="Camada_x0020_1">
   <metadata id="CorelCorpID_0Corel-Layer"/>
   <path class="fil0 str0" d="M196897.55 526907.87c0,0 -6777.43,-37542.39 -147909.49,-61820.55 0,0 -49017.2,-3613.25 -48909.32,-48909.32l107.88 -324907.11c0,0 46589.1,-3912.79 45323.94,-55036.97 0,0 49715.64,-24062.64 109692.12,-36144.87 0,0 12477.99,24775.42 41731.87,24888.57 15454.6,107.8 32195.15,-8069.52 41731.87,-24888.57 39071.64,8172.91 74495.94,19917.25 109692.12,36144.87 -786.95,20790.97 7290.44,48765.38 45323.94,55036.97l107.88 324907.11c-107.96,28215.12 -19360.62,45229.45 -48909.32,48909.32 -54361.99,8183.93 -137737.94,33074.86 -147983.5,61820.55z"/>
-  <path class="fil1 str0" d="M325851.94 424921.56l-261849.28 0c0,0 -17722.46,-32619.26 -19593.7,-77262 0,0 -4277.21,-2940.48 -1336.65,-10692.82l3475.22 -24058.94 2940.55 -23524.36 3742.47 -20583.72 5079.12 -19247.15 4811.79 -11494.81 6415.69 -9356.32 6415.77 -7217.68 3207.88 -2940.48 3475.14 -1871.31 14435.36 -5079.04 17643.25 -5881.11 14702.69 -6148.44 7485.01 -2940.48 5079.12 -2405.89 2940.55 -801.99 3207.81 -1871.23 4009.8 -1871.31 2138.64 -1603.9 534.58 -4811.79 -801.91 -16841.26 -2940.55 -6415.69 -2673.22 -8287 -801.91 -4277.13 -2405.97 -1336.65 -1336.57 -3742.47 -1069.32 -5881.11 -1603.9 -6415.69 267.33 -4811.79 -1069.32 -4277.13 -1069.24 -5881.11 1603.9 -2673.22 4009.88 0 -2138.64 -14435.36 -1336.57 -8821.59 1069.24 -9088.92 2405.97 -8287 5613.7 -9088.92 7217.68 -7752.34 7752.34 -5346.45 7752.34 -4277.13 7485.01 -2138.56 9088.92 -801.99 16573.93 1069.32 4811.79 2673.15 5346.45 2405.97 6148.36 6148.36 5613.78 6148.36 7752.34 7752.42 4277.13 12296.72 534.66 16306.68 -267.33 9088.92 -801.99 4009.8 4544.54 267.33 2138.56 3475.22 534.66 6415.69 -1336.65 5079.12 267.33 6415.69 -2405.89 5346.45 -534.66 5079.12 -2673.22 2940.55 -2673.22 534.58 -1871.23 9088.99 -4277.13 11227.48 -1069.32 8019.67 801.99 7752.34 1069.32 6415.69 5346.37 2673.22 4277.21 2673.22 16573.93 7752.26 22187.71 7217.76 18445.16 5346.37 7485.01 1871.31 3475.14 1603.9 3207.88 1069.32 267.33 3207.81 8821.59 8554.33 8019.67 15237.28 3207.88 10158.24 2940.55 8287 1603.9 5881.03 534.66 4009.88 1069.24 5346.45 1603.98 5079.04 1336.57 5346.45 267.33 6148.44 2673.22 10960.15 2138.56 9623.58 2405.89 8287 1336.57 6683.02 267.33 5881.11 -1069.24 5079.04 -1603.98 13633.45 -3475.14 18979.82 -3207.88 13900.7 -7485.01 19247.23 -9135.61 16847.24z"/>
-  <path class="fil0 str0" d="M196897.55 526907.87c0,0 -6777.43,-37542.39 -147909.49,-61820.62 0,0 -49017.2,-3613.25 -48909.32,-48909.24l37.09 -111728 393637.3 -537.57 37.25 112265.58c-107.96,28215.12 -19360.62,45229.37 -48909.32,48909.24 -54361.99,8184.01 -137737.94,33074.94 -147983.5,61820.62z"/>
-  <path class="fil2" d="M206963.03 456234.71l7864.16 1097.27c-868.76,5410.39 -3063.39,9632 -6614.44,12695.39 -3551.04,3063.31 -7925.02,4587.37 -13091.55,4587.37 -6477.27,0 -11689.54,-2118.41 -15621.54,-6355.3 -3947.35,-4236.89 -5913.39,-10302.57 -5913.39,-18197.2 0,-5120.77 853.49,-9586.25 2545.19,-13426.83 1691.7,-3825.38 4267.36,-6705.86 7742.18,-8610.95 3459.62,-1920.29 7224.06,-2880.47 11308.5,-2880.47 5136.05,0 9357.66,1295.47 12619.09,3901.61 3276.78,2606.14 5379.99,6309.55 6294.35,11095.11l-7772.66 1188.77c-746.79,-3185.29 -2057.46,-5578.11 -3962.55,-7193.59 -1889.74,-1600.2 -4175.86,-2408.02 -6858.22,-2408.02 -4053.97,0 -7345.95,1447.91 -9891.06,4343.59 -2529.91,2910.95 -3794.91,7483.12 -3794.91,13762.2 0,6370.57 1219.25,10988.42 3657.74,13868.89 2453.69,2880.47 5638.98,4328.31 9555.78,4328.31 3170.09,0 5806.7,-960.18 7909.83,-2895.75 2118.48,-1920.29 3459.62,-4892.18 4023.5,-8900.41z"/>
-  <polygon class="fil3 str0" points="9282.15,304450 384514.52,304450 384514.52,384062.07 9282.15,384062.07 "/>
-  <text x="53922.69" y="362211.77"  class="fil4 fnt0">NOME XXXX</text>
-  <path class="fil5 str1" d="M50548.42 455942.97c47120.92,8105.97 79993.65,18068.85 102913.11,27876.37 22894.73,9796.81 35859.35,19439.44 43174.12,26921.78 4600.92,-4864.31 10627.3,-9490.03 17712.86,-13845.27 7636.51,-4693.91 16503.85,-9074.19 26143.17,-13101 14900.49,-6224.74 31821.13,-11759.54 48809.08,-16358.65 18876.51,-5110.38 37836.65,-9065.84 54201.44,-11529.53l254.02 -36.3c6526.72,-812.78 12430.66,-2340.14 17583.8,-4551.62 5110.38,-2193.13 9482.86,-5059.43 12992.57,-8569.22 3292.38,-3292.3 5860.48,-7211.15 7596.83,-11731.98 1684.77,-4386.66 2586.77,-9340.65 2607.79,-14839.55l-105.44 -317399.1c-7011.61,-1822.57 -13024.93,-4391.85 -18166.18,-7517.77 -5612.28,-3412.3 -10185.48,-7487.85 -13884.32,-11979.39 -4290.67,-5210.15 -7340.21,-10919.68 -9429.48,-16761.49 -2424.63,-6779.56 -3556.08,-13737.86 -3833.26,-20301.12 -7724,-3455.92 -15480.35,-6698.38 -23306.87,-9737.28 -7832.27,-3041.11 -15735.95,-5878.83 -23748.85,-8523.15 -7987.86,-2636.06 -16049.58,-5069.83 -24222.17,-7311.15 -8166.29,-2239.67 -16445.18,-4287.92 -24873.53,-6154.5 -2377.63,3267.81 -5011.32,6195.29 -7838.41,8784.34 -2946.3,2698.34 -6102.38,5028.8 -9397.03,6993.74 -4460.83,2660.39 -9177.11,4649.18 -13974.48,5973.55 -4929.98,1360.98 -9946.03,2020.37 -14858.92,1986.12l-36.93 -0.24 0 -0.71c-12393.97,-62.68 -22268.97,-3834.12 -29853.83,-8678.35 -7581.08,-4841.79 -12874.22,-10754.95 -16108.8,-15107.43 -17448.44,3792.86 -33849.37,8527.32 -48166.94,13251.08 -22482.6,7417.61 -39827.25,14808.29 -48026.93,18486.11 -691.28,16148.96 -5756.15,27853.22 -12520.11,36326.76 -10095.16,12646.65 -23974.21,18096.1 -32747.45,20387.18l-105.36 317282.8c-86.85,36507.4 39961.43,39620.63 40414.28,39655.83 258.27,20.24 540.65,79.21 802.23,109.14zm102884.21 27944.32c-22914.89,-9805.55 -55782.03,-19766.62 -102896.65,-27871.49l-795.46 -108.27c-457.26,-35.51 -40569.4,-3155.36 -40482.31,-39729.54l105.44 -317339.73 27.56 -7.24c8761.58,-2284.24 22642.99,-7725.41 32735.72,-20368.99 6758.54,-8466.69 11818.6,-20163.87 12505.31,-36306.68l0.94 -22.84 20.87 -9.37c8193.14,-3675.46 25551.82,-11074.01 48054.49,-18498.23 14326.15,-4726.59 30737.79,-9463.89 48197.72,-13258.17l23.15 -5.04 14.25 19.21c3229.54,4349.18 8520.87,10265.64 16103.44,15108.37 7582.26,4842.65 17456.24,8611.89 29851.39,8667.17l36.93 0.16 0 0.63c4894.31,30.63 9890.83,-627.97 14802.07,-1983.76 4791.24,-1322.64 9501.37,-3308.75 13956.22,-5965.6 3290.88,-1962.65 6442.94,-4290.2 9385.3,-6984.84 2828.43,-2590.31 5463.62,-5520.63 7842.5,-8793l14.25 -19.53 23.7 5.2c8437.32,1868.24 16725.11,3918.46 24900.54,6160.64 8176.92,2242.58 16239.9,4676.67 24225.95,7312.09 8011.96,2643.93 15916.74,5482.12 23752.32,8524.57 7834.39,3041.97 15598.78,6287.97 23331.12,9748.07l20.87 9.37 1.02 22.84c275.2,6562.78 1405.24,13521.87 3830.11,20302.06 2086.67,5834.57 5132.19,11536.7 9416.88,16739.52 3693.8,4485.4 8260.86,8555.51 13865.51,11963.17 5142.03,3126.39 11157.79,5695.51 18174.13,7516.59l27.56 7.17 105.44 317456.19c-21.02,5508.19 -924.75,10470.92 -2612.67,14865.77 -1740.28,4531.31 -4314.06,8458.82 -7613.28,11758.12 -3516.24,3516.24 -7896.6,6387.82 -13015.95,8584.81 -5159.67,2214.31 -11070.31,3743.49 -17603.8,4557.14l-252.05 35.99c-16362.19,2463.22 -35319.41,6418.13 -54193.25,11527.8 -16985.12,4598.4 -33902.6,10132.02 -48799.87,16355.42 -9635.47,4025.23 -18499.34,8403.78 -26132.78,13095.88 -7093.9,4360.36 -13124.85,8991.35 -17724.2,13860.62l-26.38 27.95 -27.01 -27.56c-7304.53,-7480.68 -20265.21,-17128.51 -43177.03,-26932.64z"/>
  </g>
 </svg>`
 
-const tierColor: Record<PlayerCardTier, string> = {
-  SS: '#facc15',
-  S: '#eab308',
-  A: '#9333ea',
-  B: '#2563eb',
-  C: '#22c55e',
-  D: '#94a3b8',
-  E: '#71717a',
+const tierPalette: Record<PlayerCardTier, {
+  start: string
+  mid: string
+  end: string
+  stroke: string
+  badge: string
+}> = {
+  SS: { start: '#fff1a8', mid: '#facc15', end: '#b7791f', stroke: '#f6c343', badge: '#b91c1c' },
+  S:  { start: '#fde68a', mid: '#eab308', end: '#a16207', stroke: '#eab308', badge: '#b91c1c' },
+  A:  { start: '#e9d5ff', mid: '#9333ea', end: '#581c87', stroke: '#a855f7', badge: '#6d28d9' },
+  B:  { start: '#bfdbfe', mid: '#2563eb', end: '#1e3a8a', stroke: '#3b82f6', badge: '#1d4ed8' },
+  C:  { start: '#bbf7d0', mid: '#22c55e', end: '#166534', stroke: '#22c55e', badge: '#15803d' },
+  D:  { start: '#f8fafc', mid: '#cbd5e1', end: '#64748b', stroke: '#cbd5e1', badge: '#334155' },
+  E:  { start: '#e4e4e7', mid: '#a1a1aa', end: '#3f3f46', stroke: '#a1a1aa', badge: '#27272a' },
+}
+
+function palette(tier: PlayerCardTier, variant: PlayerCardVariant) {
+  if (variant === 'avulso') {
+    return { start: '#ffffff', mid: '#d4d4d8', end: '#52525b', stroke: '#d4d4d8', badge: '#27272a' }
+  }
+
+  if (variant === 'slot') {
+    return { start: '#111827', mid: '#172033', end: '#050816', stroke: '#f97316', badge: '#334155' }
+  }
+
+  return tierPalette[tier] || tierPalette.C
 }
 
 export default function PlayerCard({
@@ -83,67 +73,223 @@ export default function PlayerCard({
 }: PlayerCardProps) {
   const isSlot = variant === 'slot'
   const isAvulso = variant === 'avulso'
-  const corTier = isAvulso ? '#d4d4d8' : tierColor[tier] || tierColor.C
+  const p = palette(tier, variant)
+  const id = `lealt-card-${variant}-${tier}-${String(number).replace(/[^a-zA-Z0-9]/g, '')}`
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`relative block w-full max-w-[180px] border-0 bg-transparent p-0 text-left ${className}`}
+      className={`block w-full max-w-[180px] border-0 bg-transparent p-0 text-left ${className}`}
       aria-label={isSlot ? 'Adicionar jogador' : name}
     >
-      <div className={`relative aspect-[0.72] w-full overflow-hidden ${isAvulso ? 'grayscale' : ''}`}>
-        <div
-          className="absolute inset-0 [&_svg]:h-full [&_svg]:w-full"
-          dangerouslySetInnerHTML={{ __html: BASE_CARD_SVG }}
-        />
+      <svg viewBox="0 0 180 250" className={`block h-full w-full ${isAvulso ? 'grayscale' : ''}`} role="img">
+        <defs>
+          {/*
+            Base do Corel usada como máscara. 
+            A carta colorida fica por baixo, e a máscara garante o shape certo.
+          */}
+          <clipPath id={`${id}-clip`}>
+            <path d="
+              M90 5
+              C98 16 106 20 119 17
+              L143 12
+              C158 20 166 31 168 45
+              L168 142
+              C168 174 162 192 148 202
+              C127 212 110 216 99 227
+              L90 237
+              L81 227
+              C70 216 53 212 32 202
+              C18 192 12 174 12 142
+              L12 45
+              C14 31 22 20 37 12
+              L61 17
+              C74 20 82 16 90 5
+              Z
+            " />
+          </clipPath>
 
-        <div className="absolute left-1/2 top-[22%] h-[38%] w-[68%] -translate-x-1/2 overflow-hidden">
+          <linearGradient id={`${id}-bg`} x1="18" y1="8" x2="162" y2="232" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={p.start} />
+            <stop offset="48%" stopColor={p.mid} />
+            <stop offset="100%" stopColor={p.end} />
+          </linearGradient>
+
+          <linearGradient id={`${id}-shine`} x1="20" y1="15" x2="150" y2="190" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="rgba(255,255,255,.45)" />
+            <stop offset="45%" stopColor="rgba(255,255,255,.08)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+          </linearGradient>
+
+          <linearGradient id={`${id}-black`} x1="0" y1="120" x2="0" y2="235" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#1c1c1c" />
+            <stop offset="100%" stopColor="#050505" />
+          </linearGradient>
+
+          <linearGradient id={`${id}-badge`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={p.badge} />
+            <stop offset="100%" stopColor="#dc2626" />
+          </linearGradient>
+
+          {/* textura tecnológica: grade + pontos + linhas diagonais */}
+          <pattern id={`${id}-grid`} width="18" height="18" patternUnits="userSpaceOnUse">
+            <path d="M18 0H0V18" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth=".6" />
+            <circle cx="3" cy="3" r=".9" fill="rgba(255,255,255,.12)" />
+            <path d="M0 18L18 0" stroke="rgba(255,255,255,.035)" strokeWidth=".7" />
+          </pattern>
+
+          <pattern id={`${id}-carbon`} width="10" height="10" patternUnits="userSpaceOnUse">
+            <path d="M0 0H10V10H0Z" fill="rgba(255,255,255,.025)" />
+            <path d="M0 10L10 0" stroke="rgba(255,255,255,.05)" strokeWidth=".7" />
+            <path d="M-3 5L5 -3M5 13L13 5" stroke="rgba(0,0,0,.18)" strokeWidth=".8" />
+          </pattern>
+
+          <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="2.4" floodColor="#000" floodOpacity=".38" />
+          </filter>
+        </defs>
+
+        {/* camada de base SVG do Corel escondida, só para manter arquivo original no componente */}
+        <g opacity="0" dangerouslySetInnerHTML={{ __html: SVG_COREL }} />
+
+        {/* fundo da carta com textura, preso ao shape */}
+        <g clipPath={`url(#${id}-clip)`} filter={`url(#${id}-shadow)`}>
+          <rect x="0" y="0" width="180" height="250" fill={`url(#${id}-bg)`} />
+          <rect x="0" y="0" width="180" height="250" fill={`url(#${id}-shine)`} />
+          <rect x="0" y="0" width="180" height="250" fill={`url(#${id}-grid)`} opacity={isSlot ? .18 : .55} />
+
+          {/* silhueta/foto fica ATRÁS da faixa */}
           {photoUrl && !isSlot ? (
-            <img
-              src={photoUrl}
-              alt=""
-              className={`h-full w-full object-cover object-top ${isAvulso ? 'grayscale' : ''}`}
+            <image
+              href={photoUrl}
+              x="34"
+              y="34"
+              width="112"
+              height="118"
+              preserveAspectRatio="xMidYMin slice"
+              opacity={isAvulso ? .72 : 1}
             />
           ) : (
-            <div className="relative h-full w-full">
-              <div className={`absolute left-1/2 top-0 h-[42%] w-[42%] -translate-x-1/2 rounded-full ${isSlot ? 'bg-slate-800' : 'bg-slate-950'}`} />
-              <div className={`absolute bottom-0 left-1/2 h-[65%] w-[90%] -translate-x-1/2 rounded-t-[48%] ${isSlot ? 'bg-slate-800' : 'bg-slate-950'}`} />
-            </div>
+            <>
+              <circle cx="90" cy="68" r="31" fill={isSlot ? '#1f2937' : '#020617'} />
+              <path
+                d="M25 148 C30 94 55 75 90 75 C125 75 150 94 155 148 Z"
+                fill={isSlot ? '#1f2937' : '#020617'}
+              />
+            </>
           )}
-        </div>
+
+          {/* faixa preta em cima da foto/silhueta */}
+          <path
+            d="
+              M12 130
+              H168
+              V160
+              C168 178 162 191 148 202
+              C127 212 110 216 99 227
+              L90 237
+              L81 227
+              C70 216 53 212 32 202
+              C18 191 12 178 12 160
+              Z
+            "
+            fill={`url(#${id}-black)`}
+          />
+          <path
+            d="
+              M12 130
+              H168
+              V160
+              C168 178 162 191 148 202
+              C127 212 110 216 99 227
+              L90 237
+              L81 227
+              C70 216 53 212 32 202
+              C18 191 12 178 12 160
+              Z
+            "
+            fill={`url(#${id}-carbon)`}
+            opacity=".7"
+          />
+
+          <rect x="12" y="130" width="156" height="2" fill={p.stroke} opacity=".85" />
+          <rect x="28" y="172" width="124" height="1" fill={p.stroke} opacity=".35" />
+        </g>
+
+        {/* borda principal */}
+        <path
+          d="
+            M90 5
+            C98 16 106 20 119 17
+            L143 12
+            C158 20 166 31 168 45
+            L168 142
+            C168 174 162 192 148 202
+            C127 212 110 216 99 227
+            L90 237
+            L81 227
+            C70 216 53 212 32 202
+            C18 192 12 174 12 142
+            L12 45
+            C14 31 22 20 37 12
+            L61 17
+            C74 20 82 16 90 5
+            Z
+          "
+          fill="none"
+          stroke={p.stroke}
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
 
         {!isSlot && (
-          <div className="absolute right-[16%] top-[13%] text-[clamp(10px,3vw,17px)] font-black text-black/75">
+          <text x="145" y="42" textAnchor="middle" fontSize="20" fontWeight="900" fill="rgba(0,0,0,.78)">
             {String(number).padStart(2, '0')}
-          </div>
+          </text>
         )}
 
-        <div className="absolute left-[13%] right-[13%] top-[61%] flex h-[11%] items-center justify-center">
-          <div className={`truncate text-center font-black leading-none text-white drop-shadow ${isSlot ? 'text-[clamp(24px,9vw,42px)]' : 'text-[clamp(10px,4vw,19px)]'}`}>
-            {isSlot ? '+' : name.slice(0, 12).toUpperCase()}
-          </div>
-        </div>
+        {/* Nome / + */}
+        <text
+          x="90"
+          y={isSlot ? 162 : 158}
+          textAnchor="middle"
+          fontSize={isSlot ? 38 : 20}
+          fontWeight="900"
+          fill="#ffffff"
+          style={{ paintOrder: 'stroke', stroke: 'rgba(0,0,0,.45)', strokeWidth: 2 }}
+        >
+          {isSlot ? '+' : (name || 'JOGADOR').slice(0, 12).toUpperCase()}
+        </text>
 
         {!isSlot && (
-          <div
-            className="absolute left-1/2 top-[71%] flex h-[13%] w-[21%] -translate-x-1/2 items-center justify-center text-[clamp(10px,4vw,18px)] font-black text-white"
-            style={{
-              background: corTier,
-              clipPath: 'polygon(18% 0, 82% 0, 100% 20%, 100% 70%, 50% 100%, 0 70%, 0 20%)',
-              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.35)',
-            }}
-          >
-            {tier}
-          </div>
+          <>
+            {/* badge inferior do tier */}
+            <path
+              d="
+                M75 170
+                C82 165 98 165 105 170
+                L105 190
+                C102 198 96 203 90 207
+                C84 203 78 198 75 190
+                Z
+              "
+              fill={isAvulso ? '#3f3f46' : `url(#${id}-badge)`}
+              stroke={isAvulso ? '#d4d4d8' : p.stroke}
+              strokeWidth="1.8"
+            />
+            <text x="90" y="192" textAnchor="middle" fontSize="18" fontWeight="900" fill="#fff">
+              {tier}
+            </text>
+          </>
         )}
 
         {isSlot && (
-          <div className="absolute bottom-[17%] left-0 right-0 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">
+          <text x="90" y="184" textAnchor="middle" fontSize="10" fontWeight="900" fill="#cbd5e1" letterSpacing="1.2">
             ADICIONAR
-          </div>
+          </text>
         )}
-      </div>
+      </svg>
     </button>
   )
 }
