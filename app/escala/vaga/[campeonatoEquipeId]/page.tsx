@@ -330,10 +330,10 @@ export default function EscalacaoVagaPage() {
         campeonato_equipe_id: vaga.id,
         perfil_jogo_id: perfil.id,
         status: 'ativo',
-        tipo_inscricao: jogadoresAtivos.length < Number(campeonato.jogadores_por_equipe || 4) ? 'titular' : 'reserva',
         origem: 'link_mobile',
-        nick_snapshot: nomePerfil(perfil),
-        uid_jogo_snapshot: uidPerfil(perfil),
+        criado_automaticamente: false,
+        criado_por: userId,
+        observacoes: jogadoresAtivos.length < Number(campeonato.jogadores_por_equipe || 4) ? 'titular' : 'reserva',
       }
 
       const { error } = await supabase.from('jogadores_campeonato').insert(row)
