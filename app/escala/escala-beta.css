@@ -120,3 +120,8 @@ body:has(.escala-beta-root) main {
     border-color: #e2e8f0 !important;
   }
 }
+
+.escala-beta-page img {
+  opacity: 1 !important;
+  filter: none !important;
+}

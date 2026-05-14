@@ -87,6 +87,11 @@ type PerfilJogo = {
   nick?: string | null;
   nome?: string | null;
   foto_capa?: string | null;
+  avatar_url?: string | null;
+  foto_url?: string | null;
+  capa_url?: string | null;
+  banner_url?: string | null;
+  pais?: string | null;
   uid_jogo?: string | null;
   plataforma?: string | null;
   funcao?: string | null;
@@ -155,6 +160,14 @@ function getNomePerfil(perfil?: PerfilJogo | null, fallback?: string | null) {
 
 function getUidPerfil(perfil?: PerfilJogo | null, fallback?: string | null) {
   return perfil?.uid_jogo || fallback || "-";
+}
+
+function getFotoPerfilMobile(perfil?: PerfilJogo | null) {
+  return perfil?.foto_capa || perfil?.avatar_url || perfil?.foto_url || null;
+}
+
+function getCapaPerfilMobile(perfil?: PerfilJogo | null) {
+  return perfil?.capa_url || perfil?.banner_url || perfil?.foto_capa || perfil?.avatar_url || perfil?.foto_url || null;
 }
 
 function getNomeJogador(jogador?: JogadorEquipe | null) {
@@ -609,6 +622,7 @@ export default function EscalaCampeonatoPage() {
   return (
     <main className="escala-beta-page min-h-screen bg-slate-50 px-2 py-2 text-slate-950 [color-scheme:light]">
       <div className="mx-auto max-w-md pb-5">
+        {tipoAcesso !== "jogador" ? (
         <section className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white">
             <div className="flex gap-2">
@@ -647,6 +661,7 @@ export default function EscalaCampeonatoPage() {
             />
           </div>
         </section>
+        ) : null}
 
         {!userId ? (
           <section className="mt-3 border border-slate-200 bg-white p-4 shadow-sm">
@@ -1056,89 +1071,123 @@ export default function EscalaCampeonatoPage() {
             {aba === "jogador" ? (
               <section className="mt-2 space-y-2">
                 {!perfilJogo ? (
-                  <CardVazio
-                    titulo="Você ainda não tem conta de jogo"
-                    texto="Crie seu perfil de jogador usando o cadastro original do site."
-                    href="#"
-                    label="Criar perfil de jogo"
-                  />
+                  <div className="border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+                      Perfil de jogo
+                    </p>
+                    <h2 className="mt-1 text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
+                      Você ainda não tem perfil
+                    </h2>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                      Crie ou entre com seu perfil de jogo para aceitar convites, enviar pedidos e ver agenda.
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
+                      onClick={() => alert("Edição de perfil será aberta aqui no beta.")}
+                    >
+                      <Edit3 size={14} /> Criar perfil
+                    </button>
+                  </div>
                 ) : (
-                  <div className="border border-slate-200 bg-white p-3 shadow-sm">
-                    <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center border border-slate-200 bg-slate-50 text-blue-600">
-                        <UserRound size={17} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
-                          Perfil de jogo
-                        </p>
-                        <h2 className="truncate text-lg font-black uppercase tracking-[-0.04em]">
-                          {getNomePerfil(perfilJogo)}
-                        </h2>
-                        <p className="text-[10px] font-bold text-slate-500">
-                          UID {getUidPerfil(perfilJogo)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-1.5">
-                      <InfoBox
-                        label="Status"
-                        value={
-                          jogadorNoCampeonato ? "Inscrito" : "Não inscrito"
-                        }
-                      />
-                      <InfoBox
-                        label="Equipe"
-                        value={equipePrincipalDoJogador?.nome || "-"}
-                      />
-                      <InfoBox label="Abates" value={String(killsJogador)} />
-                      <InfoBox
-                        label="MVP"
-                        value={posicaoMvp ? `#${posicaoMvp}` : "-"}
-                      />
-                    </div>
-
-                    <div className="mt-2 grid grid-cols-2 gap-1.5">
-                      <Link
-                        href="#"
-                        className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                      >
-                        <Edit3 size={14} /> Editar perfil
-                      </Link>
-                      <Link
-                        href="#"
-                        className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
-                      >
-                        <MailPlus size={14} /> Convites
-                      </Link>
-                    </div>
-
-                    <div className="mt-3 border border-slate-200 bg-slate-50 p-2">
-                      <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-blue-600">
-                        <CalendarDays size={13} /> Agenda do jogador
-                      </div>
-                      {agendaJogador.length ? (
-                        <div className="space-y-1">
-                          {agendaJogador.map((item) => (
-                            <div
-                              key={item.vaga.id}
-                              className="flex items-center justify-between border border-slate-200 bg-white px-2 py-1.5"
-                            >
-                              <span className="truncate text-[10px] font-black uppercase text-slate-900">
-                                {item.equipe?.nome || item.vaga.nome_exibicao || "Equipe"}
-                              </span>
-                              <span className="text-[8px] font-black uppercase text-slate-500">
-                                {formatarData(campeonato?.data_inicio)}
-                              </span>
+                  <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+                    <div className="relative h-28 bg-gradient-to-r from-blue-600 to-blue-800">
+                      {getCapaPerfilMobile(perfilJogo) ? (
+                        <img
+                          src={getCapaPerfilMobile(perfilJogo) || ""}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+                      <div className="absolute bottom-3 left-3 right-3 flex items-end gap-3">
+                        <div className="h-16 w-16 overflow-hidden border-2 border-white bg-slate-100 shadow-sm">
+                          {getFotoPerfilMobile(perfilJogo) ? (
+                            <img
+                              src={getFotoPerfilMobile(perfilJogo) || ""}
+                              alt={getNomePerfil(perfilJogo)}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center text-blue-600">
+                              <UserRound size={26} />
                             </div>
-                          ))}
+                          )}
                         </div>
-                      ) : (
-                        <div className="border border-dashed border-slate-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
-                          Nenhuma agenda encontrada para este perfil neste campeonato.
+                        <div className="min-w-0 flex-1 pb-1 text-white">
+                          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-100">
+                            Perfil de jogo
+                          </p>
+                          <h2 className="truncate text-xl font-black uppercase tracking-[-0.05em]">
+                            {getNomePerfil(perfilJogo)}
+                          </h2>
+                          <p className="text-[10px] font-bold text-blue-100">
+                            UID {getUidPerfil(perfilJogo)}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                    </div>
+
+                    <div className="p-3">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <InfoBox
+                          label="Status"
+                          value={jogadorNoCampeonato ? "Inscrito" : "Não inscrito"}
+                        />
+                        <InfoBox
+                          label="Equipe"
+                          value={equipePrincipalDoJogador?.nome || "-"}
+                        />
+                        <InfoBox label="Abates" value={String(killsJogador)} />
+                        <InfoBox
+                          label="MVP"
+                          value={posicaoMvp ? `#${posicaoMvp}` : "-"}
+                        />
+                      </div>
+
+                      <div className="mt-2 grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
+                          onClick={() => alert("Edição de perfil será aberta aqui no beta.")}
+                        >
+                          <Edit3 size={14} /> Editar perfil
+                        </button>
+                        <button
+                          type="button"
+                          className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
+                          onClick={() => alert("Convites e pedidos serão listados aqui no beta.")}
+                        >
+                          <MailPlus size={14} /> Convites/Pedidos
+                        </button>
+                      </div>
+
+                      <div className="mt-3 border border-slate-200 bg-slate-50 p-2">
+                        <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-blue-600">
+                          <CalendarDays size={13} /> Agenda do jogador
+                        </div>
+                        {agendaJogador.length ? (
+                          <div className="space-y-1">
+                            {agendaJogador.map((item) => (
+                              <div
+                                key={item.vaga.id}
+                                className="flex items-center justify-between border border-slate-200 bg-white px-2 py-1.5"
+                              >
+                                <span className="truncate text-[10px] font-black uppercase text-slate-900">
+                                  {item.equipe?.nome || item.vaga.nome_exibicao || "Equipe"}
+                                </span>
+                                <span className="text-[8px] font-black uppercase text-slate-500">
+                                  {formatarData(campeonato?.data_inicio)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="border border-dashed border-slate-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
+                            Nenhuma agenda encontrada para este perfil neste campeonato.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
