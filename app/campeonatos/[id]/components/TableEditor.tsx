@@ -7,15 +7,8 @@ import {
  Maximize2, Layers, MousePointer2, Check
 } from 'lucide-react'
 
-export default function TableEditor() {
- const params = useParams()
- const campeonatoId = params?.id as string
- 
- const [loading, setLoading] = useState(true)
- const [saving, setSaving] = useState(false)
- 
- const [settings, setSettings] = useState({
- primary_color: '#7cfc00', // Cor da coluna Pontos
+const DEFAULT_SETTINGS = {
+ primary_color: '#7cfc00',
  text_color: '#000000',
  header_bg_color: '#000000',
  header_text_color: '#ffffff',
@@ -25,8 +18,33 @@ export default function TableEditor() {
  border_width: 2,
  border_color: '#000000',
  row_height: 45,
- default_tab: 'geral'
- })
+ default_tab: 'geral',
+}
+
+function pickLayoutSettings(data: any) {
+ return {
+ primary_color: data?.primary_color ?? DEFAULT_SETTINGS.primary_color,
+ text_color: data?.text_color ?? DEFAULT_SETTINGS.text_color,
+ header_bg_color: data?.header_bg_color ?? DEFAULT_SETTINGS.header_bg_color,
+ header_text_color: data?.header_text_color ?? DEFAULT_SETTINGS.header_text_color,
+ row_alt_bg: data?.row_alt_bg ?? DEFAULT_SETTINGS.row_alt_bg,
+ row_bg_primary: data?.row_bg_primary ?? DEFAULT_SETTINGS.row_bg_primary,
+ row_bg_secondary: data?.row_bg_secondary ?? DEFAULT_SETTINGS.row_bg_secondary,
+ border_width: Number(data?.border_width ?? DEFAULT_SETTINGS.border_width),
+ border_color: data?.border_color ?? DEFAULT_SETTINGS.border_color,
+ row_height: Number(data?.row_height ?? DEFAULT_SETTINGS.row_height),
+ default_tab: data?.default_tab ?? DEFAULT_SETTINGS.default_tab,
+ }
+}
+
+export default function TableEditor() {
+ const params = useParams()
+ const campeonatoId = params?.id as string
+ 
+ const [loading, setLoading] = useState(true)
+ const [saving, setSaving] = useState(false)
+ 
+ const [settings, setSettings] = useState(DEFAULT_SETTINGS)
 
  useEffect(() => {
  if (campeonatoId) carregarConfiguracoes()
@@ -39,22 +57,97 @@ export default function TableEditor() {
  .from('campeonato_layout')
  .select('*')
  .eq('campeonato_id', campeonatoId)
+ .order('updated_at', { ascending: false })
+ .limit(1)
  .maybeSingle()
 
- if (data) setSettings(data)
- } catch (err) { console.error(err) } finally { setLoading(false) }
+ if (error) {
+ console.error('Erro ao carregar layout:', {
+ message: error.message,
+ details: error.details,
+ hint: error.hint,
+ code: error.code,
+ })
+ setSettings(DEFAULT_SETTINGS)
+ return
+ }
+
+ setSettings(pickLayoutSettings(data))
+ } catch (err) {
+ console.error('Erro inesperado ao carregar layout:', err)
+ setSettings(DEFAULT_SETTINGS)
+ } finally {
+ setLoading(false)
+ }
  }
 
  async function salvarLayout() {
+ if (!campeonatoId) return alert('Campeonato não encontrado.')
+
  setSaving(true)
  try {
- await supabase.from('campeonato_layout').upsert({
+ const payload = {
  campeonato_id: campeonatoId,
- ...settings,
- updated_at: new Date().toISOString()
+ ...pickLayoutSettings(settings),
+ updated_at: new Date().toISOString(),
+ }
+
+ const { data: existente, error: findError } = await supabase
+ .from('campeonato_layout')
+ .select('id')
+ .eq('campeonato_id', campeonatoId)
+ .order('updated_at', { ascending: false })
+ .limit(1)
+ .maybeSingle()
+
+ if (findError) {
+ console.error('Erro ao buscar layout existente:', {
+ message: findError.message,
+ details: findError.details,
+ hint: findError.hint,
+ code: findError.code,
  })
- alert("Layout atualizado!")
- } catch (err) { alert("Erro ao salvar.") } finally { setSaving(false) }
+ throw findError
+ }
+
+ if (existente?.id) {
+ const { error: updateError } = await supabase
+ .from('campeonato_layout')
+ .update(payload)
+ .eq('id', existente.id)
+
+ if (updateError) {
+ console.error('Erro ao atualizar layout:', {
+ message: updateError.message,
+ details: updateError.details,
+ hint: updateError.hint,
+ code: updateError.code,
+ })
+ throw updateError
+ }
+ } else {
+ const { error: insertError } = await supabase
+ .from('campeonato_layout')
+ .insert([payload])
+
+ if (insertError) {
+ console.error('Erro ao inserir layout:', {
+ message: insertError.message,
+ details: insertError.details,
+ hint: insertError.hint,
+ code: insertError.code,
+ })
+ throw insertError
+ }
+ }
+
+ setSettings(pickLayoutSettings(payload))
+ alert('Layout atualizado!')
+ } catch (err: any) {
+ alert(err?.message || 'Erro ao salvar layout.')
+ } finally {
+ setSaving(false)
+ }
  }
 
  if (loading) return <div className="p-10 text-center uppercase font-semibold text-[10px] animate-pulse">Carregando Estilos...</div>

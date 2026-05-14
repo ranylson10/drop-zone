@@ -13,8 +13,12 @@ interface MVPData {
  equipe_nome_display?: string
  abates?: number
  quedas?: number
+ kd?: number
  avatar_url?: string | null
  equipe_avatar?: string | null
+ equipe_tag?: string | null
+ funcao?: string | null
+ pais?: string | null
  perfil_jogo_id?: string | null
  equipe_id?: string | null
  campeonato_equipe_id?: string | null
@@ -39,8 +43,12 @@ type Row = {
  key: string
  nome: string
  equipe: string
+ tag: string
+ pais: string
+ funcao: string
  abates: number
  quedas: number
+ kd: number
  avatar_url: string | null
  equipe_avatar: string | null
  perfil_jogo_id: string | null
@@ -77,6 +85,40 @@ type JogadorAvulsoRow = {
  foto_url?: string | null
  equipe_id?: string | null
  equipe_avulsa_id?: string | null
+ funcao?: string | null
+ pais?: string | null
+}
+
+const funcaoIcone: Record<string, string> = {
+ rush: '⚡',
+ suporte: '🛡️',
+ capitão: '👑',
+ capitao: '👑',
+ sniper: '🎯',
+ awp: '🎯',
+ granadeiro: '💣',
+ igl: '🧠',
+ flex: '✦',
+}
+
+function flagFromPais(pais?: string | null) {
+ const value = String(pais || '').trim().toLowerCase()
+ if (!value) return '🏳️'
+ if (['br', 'bra', 'brasil', 'brazil'].includes(value)) return '🇧🇷'
+ if (['pt', 'prt', 'portugal'].includes(value)) return '🇵🇹'
+ if (['us', 'usa', 'eua', 'estados unidos'].includes(value)) return '🇺🇸'
+ return value.length <= 4 ? value.toUpperCase() : value
+}
+
+function getFuncaoIcone(funcao?: string | null) {
+ const key = String(funcao || '').trim().toLowerCase()
+ return funcaoIcone[key] || '◎'
+}
+
+function calcKd(abates: number, quedas: number) {
+ const q = Number(quedas || 0)
+ if (!q) return 0
+ return Number((Number(abates || 0) / q).toFixed(2))
 }
 
 export default function MVPTable({ data }: { data: MVPData[] }) {
@@ -185,7 +227,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  jogadorAvulsoIds.length > 0
  ? await supabase
  .from('jogadores_avulsos_campeonato')
- .select('id, nick, uid_jogo, foto_url, equipe_id, equipe_avulsa_id')
+ .select('id, nick, uid_jogo, foto_url, equipe_id, equipe_avulsa_id, funcao')
  .in('id', jogadorAvulsoIds)
  : { data: [], error: null }
 
@@ -235,15 +277,15 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  { data: equipesAvulsasRows, error: equipesAvulsasErr },
  ] = await Promise.all([
  perfilIds.length > 0
- ? supabase.from('perfis_jogo').select('id, nick, foto_capa').in('id', perfilIds)
+ ? supabase.from('perfis_jogo').select('id, nick, foto_capa, funcao').in('id', perfilIds)
  : Promise.resolve({ data: [], error: null }),
  equipeIds.length > 0
- ? supabase.from('equipes').select('id, nome, logo_url').in('id', equipeIds)
+ ? supabase.from('equipes').select('id, nome, tag, logo_url, pais').in('id', equipeIds)
  : Promise.resolve({ data: [], error: null }),
  equipeAvulsaIds.length > 0
  ? supabase
  .from('equipes_avulsas_campeonato')
- .select('id, nome, logo_url')
+ .select('id, nome, tag, logo_url')
  .in('id', equipeAvulsaIds)
  : Promise.resolve({ data: [], error: null }),
  ])
@@ -302,6 +344,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  jogador_campeonato_id: string | null
  nome: string
  equipe: string
+ tag: string
+ pais: string
+ funcao: string
  avatar_url: string | null
  equipe_avatar: string | null
  abates: number
@@ -339,6 +384,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  safeText(jogadorAvulso?.nick, safeText(perfil?.nick, 'SEM NICK'))
  )
  const equipeNome = safeText(campeonatoEquipe?.nome_exibicao || equipe?.nome || equipeAvulsa?.nome, 'SEM EQUIPE')
+ const equipeTag = safeText(equipe?.tag || equipeAvulsa?.tag || equipeNome, equipeNome)
+ const pais = safeText(equipe?.pais || jogadorAvulso?.pais, 'BR')
+ const funcao = safeText(perfil?.funcao || jogadorAvulso?.funcao, 'SEM FUNÇÃO')
  const avatar =
  (perfil?.foto_capa as string | null) ||
  (jogadorAvulso?.foto_url as string | null) ||
@@ -357,6 +405,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  jogador_campeonato_id: jogadorCampeonatoId,
  nome,
  equipe: equipeNome,
+ tag: equipeTag,
+ pais,
+ funcao,
  avatar_url: avatar,
  equipe_avatar: equipeAvatar,
  abates: 0,
@@ -370,6 +421,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 
  if (!atual.nome || atual.nome === 'SEM NICK') atual.nome = nome
  if (!atual.equipe || atual.equipe === 'SEM EQUIPE') atual.equipe = equipeNome
+ if (!atual.tag || atual.tag === 'SEM EQUIPE') atual.tag = equipeTag
+ if (!atual.pais || atual.pais === 'BR') atual.pais = pais
+ if (!atual.funcao || atual.funcao === 'SEM FUNÇÃO') atual.funcao = funcao
  if (!atual.avatar_url && avatar) atual.avatar_url = avatar
  if (!atual.equipe_avatar && equipeAvatar) atual.equipe_avatar = equipeAvatar
  if (!atual.perfil_jogo_id && perfilId) atual.perfil_jogo_id = perfilId
@@ -387,8 +441,12 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  key: `${item.jogador_campeonato_id || item.perfil_jogo_id || item.nome}::${item.campeonato_equipe_id || item.equipe_id || 'sem-equipe'}`,
  nome: item.nome,
  equipe: item.equipe,
+ tag: item.tag,
+ pais: item.pais,
+ funcao: item.funcao,
  abates: item.abates,
  quedas: item.partidas.size,
+ kd: calcKd(item.abates, item.partidas.size),
  avatar_url: item.avatar_url,
  equipe_avatar: item.equipe_avatar,
  perfil_jogo_id: item.perfil_jogo_id,
@@ -396,7 +454,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  campeonato_equipe_id: item.campeonato_equipe_id,
  jogador_campeonato_id: item.jogador_campeonato_id,
  }))
- .sort((a, b) => b.abates - a.abates || b.quedas - a.quedas || a.nome.localeCompare(b.nome))
+ .sort((a, b) => b.abates - a.abates || b.kd - a.kd || b.quedas - a.quedas || a.nome.localeCompare(b.nome))
 
  setRowsDb(arr)
  } finally {
@@ -427,8 +485,12 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  key,
  nome,
  equipe,
+ tag: safeText(item.equipe_tag || equipe, equipe),
+ pais: safeText(item.pais, 'BR'),
+ funcao: safeText(item.funcao, 'SEM FUNÇÃO'),
  abates,
  quedas,
+ kd: Number(item.kd ?? calcKd(abates, quedas)),
  avatar_url: item.avatar_url ?? null,
  equipe_avatar: item.equipe_avatar ?? null,
  perfil_jogo_id: perfilId,
@@ -438,7 +500,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  }
  }) || []
 
- arr.sort((a, b) => b.abates - a.abates || b.quedas - a.quedas || a.nome.localeCompare(b.nome))
+ arr.sort((a, b) => b.abates - a.abates || b.kd - a.kd || b.quedas - a.quedas || a.nome.localeCompare(b.nome))
  return arr
  }, [data])
 
@@ -455,36 +517,37 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  return (
  <div className="w-full animate-in fade-in duration-500">
  <div
- className="overflow-hidden"
+ className="overflow-hidden rounded-sm border border-zinc-200 bg-white shadow-sm"
  style={{
- border: `${layout.border_width}px solid ${layout.border_color}`,
- boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)',
+ border: `1px solid ${layout.border_color}22`,
+ boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
  backgroundColor: layout.row_bg_primary,
  }}
  >
  <table className="w-full border-collapse">
  <thead>
  <tr
- className="font-semibold uppercase "
+ className="font-semibold uppercase"
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
- <th className="w-16 px-4 py-3 text-left text-[10px]">Rank</th>
- <th className="px-4 py-3 text-left text-[10px]">Atleta / Equipe</th>
- <th className="w-28 px-4 py-3 text-right text-[10px]">
- <span className="inline-flex w-full items-center justify-end gap-2">
- <span className="opacity-90">⚔</span>
- <span>Quedas</span>
- </span>
- </th>
+ <th className="w-16 px-3 py-3 text-center text-[10px]">Rank</th>
+ <th className="w-20 px-3 py-3 text-center text-[10px]">Logo</th>
+ <th className="w-20 px-3 py-3 text-center text-[10px]">Foto</th>
+ <th className="w-28 px-3 py-3 text-center text-[10px]">Tag</th>
+ <th className="px-3 py-3 text-left text-[10px]">Nick</th>
+ <th className="w-24 px-3 py-3 text-center text-[10px]">Bandeira</th>
+ <th className="w-24 px-3 py-3 text-center text-[10px]">Função</th>
+ <th className="w-24 px-3 py-3 text-center text-[10px]">Quedas</th>
+ <th className="w-24 px-3 py-3 text-center text-[10px]">K.D</th>
  <th
- className="w-28 px-4 py-3 text-center text-[10px]"
+ className="w-24 px-3 py-3 text-center text-[10px]"
  style={{
- backgroundColor: '#ff004c',
- color: '#000',
- borderLeft: `2px solid ${layout.border_color}`,
+ backgroundColor: layout.primary_color,
+ color: layout.text_color,
+ borderLeft: `1px solid ${layout.border_color}22`,
  }}
  >
- Kills
+ Kill
  </th>
  </tr>
  </thead>
@@ -493,11 +556,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  {rows.length === 0 && (
  <tr>
  <td
- colSpan={4}
- className="text-center text-[10px] font-semibold uppercase "
+ colSpan={10}
+ className="text-center text-[10px] font-semibold uppercase"
  style={{
- backgroundColor: '#c7d6ff',
- color: '#7a7a7a',
+ backgroundColor: layout.row_bg_secondary,
+ color: layout.text_color,
  height: 70,
  }}
  >
@@ -524,36 +587,68 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  borderColor: `${layout.border_color}22`,
  }}
  >
- <td className="px-4 text-[10px] font-semibold ">{index + 1}º</td>
+ <td className="px-3 text-center text-[14px] font-black" style={{ color: layout.primary_color }}>
+ {index + 1}º
+ </td>
 
- <td className="px-4">
- <div className="flex items-center gap-3">
+ <td className="px-3 text-center">
+ <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white">
  <img
- src={item.avatar_url || '/placeholder.png'}
- className="h-7 w-7 border border-zinc-200 bg-white object-cover"
+ src={item.equipe_avatar || '/placeholder.png'}
+ className="h-full w-full object-cover"
  alt=""
  />
-
- <div className="min-w-0">
- <div className="flex min-w-0 items-center gap-2">
- <span className="truncate text-[12px] font-semibold uppercase ">
- {item.nome}
- </span>
- <span className="text-[10px] font-semibold uppercase opacity-40">/</span>
- <span className="truncate text-[10px] font-semibold uppercase opacity-80">
- {item.equipe}
- </span>
- </div>
- </div>
  </div>
  </td>
 
- <td className="px-4 text-right text-[10px] font-semibold ">{item.quedas || 0}</td>
+ <td className="px-3 text-center">
+ <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white">
+ <img
+ src={item.avatar_url || '/placeholder.png'}
+ className="h-full w-full object-cover"
+ alt=""
+ />
+ </div>
+ </td>
+
+ <td className="px-3 text-center text-[11px] font-black uppercase">
+ {item.tag}
+ </td>
+
+ <td className="px-3 text-left text-[12px] font-black uppercase">
+ <span className="block max-w-[240px] truncate">{item.nome}</span>
+ </td>
+
+ <td className="px-3 text-center text-lg">
+ {flagFromPais(item.pais)}
+ </td>
+
+ <td className="px-3 text-center">
+ <span
+ className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[14px] font-black"
+ style={{
+ borderColor: layout.primary_color,
+ color: layout.primary_color,
+ }}
+ title={item.funcao}
+ >
+ {getFuncaoIcone(item.funcao)}
+ </span>
+ </td>
+
+ <td className="px-3 text-center text-[13px] font-black" style={{ color: layout.primary_color }}>
+ {item.quedas || 0}
+ </td>
+
+ <td className="px-3 text-center text-[13px] font-black text-[#2563eb]">
+ {Number(item.kd || 0).toFixed(2)}
+ </td>
 
  <td
- className="text-center text-[18px] font-semibold "
+ className="px-3 text-center text-[14px] font-black"
  style={{
- borderLeft: `2px solid ${layout.border_color}`,
+ color: layout.primary_color,
+ borderLeft: `1px solid ${layout.border_color}22`,
  }}
  >
  {item.abates}

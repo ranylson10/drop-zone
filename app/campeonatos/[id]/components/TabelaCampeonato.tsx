@@ -66,6 +66,7 @@ interface CampeonatoEquipeRow {
  id: string
  equipe_id: string | null
  equipe_avulsa_id: string | null
+ line_id?: string | null
  grupo_id: string | null
  status: string | null
  tipo_origem?: 'oficial' | 'app' | 'avulsa' | null
@@ -206,7 +207,7 @@ export default function TabelaCampeonato() {
  : Promise.resolve({ data: [], error: null }),
  supabase
  .from('campeonato_equipes')
- .select('id, equipe_id, equipe_avulsa_id, grupo_id, status, tipo_origem, nome_exibicao, numero_vaga')
+ .select('id, equipe_id, equipe_avulsa_id, line_id, grupo_id, status, tipo_origem, nome_exibicao, numero_vaga')
  .eq('campeonato_id', campeonatoId)
  .order('created_at', { ascending: true }),
  supabase
@@ -268,10 +269,14 @@ export default function TabelaCampeonato() {
  ((equipesAvulsasData || []) as any[]).map((row) => [String(row.id), row])
  )
 
+ const campeonatoEquipeIdsSet = new Set(inscricoesRows.map((row) => String(row.id)))
+
  const equipePublicaToCampeonatoEquipe = new Map<string, string>()
  inscricoesRows.forEach((row) => {
  const equipePublicaId = row.equipe_id || row.equipe_avulsa_id
- if (equipePublicaId) {
+ // Fallback legado: só deve ser usado para resultados antigos.
+ // No fluxo atual, resultados_jogos.equipe_id já é campeonato_equipes.id.
+ if (equipePublicaId && !equipePublicaToCampeonatoEquipe.has(String(equipePublicaId))) {
  equipePublicaToCampeonatoEquipe.set(String(equipePublicaId), String(row.id))
  }
  })
@@ -327,10 +332,15 @@ export default function TabelaCampeonato() {
  >()
 
  resultadosFiltrados.forEach((row) => {
- const equipePublicaId = String(row.equipe_id || '').trim()
- if (!equipePublicaId) return
+ const equipeRef = String(row.equipe_id || '').trim()
+ if (!equipeRef) return
 
- const campeonatoEquipeId = equipePublicaToCampeonatoEquipe.get(equipePublicaId)
+ // No modo line, resultados_jogos.equipe_id representa campeonato_equipes.id.
+ // Se vier um registro antigo com equipe_id público, cai no fallback legado abaixo.
+ const campeonatoEquipeId = campeonatoEquipeIdsSet.has(equipeRef)
+ ? equipeRef
+ : equipePublicaToCampeonatoEquipe.get(equipeRef)
+
  if (!campeonatoEquipeId) return
 
  const atual = statsMap.get(campeonatoEquipeId) || {
@@ -414,12 +424,12 @@ export default function TabelaCampeonato() {
  try {
  const { data } = await supabase
  .from('resultados_mvp')
- .select('campeonato_id, nick_raw, game_id_raw, abates, equipe_id, equipes(nome, avatar_url)')
+ .select('campeonato_id, nick_raw, game_id_raw, abates, equipe_id, campeonato_equipe_id, equipes(nome, avatar_url)')
  .eq('campeonato_id', campeonatoId)
 
  const map = new Map<string, MVPData>()
  ;(data || []).forEach((row: any) => {
- const key = String(row.game_id_raw || row.nick_raw || Math.random())
+ const key = `${String(row.game_id_raw || row.nick_raw || Math.random())}::${String(row.campeonato_equipe_id || row.equipe_id || 'sem-line')}`
  const prev = map.get(key) || {
  nick: row.nick_raw,
  equipe_id: row.equipe_id,

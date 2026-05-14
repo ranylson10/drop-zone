@@ -60,6 +60,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: error.message, details: error.details }, { status: 400 })
       }
 
+      const campeonatoEquipeId = String(
+        (data as any)?.campeonato_equipe_id ||
+        (data as any)?.inscricao_id ||
+        ''
+      ).trim()
+
+      if (campeonatoEquipeId) {
+        await supabaseAdmin.rpc('fn_garantir_line_para_vaga', {
+          p_campeonato_equipe_id: campeonatoEquipeId,
+          p_nome: null,
+          p_user_id: user.id,
+          p_plataforma: 'mobile',
+        })
+      }
+
       return NextResponse.json({ ok: true, data })
     }
 

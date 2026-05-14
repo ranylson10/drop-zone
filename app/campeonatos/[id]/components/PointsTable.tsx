@@ -550,9 +550,9 @@ export default function TabelaCampeonato() {
 
  <div
  style={{
- border: `${layout.border_width}px solid ${layout.border_color}`,
+ border: `1px solid ${layout.border_color}22`,
  backgroundColor: layout.row_bg_primary,
- boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)',
+ boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
  }}
  className='overflow-hidden'
  >

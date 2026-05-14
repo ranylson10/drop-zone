@@ -262,7 +262,7 @@ export default function EquipePage() {
       const { data: equipesData, error: equipesError } = await supabase
         .from("equipes")
         .select(
-          "id, nome, tag, logo_url, cover_url, descricao, cidade, estado, pais, data_fundacao, criado_por, created_at, updated_at"
+          "id, codigo_publico, nome, tag, logo_url, cover_url, descricao, cidade, estado, pais, data_fundacao, criado_por, created_at, updated_at"
         )
         .order("created_at", { ascending: false });
 
@@ -273,6 +273,7 @@ export default function EquipePage() {
       for (const item of equipesData || []) {
         mapa.set(item.id, {
           id: item.id,
+          codigo_publico: item.codigo_publico || null,
           nome: item.nome,
           tag: item.tag,
           logo_url: item.logo_url,

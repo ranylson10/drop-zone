@@ -758,7 +758,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
       const { data: inscricaoData } = await supabase
         .from('campeonato_equipes')
-        .select('id, created_at')
+        .select('id, created_at, line_id, nome_exibicao')
         .eq('campeonato_id', id)
         .eq('equipe_id', equipeCompraId)
         .order('created_at', { ascending: false })
@@ -768,6 +768,16 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       const referenciaId = (inscricaoData as any)?.id || null
       const dataCompra = (inscricaoData as any)?.created_at || new Date().toISOString()
       const descricaoDetalhada = `Compra de vaga - ${camp?.nome || 'Campeonato'} | ${equipeSelecionadaCompra.nome}`
+
+      if (referenciaId && !(inscricaoData as any)?.line_id) {
+        const { error: lineError } = await supabase.rpc('fn_garantir_line_para_vaga', {
+          p_campeonato_equipe_id: referenciaId,
+          p_nome: (inscricaoData as any)?.nome_exibicao || equipeSelecionadaCompra.nome,
+          p_user_id: usuarioAtual.id,
+          p_plataforma: camp?.plataforma || 'mobile',
+        })
+        if (lineError) console.warn('Não foi possível vincular line automática na vaga:', lineError)
+      }
 
       if (referenciaId) {
         const { error: updateInscricaoError } = await supabase
@@ -1568,20 +1578,25 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
             {abaAtiva === 'tabela' && (
               <div className="flex flex-col gap-6">
-                <div className="sticky top-[108px] z-30 space-y-2">
-                  <div className="dz-subtabs">
+                <div className="sticky top-[108px] z-30 border border-zinc-200 bg-white p-2">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     {[
                       { id: 'classificacao', label: 'Classificação', icon: <Trophy size={14} /> },
                       { id: 'mvp', label: 'Ranking MVP', icon: <Target size={14} /> },
-                      { id: 'sumula', label: 'Registrar Súmula', icon: <FileText size={14} /> },
+                      { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
                       { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
                     ].map((sub) => (
                       <button
                         key={sub.id}
                         onClick={() => setSubAbaTabela(sub.id as SubAbaTabela)}
-                        className={`dz-subtab ${subAbaTabela === sub.id ? 'dz-subtab-active' : ''}`}
+                        className={`flex h-10 items-center justify-center gap-2 border px-3 text-[10px] font-black uppercase tracking-[0.10em] transition ${
+                          subAbaTabela === sub.id
+                            ? 'border-[#2563eb] bg-[#2563eb] text-white'
+                            : 'border-zinc-200 bg-white text-[#142340] hover:border-[#2563eb] hover:text-[#2563eb]'
+                        }`}
                       >
-                        {sub.icon} {sub.label}
+                        {sub.icon}
+                        <span className="truncate">{sub.label}</span>
                       </button>
                     ))}
                   </div>

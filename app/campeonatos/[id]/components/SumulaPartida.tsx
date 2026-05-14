@@ -160,12 +160,13 @@ const RowEquipe = React.memo(function RowEquipe({
  index,
  locked,
  rankDuplicado,
+ showVinculo,
 }: any) {
  if (!item.equipe) {
  return (
  <tr className="bg-zinc-50/30 text-zinc-600">
  <td className="p-2 text-center font-semibold text-xs border-r">{item.slot}</td>
- <td colSpan={4} className="p-2 text-[10px] font-bold uppercase opacity-50">
+ <td colSpan={showVinculo ? 4 : 3} className="p-2 text-[10px] font-bold uppercase opacity-50">
  <span className="flex items-center gap-1">
  <UserMinus size={12} /> Slot Vazio
  </span>
@@ -203,6 +204,7 @@ const RowEquipe = React.memo(function RowEquipe({
  </div>
  </td>
 
+ {showVinculo ? (
  <td className="p-1 px-3 border-x border-zinc-100">
  <div className="relative">
  <select
@@ -246,6 +248,7 @@ const RowEquipe = React.memo(function RowEquipe({
  )}
  </div>
  </td>
+ ) : null}
 
  <td className="p-1 border-r border-zinc-100 text-center">
  <input
@@ -1067,6 +1070,58 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return meta
  }, [campeonatoId])
 
+ const salvarVinculoEquipe = useCallback(async (jogoId: string, campeonatoEquipeId: string, nomeRaw: string) => {
+ const jogoIdSeguro = String(jogoId || '').trim()
+ const campeonatoEquipeIdSeguro = String(campeonatoEquipeId || '').trim()
+ const nomeRawSeguro = String(nomeRaw || '').trim()
+
+ if (!jogoIdSeguro || !campeonatoEquipeIdSeguro) return
+
+ if (!nomeRawSeguro) {
+ const { error } = await supabase
+ .from('jogo_vinculos_equipes')
+ .delete()
+ .eq('jogo_id', jogoIdSeguro)
+ .eq('campeonato_equipe_id', campeonatoEquipeIdSeguro)
+
+ if (error) {
+ console.error('Erro ao remover vínculo:', {
+ message: error.message,
+ details: error.details,
+ hint: error.hint,
+ code: error.code,
+ })
+ throw error
+ }
+
+ return
+ }
+
+ const { error } = await supabase
+ .from('jogo_vinculos_equipes')
+ .upsert(
+ [
+ {
+ jogo_id: jogoIdSeguro,
+ campeonato_equipe_id: campeonatoEquipeIdSeguro,
+ nome_raw: nomeRawSeguro,
+ updated_at: new Date().toISOString(),
+ },
+ ],
+ { onConflict: 'jogo_id,campeonato_equipe_id' }
+ )
+
+ if (error) {
+ console.error('Erro ao salvar vínculo da equipe:', {
+ message: error.message,
+ details: error.details,
+ hint: error.hint,
+ code: error.code,
+ })
+ throw error
+ }
+ }, [])
+
  const persistirVinculosEmLote = useCallback(async (items: { campeonato_equipe_id: string; nome_raw: string }[], jogoId: string) => {
  const unicos = new Map<string, { campeonato_equipe_id: string; nome_raw: string }>()
 
@@ -1078,22 +1133,13 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  })
 
  for (const item of Array.from(unicos.values())) {
- const { error } = await supabase
- .from('jogo_vinculos_equipes')
- .upsert(
- [{
- jogo_id: jogoId,
- campeonato_equipe_id: item.campeonato_equipe_id,
- nome_raw: item.nome_raw,
- }],
- { onConflict: 'jogo_id,campeonato_equipe_id' }
- )
-
- if (error) {
+ try {
+ await salvarVinculoEquipe(jogoId, item.campeonato_equipe_id, item.nome_raw)
+ } catch (error) {
  console.error('Erro ao persistir vínculo em lote:', error)
  }
  }
- }, [])
+ }, [salvarVinculoEquipe])
 
  // ✅ lock persistente
  const carregarLock = useCallback(async (jogoId: string, mapa: string) => {
@@ -1503,23 +1549,12 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return
  }
 
- const { error } = await supabase
- .from('jogo_vinculos_equipes')
- .upsert(
- [{
- jogo_id: jogoIdAtual,
- campeonato_equipe_id: equipeKey,
- nome_raw: nomeRaw,
- }],
- { onConflict: 'jogo_id,campeonato_equipe_id' }
- )
-
- if (error) console.error('Erro ao salvar vínculo da equipe:', error)
+ await salvarVinculoEquipe(jogoIdAtual, equipeKey, nomeRaw)
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
  } catch (error) {
  console.error('Erro ao salvar vínculo da equipe:', error)
  }
- }, [blocoSelecionado, quedaAtiva, vinculos, salvarSnapshotQueda])
+ }, [blocoSelecionado, quedaAtiva, vinculos, salvarSnapshotQueda, salvarVinculoEquipe])
 
  // ---------------- Upload MatchResult ----------------
  const handleFileUpload = async (e: any) => {
@@ -2197,67 +2232,142 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  }
 
  // ---------------- Render ----------------
- return (
- <div className="border border-zinc-200 bg-transparent/80 p-3">
- {/* HEADER */}
- <div className="sticky top-0 z-50 border border-zinc-200 bg-white/80 px-3 py-2 ">
- <div className="flex flex-wrap items-center justify-between gap-3">
- <div className="flex min-w-0 flex-wrap items-center gap-2">
- <TabButton active compact icon={<Filter size={14} />} label="Filtro" />
+ const temMatchResult = equipesNoLog.length > 0 || dadosRawLog.length > 0 || mvpItems.length > 0
 
- <div className="flex max-w-[240px] gap-1 overflow-x-auto no-scrollbar">
- {fases.map((f) => (
+ return (
+ <div className="border border-zinc-200 bg-white">
+ <div className="grid grid-cols-12">
+ {/* SIDEBAR / PASTAS */}
+ <aside className="col-span-12 border-r border-zinc-200 bg-white lg:col-span-2">
+ <div className="sticky top-0 max-h-[calc(100vh-90px)] overflow-auto">
+ <div className="border-b border-zinc-200 px-4 py-3">
+ <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#142340]">
+ <Filter size={14} className="text-[#2563eb]" />
+ Navegação
+ </div>
+ </div>
+
+ <div className="p-2">
+ {fases.map((fase) => {
+ const faseAtiva = faseSelecionadaId === fase.id
+
+ return (
+ <div key={fase.id} className="mb-1">
  <button
- key={f.id}
- onClick={() => setFaseSelecionadaId(f.id)}
- title={f.nome}
- className={`h-8 border px-3 text-[10px] font-semibold uppercase tracking-[0.1em] whitespace-nowrap ${
- faseSelecionadaId === f.id
- ? 'border-[#2563eb] bg-[#2563eb] text-[#142340]'
- : 'border-zinc-200 bg-transparent text-zinc-600 hover:bg-transparent'
+ type="button"
+ onClick={() => setFaseSelecionadaId(fase.id)}
+ className={`flex h-11 w-full items-center justify-between border px-4 text-left text-[12px] font-black uppercase italic tracking-[0.08em] ${
+ faseAtiva
+ ? 'border-[#0b1224] bg-[#0b1224] text-white'
+ : 'border-zinc-200 bg-[#e8eef6] text-[#142340]'
  }`}
  >
- {f.nome}
+ <span>{fase.nome}</span>
+ <ChevronRight size={17} className={`${faseAtiva ? 'rotate-90 text-[#6b8cff]' : 'text-[#6b8cff]'}`} />
+ </button>
+
+ {faseAtiva ? (
+ <div className="border-x border-zinc-200">
+ {blocos.map((grupo) => {
+ const grupoAtivo = blocoSelecionado?.id === grupo.id
+
+ return (
+ <div key={grupo.id}>
+ <button
+ type="button"
+ onClick={() => handleSelecionarBloco(grupo)}
+ className={`flex h-10 w-full items-center justify-between border-b border-zinc-200 px-4 text-left text-[11px] font-black uppercase italic tracking-[0.08em] ${
+ grupoAtivo
+ ? 'bg-[#dfe7f1] text-[#142340]'
+ : 'bg-[#eef2f7] text-[#142340]'
+ }`}
+ >
+ <span className="truncate">{grupo.nome_bloco}</span>
+ <ChevronRight size={16} className={`${grupoAtivo ? 'rotate-90 text-[#6b8cff]' : 'text-[#6b8cff]'}`} />
+ </button>
+
+ {grupoAtivo ? (
+ <div>
+ {quedasProcessadas.map((q) => (
+ <button
+ key={q.id}
+ type="button"
+ onClick={() => handleSelecionarQueda(q)}
+ className={`flex h-10 w-full items-center gap-3 border-b border-zinc-200 px-5 text-left text-[11px] font-black uppercase italic tracking-[0.08em] ${
+ quedaAtiva?.id === q.id
+ ? 'bg-white text-[#2563eb] shadow-[inset_3px_0_0_#2563eb]'
+ : 'bg-white text-[#142340] hover:text-[#2563eb]'
+ }`}
+ >
+ <span className="text-base leading-none">🪂</span>
+ <span className="truncate">{q.mapa}</span>
  </button>
  ))}
  </div>
-
- <div className="h-6 w-px bg-transparent" />
-
- <div className="flex items-center gap-1">
- <TabButton
- active={tab === 'classificacao'}
- compact
- icon={<FileSpreadsheet size={14} />}
- label="Classificação"
- onClick={() => setTab('classificacao')}
- />
- <TabButton
- active={tab === 'mvp'}
- compact
- icon={<UserCircle2 size={14} />}
- label="MVP"
- onClick={() => setTab('mvp')}
- />
+ ) : null}
  </div>
+ )
+ })}
+ </div>
+ ) : null}
+ </div>
+ )
+ })}
+ </div>
+ </div>
+ </aside>
 
- {quedaAtiva && (
+ {/* CONTEÚDO */}
+ <main className="col-span-12 min-w-0 lg:col-span-10">
+ {/* HEADER COMPACTO APROVADO */}
+ <div className="sticky top-0 z-50 flex min-h-[58px] flex-wrap items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-2 backdrop-blur">
+ {quedaAtiva ? (
  <button
  type="button"
  title={locked ? 'Travado' : 'Editável'}
- className={`inline-flex h-8 items-center justify-center gap-1 border px-2 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+ className={`inline-flex h-9 items-center justify-center gap-2 border px-3 text-[10px] font-black uppercase tracking-[0.10em] ${
  locked
- ? 'border-zinc-200 bg-transparent text-zinc-600'
- : 'border-[#2563eb] bg-[#2563eb] text-[#142340]'
+ ? 'border-zinc-200 bg-white text-zinc-500'
+ : 'border-[#2563eb] bg-[#2563eb] text-white'
  }`}
  >
- {locked ? <Lock size={12} /> : <Unlock size={12} />}
+ {locked ? <Lock size={13} /> : <Unlock size={13} />}
  <span>{locked ? 'Travado' : 'Editável'}</span>
  </button>
- )}
+ ) : null}
+
+ <div className="flex min-w-[180px] flex-1 items-center gap-3">
+ <span className="text-lg leading-none">🪂</span>
+ <div className="min-w-0">
+ <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Queda atual</p>
+ <h3 className="truncate text-base font-black uppercase tracking-tight text-[#142340]">
+ {quedaAtiva?.mapa || 'Selecione uma queda'}
+ </h3>
+ </div>
  </div>
 
- <div className="flex flex-wrap items-center gap-1">
+ <div className="flex items-center gap-1 border border-zinc-200 bg-white p-1">
+ <button
+ type="button"
+ onClick={() => setTab('classificacao')}
+ className={`inline-flex h-8 items-center gap-2 border px-3 text-[10px] font-black uppercase tracking-[0.10em] ${
+ tab === 'classificacao' ? 'border-[#2563eb] bg-[#2563eb] text-white' : 'border-zinc-200 bg-white text-zinc-500'
+ }`}
+ >
+ <FileSpreadsheet size={13} /> Equipes
+ </button>
+ <button
+ type="button"
+ onClick={() => setTab('mvp')}
+ className={`inline-flex h-8 items-center gap-2 border px-3 text-[10px] font-black uppercase tracking-[0.10em] ${
+ tab === 'mvp' ? 'border-[#2563eb] bg-[#2563eb] text-white' : 'border-zinc-200 bg-white text-zinc-500'
+ }`}
+ >
+ <UserCircle2 size={13} /> Jogadores
+ </button>
+ </div>
+
+ <div className="ml-auto flex items-center gap-1">
  <input
  type="file"
  id="log-up"
@@ -2272,8 +2382,8 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  title="Importar MatchResult"
  className={`inline-flex h-8 w-8 cursor-pointer items-center justify-center border ${
  locked
- ? 'border-zinc-200 bg-transparent text-zinc-600'
- : 'border-zinc-200 bg-transparent text-zinc-600 hover:bg-transparent'
+ ? 'border-zinc-200 bg-white text-zinc-400'
+ : 'border-zinc-200 bg-white text-[#2563eb] hover:border-[#2563eb]'
  }`}
  onClick={(ev) => {
  if (locked) {
@@ -2289,7 +2399,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  onClick={salvarTudo}
  disabled={loading || isChanging || !quedaAtiva}
  title="Salvar tudo"
- className="inline-flex h-8 w-8 items-center justify-center border border-[#2563eb] bg-[#2563eb] text-[#142340] disabled:opacity-50"
+ className="inline-flex h-8 w-8 items-center justify-center border border-[#2563eb] bg-[#2563eb] text-white disabled:opacity-50"
  >
  {loading ? <Loader2 size={14} className="animate-spin" /> : <SaveAll size={14} />}
  </button>
@@ -2298,8 +2408,8 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  <button
  onClick={salvarClassificacao}
  disabled={loading || isChanging || !quedaAtiva}
- title="Salvar só queda"
- className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-transparent text-zinc-600 disabled:opacity-50 hover:bg-transparent"
+ title="Salvar equipes"
+ className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-white text-[#2563eb] disabled:opacity-50 hover:border-[#2563eb]"
  >
  <Save size={14} />
  </button>
@@ -2307,8 +2417,8 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  <button
  onClick={salvarMvp}
  disabled={loading || isChanging || !quedaAtiva}
- title="Salvar só MVP"
- className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-transparent text-zinc-600 disabled:opacity-50 hover:bg-transparent"
+ title="Salvar jogadores"
+ className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-white text-[#2563eb] disabled:opacity-50 hover:border-[#2563eb]"
  >
  <Users size={14} />
  </button>
@@ -2318,70 +2428,38 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  onClick={destravar}
  disabled={!locked || loading || isChanging}
  title="Editar / destravar"
- className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-transparent text-zinc-600 disabled:opacity-50 hover:bg-transparent"
+ className="inline-flex h-8 w-8 items-center justify-center border border-zinc-200 bg-white text-[#2563eb] disabled:opacity-50 hover:border-[#2563eb]"
  >
  <Pencil size={14} />
  </button>
  </div>
  </div>
- </div>
 
- <div className="grid grid-cols-12 gap-3">
- {/* BLOCOS */}
- <div className="col-span-12 lg:col-span-2 space-y-2">
- {blocos.map((b) => (
- <button
- key={b.id}
- onClick={() => handleSelecionarBloco(b)}
- className={`w-full text-left px-3 py-2 border border-zinc-200 font-semibold uppercase text-[10px] flex justify-between items-center ${
- blocoSelecionado?.id === b.id ? 'bg-[#2563eb] translate-x-0.5 translate-y-0.5 -none' : 'bg-white/40'
- }`}
- >
- {b.nome_bloco} <ChevronRight size={14} />
- </button>
- ))}
- </div>
-
- {/* CONTEÚDO */}
- <div className="col-span-12 lg:col-span-10 space-y-3">
- {/* QUEDAS */}
- <div className="flex gap-1 bg-zinc-200 p-1 border border-zinc-200 w-fit rounded-sm">
- {quedasProcessadas.map((q) => (
- <button
- key={q.id}
- onClick={() => handleSelecionarQueda(q)}
- className={`px-4 py-1 text-[9px] font-semibold uppercase transition-all rounded-sm ${
- quedaAtiva?.id === q.id ? 'bg-white text-[#142340]' : 'text-zinc-500 hover:text-[#142340]'
- }`}
- >
- Q{q.numero_partida} ({q.mapa})
- </button>
- ))}
- </div>
-
- <div className="flex flex-wrap gap-1">
- <div className="border border-zinc-200 bg-transparent px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+ <div className="space-y-3 p-4">
+ <div className="flex flex-wrap items-center gap-2">
+ <div className="border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
  LOG: <span className="text-[#2563eb]">{equipesNoLog.length}</span>
  </div>
- <div className="border border-zinc-200 bg-transparent px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+ <div className="border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
  MVP: <span className="text-[#2563eb]">{Object.keys(mvpEdits).length}</span>
  </div>
- <div className={`border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
- ranksDuplicados.length ? 'border-red-500 bg-red-500 text-[#142340]' : 'border-zinc-200 bg-transparent text-zinc-600'
+ <div className={`border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+ ranksDuplicados.length ? 'border-red-500 bg-red-50 text-red-600' : 'border-zinc-200 bg-white text-zinc-600'
  }`}>
  DUP: {ranksDuplicados.length}
  </div>
+ <div className="ml-auto text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+ {temMatchResult ? 'MatchResult carregado' : 'Pontuação manual'}
+ </div>
  </div>
 
- {/* CARD */}
- <div className="relative border border-zinc-200 bg-white/40 -[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+ <div className="relative overflow-hidden border border-zinc-200 bg-white/40 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.08)]">
  {isChanging && (
- <div className="absolute inset-0 z-40 bg-white/40/60 -[1px] flex flex-col items-center justify-center">
+ <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-white/60 backdrop-blur-[1px]">
  <RefreshCw size={24} className="animate-spin text-[#142340]" />
  </div>
  )}
 
- {/* TAB: CLASSIFICAÇÃO */}
  {tab === 'classificacao' && (
  <div className="overflow-x-auto">
  <table className="w-full border-collapse">
@@ -2389,10 +2467,12 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  <tr className="bg-white text-[#142340] text-[9px] font-semibold uppercase">
  <th className="p-2 text-center w-10">#</th>
  <th className="p-2 text-left">EQUIPE</th>
- <th className="p-2 text-center w-48 bg-zinc-800 text-[#2563eb]">VÍNCULO TEAMNAME (PERSISTENTE)</th>
+ {temMatchResult ? (
+ <th className="p-2 text-center w-48 bg-zinc-800 text-[#2563eb]">VÍNCULO TEAMNAME</th>
+ ) : null}
  <th className="p-2 text-center w-20">POS</th>
  <th className="p-2 text-center w-20">ABATES</th>
- <th className="p-2 text-center bg-[#2563eb] text-[#142340] w-24">TOTAL</th>
+ <th className="p-2 text-center bg-[#2563eb] text-white w-24">TOTAL</th>
  </tr>
  </thead>
  <tbody>
@@ -2409,6 +2489,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  onResultChange={onResultChange}
  locked={locked}
  rankDuplicado={!!item.equipe && ranksDuplicados.includes(Number(resultadosCalculados[getVagaKey(item)]?.rank || 0))}
+ showVinculo={temMatchResult}
  />
  ))}
  </tbody>
@@ -2416,28 +2497,27 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  </div>
  )}
 
- {/* TAB: MVP */}
  {tab === 'mvp' && (
  <div className="p-3 space-y-4">
- <div className="border border-zinc-200 ">
+ <div className="border border-zinc-200">
  <div className="bg-white text-[#142340] px-3 py-2 text-[10px] font-semibold uppercase flex items-center justify-between">
- <span>MVP DA QUEDA (EDITÁVEL)</span>
+ <span>PONTUAÇÃO DOS JOGADORES</span>
  <span className="text-[9px] font-bold text-zinc-600">
- Dica: edite o nick e clique no ✓ pra salvar pro campeonato inteiro
+ Jogadores pontuados por line/vaga
  </span>
  </div>
 
  <div className="max-h-[520px] overflow-auto">
  {mvpAgrupadoPorEquipe.length === 0 && (
- <div className="p-5 text-center text-[10px] font-semibold text-zinc-500 uppercase ">
- Importa um MatchResult pra preencher automaticamente ou edite manualmente.
+ <div className="p-5 text-center text-[10px] font-semibold text-zinc-500 uppercase">
+ Importe um MatchResult para preencher jogadores automaticamente.
  </div>
  )}
 
  {mvpAgrupadoPorEquipe.map((grupo, grupoIndex) => (
  <div key={`${grupo.equipeId || 'sem-equipe'}-${grupo.equipeNome}-${grupoIndex}`} className="border-b-2 border-zinc-200 last:border-b-0">
- <div className="bg-[#2563eb]/20 border-b border-zinc-200 px-3 py-2 flex items-center justify-between">
- <span className="text-[10px] font-semibold uppercase ">{grupo.equipeNome}</span>
+ <div className="bg-[#2563eb]/10 border-b border-zinc-200 px-3 py-2 flex items-center justify-between">
+ <span className="text-[10px] font-semibold uppercase">{grupo.equipeNome}</span>
  <span className="text-[9px] font-semibold uppercase text-zinc-500">{grupo.itens.length} jogador(es)</span>
  </div>
 
@@ -2487,7 +2567,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  className={`border border-zinc-200 px-2 py-1 text-[9px] font-semibold uppercase ${
  locked || item.isBusy
  ? 'bg-zinc-200 text-zinc-500'
- : 'bg-[#2563eb] text-[#142340] hover:bg-[#2563eb]'
+ : 'bg-[#2563eb] text-white hover:bg-[#2563eb]'
  }`}
  >
  {item.isBusy ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
@@ -2526,17 +2606,12 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  </div>
  ))}
  </div>
-
- <div className="p-2 border-t border-zinc-200 bg-white/40 flex items-center justify-between">
- <span className="text-[9px] font-semibold uppercase text-zinc-500 flex items-center gap-2">
- <Pencil size={12} /> jogadores agrupados por equipe e vinculados automaticamente
- </span>
- </div>
  </div>
  </div>
  )}
  </div>
  </div>
+ </main>
  </div>
  </div>
  )

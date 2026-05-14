@@ -27,6 +27,7 @@ import RankingTierBadge from '@/app/components/RankingTierBadge'
 
 type Equipe = {
  id: string
+ codigo_publico?: number | string | null
  nome: string
  tag: string | null
  logo_url: string | null
@@ -403,7 +404,7 @@ export default function PerfilEquipePage() {
  supabase
  .from('equipes')
  .select(
- 'id, nome, tag, logo_url, cover_url, descricao, cidade, estado, pais, data_fundacao, criado_por, created_at, updated_at'
+ 'id, codigo_publico, nome, tag, logo_url, cover_url, descricao, cidade, estado, pais, data_fundacao, criado_por, created_at, updated_at'
  )
  .eq('id', equipeId)
  .maybeSingle(),
@@ -595,9 +596,16 @@ export default function PerfilEquipePage() {
  </div>
  </div>
 
- <p className="mt-2 text-[13px] font-medium uppercase tracking-wide text-zinc-500 max-md:mt-1 max-md:text-[12px]">
+ <div className="mt-2 flex flex-wrap items-center gap-2 max-md:mt-1">
+ <p className="text-[13px] font-medium uppercase tracking-wide text-zinc-500 max-md:text-[12px]">
  // {equipe.nome}
  </p>
+ {equipe.codigo_publico ? (
+ <span className="border border-[#2563eb]/30 bg-[#2563eb]/10 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#2563eb]">
+ ID #{equipe.codigo_publico}
+ </span>
+ ) : null}
+ </div>
 
  {localidade ? (
  <p className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 max-md:mt-2 max-md:text-[10px] max-md:tracking-wide">

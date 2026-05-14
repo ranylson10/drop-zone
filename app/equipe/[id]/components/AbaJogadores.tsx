@@ -19,6 +19,7 @@ import {
  Inbox,
 } from 'lucide-react'
 import Image from 'next/image'
+import PlayerCard from '@/app/components/PlayerCard'
 
 type PerfilEquipe = {
  id: string
@@ -45,6 +46,8 @@ type ConviteEquipe = {
  perfil: PerfilEquipe | null
 }
 
+type SubAbaAtletas = 'elenco' | 'convites' | 'pedidos' | 'avulsos'
+
 type JogadorAvulsoEscalado = {
  row_id: string
  campeonato_id: string
@@ -70,6 +73,13 @@ function roleIcon(role: string | null) {
  default:
  return <Users size={14} className="text-zinc-500" />
  }
+}
+
+function tierPorIndice(index: number): 'SS' | 'S' | 'A' | 'B' | 'C' | 'D' | 'E' {
+ if (index === 0) return 'B'
+ if (index === 1) return 'C'
+ if (index === 2) return 'C'
+ return 'D'
 }
 
 function formatarData(data?: string | null) {
@@ -110,6 +120,7 @@ export default function AbaJogadores({
  const [carregandoBusca, setCarregandoBusca] = useState(false)
  const [avulsosEscalados, setAvulsosEscalados] = useState<JogadorAvulsoEscalado[]>([])
  const [perfilTrocaPorLinha, setPerfilTrocaPorLinha] = useState<Record<string, string>>({})
+ const [abaAtletasAtiva, setAbaAtletasAtiva] = useState<SubAbaAtletas>('elenco')
 
  const atletas = useMemo(() => membros.filter((m) => !!m.perfil?.id), [membros])
 
@@ -414,8 +425,36 @@ export default function AbaJogadores({
 
  return (
  <div className="space-y-10">
+
+ <div className="flex flex-wrap gap-2 border-b border-zinc-200 pb-4">
+ {[
+ { key: 'elenco', label: 'Elenco principal', total: atletas.length },
+ { key: 'convites', label: 'Convites enviados', total: convitesEnviados.length },
+ { key: 'pedidos', label: 'Pedidos recebidos', total: pedidos.length },
+ { key: 'avulsos', label: 'Jogadores avulsos', total: avulsosEscalados.length },
+ ].map((aba) => (
+ <button
+ key={aba.key}
+ type="button"
+ onClick={() => setAbaAtletasAtiva(aba.key as SubAbaAtletas)}
+ className={`inline-flex items-center gap-2 border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
+ abaAtletasAtiva === aba.key
+ ? 'border-[#2563eb] bg-[#2563eb] text-white'
+ : 'border-zinc-200 bg-white text-[#142340] hover:border-[#2563eb]'
+ }`}
+ >
+ <span>{aba.label}</span>
+ <span className={`border px-2 py-0.5 text-[10px] ${
+ abaAtletasAtiva === aba.key ? 'border-white/40 text-white' : 'border-zinc-200 text-zinc-500'
+ }`}>
+ {aba.total}
+ </span>
+ </button>
+ ))}
+ </div>
+
  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
- <div className="border border-zinc-200 bg-zinc-50 p-5">
+ <div className="border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-5">
  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
  Atletas ativos
  </p>
@@ -424,7 +463,7 @@ export default function AbaJogadores({
  </p>
  </div>
 
- <div className="border border-zinc-200 bg-zinc-50 p-5">
+ <div className="border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-5">
  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
  Pedidos pendentes
  </p>
@@ -433,7 +472,7 @@ export default function AbaJogadores({
  </p>
  </div>
 
- <div className="border border-zinc-200 bg-zinc-50 p-5">
+ <div className="border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-5">
  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
  Convites enviados
  </p>
@@ -443,50 +482,45 @@ export default function AbaJogadores({
  </div>
  </div>
 
- <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+ <div className={`${abaAtletasAtiva === 'elenco' ? 'block' : 'hidden'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
  <h2 className="mb-8 text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // ELENCO ATIVO
  </h2>
 
- <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+ <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
  {atletas.length > 0 ? (
- atletas.map((jogador) => (
- <div key={jogador.id} className="overflow-hidden border border-zinc-200 bg-zinc-50">
- <div className="h-2 bg-[#2563eb]" />
-
- <div className="flex items-start gap-4 p-5">
- <div className="relative h-[92px] w-[92px] shrink-0 overflow-hidden border border-zinc-200 bg-white">
- {jogador.perfil?.foto_capa ? (
- <Image
- src={jogador.perfil.foto_capa}
- alt={jogador.perfil.nick || 'Jogador'}
- fill
- className="object-cover"
+ atletas.map((jogador, index) => (
+ <div key={jogador.id} className="flex flex-col items-start gap-3">
+ <PlayerCard
+ name={jogador.perfil?.nick || 'Jogador'}
+ number={index + 1}
+ tier={tierPorIndice(index)}
+ photoUrl={jogador.perfil?.foto_capa || null}
+ variant="oficial"
+ className="max-w-[210px]"
  />
- ) : (
- <div className="flex h-full w-full items-center justify-center text-zinc-500">
- <UserCircle2 size={34} />
- </div>
- )}
- </div>
 
- <div className="min-w-0 flex-1">
- <h3 className="truncate text-[22px] font-semibold uppercase leading-none text-[#142340]">
+ <div className="w-full max-w-[210px]">
+ <h3 className="truncate text-[14px] font-black uppercase leading-none text-[#142340]">
  {jogador.perfil?.nick || 'Sem nick'}
  </h3>
 
- <div className="mt-3 flex flex-wrap items-center gap-2">
- <div className="inline-flex items-center gap-2 border border-zinc-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+ <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+ UID: {jogador.perfil?.id?.slice(0, 12) || 'N/I'}
+ </p>
+
+ <div className="mt-3 flex flex-wrap gap-2">
+ <span className="inline-flex items-center gap-1 border border-zinc-200 bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#142340]">
  {roleIcon(jogador.perfil?.funcao || null)}
  {jogador.perfil?.funcao || 'Sem função'}
- </div>
+ </span>
 
- <div className="inline-flex items-center gap-2 border border-[#2563eb]/20 bg-[#2563eb]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
+ <span className="border border-[#2563eb]/20 bg-[#2563eb]/10 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
  {jogador.tipo}
- </div>
+ </span>
  </div>
 
- <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+ <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">
  Entrou em {formatarData(jogador.entrou_em)}
  </p>
 
@@ -494,7 +528,7 @@ export default function AbaJogadores({
  <button
  onClick={() => removerMembro(jogador.perfil?.id || '')}
  disabled={processandoId === jogador.perfil?.id || !jogador.perfil?.id}
- className="mt-4 inline-flex items-center gap-2 border border-red-300 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+ className="mt-3 inline-flex items-center gap-2 border border-red-300 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-red-500 transition hover:bg-red-50 disabled:opacity-50"
  >
  {processandoId === jogador.perfil?.id ? (
  <Loader2 size={13} className="animate-spin" />
@@ -506,7 +540,6 @@ export default function AbaJogadores({
  ) : null}
  </div>
  </div>
- </div>
  ))
  ) : (
  <div className="col-span-full border border-dashed border-zinc-200 bg-zinc-50 py-10 text-center text-[11px] font-semibold uppercase text-zinc-500">
@@ -516,13 +549,13 @@ export default function AbaJogadores({
  </div>
  </div>
 
- {avulsosEscalados.length > 0 ? (
+ {abaAtletasAtiva === 'avulsos' && avulsosEscalados.length > 0 ? (
  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
  <h2 className="mb-8 text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // ESCALADOS PELO ORGANIZADOR
  </h2>
 
- <div className="border border-zinc-200 bg-zinc-50 p-5">
+ <div className="border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-5">
  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#142340]">
  Jogadores avulsos usados em campeonatos
  </p>
@@ -537,7 +570,7 @@ export default function AbaJogadores({
  className="grid grid-cols-1 gap-4 border border-zinc-200 bg-white p-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center"
  >
  <div className="flex items-center gap-4">
- <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-50">
+ <div className="relative h-16 w-16 shrink-0 overflow-hidden border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg">
  {jogador.foto_url ? (
  <Image src={jogador.foto_url} alt={jogador.nick} fill className="object-cover" />
  ) : jogador.campeonato_logo ? (
@@ -604,7 +637,7 @@ export default function AbaJogadores({
  </button>
  </div>
  ) : (
- <div className="border border-zinc-200 bg-zinc-50 px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+ <div className="border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
  Aguardando vínculo com perfil de jogo
  </div>
  )}
@@ -618,7 +651,7 @@ export default function AbaJogadores({
 
  {canManage ? (
  <>
- <div className="border border-zinc-200 bg-zinc-50 p-6">
+ <div className={`${abaAtletasAtiva === 'convites' ? 'block' : 'hidden'} border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-6`}>
  <h2 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // ADICIONAR ATLETAS
  </h2>
@@ -660,7 +693,7 @@ export default function AbaJogadores({
  className="flex flex-col gap-4 border border-zinc-200 bg-white p-4 md:flex-row md:items-center md:justify-between"
  >
  <div className="flex items-center gap-4">
- <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-zinc-50">
+ <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg">
  {perfil.foto_capa ? (
  <Image
  src={perfil.foto_capa}
@@ -708,8 +741,8 @@ export default function AbaJogadores({
  </div>
  </div>
 
- <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
- <div className="border border-zinc-200 bg-zinc-50 p-6">
+ <div className="block">
+ <div className={`${abaAtletasAtiva === 'pedidos' ? 'block' : 'hidden'} border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-6`}>
  <h2 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // PEDIDOS PARA ENTRAR
  </h2>
@@ -725,7 +758,7 @@ export default function AbaJogadores({
  <div key={pedido.id} className="border border-zinc-200 bg-white p-4">
  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
  <div className="flex items-center gap-4">
- <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-zinc-50">
+ <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg">
  {pedido.perfil?.foto_capa ? (
  <Image
  src={pedido.perfil.foto_capa}
@@ -793,7 +826,7 @@ export default function AbaJogadores({
  </div>
  </div>
 
- <div className="border border-zinc-200 bg-zinc-50 p-6">
+ <div className={`${abaAtletasAtiva === 'convites' ? 'block' : 'hidden'} border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg p-6`}>
  <h2 className="text-[12px] font-semibold uppercase tracking-[0.35em] text-[#2563eb]">
  // CONVITES ENVIADOS
  </h2>
@@ -808,7 +841,7 @@ export default function AbaJogadores({
  convitesEnviados.map((convite) => (
  <div key={convite.id} className="border border-zinc-200 bg-white p-4">
  <div className="flex items-center gap-4">
- <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-zinc-50">
+ <div className="relative h-14 w-14 overflow-hidden border border-zinc-200 bg-white shadow-sm transition hover:border-[#2563eb] hover:shadow-lg">
  {convite.perfil?.foto_capa ? (
  <Image
  src={convite.perfil.foto_capa}

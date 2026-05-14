@@ -717,7 +717,7 @@ function PerfilContent() {
  </div>
  </div>
 
- <div className="min-w-0">
+ <div className="min-w-0 pt-1 md:pt-0">
  {isEditing ? (
  <div className="grid gap-2 md:grid-cols-2">
  <input

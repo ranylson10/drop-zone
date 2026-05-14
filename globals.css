@@ -1,152 +1,7 @@
 @import "tailwindcss";
 
-/* =========================================================
-   DROPZONE / LEALT - FIX DEFINITIVO ANTI DARK MODE MOBILE
-   Evita Chrome/Samsung/iOS inverter branco para cinza/preto no deploy.
-   Mantém o projeto sempre em tema claro, inclusive no Vercel.
-   ========================================================= */
 :root {
-  color-scheme: light only !important;
-  supported-color-schemes: light !important;
-}
-
-html {
-  color-scheme: light only !important;
-  supported-color-schemes: light !important;
-  background: #f5f7fb !important;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-body {
-  color-scheme: light only !important;
-  supported-color-schemes: light !important;
-  background-color: #f5f7fb !important;
-  color: #0f172a !important;
-}
-
-/* Alguns navegadores móveis aplicam "auto dark" em elementos comuns.
-   Essa camada força superfícies e campos críticos a continuarem claros. */
-input,
-textarea,
-select,
-button,
-option,
-optgroup {
-  color-scheme: light only !important;
-}
-
-input:not([type='checkbox']):not([type='radio']),
-textarea,
-select {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
-  caret-color: #2563eb !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #94a3b8 !important;
-  -webkit-text-fill-color: #94a3b8 !important;
-  opacity: 1 !important;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Mantém imagens/logos/cartas sem inversão de cor em dark mode forçado. */
-img,
-video,
-canvas,
-svg,
-picture {
-  forced-color-adjust: none;
-}
-
-/* Superfícies brancas do app. */
-.bg-white,
-[class*="bg-white"],
-.dz-card,
-.dz-card-compact,
-.glass-card,
-.panel-card,
-.soft-card,
-.dz-table-wrap,
-.lealt-public-page,
-.lealt-public-box,
-.lealt-public-card {
-  color-scheme: light only !important;
-}
-
-/* Quando o aparelho está em tema escuro, NÃO altera o site. */
-@media (prefers-color-scheme: dark) {
-  :root,
-  html,
-  body {
-    color-scheme: light only !important;
-    supported-color-schemes: light !important;
-  }
-
-  html {
-    background: #f5f7fb !important;
-  }
-
-  body {
-    background-color: #f5f7fb !important;
-    color: #0f172a !important;
-  }
-
-  input:not([type='checkbox']):not([type='radio']),
-  textarea,
-  select {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    -webkit-text-fill-color: #0f172a !important;
-    border-color: #dde5ef !important;
-  }
-
-  option,
-  optgroup {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-  }
-
-  table,
-  thead,
-  tbody,
-  tr,
-  td,
-  th {
-    color-scheme: light only !important;
-  }
-}
-
-/* Samsung Internet/Chrome Android podem escurecer branco puro.
-   Essa regra mantém as áreas principais com branco real. */
-@media (max-width: 1023px) {
-  html,
-  body,
-  main,
-  .dz-page,
-  .min-h-screen {
-    color-scheme: light only !important;
-  }
-
-  input:not([type='checkbox']):not([type='radio']),
-  textarea,
-  select {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    -webkit-text-fill-color: #0f172a !important;
-  }
-}
-
-
-:root {
-  color-scheme: light only;
+  color-scheme: only light;
   --dz-bg: #f5f7fb;
   --dz-bg-2: #eef3f8;
   --dz-surface: #ffffff;
@@ -170,7 +25,7 @@ picture {
 }
 
 html {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
   background-color: #f5f7fb !important;
   scroll-behavior: smooth;
 }
@@ -225,14 +80,14 @@ a {
    ========================================================= */
 html,
 body {
-  color-scheme: light only !important;
+  color-scheme: only light !important;
   background-color: #f5f7fb !important;
   color: #0f172a !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color-scheme: light only !important;
+    color-scheme: only light !important;
   }
 
   html,
@@ -250,7 +105,7 @@ body {
   .lealt-public-page,
   .lealt-public-box,
   .lealt-public-card {
-    color-scheme: light only !important;
+    color-scheme: only light !important;
   }
 }
 
@@ -859,18 +714,12 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
     line-height: 1.25;
   }
 
-  /* LEALT MOBILE: não quebrar grids em 1 coluna automaticamente.
-     O padrão do LEALT é compacto, com informações lado a lado.
-     Use .lealt-mobile-stack quando uma página realmente precisar empilhar. */
-  main .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  main .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-  main .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
-  main .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
-  main .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
-
-  main .lealt-mobile-stack,
-  main .lealt-mobile-stack.grid,
-  main .lealt-mobile-stack[class*="grid-cols-"] {
+  /* Grids largos passam a ser app list. */
+  main [class*="grid-cols-2"],
+  main [class*="grid-cols-3"],
+  main [class*="grid-cols-4"],
+  main [class*="grid-cols-5"],
+  main [class*="grid-cols-6"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -1059,116 +908,34 @@ body { background-color: var(--dz-bg) !important; background-image: linear-gradi
   }
 }
 
+
 /* =========================================================
-   LEALT GRID LOCK
-   Classes fixas para páginas mobile compactas. Evita que CSS
-   global transforme menus/informações em coluna vertical.
+   LEALT - LINK DE ESCALAÇÃO MOBILE
+   Mantém as informações e botões lado a lado no atalho mobile.
+   Corrige a regra global que transformava grid-cols-* em 1 coluna.
    ========================================================= */
-.lealt-escala-info-grid {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
+@media (max-width: 1023px) {
+  main.lealt-escala-mobile {
+    display: block !important;
+  }
 
-.lealt-escala-menu-grid {
-  display: grid !important;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-  gap: 4px !important;
-}
-
-.lealt-grid-2 {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-}
-
-.lealt-grid-3 {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-}
-
-.lealt-grid-4 {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-
-.lealt-grid-5 {
-  display: grid !important;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-}
-
-@media (max-width: 767px) {
-  .lealt-escala-info-grid {
+  main.lealt-escala-mobile .lealt-escala-info-grid {
+    display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
-  .lealt-escala-menu-grid {
+  main.lealt-escala-mobile .lealt-escala-actions-grid {
+    display: grid !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
-
-  .lealt-mobile-stack {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
 }
 
-/* =========================================================
-   OVERRIDE FINAL - TEMA CLARO FORÇADO
-   Deixar no fim do arquivo para ganhar dos overrides mobile.
-   ========================================================= */
-:root,
-html,
-body {
-  color-scheme: light only !important;
-  supported-color-schemes: light !important;
-}
-
-html {
-  background-color: #f5f7fb !important;
-}
-
-body {
-  background-color: var(--dz-bg, #f5f7fb) !important;
-  color: var(--dz-text, #0f172a) !important;
-}
-
-input:not([type='checkbox']):not([type='radio']),
-textarea,
-select,
-option,
-optgroup {
-  color-scheme: light only !important;
-  background-color: #ffffff !important;
-  color: var(--dz-text, #0f172a) !important;
-  -webkit-text-fill-color: var(--dz-text, #0f172a) !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--dz-faint, #94a3b8) !important;
-  -webkit-text-fill-color: var(--dz-faint, #94a3b8) !important;
-  opacity: 1 !important;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root,
-  html,
-  body {
-    color-scheme: light only !important;
-    supported-color-schemes: light !important;
+@media (max-width: 360px) {
+  main.lealt-escala-mobile .lealt-escala-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
-  body {
-    background-color: var(--dz-bg, #f5f7fb) !important;
-    color: var(--dz-text, #0f172a) !important;
-  }
-
-  .bg-white,
-  [class*="bg-white"],
-  .dz-card,
-  .dz-card-compact,
-  .glass-card,
-  .panel-card,
-  .soft-card,
-  .dz-table-wrap {
-    color-scheme: light only !important;
+  main.lealt-escala-mobile .lealt-escala-info-grid > div:nth-child(2n) {
+    border-right: 0 !important;
   }
 }
-

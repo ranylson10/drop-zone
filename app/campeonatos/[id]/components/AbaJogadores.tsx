@@ -40,9 +40,12 @@ type EquipeBase = {
   nome: string
   tag: string | null
   logo_url: string | null
+  codigo_publico?: number | string | null
   tipo_origem: 'app' | 'avulsa'
   grupo_id: string | null
+  grupo_nome?: string | null
   status: string | null
+  line_id?: string | null
 }
 
 type JogadorCampeonato = {
@@ -89,10 +92,12 @@ type EquipeComJogadores = {
   nome: string
   tag: string | null
   logo_url: string | null
+  codigo_publico?: number | string | null
   grupo: string
   status: string | null
   tipo_origem: 'app' | 'avulsa'
   jogadores: JogadorFormatado[]
+  line_id?: string | null
 }
 
 type JogadorFormatado = JogadorCampeonato & {
@@ -108,6 +113,8 @@ type JogadorFormatado = JogadorCampeonato & {
   uid_jogo_exibicao: string | null
   foto_exibicao: string | null
   funcao_exibicao: string | null
+  line_id?: string | null
+  line_jogador_id?: string | null
 }
 
 const BUCKET_AVATAR_JOGADOR = 'avatars'
@@ -218,106 +225,112 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
           status,
           tipo_origem,
           nome_exibicao,
-          numero_vaga
+          numero_vaga,
+          line_id
         `)
         .eq('campeonato_id', campeonatoId)
+        .order('numero_vaga', { ascending: true })
 
       if (inscricoesError) throw inscricoesError
 
       const inscricoesRows = inscricoes || []
-
       const idsEquipesOficiais = inscricoesRows.map((i: any) => i.equipe_id).filter(Boolean)
       const idsEquipesAvulsas = inscricoesRows.map((i: any) => i.equipe_avulsa_id).filter(Boolean)
+      const lineIds = inscricoesRows.map((i: any) => i.line_id).filter(Boolean)
 
       const [
         { data: baseEquipes, error: baseEquipesError },
         { data: baseEquipesAvulsas, error: baseAvulsasError },
+        { data: gruposCampeonato, error: gruposCampeonatoError },
+        { data: linesJogadores, error: linesJogadoresError },
+        { data: jogadoresCampeonato, error: jogadoresCampeonatoError },
       ] = await Promise.all([
         idsEquipesOficiais.length > 0
-          ? supabase
-              .from('equipes')
-              .select('id, nome, tag, logo_url')
-              .in('id', idsEquipesOficiais)
+          ? supabase.from('equipes').select('id, nome, tag, logo_url, codigo_publico').in('id', idsEquipesOficiais)
           : Promise.resolve({ data: [], error: null }),
         idsEquipesAvulsas.length > 0
-          ? supabase
-              .from('equipes_avulsas_campeonato')
-              .select('id, nome, tag, logo_url')
-              .in('id', idsEquipesAvulsas)
+          ? supabase.from('equipes_avulsas_campeonato').select('id, nome, tag, logo_url').in('id', idsEquipesAvulsas)
           : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('campeonato_grupos')
+          .select('id, nome')
+          .eq('campeonato_id', campeonatoId),
+        lineIds.length > 0
+          ? supabase
+              .from('lines_jogadores')
+              .select('id,line_id,perfil_jogo_id,jogador_avulso_id,tipo_slot,ordem,funcao_line,created_at')
+              .in('line_id', lineIds)
+              .order('ordem', { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('jogadores_campeonato')
+          .select(`
+            id,
+            campeonato_id,
+            campeonato_equipe_id,
+            equipe_id,
+            equipe_avulsa_id,
+            perfil_jogo_id,
+            jogador_avulso_id,
+            origem,
+            status,
+            criado_automaticamente,
+            observacoes,
+            created_at
+          `)
+          .eq('campeonato_id', campeonatoId)
+          .eq('status', 'ativo'),
       ])
 
       if (baseEquipesError) throw baseEquipesError
       if (baseAvulsasError) throw baseAvulsasError
+      if (gruposCampeonatoError) throw gruposCampeonatoError
+      if (linesJogadoresError) throw linesJogadoresError
+      if (jogadoresCampeonatoError) throw jogadoresCampeonatoError
 
-      const { data: jogadores, error: jogadoresError } = await supabase
-        .from('jogadores_campeonato')
-        .select(`
-          id,
-          campeonato_id,
-          campeonato_equipe_id,
-          equipe_id,
-          equipe_avulsa_id,
-          perfil_jogo_id,
-          jogador_avulso_id,
-          origem,
-          status,
-          criado_automaticamente,
-          observacoes,
-          created_at
-        `)
-        .eq('campeonato_id', campeonatoId)
-        .order('created_at', { ascending: true })
+      const lineRows = (linesJogadores || []) as any[]
+      const jogadoresRows = (jogadoresCampeonato || []) as JogadorCampeonato[]
 
-      if (jogadoresError) {
-        console.error('SUPABASE jogadores_campeonato:', jogadoresError)
-        throw jogadoresError
-      }
+      const perfilIds = Array.from(new Set([
+        ...lineRows.map((j) => j.perfil_jogo_id).filter(Boolean),
+        ...jogadoresRows.map((j) => j.perfil_jogo_id).filter(Boolean),
+      ])) as string[]
 
-      const jogadoresRows = (jogadores || []) as JogadorCampeonato[]
-
-      const perfilIds = jogadoresRows
-        .map((j) => j.perfil_jogo_id)
-        .filter((id): id is string => Boolean(id))
-
-      const jogadorAvulsoIds = jogadoresRows
-        .map((j) => j.jogador_avulso_id)
-        .filter((id): id is string => Boolean(id))
+      const jogadorAvulsoIds = Array.from(new Set([
+        ...lineRows.map((j) => j.jogador_avulso_id).filter(Boolean),
+        ...jogadoresRows.map((j) => j.jogador_avulso_id).filter(Boolean),
+      ])) as string[]
 
       const [
         { data: perfisData, error: perfisError },
         { data: avulsosData, error: avulsosError },
       ] = await Promise.all([
         perfilIds.length > 0
-          ? supabase
-              .from('perfis_jogo')
-              .select('id, nick, uid_jogo, foto_capa, funcao, equipe_id, user_id, ativo')
-              .in('id', perfilIds)
+          ? supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa, funcao, equipe_id, user_id, ativo').in('id', perfilIds)
           : Promise.resolve({ data: [], error: null }),
-        supabase
-          .from('jogadores_avulsos_campeonato')
-          .select('id, campeonato_id, equipe_id, equipe_avulsa_id, nick, uid_jogo, funcao, foto_url, criado_por')
-          .eq('campeonato_id', campeonatoId),
+        jogadorAvulsoIds.length > 0
+          ? supabase.from('jogadores_avulsos_campeonato').select('id, campeonato_id, equipe_id, equipe_avulsa_id, nick, uid_jogo, funcao, foto_url, criado_por').in('id', jogadorAvulsoIds)
+          : Promise.resolve({ data: [], error: null }),
       ])
 
       if (perfisError) throw perfisError
       if (avulsosError) throw avulsosError
 
-      const perfisMap = new Map<string, PerfilJogo>(
-        ((perfisData || []) as PerfilJogo[]).map((p) => [p.id, p])
-      )
+      const perfisMap = new Map<string, PerfilJogo>(((perfisData || []) as PerfilJogo[]).map((p) => [p.id, p]))
+      const avulsosMap = new Map<string, JogadorAvulsoCampeonato>(((avulsosData || []) as JogadorAvulsoCampeonato[]).map((j) => [j.id, j]))
+      const equipesOficiaisMap = new Map<string, any>(((baseEquipes || []) as any[]).map((e) => [e.id, e]))
+      const equipesAvulsasMap = new Map<string, any>(((baseEquipesAvulsas || []) as any[]).map((e) => [e.id, e]))
+      const gruposMap = new Map<string, any>(((gruposCampeonato || []) as any[]).map((g) => [g.id, g]))
+      const inscricaoPorLineId = new Map<string, any>(inscricoesRows.filter((i: any) => i.line_id).map((i: any) => [i.line_id, i]))
 
-      const avulsosMap = new Map<string, JogadorAvulsoCampeonato>(
-        ((avulsosData || []) as JogadorAvulsoCampeonato[]).map((j) => [j.id, j])
-      )
-
-      const equipesOficiaisMap = new Map<string, any>(
-        ((baseEquipes || []) as any[]).map((e) => [e.id, e])
-      )
-
-      const equipesAvulsasMap = new Map<string, any>(
-        ((baseEquipesAvulsas || []) as any[]).map((e) => [e.id, e])
-      )
+      const jogadorCampPorChave = new Map<string, JogadorCampeonato>()
+      jogadoresRows.forEach((j) => {
+        const insc = inscricoesRows.find((i: any) => i.id === j.campeonato_equipe_id)
+        const lineId = insc?.line_id
+        if (!lineId) return
+        const chave = `${lineId}|${j.perfil_jogo_id || ''}|${j.jogador_avulso_id || ''}`
+        jogadorCampPorChave.set(chave, j)
+      })
 
       const equipesFormatadas: EquipeBase[] = inscricoesRows.map((insc: any) => {
         if (insc.tipo_origem === 'avulsa' || (!insc.equipe_id && insc.equipe_avulsa_id)) {
@@ -328,9 +341,12 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
             nome: insc.nome_exibicao || dados?.nome || 'Equipe avulsa',
             tag: dados?.tag || null,
             logo_url: dados?.logo_url || null,
+            codigo_publico: dados?.codigo_publico || null,
             tipo_origem: 'avulsa',
             grupo_id: insc.grupo_id || null,
+            grupo_nome: insc.grupo_id ? gruposMap.get(insc.grupo_id)?.nome || null : null,
             status: insc.status || null,
+            line_id: insc.line_id || null,
           }
         }
 
@@ -341,120 +357,86 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
           nome: insc.nome_exibicao || dados?.nome || 'Equipe do app',
           tag: dados?.tag || null,
           logo_url: dados?.logo_url || null,
+          codigo_publico: dados?.codigo_publico || null,
           tipo_origem: 'app',
           grupo_id: insc.grupo_id || null,
+          grupo_nome: insc.grupo_id ? gruposMap.get(insc.grupo_id)?.nome || null : null,
           status: insc.status || null,
+          line_id: insc.line_id || null,
         }
       })
 
-      const jogadoresFormatadosBase: JogadorFormatado[] = jogadoresRows.map((j) => {
-        const perfil = j.perfil_jogo_id ? perfisMap.get(j.perfil_jogo_id) : null
-        const avulso = j.jogador_avulso_id ? avulsosMap.get(j.jogador_avulso_id) : null
+      // A line é apenas o vínculo da vaga/inscrição.
+      // Os atletas exibidos no campeonato devem vir somente de jogadores_campeonato.
+      const jogadoresDaLineFormatados: JogadorFormatado[] = []
 
-        const equipeOficial = j.equipe_id ? equipesOficiaisMap.get(j.equipe_id) : null
-        const equipeAvulsa = j.equipe_avulsa_id ? equipesAvulsasMap.get(j.equipe_avulsa_id) : null
+      const chavesJaVindasDaLine = new Set<string>()
 
-        const nomeExibicao =
-          perfil?.nick ||
-          avulso?.nick ||
-          'SEM NICK'
-
-        const uidExibicao =
-          perfil?.uid_jogo ||
-          avulso?.uid_jogo ||
-          null
-
-        const fotoExibicao =
-          perfil?.foto_capa ||
-          avulso?.foto_url ||
-          null
-
-        const funcaoExibicao =
-          perfil?.funcao ||
-          avulso?.funcao ||
-          null
-
-        return {
-          ...j,
-          nome: nomeExibicao,
-          nick: perfil?.nick || avulso?.nick || null,
-          game_id: uidExibicao,
-          funcao: funcaoExibicao,
-          avatar_url: fotoExibicao,
-          nome_exibicao: nomeExibicao,
-          uid_jogo_exibicao: uidExibicao,
-          funcao_exibicao: funcaoExibicao,
-          foto_exibicao: fotoExibicao,
-          equipe_nome: equipeOficial?.nome || equipeAvulsa?.nome || 'AVULSO',
-          equipe_tag: equipeOficial?.tag || equipeAvulsa?.tag || null,
-          equipe_tipo_origem: equipeOficial ? 'app' : equipeAvulsa ? 'avulsa' : null,
-        }
-      })
-
-      const jogadorAvulsoIdsPresentes = new Set(
-        jogadoresRows
-          .map((j) => j.jogador_avulso_id)
-          .filter((id): id is string => Boolean(id))
-      )
-
-      const jogadoresAvulsosSemInscricao: JogadorFormatado[] = ((avulsosData || []) as JogadorAvulsoCampeonato[])
-        .filter((avulso) => !jogadorAvulsoIdsPresentes.has(avulso.id))
-        .map((avulso) => {
-          const equipeOficial = avulso.equipe_id ? equipesOficiaisMap.get(avulso.equipe_id) : null
-          const equipeAvulsa = avulso.equipe_avulsa_id ? equipesAvulsasMap.get(avulso.equipe_avulsa_id) : null
+      const jogadoresDiretosFormatados: JogadorFormatado[] = jogadoresRows
+        .filter((jc) => jc.campeonato_equipe_id)
+        .filter((jc) => {
+          const chave = `${jc.campeonato_equipe_id || ''}|${jc.perfil_jogo_id || ''}|${jc.jogador_avulso_id || ''}`
+          return !chavesJaVindasDaLine.has(chave)
+        })
+        .map((jc) => {
+          const insc = inscricoesRows.find((i: any) => i.id === jc.campeonato_equipe_id)
+          const perfil = jc.perfil_jogo_id ? perfisMap.get(jc.perfil_jogo_id) : null
+          const avulso = jc.jogador_avulso_id ? avulsosMap.get(jc.jogador_avulso_id) : null
+          const equipeOficial = insc?.equipe_id ? equipesOficiaisMap.get(insc.equipe_id) : null
+          const equipeAvulsa = insc?.equipe_avulsa_id ? equipesAvulsasMap.get(insc.equipe_avulsa_id) : null
+          const nomeExibicao = perfil?.nick || avulso?.nick || 'SEM NICK'
+          const uidExibicao = perfil?.uid_jogo || avulso?.uid_jogo || null
+          const fotoExibicao = perfil?.foto_capa || avulso?.foto_url || null
+          const funcaoExibicao = perfil?.funcao || avulso?.funcao || null
 
           return {
-            id: `avulso-only:${avulso.id}`,
-            campeonato_id: avulso.campeonato_id,
-            equipe_id: avulso.equipe_id,
-            equipe_avulsa_id: avulso.equipe_avulsa_id,
-            campeonato_equipe_id: null,
-            perfil_jogo_id: null,
-            jogador_avulso_id: avulso.id,
-            origem: 'avulso',
-            status: 'ativo',
-            criado_automaticamente: true,
-            observacoes: 'Jogador avulso sem vínculo em jogadores_campeonato',
-            created_at: null,
-            nome: avulso.nick || 'SEM NICK',
-            nick: avulso.nick || null,
-            game_id: avulso.uid_jogo || null,
-            funcao: avulso.funcao || null,
-            avatar_url: avulso.foto_url || null,
-            nome_exibicao: avulso.nick || 'SEM NICK',
-            uid_jogo_exibicao: avulso.uid_jogo || null,
-            funcao_exibicao: avulso.funcao || null,
-            foto_exibicao: avulso.foto_url || null,
-            equipe_nome: equipeOficial?.nome || equipeAvulsa?.nome || 'AVULSO',
+            ...jc,
+            nome: nomeExibicao,
+            nick: perfil?.nick || avulso?.nick || null,
+            game_id: uidExibicao,
+            funcao: funcaoExibicao,
+            avatar_url: fotoExibicao,
+            nome_exibicao: nomeExibicao,
+            uid_jogo_exibicao: uidExibicao,
+            funcao_exibicao: funcaoExibicao,
+            foto_exibicao: fotoExibicao,
+            equipe_nome: equipeOficial?.nome || equipeAvulsa?.nome || insc?.nome_exibicao || 'LINE',
             equipe_tag: equipeOficial?.tag || equipeAvulsa?.tag || null,
             equipe_tipo_origem: equipeOficial ? 'app' : equipeAvulsa ? 'avulsa' : null,
+            line_id: insc?.line_id || null,
+            line_jogador_id: null,
           }
         })
 
-      const jogadoresFormatados: JogadorFormatado[] = [
-        ...jogadoresFormatadosBase,
-        ...jogadoresAvulsosSemInscricao,
-      ]
+      const jogadoresDiretosUnicosMap = new Map<string, JogadorFormatado>()
 
-      const equipesComJogadores: EquipeComJogadores[] = equipesFormatadas.map((eq) => {
-        const jogadoresDaEquipe = jogadoresFormatados.filter((j) => {
-          if (j.campeonato_equipe_id) return j.campeonato_equipe_id === eq.inscricao_id
-          if (eq.tipo_origem === 'app') return j.equipe_id === eq.id
-          return j.equipe_avulsa_id === eq.id
-        })
+      jogadoresDiretosFormatados.forEach((jogador) => {
+        const chave = `${jogador.campeonato_equipe_id || ''}|${jogador.perfil_jogo_id || ''}|${jogador.jogador_avulso_id || ''}`
+        const atual = jogadoresDiretosUnicosMap.get(chave)
 
-        return {
-          inscricao_id: eq.inscricao_id,
-          id: eq.id,
-          nome: eq.nome,
-          tag: eq.tag,
-          logo_url: eq.logo_url,
-          grupo: eq.grupo_id || '-',
-          status: eq.status,
-          tipo_origem: eq.tipo_origem,
-          jogadores: jogadoresDaEquipe,
+        if (!atual || new Date(jogador.created_at || 0).getTime() >= new Date(atual.created_at || 0).getTime()) {
+          jogadoresDiretosUnicosMap.set(chave, jogador)
         }
       })
+
+      const jogadoresDiretosUnicos = Array.from(jogadoresDiretosUnicosMap.values())
+
+      const jogadoresFormatados: JogadorFormatado[] = jogadoresDiretosUnicos
+
+
+      const equipesComJogadores: EquipeComJogadores[] = equipesFormatadas.map((eq) => ({
+        inscricao_id: eq.inscricao_id,
+        id: eq.id,
+        nome: eq.nome,
+        tag: eq.tag,
+        logo_url: eq.logo_url,
+        codigo_publico: eq.codigo_publico || null,
+        grupo: eq.grupo_nome || '-',
+        status: eq.status,
+        tipo_origem: eq.tipo_origem,
+        line_id: eq.line_id || null,
+        jogadores: jogadoresFormatados.filter((j) => j.campeonato_equipe_id === eq.inscricao_id),
+      }))
 
       setEquipesInscritas(equipesComJogadores)
       setListaGeralJogadores(jogadoresFormatados)
@@ -474,32 +456,60 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
     carregarDados()
   }, [carregarDados])
 
+  const getEquipeAlvoAtual = () => {
+    return equipesInscritas.find((eq) => eq.inscricao_id === equipeAlvoInscricaoId)
+  }
+
+  const getProximaOrdemLine = (lineId: string) => {
+    const jogadoresDaLine = listaGeralJogadores.filter((j) => j.line_id === lineId)
+    return jogadoresDaLine.length
+  }
+
   const handleRemoverJogador = async (jogador: JogadorFormatado) => {
-    if (!confirm(`Deseja remover ${jogador.nome_exibicao.toUpperCase()} deste campeonato?`)) return
+    if (!confirm(`Deseja remover ${jogador.nome_exibicao.toUpperCase()} desta line?`)) return
 
     setDeletingId(jogador.id)
     try {
-      const isSomenteAvulso = jogador.id.startsWith('avulso-only:')
-
-      if (!isSomenteAvulso) {
-        const { error: deleteInscricaoError } = await supabase
-          .from('jogadores_campeonato')
+      if (jogador.line_jogador_id) {
+        const { error: deleteLineError } = await supabase
+          .from('lines_jogadores')
           .delete()
+          .eq('id', jogador.line_jogador_id)
+
+        if (deleteLineError) throw deleteLineError
+      }
+
+      if (!jogador.id.startsWith('line:')) {
+        const { error: updateInscricaoError } = await supabase
+          .from('jogadores_campeonato')
+          .update({
+            status: 'removido',
+            observacoes: 'Removido pela gestão da line do campeonato',
+          })
           .eq('id', jogador.id)
 
-        if (deleteInscricaoError) throw deleteInscricaoError
+        if (updateInscricaoError) throw updateInscricaoError
+      } else if (jogador.campeonato_equipe_id) {
+        let query = supabase
+          .from('jogadores_campeonato')
+          .update({
+            status: 'removido',
+            observacoes: 'Removido pela gestão da line do campeonato',
+          })
+          .eq('campeonato_equipe_id', jogador.campeonato_equipe_id)
+          .eq('status', 'ativo')
+
+        if (jogador.perfil_jogo_id) {
+          query = query.eq('perfil_jogo_id', jogador.perfil_jogo_id)
+        } else if (jogador.jogador_avulso_id) {
+          query = query.eq('jogador_avulso_id', jogador.jogador_avulso_id)
+        }
+
+        const { error: updatePorVagaError } = await query
+        if (updatePorVagaError) throw updatePorVagaError
       }
 
-      if (jogador.origem === 'avulso' && jogador.jogador_avulso_id) {
-        const { error: deleteAvulsoError } = await supabase
-          .from('jogadores_avulsos_campeonato')
-          .delete()
-          .eq('id', jogador.jogador_avulso_id)
-
-        if (deleteAvulsoError) throw deleteAvulsoError
-      }
-
-      toast.success('Atleta removido do campeonato')
+      toast.success('Atleta removido da line')
       await carregarDados()
     } catch (error: any) {
       toast.error('Erro ao remover: ' + error.message)
@@ -600,29 +610,43 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
 
   const inscreverJogadorDoApp = async (perfil: PerfilJogo) => {
     try {
-      const duplicado = listaGeralJogadores.some((j) => j.perfil_jogo_id === perfil.id)
-      if (duplicado) {
-        toast.error('Esse jogador já está inscrito neste campeonato')
+      const equipeAlvo = getEquipeAlvoAtual()
+      const lineId = equipeAlvo?.line_id || null
+
+      if (!equipeAlvoInscricaoId || !lineId) {
+        toast.error('Esta vaga ainda não tem line vinculada')
         return
       }
 
-      const payload = {
-        campeonato_id: campeonatoId,
-        campeonato_equipe_id: equipeAlvoInscricaoId || null,
-        perfil_jogo_id: perfil.id,
-        jogador_avulso_id: null,
-        equipe_id: equipeAlvoId || null,
-        equipe_avulsa_id: equipeAlvoAvulsaId || null,
-        origem: 'app' as OrigemJogador,
-        status: 'ativo',
-        criado_automaticamente: false,
+      const duplicadoNaLine = listaGeralJogadores.some(
+        (j) => j.line_id === lineId && j.perfil_jogo_id === perfil.id
+      )
+      if (duplicadoNaLine) {
+        toast.error('Esse jogador já está nesta line')
+        return
       }
 
-      const { error } = await supabase
-        .from('jogadores_campeonato')
-        .insert([payload])
+      const { error: lineError } = await supabase
+        .from('lines_jogadores')
+        .insert({
+          line_id: lineId,
+          perfil_jogo_id: perfil.id,
+          jogador_avulso_id: null,
+          tipo_slot: getProximaOrdemLine(lineId) < 4 ? 'titular' : 'reserva',
+          ordem: getProximaOrdemLine(lineId),
+          funcao_line: perfil.funcao || null,
+        })
 
-      if (error) throw error
+      if (lineError) throw lineError
+
+      const { error: garantirError } = await supabase.rpc('fn_garantir_jogador_campeonato_vaga', {
+        p_campeonato_id: campeonatoId,
+        p_campeonato_equipe_id: equipeAlvoInscricaoId,
+        p_perfil_jogo_id: perfil.id,
+        p_jogador_avulso_id: null,
+      })
+
+      if (garantirError) throw garantirError
 
       toast.success('Atleta vinculado com sucesso')
       resetModal()
@@ -650,47 +674,60 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
       return
     }
 
+    if (!jogadorParaTroca.line_id) {
+      toast.error('Este jogador não está vinculado a uma line válida')
+      return
+    }
+
     const jaExiste = listaGeralJogadores.some(
-      (j) => j.id !== jogadorParaTroca.id && j.perfil_jogo_id === perfilTrocaSelecionado.id
+      (j) =>
+        j.line_id === jogadorParaTroca.line_id &&
+        j.id !== jogadorParaTroca.id &&
+        j.perfil_jogo_id === perfilTrocaSelecionado.id
     )
 
     if (jaExiste) {
-      toast.error('Esse perfil do app já está inscrito neste campeonato')
+      toast.error('Esse perfil do app já está nesta line')
       return
     }
 
     setSalvandoTroca(true)
 
     try {
-      const isSomenteAvulso = jogadorParaTroca.id.startsWith('avulso-only:')
-
-      if (isSomenteAvulso) {
-        const { error: insertError } = await supabase
-          .from('jogadores_campeonato')
-          .insert([{
-            campeonato_id: campeonatoId,
-            campeonato_equipe_id: jogadorParaTroca.campeonato_equipe_id || null,
-            equipe_id: jogadorParaTroca.equipe_id || null,
-            equipe_avulsa_id: jogadorParaTroca.equipe_avulsa_id || null,
+      if (jogadorParaTroca.line_jogador_id) {
+        const { error: lineUpdateError } = await supabase
+          .from('lines_jogadores')
+          .update({
             perfil_jogo_id: perfilTrocaSelecionado.id,
             jogador_avulso_id: null,
-            origem: 'app',
-            status: 'ativo',
-            criado_automaticamente: false,
-          }])
+            funcao_line: perfilTrocaSelecionado.funcao || null,
+          })
+          .eq('id', jogadorParaTroca.line_jogador_id)
 
-        if (insertError) throw insertError
-      } else {
+        if (lineUpdateError) throw lineUpdateError
+      }
+
+      if (!jogadorParaTroca.id.startsWith('line:')) {
         const { error: updateError } = await supabase
           .from('jogadores_campeonato')
           .update({
             perfil_jogo_id: perfilTrocaSelecionado.id,
             jogador_avulso_id: null,
             origem: 'app',
+            status: 'ativo',
           })
           .eq('id', jogadorParaTroca.id)
 
         if (updateError) throw updateError
+      } else if (jogadorParaTroca.campeonato_equipe_id) {
+        const { error: garantirError } = await supabase.rpc('fn_garantir_jogador_campeonato_vaga', {
+          p_campeonato_id: campeonatoId,
+          p_campeonato_equipe_id: jogadorParaTroca.campeonato_equipe_id,
+          p_perfil_jogo_id: perfilTrocaSelecionado.id,
+          p_jogador_avulso_id: null,
+        })
+
+        if (garantirError) throw garantirError
       }
 
       if (jogadorParaTroca.jogador_avulso_id) {
@@ -780,21 +817,40 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
 
       jogadorAvulsoCriadoId = avulsoCriado.id
 
-      const payload = {
-        campeonato_id: campeonatoId,
-        campeonato_equipe_id: equipeAlvoInscricaoId || null,
-        equipe_id: equipeAlvoId || null,
-        equipe_avulsa_id: equipeAlvoAvulsaId || null,
-        perfil_jogo_id: null,
-        jogador_avulso_id: avulsoCriado.id,
-        origem: 'avulso' as OrigemJogador,
-        status: 'ativo',
-        criado_automaticamente: false,
+      const equipeAlvo = getEquipeAlvoAtual()
+      const lineId = equipeAlvo?.line_id || null
+
+      if (!equipeAlvoInscricaoId || !lineId) {
+        throw new Error('Esta vaga ainda não tem line vinculada')
       }
 
-      const { error } = await supabase
-        .from('jogadores_campeonato')
-        .insert([payload])
+      const proximaOrdem = getProximaOrdemLine(lineId)
+      const { error: lineError } = await supabase
+        .from('lines_jogadores')
+        .insert({
+          line_id: lineId,
+          perfil_jogo_id: null,
+          jogador_avulso_id: avulsoCriado.id,
+          tipo_slot: proximaOrdem < 4 ? 'titular' : 'reserva',
+          ordem: proximaOrdem,
+          funcao_line: novaFuncao || null,
+        })
+
+      if (lineError) {
+        await supabase
+          .from('jogadores_avulsos_campeonato')
+          .delete()
+          .eq('id', avulsoCriado.id)
+
+        throw lineError
+      }
+
+      const { error } = await supabase.rpc('fn_garantir_jogador_campeonato_vaga', {
+        p_campeonato_id: campeonatoId,
+        p_campeonato_equipe_id: equipeAlvoInscricaoId,
+        p_jogador_avulso_id: avulsoCriado.id,
+        p_perfil_jogo_id: null,
+      })
 
       if (error) {
         await supabase
@@ -948,7 +1004,7 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
                             : 'bg-slate-100 text-slate-500'
                         }`}
                       >
-                        {eq.grupo === '-' ? 'SEM GRUPO' : `G${eq.grupo}`}
+                        {eq.grupo === '-' ? 'SEM GRUPO' : eq.grupo}
                       </span>
 
                       <span

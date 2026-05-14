@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import PlayerCard from '@/app/components/PlayerCard'
+
 import {
  Users,
  Loader2,
@@ -57,20 +59,45 @@ type Convocavel = {
  isMvp?: boolean
 }
 
+type LineEquipe = {
+ id: string
+ nome: string
+ tipo: string | null
+ equipe_id: string | null
+ ativa: boolean | null
+ simbolo: string | null
+ logo_url?: string | null
+}
+
+type LineJogadorRow = {
+ id: string
+ line_id: string
+ perfil_jogo_id: string | null
+ jogador_avulso_id: string | null
+ tipo_slot: string | null
+ ordem: number | null
+ funcao_line: string | null
+}
+
 type Inscricao = {
  id: string
  campeonato_id: string
  status: string | null
  equipe_avulsa_id?: string | null
+ line_id?: string | null
+ nome_exibicao?: string | null
  campeonatos?: {
  id: string
  nome: string
  logo_url: string | null
+ jogadores_por_equipe?: number | null
+ reservas_permitidos?: number | null
  } | null
 }
 
 type JogadorCampeonatoRow = {
  id: string
+ campeonato_equipe_id?: string | null
  perfil_jogo_id: string | null
  jogador_avulso_id: string | null
  observacoes: string | null
@@ -97,6 +124,17 @@ function makeKey(kind: 'perfil' | 'avulso' | 'sumula', id: string) {
  return `${kind}:${id}`
 }
 
+function tierPorSlotProLeague(tipo: 'titular' | 'reserva', index: number): 'SS' | 'S' | 'A' | 'B' | 'C' | 'D' | 'E' {
+ if (tipo === 'titular') {
+ if (index === 0) return 'B'
+ if (index === 1) return 'C'
+ if (index === 2) return 'C'
+ return 'D'
+ }
+
+ return 'E'
+}
+
 function dedupeById<T extends { id: string }>(items: T[]) {
  const map = new Map<string, T>()
  items.forEach((item) => map.set(item.id, item))
@@ -104,27 +142,11 @@ function dedupeById<T extends { id: string }>(items: T[]) {
 }
 
 function dedupeInscricoesPorCampeonato(items: Inscricao[]) {
+ // IMPORTANTE:
+ // Cada registro em campeonato_equipes é uma vaga real da equipe no campeonato.
+ // Não pode deduplicar por campeonato_id, senão uma equipe com 3 vagas aparece como apenas 1 escalação.
  const map = new Map<string, Inscricao>()
-
- items.forEach((item) => {
- const atual = map.get(item.campeonato_id)
- if (!atual) {
- map.set(item.campeonato_id, item)
- return
- }
-
- const peso = (status: string | null | undefined) => {
- const valor = String(status || '').toLowerCase()
- if (valor === 'confirmado' || valor === 'ativo') return 3
- if (valor === 'pendente') return 2
- return 1
- }
-
- if (peso(item.status) >= peso(atual.status)) {
- map.set(item.campeonato_id, item)
- }
- })
-
+ items.forEach((item) => map.set(item.id, item))
  return Array.from(map.values())
 }
 
@@ -138,13 +160,18 @@ export default function AbaCampeonatos({
  onAtualizado?: () => void | Promise<void>
 }) {
  const [inscricoes, setInscricoes] = useState<Inscricao[]>([])
+ const [linhasEquipe, setLinhasEquipe] = useState<LineEquipe[]>([])
  const [loading, setLoading] = useState(true)
  const [idCampEditando, setIdCampEditando] = useState<string | null>(null)
+ const [inscricaoEditandoId, setInscricaoEditandoId] = useState<string | null>(null)
+ const [lineSelecionadaId, setLineSelecionadaId] = useState<string | null>(null)
 
  const [membrosEquipe, setMembrosEquipe] = useState<Convocavel[]>([])
  const [avulsosEquipe, setAvulsosEquipe] = useState<Convocavel[]>([]) // avulsos cadastrados + jogadores criados automaticamente pela súmula
  const [titulares, setTitulares] = useState<(Convocavel | null)[]>([null, null, null, null])
  const [reservas, setReservas] = useState<(Convocavel | null)[]>([null, null, null, null])
+ const [limiteTitularesAtivo, setLimiteTitularesAtivo] = useState(4)
+ const [limiteReservasAtivo, setLimiteReservasAtivo] = useState(0)
  const [escalacaoBloqueada, setEscalacaoBloqueada] = useState(false)
  const [salvando, setSalvando] = useState(false)
 
@@ -153,28 +180,42 @@ export default function AbaCampeonatos({
  if (totalTitulares === 0) {
  return { label: 'Vazio', color: 'text-red-500', border: 'border-red-500/50' }
  }
- if (totalTitulares < 4) {
+ if (totalTitulares < limiteTitularesAtivo) {
  return { label: 'Incompleto', color: 'text-yellow-500', border: 'border-yellow-500/50' }
  }
+ if (titulares.filter(Boolean).length > limiteTitularesAtivo || reservas.filter(Boolean).length > limiteReservasAtivo) {
+ return { label: 'Excedente', color: 'text-red-500', border: 'border-red-500/50' }
+ }
  return { label: 'Pronto', color: 'text-[#2563eb]', border: 'border-[#2563eb]/50' }
- }, [titulares])
+ }, [titulares, reservas, limiteTitularesAtivo, limiteReservasAtivo])
 
  const carregarInscricoes = useCallback(async () => {
  setLoading(true)
  try {
  const { data: participacoes, error: partError } = await supabase
  .from('campeonato_equipes')
- .select('id, campeonato_id, status, equipe_avulsa_id')
+ .select('id, campeonato_id, status, equipe_avulsa_id, line_id, nome_exibicao')
  .eq('equipe_id', equipeId)
 
  if (partError) throw partError
+
+ const { data: linhasData, error: linhasError } = await supabase
+ .from('lines')
+ .select('id, nome, tipo, equipe_id, ativa, simbolo, logo_url')
+ .eq('equipe_id', equipeId)
+ .eq('ativa', true)
+ .order('created_at', { ascending: false })
+
+ if (linhasError) throw linhasError
+
+ setLinhasEquipe((linhasData || []) as LineEquipe[])
 
  if (participacoes && participacoes.length > 0) {
  const idsCamp = participacoes.map((p) => p.campeonato_id)
 
  const { data: dadosCamps, error: campError } = await supabase
  .from('campeonatos')
- .select('id, nome, logo_url')
+ .select('id, nome, logo_url, jogadores_por_equipe, reservas_permitidos')
  .in('id', idsCamp)
 
  if (campError) throw campError
@@ -186,7 +227,14 @@ export default function AbaCampeonatos({
  }))
  .filter((item) => item.campeonatos) as Inscricao[]
 
- setInscricoes(dedupeInscricoesPorCampeonato(inscricoesNormalizadas))
+ setInscricoes(
+ dedupeInscricoesPorCampeonato(inscricoesNormalizadas).sort((a, b) => {
+ const nomeA = a.campeonatos?.nome || ''
+ const nomeB = b.campeonatos?.nome || ''
+ if (nomeA !== nomeB) return nomeA.localeCompare(nomeB)
+ return String(a.nome_exibicao || a.id).localeCompare(String(b.nome_exibicao || b.id))
+ })
+)
  } else {
  setInscricoes([])
  }
@@ -197,42 +245,144 @@ export default function AbaCampeonatos({
  }
  }, [equipeId])
 
- const carregarDadosEscalacao = async (inscricao: Inscricao) => {
- const campId = inscricao.campeonato_id
 
- if (idCampEditando === campId) {
+ const resolverLineDaInscricao = async (inscricao: Inscricao): Promise<LineEquipe | null> => {
+ const tipoAuto = `vaga_${inscricao.id}`
+
+ if (inscricao.line_id) {
+ const existenteLocal = linhasEquipe.find((line) => line.id === inscricao.line_id)
+ if (existenteLocal) return existenteLocal
+
+ const { data: existenteBanco, error } = await supabase
+ .from('lines')
+ .select('id, nome, tipo, equipe_id, ativa, simbolo, logo_url')
+ .eq('id', inscricao.line_id)
+ .maybeSingle()
+
+ if (!error && existenteBanco) return existenteBanco as LineEquipe
+ }
+
+ const lineAutomatica = linhasEquipe.find((line) => line.tipo === tipoAuto)
+ const linePrincipal = linhasEquipe.find((line) => line.tipo === 'principal')
+ const fallback = lineAutomatica || linePrincipal || linhasEquipe[0] || null
+
+ if (fallback) {
+ await supabase
+ .from('campeonato_equipes')
+ .update({ line_id: fallback.id, updated_at: new Date().toISOString() })
+ .eq('id', inscricao.id)
+
+ return fallback
+ }
+
+ const { data: userData } = await supabase.auth.getUser()
+ const nomeBase = inscricao.nome_exibicao || inscricao.campeonatos?.nome || 'Line automática'
+
+ const { data: criada, error: criarError } = await supabase
+ .from('lines')
+ .insert({
+ nome: nomeBase,
+ tipo: tipoAuto,
+ equipe_id: equipeId,
+ ativa: true,
+ visibilidade: 'equipe',
+ created_by: userData?.user?.id || null,
+ })
+ .select('id, nome, tipo, equipe_id, ativa, simbolo, logo_url')
+ .single()
+
+ if (criarError) throw criarError
+
+ await supabase
+ .from('campeonato_equipes')
+ .update({ line_id: criada.id, updated_at: new Date().toISOString() })
+ .eq('id', inscricao.id)
+
+ const novaLine = criada as LineEquipe
+ setLinhasEquipe((atual) => [novaLine, ...atual.filter((line) => line.id !== novaLine.id)])
+ return novaLine
+ }
+
+ const trocarLineDaInscricao = async (inscricao: Inscricao, lineId: string) => {
+ if (!lineId || escalacaoBloqueada) return
+
+ await supabase
+ .from('campeonato_equipes')
+ .update({ line_id: lineId, updated_at: new Date().toISOString() })
+ .eq('id', inscricao.id)
+
+ setInscricoes((atuais) =>
+ atuais.map((item) => (item.id === inscricao.id ? { ...item, line_id: lineId } : item))
+ )
+
+ await carregarDadosEscalacao({ ...inscricao, line_id: lineId }, true)
+ }
+
+ const carregarDadosEscalacao = async (inscricao: Inscricao, manterAberto = false) => {
+ const campId = inscricao.campeonato_id
+ const chaveEdicao = inscricao.id
+
+ if (inscricaoEditandoId === chaveEdicao && !manterAberto) {
  setIdCampEditando(null)
+ setInscricaoEditandoId(null)
+ setLineSelecionadaId(null)
  return
  }
 
- setTitulares([null, null, null, null])
- setReservas([null, null, null, null])
+ const limiteTitulares = Math.max(1, Number(inscricao.campeonatos?.jogadores_por_equipe || 4))
+ const limiteReservas = Math.max(0, Number(inscricao.campeonatos?.reservas_permitidos || 0))
+
+ setLimiteTitularesAtivo(limiteTitulares)
+ setLimiteReservasAtivo(limiteReservas)
+ setTitulares(Array.from({ length: limiteTitulares }, () => null))
+ setReservas(Array.from({ length: limiteReservas }, () => null))
  setEscalacaoBloqueada(false)
  setMembrosEquipe([])
  setAvulsosEquipe([])
  setIdCampEditando(campId)
+ setInscricaoEditandoId(inscricao.id)
 
  try {
- const { data: membrosAtivos, error: membrosError } = await supabase
- .from('membros_equipe')
- .select('perfil_jogo_id')
- .eq('equipe_id', equipeId)
- .eq('ativo', true)
- .in('tipo', ['membro', 'admin', 'dono'])
+ const lineAtual = await resolverLineDaInscricao(inscricao)
+ const lineIdAtual = lineAtual?.id || null
+ setLineSelecionadaId(lineIdAtual)
 
- if (membrosError) throw membrosError
+ const { data: lineJogadoresData, error: lineJogadoresError } = lineIdAtual
+ ? await supabase
+ .from('lines_jogadores')
+ .select('id, line_id, perfil_jogo_id, jogador_avulso_id, tipo_slot, ordem, funcao_line')
+ .eq('line_id', lineIdAtual)
+ .is('removido_em', null)
+ .order('ordem', { ascending: true })
+ : { data: [], error: null }
 
- const idsMembros =
- (membrosAtivos || [])
- .map((m: { perfil_jogo_id: string | null }) => m.perfil_jogo_id)
+ if (lineJogadoresError) throw lineJogadoresError
+
+ const jogadoresDaLine = (lineJogadoresData || []) as LineJogadorRow[]
+
+ const idsMembros = Array.from(
+ new Set(
+ jogadoresDaLine
+ .map((m) => m.perfil_jogo_id)
  .filter((id): id is string => !!id)
+ )
+ )
+
+ const idsAvulsosDaLine = Array.from(
+ new Set(
+ jogadoresDaLine
+ .map((m) => m.jogador_avulso_id)
+ .filter((id): id is string => !!id)
+ )
+ )
 
  const equipeAvulsaId = inscricao.equipe_avulsa_id || null
 
  let queryJogadores = supabase
  .from('jogadores_campeonato')
- .select('id, perfil_jogo_id, jogador_avulso_id, observacoes, status, origem, equipe_id, equipe_avulsa_id')
+ .select('id, campeonato_equipe_id, perfil_jogo_id, jogador_avulso_id, observacoes, status, origem, equipe_id, equipe_avulsa_id')
  .eq('campeonato_id', campId)
+ .eq('campeonato_equipe_id', inscricao.id)
 
  if (equipeAvulsaId) {
  queryJogadores = queryJogadores.or(`equipe_id.eq.${equipeId},equipe_avulsa_id.eq.${equipeAvulsaId}`)
@@ -355,7 +505,7 @@ export default function AbaCampeonatos({
  if (avulsosDiretosError) throw avulsosDiretosError
 
  const idsAvulsosDiretos = (avulsosDiretosData || []).map((a: any) => a.id).filter(Boolean)
- const idsAvulsosTodos = Array.from(new Set([...idsAvulsosDiretos, ...idsAvulsosDasLinhas]))
+ const idsAvulsosTodos = Array.from(new Set([...idsAvulsosDiretos, ...idsAvulsosDasLinhas, ...idsAvulsosDaLine]))
 
  const { data: avulsosData, error: avulsosError } = idsAvulsosTodos.length
  ? await supabase
@@ -541,6 +691,26 @@ export default function AbaCampeonatos({
  }
  })
 
+ if (titularesAtivos.length === 0 && reservasAtivos.length === 0) {
+ jogadoresDaLine.forEach((row) => {
+ const key = row.perfil_jogo_id
+ ? makeKey('perfil', row.perfil_jogo_id)
+ : row.jogador_avulso_id
+ ? makeKey('avulso', row.jogador_avulso_id)
+ : null
+
+ if (!key) return
+ const convocavel = mapaConvocaveis.get(key)
+ if (!convocavel) return
+
+ if (row.tipo_slot === 'reserva') {
+ reservasAtivos.push(convocavel)
+ } else {
+ titularesAtivos.push(convocavel)
+ }
+ })
+ }
+
  // Jogadores que apareceram pela súmula entram automaticamente nos slots.
  // Se tiver mais jogadores que os 4 slots padrão, cria slots extras.
  const sumulaSemSlot = sumulaConvocaveis.filter((jogador) => {
@@ -550,8 +720,8 @@ export default function AbaCampeonatos({
  })
 
  const titularesBase = [...titularesAtivos, ...sumulaSemSlot]
- const quantidadeSlotsTitulares = Math.max(4, titularesBase.length)
- const quantidadeSlotsReservas = Math.max(4, reservasAtivos.length)
+ const quantidadeSlotsTitulares = Math.max(limiteTitulares, titularesBase.length)
+ const quantidadeSlotsReservas = Math.max(limiteReservas, reservasAtivos.length)
 
  const tits: (Convocavel | null)[] = Array.from({ length: quantidadeSlotsTitulares }, (_, index) => titularesBase[index] || null)
  const ress: (Convocavel | null)[] = Array.from({ length: quantidadeSlotsReservas }, (_, index) => reservasAtivos[index] || null)
@@ -691,20 +861,30 @@ export default function AbaCampeonatos({
  const titularesPadrao = (payload.titulares || []).map((key) => mapa.get(key) || null).filter(Boolean) as Convocavel[]
  const reservasPadrao = (payload.reservas || []).map((key) => mapa.get(key) || null).filter(Boolean) as Convocavel[]
 
- setTitulares(Array.from({ length: Math.max(4, titularesPadrao.length) }, (_, index) => titularesPadrao[index] || null))
- setReservas(Array.from({ length: Math.max(4, reservasPadrao.length) }, (_, index) => reservasPadrao[index] || null))
+ setTitulares(Array.from({ length: Math.max(limiteTitularesAtivo, titularesPadrao.length) }, (_, index) => titularesPadrao[index] || null))
+ setReservas(Array.from({ length: Math.max(limiteReservasAtivo, reservasPadrao.length) }, (_, index) => reservasPadrao[index] || null))
  }
 
  const salvarEscalacao = async () => {
- if (!idCampEditando || escalacaoBloqueada) return
+ if (!idCampEditando || !inscricaoEditandoId || escalacaoBloqueada) return
+
+ const totalTitularesSelecionados = titulares.filter(Boolean).length
+ const totalReservasSelecionados = reservas.filter(Boolean).length
+
+ if (totalTitularesSelecionados > limiteTitularesAtivo || totalReservasSelecionados > limiteReservasAtivo) {
+ alert(`A line tem jogadores excedentes. Ajuste para no máximo ${limiteTitularesAtivo} titulares e ${limiteReservasAtivo} reservas antes de confirmar.`)
+ return
+ }
+
  setSalvando(true)
 
  try {
  const { data: existentes, error: existentesError } = await supabase
  .from('jogadores_campeonato')
- .select('id, perfil_jogo_id, jogador_avulso_id, observacoes, status, origem')
+ .select('id, campeonato_equipe_id, perfil_jogo_id, jogador_avulso_id, observacoes, status, origem')
  .eq('campeonato_id', idCampEditando)
  .eq('equipe_id', equipeId)
+ .eq('campeonato_equipe_id', inscricaoEditandoId)
 
  if (existentesError) throw existentesError
 
@@ -762,6 +942,7 @@ export default function AbaCampeonatos({
  } else if (jogador.kind !== 'sumula') {
  inserts.push({
  campeonato_id: idCampEditando,
+ campeonato_equipe_id: inscricaoEditandoId,
  equipe_id: equipeId,
  perfil_jogo_id: jogador.kind === 'perfil' ? jogador.id : null,
  jogador_avulso_id: jogador.kind === 'avulso' ? jogador.id : null,
@@ -797,6 +978,7 @@ export default function AbaCampeonatos({
 
  inserts.push({
  campeonato_id: idCampEditando,
+ campeonato_equipe_id: inscricaoEditandoId,
  equipe_id: equipeId,
  perfil_jogo_id: null,
  jogador_avulso_id: avulsoCriado?.id || null,
@@ -845,6 +1027,9 @@ export default function AbaCampeonatos({
 
  alert('Convocação salva com sucesso!')
  setIdCampEditando(null)
+ setInscricaoEditandoId(null)
+ setLineSelecionadaId(null)
+ await carregarInscricoes()
  await onAtualizado?.()
  } catch (error: any) {
  console.error(error)
@@ -880,7 +1065,7 @@ export default function AbaCampeonatos({
  <div key={item.id} className="flex flex-col">
  <div
  className={`bg-zinc-50 border border-zinc-200 p-4 flex items-center justify-between transition-all ${
- idCampEditando === item.campeonato_id ? 'border-[#2563eb]/40 bg-white' : ''
+ inscricaoEditandoId === item.id ? 'border-[#2563eb]/40 bg-white' : ''
  }`}
  >
  <div className="flex items-center gap-4">
@@ -898,9 +1083,17 @@ export default function AbaCampeonatos({
  <h3 className="text-[#142340] text-base font-semibold uppercase tracking-tighter">
  {item.campeonatos?.nome}
  </h3>
- <span className="text-[#2563eb] text-[9px] font-bold uppercase tracking-widest bg-[#2563eb]/10 px-2 py-0.5 border border-[#2563eb]/20 inline-block mt-1">
+ <p className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500">
+ Vaga {item.nome_exibicao || item.id.slice(0, 8)} · Line {linhasEquipe.find((line) => line.id === item.line_id)?.nome || 'automática'}
+ </p>
+ <div className="mt-1 flex flex-wrap items-center gap-2">
+ <span className="text-[#2563eb] text-[9px] font-bold uppercase tracking-widest bg-[#2563eb]/10 px-2 py-0.5 border border-[#2563eb]/20 inline-block">
  {item.status || 'ativo'}
  </span>
+ <span className="text-zinc-500 text-[9px] font-bold uppercase tracking-widest bg-white px-2 py-0.5 border border-zinc-200 inline-block">
+ Line: {linhasEquipe.find((line) => line.id === item.line_id)?.nome || 'automática'}
+ </span>
+ </div>
  </div>
  </div>
 
@@ -908,32 +1101,62 @@ export default function AbaCampeonatos({
  onClick={() => carregarDadosEscalacao(item)}
  disabled={!canManage}
  className={`h-12 px-6 text-[10px] font-semibold uppercase flex items-center gap-2 border transition-all ${
- idCampEditando === item.campeonato_id
+ inscricaoEditandoId === item.id
  ? 'bg-[#2563eb] text-[#142340] border-[#2563eb]'
  : 'bg-white text-[#142340] border-zinc-200 hover:bg-zinc-50'
  } disabled:opacity-50 disabled:cursor-not-allowed`}
  >
- {idCampEditando === item.campeonato_id ? (
+ {inscricaoEditandoId === item.id ? (
  <>
  <X size={14} /> Fechar
  </>
  ) : (
  <>
- <Users size={14} /> Convocar
+ <Users size={14} /> Escalação
  </>
  )}
  </button>
  </div>
 
- {idCampEditando === item.campeonato_id && (
+ {inscricaoEditandoId === item.id && (
  <div className="bg-white border-x border-b border-zinc-200 p-6 animate-in fade-in slide-in-from-top-2 duration-500">
+ <div className="mb-6 border border-zinc-200 bg-white p-4">
+ <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+ Equipe / Line da inscrição
+ </p>
+ <p className="mt-2 text-[15px] font-black uppercase tracking-tight text-[#142340]">
+ Equipe {item.nome_exibicao || 'oficial'} · Line {linhasEquipe.find((line) => line.id === lineSelecionadaId || line.id === item.line_id)?.nome || 'automática'}
+ </p>
+ <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+ A escalação deste campeonato usa os jogadores da line selecionada.
+ </p>
+ </div>
+
+ <select
+ value={lineSelecionadaId || item.line_id || ''}
+ disabled={!canManage || escalacaoBloqueada}
+ onChange={(event) => trocarLineDaInscricao(item, event.target.value)}
+ className="h-11 min-w-[260px] border border-zinc-200 bg-white px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-[#142340] outline-none transition focus:border-[#2563eb] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+ >
+ <option value="">Selecionar line...</option>
+ {linhasEquipe.map((line) => (
+ <option key={line.id} value={line.id}>
+ {line.simbolo ? `${line.simbolo} ` : ''}{line.nome} {line.tipo === 'principal' ? '(principal)' : line.tipo?.startsWith('vaga_') ? '(vaga)' : ''}
+ </option>
+ ))}
+ </select>
+ </div>
+ </div>
+
  <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
  <div className="border border-zinc-200 bg-zinc-50 p-4">
  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#142340]">
- Perfis da equipe
+ Perfis da line
  </p>
  <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
- {membrosEquipe.length} disponíveis para convocação
+ {membrosEquipe.length} disponíveis nesta line
  </p>
  </div>
 
@@ -942,7 +1165,7 @@ export default function AbaCampeonatos({
  Avulsos / súmula
  </p>
  <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500">
- {avulsosEquipe.length} disponíveis para convocação
+ {avulsosEquipe.length} disponíveis nesta line
  </p>
  </div>
  </div>
@@ -980,16 +1203,22 @@ export default function AbaCampeonatos({
  </button>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ {(titulares.filter(Boolean).length > limiteTitularesAtivo || reservas.filter(Boolean).length > limiteReservasAtivo) ? (
+ <div className="mb-6 border border-red-200 bg-red-50 p-4 text-[11px] font-black uppercase tracking-[0.12em] text-red-600">
+ Esta line está acima do limite do campeonato. Ajuste para {limiteTitularesAtivo} titulares e {limiteReservasAtivo} reservas antes de confirmar.
+ </div>
+ ) : null}
+
+ <div className="grid grid-cols-1 gap-8">
  <div className="space-y-4">
  <div className="flex items-center gap-2 border-l-2 border-[#2563eb] pl-3 mb-2">
  <span className="text-[11px] font-semibold uppercase text-[#142340] tracking-widest">
  Titulares
  </span>
- <span className="text-[9px] text-zinc-500 font-bold">4 SLOTS</span>
+ <span className="text-[9px] text-zinc-500 font-bold">{limiteTitularesAtivo} SLOTS</span>
  </div>
 
- <div className="flex flex-col gap-2">
+ <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
  {titulares.map((slot, i) => (
  <SlotJogador
  key={`tit-${i}`}
@@ -1002,6 +1231,7 @@ export default function AbaCampeonatos({
  onRemove={removerJogador}
  onMove={moverSlot}
  locked={escalacaoBloqueada}
+ isExcedente={i >= limiteTitularesAtivo}
  />
  ))}
  </div>
@@ -1012,10 +1242,10 @@ export default function AbaCampeonatos({
  <span className="text-[11px] font-semibold uppercase text-zinc-500 tracking-widest">
  Reservas
  </span>
- <span className="text-[9px] text-zinc-500 font-bold">OPCIONAL</span>
+ <span className="text-[9px] text-zinc-500 font-bold">{limiteReservasAtivo} SLOTS</span>
  </div>
 
- <div className="flex flex-col gap-2">
+ <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
  {reservas.map((slot, i) => (
  <SlotJogador
  key={`res-${i}`}
@@ -1028,6 +1258,7 @@ export default function AbaCampeonatos({
  onRemove={removerJogador}
  onMove={moverSlot}
  locked={escalacaoBloqueada}
+ isExcedente={i >= limiteReservasAtivo}
  />
  ))}
  </div>
@@ -1050,7 +1281,7 @@ export default function AbaCampeonatos({
  </div>
 
  <button
- disabled={salvando || !canManage || escalacaoBloqueada}
+ disabled={salvando || !canManage || escalacaoBloqueada || titulares.filter(Boolean).length > limiteTitularesAtivo || reservas.filter(Boolean).length > limiteReservasAtivo}
  onClick={salvarEscalacao}
  className="w-full md:w-auto bg-[#2563eb] text-[#142340] h-14 px-10 text-[11px] font-semibold uppercase flex items-center justify-center gap-3 hover:brightness-110 transition-all disabled:opacity-50"
  >
@@ -1058,7 +1289,7 @@ export default function AbaCampeonatos({
  <Loader2 className="animate-spin" />
  ) : (
  <>
- <UserCheck size={20} /> Confirmar elenco
+ <UserCheck size={20} /> Confirmar line
  </>
  )}
  </button>
@@ -1081,6 +1312,7 @@ function SlotJogador({
  onRemove,
  onMove,
  locked,
+ isExcedente = false,
 }: {
  slot: Convocavel | null
  index: number
@@ -1096,7 +1328,13 @@ function SlotJogador({
  destinoTipo: 'titular' | 'reserva'
  ) => void
  locked: boolean
+ isExcedente?: boolean
 }) {
+ const numero = tipo === 'titular' ? index + 1 : `R${index + 1}`
+ const variant = slot?.kind === 'avulso' || slot?.kind === 'sumula' ? 'avulso' : slot ? 'oficial' : 'slot'
+ const tier = slot ? tierPorSlotProLeague(tipo, index) : 'E'
+ const [menuAberto, setMenuAberto] = useState(false)
+
  return (
  <div
  draggable={!!slot && !locked}
@@ -1116,89 +1354,173 @@ function SlotJogador({
  // ignora drag inválido
  }
  }}
- className={`relative group flex items-center justify-between p-3 bg-zinc-50 border border-zinc-200 transition-all hover:border-zinc-300 ${
- slot ? 'border-l-2 border-l-[#18b54a]' : ''
- }`}
+ className={`group relative flex flex-col ${slot && !locked ? 'cursor-grab active:cursor-grabbing' : ''} ${isExcedente ? 'rounded-sm ring-2 ring-red-400 ring-offset-2' : ''}`}
  >
- <div className="flex items-center gap-3">
- <GripVertical size={14} className={locked || !slot ? 'text-[#142340]' : 'text-zinc-500 cursor-grab'} />
- <div className="w-10 h-10 bg-white flex items-center justify-center border border-zinc-200 relative overflow-hidden">
- {slot ? (
- slot.foto ? (
- <img src={slot.foto} className="w-full h-full object-cover" alt="Avatar" />
- ) : (
- <span className="text-[10px] font-semibold text-zinc-500 ">#{index + 1}</span>
- )
- ) : (
- <span className="text-[10px] font-semibold text-zinc-500 ">#{index + 1}</span>
- )}
- </div>
+ <div
+ role="button"
+ tabIndex={0}
+ onClick={() => setMenuAberto((atual) => !atual)}
+ onKeyDown={(event) => {
+ if (event.key === 'Enter' || event.key === ' ') {
+ event.preventDefault()
+ setMenuAberto((atual) => !atual)
+ }
+ }}
+ className="relative block w-full max-w-[130px] text-left outline-none cursor-pointer"
+ title={slot ? `${slot.nick} • ${slot.jogosEquipe} queda(s)` : 'Slot vazio'}
+ >
+ <PlayerCard
+ name={slot?.nick || 'Adicionar'}
+ number={numero}
+ tier={tier}
+ photoUrl={slot?.foto || null}
+ variant={variant}
+ className="w-full max-w-[130px]"
+ />
 
- <div className="flex flex-col">
- <div className="flex items-center gap-2">
- <span className={`text-[10px] font-semibold uppercase ${slot ? 'text-[#142340]' : 'text-zinc-500'}`}>
- {slot ? slot.nick : 'Vazio'}
- </span>
- {slot ? getRoleIcon(slot.funcao) : null}
- {slot ? (
- <span className={`text-[8px] font-semibold uppercase px-1.5 py-0.5 border ${
- slot.kind === 'perfil'
- ? 'text-[#2563eb] border-[#2563eb]/30 bg-[#2563eb]/10'
- : slot.kind === 'sumula'
- ? 'text-orange-600 border-orange-600/30 bg-orange-600/10'
- : 'text-sky-600 border-sky-600/30 bg-sky-600/10'
+ <div className="absolute left-1 top-1 flex items-center gap-1">
+ <span className={`border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] ${
+ tipo === 'titular'
+ ? 'border-[#2563eb]/40 bg-[#2563eb] text-white'
+ : 'border-zinc-300 bg-white/90 text-zinc-600'
  }`}>
- {slot.kind === 'perfil' ? 'equipe' : slot.kind === 'sumula' ? '🔥 súmula' : 'avulso'}
+ {tipo === 'titular' ? 'Titular' : 'Reserva'}
  </span>
- ) : null}
+
  {slot?.isMvp ? (
- <span className="text-[8px] font-semibold uppercase px-1.5 py-0.5 border text-amber-600 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
- <Trophy size={9} /> MVP
+ <span className="inline-flex items-center gap-1 border border-amber-400 bg-amber-50 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-amber-700">
+ <Trophy size={8} /> MVP
  </span>
  ) : null}
  </div>
- <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-[1px]">
- {slot ? `${slot.funcao || 'Membro'} • ${slot.jogosEquipe} jogo(s)` : `${tipo} slot`}
- </span>
+
+ {isExcedente ? (
+ <div className="absolute bottom-1 left-1 border border-red-300 bg-red-50 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-red-600">
+ Excedente
  </div>
+ ) : null}
+
+ {slot && !locked ? (
+ <div className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center border border-white/40 bg-black/45 text-white backdrop-blur-sm">
+ <GripVertical size={12} />
+ </div>
+ ) : null}
  </div>
 
- <div className="flex items-center gap-2">
- <select
- disabled={locked}
- className="bg-white text-[9px] font-bold uppercase border border-zinc-200 text-zinc-500 px-2 py-1.5 outline-none focus:border-[#2563eb] transition-all w-44 appearance-none cursor-pointer disabled:bg-zinc-100 disabled:cursor-not-allowed"
- onChange={(e) => onSelect(e.target.value, index, tipo)}
- value={slot ? makeKey(slot.kind, slot.id) : ''}
- >
- <option value="">Escolher...</option>
+ {menuAberto ? (
+ <div className="absolute left-0 top-full z-30 mt-2 w-[210px] border border-zinc-200 bg-white p-3 shadow-xl">
+ <div className="mb-3 flex items-start justify-between gap-3">
+ <div className="min-w-0">
+ <p className={`truncate text-[12px] font-black uppercase leading-none ${slot ? 'text-[#142340]' : 'text-zinc-400'}`}>
+ {slot?.nick || 'Slot vazio'}
+ </p>
+ <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.08em] text-zinc-500">
+ {slot ? `${slot.funcao || 'Sem função'} • ${slot.jogosEquipe} queda(s)` : `${tipo} slot`}
+ </p>
+ </div>
 
- {perfis.length > 0 ? <optgroup label="Perfis da equipe">
- {perfis.map((m) => (
- <option key={makeKey(m.kind, m.id)} value={makeKey(m.kind, m.id)}>
- {m.nick} - {m.jogosEquipe} jogo(s)
- </option>
- ))}
- </optgroup> : null}
-
- {avulsos.length > 0 ? <optgroup label="Avulsos e súmula">
- {avulsos.map((m) => (
- <option key={makeKey(m.kind, m.id)} value={makeKey(m.kind, m.id)}>
- {m.nick} - {m.jogosEquipe} jogo(s)
- </option>
- ))}
- </optgroup> : null}
- </select>
-
- {slot ? (
  <button
- disabled={locked}
- onClick={() => onRemove(index, tipo)}
- className="p-1.5 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-[#142340] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+ type="button"
+ onClick={() => setMenuAberto(false)}
+ className="flex h-6 w-6 shrink-0 items-center justify-center border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
  >
  <X size={12} />
  </button>
+ </div>
+
+ <div className="mb-3 flex flex-wrap gap-1.5">
+ {slot ? (
+ <span className={`border px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] ${
+ slot.kind === 'perfil'
+ ? 'border-[#2563eb]/30 bg-[#2563eb]/10 text-[#2563eb]'
+ : slot.kind === 'sumula'
+ ? 'border-orange-500/30 bg-orange-500/10 text-orange-600'
+ : 'border-sky-500/30 bg-sky-500/10 text-sky-600'
+ }`}>
+ {slot.kind === 'perfil' ? 'Equipe' : slot.kind === 'sumula' ? 'Súmula' : 'Avulso'}
+ </span>
+ ) : (
+ <span className="border border-dashed border-zinc-300 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-zinc-400">
+ Aguardando jogador
+ </span>
+ )}
+ </div>
+
+ <select
+ disabled={locked}
+ className="h-9 w-full truncate border border-zinc-200 bg-white px-2 text-[9px] font-bold uppercase tracking-[0.04em] text-[#142340] outline-none transition focus:border-[#2563eb] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+ onChange={(e) => {
+ onSelect(e.target.value, index, tipo)
+ setMenuAberto(false)
+ }}
+ value={slot ? makeKey(slot.kind, slot.id) : ''}
+ >
+ <option value="">Escolher jogador...</option>
+
+ {perfis.length > 0 ? (
+ <optgroup label="Perfis da equipe">
+ {perfis.map((m) => (
+ <option key={makeKey(m.kind, m.id)} value={makeKey(m.kind, m.id)}>
+ {m.nick} - {m.jogosEquipe} queda(s)
+ </option>
+ ))}
+ </optgroup>
+ ) : null}
+
+ {avulsos.length > 0 ? (
+ <optgroup label="Avulsos e súmula">
+ {avulsos.map((m) => (
+ <option key={makeKey(m.kind, m.id)} value={makeKey(m.kind, m.id)}>
+ {m.nick} - {m.jogosEquipe} queda(s)
+ </option>
+ ))}
+ </optgroup>
+ ) : null}
+ </select>
+
+ {slot ? (
+ <div className="mt-3 grid grid-cols-1 gap-2">
+ {tipo === 'titular' ? (
+ <button
+ type="button"
+ disabled={locked}
+ onClick={() => {
+ onMove(index, 0, 'titular', 'reserva')
+ setMenuAberto(false)
+ }}
+ className="h-8 w-full truncate border border-amber-300 bg-amber-50 px-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-amber-700 transition hover:bg-amber-100 disabled:opacity-40"
+ >
+ Mover para reserva
+ </button>
+ ) : (
+ <button
+ type="button"
+ disabled={locked}
+ onClick={() => {
+ onMove(index, 0, 'reserva', 'titular')
+ setMenuAberto(false)
+ }}
+ className="h-8 w-full truncate border border-[#2563eb]/30 bg-[#2563eb]/10 px-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-[#2563eb] transition hover:bg-[#2563eb]/20 disabled:opacity-40"
+ >
+ Mover para titular
+ </button>
+ )}
+
+ <button
+ type="button"
+ disabled={locked}
+ onClick={() => {
+ onRemove(index, tipo)
+ setMenuAberto(false)
+ }}
+ className="h-8 w-full truncate border border-red-300 bg-red-50 px-2 text-center text-[8px] font-black uppercase tracking-[0.08em] text-red-600 transition hover:bg-red-100 disabled:opacity-40"
+ >
+ Remover da line
+ </button>
+ </div>
  ) : null}
  </div>
+ ) : null}
  </div>
  )
 }

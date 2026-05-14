@@ -54,6 +54,9 @@ type EquipeBase = {
   inscricao_id: string
   equipe_id?: string | null
   equipe_avulsa_id?: string | null
+  line_id?: string | null
+  line_nome?: string | null
+  line_tipo?: string | null
   tipo_origem: 'oficial' | 'avulsa'
   nome: string
   nome_base: string
@@ -277,6 +280,7 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
             fase_id,
             nome_exibicao,
             numero_vaga,
+            line_id,
             tipo_entrada,
             status_pagamento
           `
@@ -327,10 +331,12 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
 
       const idsOficiais = inscricoes.map((item: any) => item.equipe_id).filter(Boolean)
       const idsAvulsas = inscricoes.map((item: any) => item.equipe_avulsa_id).filter(Boolean)
+      const idsLines = inscricoes.map((item: any) => item.line_id).filter(Boolean)
 
       const [
         { data: oficiaisData, error: oficiaisError },
         { data: avulsasData, error: avulsasError },
+        { data: linesData, error: linesError },
       ] = await Promise.all([
         idsOficiais.length > 0
           ? supabase.from('equipes').select('id, nome, tag, logo_url').in('id', idsOficiais)
@@ -341,13 +347,21 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
               .select('id, nome, tag, logo_url')
               .in('id', idsAvulsas)
           : Promise.resolve({ data: [], error: null }),
+        idsLines.length > 0
+          ? supabase
+              .from('lines')
+              .select('id, nome, tipo, simbolo')
+              .in('id', idsLines)
+          : Promise.resolve({ data: [], error: null }),
       ])
 
       if (oficiaisError) throw oficiaisError
       if (avulsasError) throw avulsasError
+      if (linesError) throw linesError
 
       const mapaOficiais = new Map(((oficiaisData || []) as any[]).map((item) => [item.id, item]))
       const mapaAvulsas = new Map(((avulsasData || []) as any[]).map((item) => [item.id, item]))
+      const mapaLines = new Map(((linesData || []) as any[]).map((item) => [item.id, item]))
 
       const contagemPorEquipe = new Map<string, number>()
 
@@ -359,6 +373,7 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
 
         const oficial = item.equipe_id ? mapaOficiais.get(item.equipe_id) : null
         const avulsa = item.equipe_avulsa_id ? mapaAvulsas.get(item.equipe_avulsa_id) : null
+        const line = item.line_id ? mapaLines.get(item.line_id) : null
         const nomeBase = oficial?.nome || avulsa?.nome || item.nome_exibicao || 'Equipe sem nome'
         const chaveDuplicidade = item.equipe_id
           ? `oficial:${item.equipe_id}`
@@ -374,6 +389,9 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
           inscricao_id: item.id,
           equipe_id: item.equipe_id || null,
           equipe_avulsa_id: item.equipe_avulsa_id || null,
+          line_id: item.line_id || null,
+          line_nome: line?.nome || null,
+          line_tipo: line?.tipo || null,
           tipo_origem: tipo,
           nome: nomeExibicao,
           nome_base: nomeBase,
@@ -856,7 +874,9 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
         throw new Error('Este slot já possui equipe.')
       }
 
-      // Atualização direta. Isso evita a função RPC antiga do banco que ainda pode estar barrando por equipe_id.
+      // Atualização direta por campeonato_equipes.id.
+      // No modo line, o line_id fica em campeonato_equipes.line_id.
+      // O slot guarda a vaga/inscrição; a line é resolvida por esse vínculo.
       const { error: slotError } = await supabase
         .from('campeonato_grupo_slots')
         .update({ campeonato_equipe_id: campeonatoEquipeId })
@@ -1501,6 +1521,12 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
                                                     >
                                                       {slot.equipe.tipo_origem === 'oficial' ? 'APP' : 'AVULSA'}
                                                     </span>
+
+                                                    {slot.equipe.line_nome ? (
+                                                      <span className="bg-[#2563eb]/10 px-1.5 py-0.5 text-[7px] font-black uppercase text-[#2563eb]">
+                                                        {slot.equipe.line_nome}
+                                                      </span>
+                                                    ) : null}
                                                   </div>
                                                 </div>
                                               </>
