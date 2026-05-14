@@ -1,0 +1,122 @@
+/* Isolamento visual do link beta /escala */
+:root,
+html,
+body {
+  color-scheme: light only !important;
+  supported-color-schemes: light !important;
+}
+
+.escala-beta-root,
+.escala-beta-root *,
+.escala-beta-page,
+.escala-beta-page * {
+  color-scheme: light only !important;
+}
+
+.escala-beta-root {
+  min-height: 100dvh;
+  background: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+/* Esconde chrome global caso o layout raiz do site injete sidebar/topbar/bottom nav */
+body:has(.escala-beta-root) aside,
+body:has(.escala-beta-root) header,
+body:has(.escala-beta-root) nav.fixed,
+body:has(.escala-beta-root) nav[class*="bottom-0"],
+body:has(.escala-beta-root) [data-sidebar],
+body:has(.escala-beta-root) [data-app-sidebar],
+body:has(.escala-beta-root) .sidebar,
+body:has(.escala-beta-root) .app-sidebar,
+body:has(.escala-beta-root) .bottom-nav,
+body:has(.escala-beta-root) .mobile-bottom-nav {
+  display: none !important;
+}
+
+body:has(.escala-beta-root) main {
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: none !important;
+  background: #f5f7fb !important;
+}
+
+.escala-beta-page {
+  background: #f5f7fb !important;
+  color: #0f172a !important;
+}
+
+.escala-beta-page section,
+.escala-beta-page div,
+.escala-beta-page article {
+  color-scheme: light only !important;
+}
+
+.escala-beta-page .bg-white,
+.escala-beta-page [class*="bg-white"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.escala-beta-page input,
+.escala-beta-page textarea,
+.escala-beta-page select,
+.escala-beta-page option,
+.escala-beta-page button {
+  color-scheme: light only !important;
+}
+
+.escala-beta-page input:not([type='checkbox']):not([type='radio']),
+.escala-beta-page textarea,
+.escala-beta-page select,
+.escala-beta-page option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Android/Samsung dark mode: neutraliza superfícies escuras aplicadas por CSS global */
+@media (prefers-color-scheme: dark) {
+  .escala-beta-root,
+  .escala-beta-page {
+    background: #f5f7fb !important;
+    color: #0f172a !important;
+  }
+
+  .escala-beta-page .bg-slate-50,
+  .escala-beta-page [class*="bg-slate-50"] {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+  }
+
+  .escala-beta-page .bg-white,
+  .escala-beta-page [class*="bg-white"] {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .escala-beta-page .text-slate-950,
+  .escala-beta-page [class*="text-slate-950"] {
+    color: #0f172a !important;
+  }
+
+  .escala-beta-page .text-slate-800,
+  .escala-beta-page [class*="text-slate-800"] {
+    color: #1e293b !important;
+  }
+
+  .escala-beta-page .text-slate-700,
+  .escala-beta-page [class*="text-slate-700"] {
+    color: #334155 !important;
+  }
+
+  .escala-beta-page .text-slate-500,
+  .escala-beta-page [class*="text-slate-500"] {
+    color: #64748b !important;
+  }
+
+  .escala-beta-page .border-slate-200,
+  .escala-beta-page [class*="border-slate-200"] {
+    border-color: #e2e8f0 !important;
+  }
+}

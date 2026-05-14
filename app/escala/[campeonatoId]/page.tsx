@@ -578,7 +578,7 @@ export default function EscalaCampeonatoPage() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 px-4 text-slate-950 [color-scheme:light]">
+      <main className="escala-beta-page grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950 [color-scheme:light]">
         <div className="border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
           <Loader2 className="mr-2 inline animate-spin" size={16} /> Carregando
           link
@@ -589,13 +589,13 @@ export default function EscalaCampeonatoPage() {
 
   if (!campeonato) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-50 px-4 text-slate-950 [color-scheme:light]">
+      <main className="escala-beta-page grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950 [color-scheme:light]">
         <div className="w-full max-w-sm border border-slate-200 bg-white p-6 text-center">
           <h1 className="text-lg font-black uppercase tracking-[-0.03em]">
             Campeonato não encontrado
           </h1>
           <Link
-            href={`/escala/${campeonato?.id || campeonatoParam}`}
+            href="#"
             className="mt-4 inline-flex h-11 items-center justify-center border border-blue-600 bg-blue-600 px-5 text-xs font-black uppercase text-white"
           >
             Voltar ao painel
@@ -607,7 +607,7 @@ export default function EscalaCampeonatoPage() {
 
 
   return (
-    <main className="min-h-screen bg-slate-50 px-2 py-2 text-slate-950 [color-scheme:light]">
+    <main className="escala-beta-page min-h-screen bg-slate-50 px-2 py-2 text-slate-950 [color-scheme:light]">
       <div className="mx-auto max-w-md pb-5">
         <section className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white">
@@ -667,19 +667,19 @@ export default function EscalaCampeonatoPage() {
 
             <div className="mt-4 grid gap-2">
               <Link
-                href={`/escala/${campeonato?.id || campeonatoParam}`}
+                href="#"
                 className="flex h-12 items-center justify-center border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
               >
                 Login
               </Link>
               <Link
-                href={`/escala/${campeonato?.id || campeonatoParam}`}
+                href="#"
                 className="flex h-12 items-center justify-center border border-slate-300 bg-white text-xs font-black uppercase text-slate-800"
               >
                 Criar conta
               </Link>
               <Link
-                href={`/escala/${campeonato?.id || campeonatoParam}`}
+                href="#"
                 className="flex h-12 items-center justify-center border border-slate-300 bg-white text-xs font-black uppercase text-slate-800"
               >
                 Recuperar senha
@@ -820,7 +820,7 @@ export default function EscalaCampeonatoPage() {
                   <CardVazio
                     titulo="Você ainda não tem equipe"
                     texto="Crie sua organização usando o formulário original do site."
-                    href={`/escala/${campeonato?.id || campeonatoParam}`}
+                    href="#"
                     label="Criar equipe"
                   />
                 )}
@@ -956,7 +956,7 @@ export default function EscalaCampeonatoPage() {
                   <CardVazio
                     titulo="Você ainda não tem equipe"
                     texto="Crie sua organização usando o formulário original do site."
-                    href={`/escala/${campeonato?.id || campeonatoParam}`}
+                    href="#"
                     label="Criar equipe"
                   />
                 ) : null}
@@ -1059,7 +1059,7 @@ export default function EscalaCampeonatoPage() {
                   <CardVazio
                     titulo="Você ainda não tem conta de jogo"
                     texto="Crie seu perfil de jogador usando o cadastro original do site."
-                    href={`/escala/${campeonato?.id || campeonatoParam}`}
+                    href="#"
                     label="Criar perfil de jogo"
                   />
                 ) : (
@@ -1101,13 +1101,13 @@ export default function EscalaCampeonatoPage() {
 
                     <div className="mt-2 grid grid-cols-2 gap-1.5">
                       <Link
-                        href={`/escala/${campeonato?.id || campeonatoParam}`}
+                        href="#"
                         className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
                       >
                         <Edit3 size={14} /> Editar perfil
                       </Link>
                       <Link
-                        href={`/escala/${campeonato?.id || campeonatoParam}`}
+                        href="#"
                         className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
                       >
                         <MailPlus size={14} /> Convites
