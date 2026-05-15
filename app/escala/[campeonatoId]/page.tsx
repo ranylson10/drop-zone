@@ -102,6 +102,16 @@ type PerfilJogo = {
   overall_tier?: string | null;
 };
 
+type ConviteEquipeBeta = {
+  id: string;
+  equipe_id: string;
+  perfil_jogo_id: string;
+  status: string;
+  tipo?: string | null;
+  created_at?: string | null;
+  perfil?: PerfilJogo | null;
+};
+
 type JogadorAvulsoCampeonato = {
   id: string;
   campeonato_id: string;
@@ -167,7 +177,7 @@ function getFotoPerfilMobile(perfil?: PerfilJogo | null) {
 }
 
 function getCapaPerfilMobile(perfil?: PerfilJogo | null) {
-  return perfil?.capa_url || perfil?.banner_url || perfil?.foto_capa || perfil?.avatar_url || perfil?.foto_url || null;
+  return perfil?.capa_url || perfil?.banner_url || perfil?.foto_capa || null;
 }
 
 function getNomeJogador(jogador?: JogadorEquipe | null) {
@@ -279,6 +289,17 @@ export default function EscalaCampeonatoPage() {
   const [tipoAcesso, setTipoAcesso] = useState<"jogador" | "lider" | "manager" | null>(null);
   const [aba, setAba] = useState<"escala" | "equipe" | "jogador">("equipe");
   const [equipeSelecionadaId, setEquipeSelecionadaId] = useState<string | null>(null);
+  const [lineSelecionadaPorEquipe, setLineSelecionadaPorEquipe] = useState<Record<string, string>>({});
+  const [managerBusca, setManagerBusca] = useState("");
+  const [linePickerAberto, setLinePickerAberto] = useState<{ equipeId: string; lineId: string } | null>(null);
+  const [painelEquipeAtivo, setPainelEquipeAtivo] = useState<"jogadores" | "lideres">("jogadores");
+  const [subJogadoresAtiva, setSubJogadoresAtiva] = useState<"elenco" | "convites" | "pedidos">("elenco");
+  const [buscaJogadorEquipe, setBuscaJogadorEquipe] = useState("");
+  const [jogadorElencoSelecionado, setJogadorElencoSelecionado] = useState<string | null>(null);
+  const [resultadosBuscaJogadorSite, setResultadosBuscaJogadorSite] = useState<PerfilJogo[]>([]);
+  const [buscandoJogadorSite, setBuscandoJogadorSite] = useState(false);
+  const [operandoJogadorId, setOperandoJogadorId] = useState<string | null>(null);
+  const [convitesPorEquipe, setConvitesPorEquipe] = useState<Record<string, ConviteEquipeBeta[]>>({});
   const [vagaAtivaPorEquipe, setVagaAtivaPorEquipe] = useState<
     Record<string, string>
   >({});
@@ -327,6 +348,7 @@ export default function EscalaCampeonatoPage() {
         setJogadoresPorEquipe({});
         setElencoPorEquipe({});
         setLinesPorEquipe({});
+        setConvitesPorEquipe({});
         setPerfilJogo(null);
         setJogadorNoCampeonato(null);
         setEquipeDoJogador(null);
@@ -418,6 +440,49 @@ export default function EscalaCampeonatoPage() {
           linesAgrupadas[line.equipe_id].push(line);
         });
         setLinesPorEquipe(linesAgrupadas);
+
+        const { data: convitesEquipeData } = await supabase
+          .from("convites_equipe")
+          .select("id,equipe_id,perfil_jogo_id,status,tipo,created_at")
+          .in("equipe_id", equipeIds)
+          .eq("status", "pendente")
+          .order("created_at", { ascending: false });
+
+        const convitesLista = (convitesEquipeData || []) as ConviteEquipeBeta[];
+        const convitesPerfilIds = convitesLista
+          .map((convite) => convite.perfil_jogo_id)
+          .filter(Boolean);
+
+        let perfisConvitesMapa = new Map<string, PerfilJogo>();
+
+        if (convitesPerfilIds.length) {
+          const { data: perfisConvitesData } = await supabase
+            .from("perfis_jogo")
+            .select("*")
+            .in("id", convitesPerfilIds);
+
+          perfisConvitesMapa = new Map(
+            ((perfisConvitesData || []) as PerfilJogo[]).map((perfil) => [
+              perfil.id,
+              perfil,
+            ]),
+          );
+        }
+
+        const convitesAgrupados: Record<string, ConviteEquipeBeta[]> = {};
+        convitesLista.forEach((convite) => {
+          if (!convitesAgrupados[convite.equipe_id]) {
+            convitesAgrupados[convite.equipe_id] = [];
+          }
+
+          convitesAgrupados[convite.equipe_id].push({
+            ...convite,
+            perfil: perfisConvitesMapa.get(convite.perfil_jogo_id) || null,
+          });
+        });
+
+        setConvitesPorEquipe(convitesAgrupados);
+
 
         if (inscricoesLista.length) {
           const campeonatoEquipeIds = inscricoesLista.map((item) => item.id);
@@ -588,6 +653,330 @@ export default function EscalaCampeonatoPage() {
     [campeonato],
   );
   const abertas = inscricoesAbertas(campeonato);
+
+  useEffect(() => {
+    const termo = buscaJogadorEquipe.trim();
+
+    if (!termo || termo.length < 2) {
+      setResultadosBuscaJogadorSite([]);
+      return;
+    }
+
+    const buscarJogadoresSiteTimer = window.setTimeout(async () => {
+      setBuscandoJogadorSite(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("perfis_jogo")
+          .select("*")
+          .eq("ativo", true)
+          .or(`nick.ilike.%${termo}%,uid_jogo.ilike.%${termo}%`)
+          .limit(15);
+
+        if (error) throw error;
+
+        setResultadosBuscaJogadorSite((data || []) as PerfilJogo[]);
+      } catch (error) {
+        console.error("Erro ao pesquisar jogador:", error);
+        setResultadosBuscaJogadorSite([]);
+      } finally {
+        setBuscandoJogadorSite(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(buscarJogadoresSiteTimer);
+  }, [buscaJogadorEquipe]);
+
+
+  function jogadoresDaLineMobile(lineId?: string | null) {
+    if (!lineId) return [];
+    const vagasDaLine = inscricoesEquipe.filter((vaga) => vaga.line_id === lineId);
+    const jogadoresMap = new Map<string, JogadorEquipe>();
+
+    vagasDaLine.forEach((vaga) => {
+      (jogadoresPorEquipe[vaga.id] || []).forEach((jogador) => {
+        if (jogador.status === "ativo") jogadoresMap.set(jogador.id, jogador);
+      });
+    });
+
+    return Array.from(jogadoresMap.values());
+  }
+
+  function adicionarJogadorLineBeta(equipe: Equipe, line: LineMobile) {
+    setLinePickerAberto({ equipeId: equipe.id, lineId: line.id });
+  }
+
+  async function adicionarPerfilNaLineBeta(equipe: Equipe, line: LineMobile, perfil: PerfilJogo) {
+    const vagaDaLine = inscricoesEquipe.find((vaga) => vaga.line_id === line.id && vaga.equipe_id === equipe.id);
+    if (!vagaDaLine?.id) {
+      alert("Esta line não possui vaga vinculada neste campeonato.");
+      return;
+    }
+
+    try {
+      const { data: jogadorId, error: garantirError } = await supabase.rpc(
+        "fn_garantir_jogador_campeonato_vaga",
+        {
+          p_campeonato_id: campeonato.id,
+          p_campeonato_equipe_id: vagaDaLine.id,
+          p_perfil_jogo_id: perfil.id,
+          p_jogador_avulso_id: null,
+          p_criado_por: null,
+        },
+      );
+
+      if (garantirError) throw garantirError;
+
+      const jogadoresAtuais = jogadoresDaLineMobile(line.id);
+      const tipoSlot =
+        jogadoresAtuais.length < Number(campeonato.jogadores_por_equipe || 4)
+          ? "titular"
+          : "reserva";
+
+      const { error: ativarError } = await supabase
+        .from("jogadores_campeonato")
+        .update({
+          status: "ativo",
+          origem: "app",
+          criado_automaticamente: false,
+          observacoes: tipoSlot,
+        })
+        .eq("id", jogadorId);
+
+      if (ativarError) throw ativarError;
+
+      const { data: existenteLine } = await supabase
+        .from("lines_jogadores")
+        .select("id")
+        .eq("line_id", line.id)
+        .eq("perfil_jogo_id", perfil.id)
+        .maybeSingle();
+
+      if (!existenteLine?.id) {
+        const { data: ordemData } = await supabase
+          .from("lines_jogadores")
+          .select("ordem")
+          .eq("line_id", line.id)
+          .order("ordem", { ascending: false })
+          .limit(1);
+
+        const ordem = Math.max(0, Number((ordemData || [])[0]?.ordem ?? -1) + 1);
+
+        const { error: lineError } = await supabase
+          .from("lines_jogadores")
+          .insert({
+            line_id: line.id,
+            perfil_jogo_id: perfil.id,
+            jogador_avulso_id: null,
+            tipo_slot: tipoSlot,
+            ordem,
+          });
+
+        if (lineError) throw lineError;
+      }
+
+      const novoJogador: JogadorEquipe = {
+        id: String(jogadorId),
+        campeonato_id: campeonato.id,
+        equipe_id: equipe.id,
+        campeonato_equipe_id: vagaDaLine.id,
+        perfil_jogo_id: perfil.id,
+        jogador_avulso_id: null,
+        status: "ativo",
+        nick_snapshot: getNomePerfil(perfil),
+        uid_jogo_snapshot: getUidPerfil(perfil),
+        perfil,
+        avulso: null,
+      };
+
+      setJogadoresPorEquipe((atual) => {
+        const listaAtual = atual[vagaDaLine.id] || [];
+        const semDuplicado = listaAtual.filter((item) => item.perfil_jogo_id !== perfil.id);
+
+        return {
+          ...atual,
+          [vagaDaLine.id]: [...semDuplicado, novoJogador],
+        };
+      });
+
+      setLinePickerAberto(null);
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao adicionar jogador na line.");
+    }
+  }
+
+  async function removerJogadorLineBeta(jogador: JogadorEquipe) {
+    const confirmar = window.confirm("Remover este jogador da line?");
+    if (!confirmar) return;
+
+    try {
+      setOperandoJogadorId(jogador.id);
+
+      if (jogador.id) {
+        const { error } = await supabase
+          .from("jogadores_campeonato")
+          .update({ status: "removido" })
+          .eq("id", jogador.id);
+
+        if (error) throw error;
+      }
+
+      setJogadoresPorEquipe((atual) => {
+        const proximo: Record<string, JogadorEquipe[]> = {};
+
+        Object.entries(atual).forEach(([vagaId, lista]) => {
+          proximo[vagaId] = lista.map((item) =>
+            item.id === jogador.id ? { ...item, status: "removido" } : item,
+          );
+        });
+
+        return proximo;
+      });
+    } catch (error: any) {
+      alert(error?.message || "Erro ao remover jogador da line.");
+    } finally {
+      setOperandoJogadorId(null);
+    }
+  }
+
+  function adicionarManagerBeta() {
+    if (!managerBusca.trim()) {
+      alert("Digite o e-mail ou ID do manager.");
+      return;
+    }
+    alert("Convite de manager será enviado aqui no beta.");
+  }
+
+  function removerManagerBeta() {
+    alert("Remoção de manager será executada aqui no beta.");
+  }
+
+  async function removerJogadorElencoBeta(equipe: Equipe, perfil: PerfilJogo) {
+    const confirmar = window.confirm(`Remover ${getNomePerfil(perfil)} do elenco da equipe?`);
+    if (!confirmar) return;
+
+    try {
+      setOperandoJogadorId(perfil.id);
+
+      const { error: membroError } = await supabase
+        .from("membros_equipe")
+        .update({
+          ativo: false,
+          saiu_em: new Date().toISOString(),
+        })
+        .eq("equipe_id", equipe.id)
+        .eq("perfil_jogo_id", perfil.id)
+        .eq("ativo", true);
+
+      if (membroError) throw membroError;
+
+      const { error: perfilError } = await supabase
+        .from("perfis_jogo")
+        .update({ equipe_id: null })
+        .eq("id", perfil.id)
+        .eq("equipe_id", equipe.id);
+
+      if (perfilError) throw perfilError;
+
+      const lineIds = (linesPorEquipe[equipe.id] || []).map((line) => line.id);
+      if (lineIds.length) {
+        await supabase
+          .from("lines_jogadores")
+          .update({ removido_em: new Date().toISOString() })
+          .in("line_id", lineIds)
+          .eq("perfil_jogo_id", perfil.id)
+          .is("removido_em", null);
+      }
+
+      const vagasEquipe = inscricoesEquipe
+        .filter((vaga) => vaga.equipe_id === equipe.id)
+        .map((vaga) => vaga.id);
+
+      if (vagasEquipe.length) {
+        await supabase
+          .from("jogadores_campeonato")
+          .update({ status: "removido" })
+          .in("campeonato_equipe_id", vagasEquipe)
+          .eq("perfil_jogo_id", perfil.id);
+      }
+
+      setElencoPorEquipe((atual) => ({
+        ...atual,
+        [equipe.id]: (atual[equipe.id] || []).filter((item) => item.id !== perfil.id),
+      }));
+
+      setJogadoresPorEquipe((atual) => {
+        const proximo: Record<string, JogadorEquipe[]> = {};
+
+        Object.entries(atual).forEach(([vagaId, lista]) => {
+          proximo[vagaId] = lista.map((jogador) =>
+            jogador.perfil_jogo_id === perfil.id ? { ...jogador, status: "removido" } : jogador,
+          );
+        });
+
+        return proximo;
+      });
+
+      setJogadorElencoSelecionado(null);
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao remover jogador do elenco.");
+    } finally {
+      setOperandoJogadorId(null);
+    }
+  }
+
+  async function adicionarJogadorElencoBeta(equipe: Equipe, perfil: PerfilJogo) {
+    try {
+      setOperandoJogadorId(perfil.id);
+
+      const { error } = await supabase.rpc("enviar_convite_equipe", {
+        p_equipe_id: equipe.id,
+        p_perfil_jogo_id: perfil.id,
+        p_mensagem: "Convite enviado pela central beta do campeonato.",
+      });
+
+      if (error) throw error;
+
+      alert("Convite enviado para o jogador.");
+
+      const conviteLocal: ConviteEquipeBeta = {
+        id: `local-${perfil.id}-${Date.now()}`,
+        equipe_id: equipe.id,
+        perfil_jogo_id: perfil.id,
+        status: "pendente",
+        tipo: "convite",
+        created_at: new Date().toISOString(),
+        perfil,
+      };
+
+      setConvitesPorEquipe((atual) => ({
+        ...atual,
+        [equipe.id]: [
+          conviteLocal,
+          ...(atual[equipe.id] || []).filter(
+            (convite) => convite.perfil_jogo_id !== perfil.id,
+          ),
+        ],
+      }));
+
+      setResultadosBuscaJogadorSite((atual) =>
+        atual.filter((item) => item.id !== perfil.id),
+      );
+
+      setSubJogadoresAtiva("convites");
+      setBuscaJogadorEquipe("");
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          error?.details ||
+          "Erro ao enviar convite para o jogador.",
+      );
+    } finally {
+      setOperandoJogadorId(null);
+    }
+  }
+
+
 
   if (loading) {
     return (
@@ -766,7 +1155,7 @@ export default function EscalaCampeonatoPage() {
               </section>
             ) : (
               <>
-                <section className="mt-2 grid grid-cols-2 gap-1">
+                <section className="mt-2 flex flex-wrap items-center justify-end gap-1">
                   {tipoAcesso !== "jogador" ? (
                     <>
                       <button
@@ -785,29 +1174,7 @@ export default function EscalaCampeonatoPage() {
                       </button>
                     </>
                   ) : null}
-
-                  {tipoAcesso === "jogador" || mostrarAbaJogador ? (
-                    <button
-                      onClick={() => setAba("jogador")}
-                      className={`flex h-11 items-center justify-center gap-2 border px-2 text-[9px] font-black uppercase ${tipoAcesso !== "jogador" ? "col-span-2" : "col-span-2"} ${aba === "jogador" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-800"}`}
-                    >
-                      <Gamepad2 size={14} />
-                      Jogador
-                    </button>
-                  ) : null}
                 </section>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTipoAcesso(null);
-                    setEquipeSelecionadaId(null);
-                    setAba("equipe");
-                  }}
-                  className="mt-2 flex h-9 w-full items-center justify-center gap-2 border border-slate-200 bg-white text-[9px] font-black uppercase text-slate-700"
-                >
-                  <ArrowLeft size={13} /> Trocar perfil de acesso
-                </button>
 
                 {(tipoAcesso === "lider" || tipoAcesso === "manager") && equipes.length > 1 ? (
                   <section className="mt-2 border border-slate-200 bg-white p-2">
@@ -1008,23 +1375,7 @@ export default function EscalaCampeonatoPage() {
                         ) : null}
                       </div>
                       <div className="border-t border-slate-100 p-2">
-                        <div className="mb-2 grid grid-cols-2 gap-1.5">
-                          <button type="button" onClick={() => setAba("equipe")}
-                            className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                          ><GitBranch size={14} /> Montar lines</button>
-                          <button
-                            onClick={() => setAba("escala")}
-                            className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-800"
-                          >
-                            <ListChecks size={14} /> Escalar campeonato
-                          </button>
-                          <button type="button" onClick={() => setAba("equipe")}
-                            className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
-                          ><Users size={14} /> Atletas</button>
-                          <button type="button" onClick={() => setAba("equipe")}
-                            className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
-                          ><Send size={14} /> Convites</button>
-                        </div>
+                        
 
                         <div className="grid grid-cols-2 gap-1.5">
                           <InfoMini
@@ -1037,30 +1388,473 @@ export default function EscalaCampeonatoPage() {
                           />
                         </div>
 
-                        {(linesPorEquipe[equipe.id] || []).length ? (
-                          <div className="mt-2 space-y-1">
-                            <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
-                              Lines da equipe
-                            </p>
-                            {(linesPorEquipe[equipe.id] || []).slice(0, 4).map((line) => (
-                              <div
-                                key={line.id}
-                                className="flex h-8 items-center justify-between border border-slate-200 bg-slate-50 px-2"
+                        <div className="mt-2 grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setPainelEquipeAtivo("jogadores")}
+                            className={`h-9 border px-2 text-[9px] font-black uppercase ${
+                              painelEquipeAtivo === "jogadores"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-200 bg-white text-slate-800"
+                            }`}
+                          >
+                            Jogadores
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPainelEquipeAtivo("lideres")}
+                            className={`h-9 border px-2 text-[9px] font-black uppercase ${
+                              painelEquipeAtivo === "lideres"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-200 bg-white text-slate-800"
+                            }`}
+                          >
+                            Líderes
+                          </button>
+                        </div>
+
+                        {painelEquipeAtivo === "jogadores" ? (
+                          <div className="mt-2 border border-slate-200 bg-white p-2">
+                            <div className="grid grid-cols-3 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setSubJogadoresAtiva("elenco")}
+                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
+                                  subJogadoresAtiva === "elenco"
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-200 bg-white text-slate-700"
+                                }`}
                               >
-                                <span className="truncate text-[10px] font-black uppercase text-slate-800">
-                                  {line.simbolo ? `${line.simbolo} ` : ""}{line.nome}
-                                </span>
-                                <span className="text-[8px] font-black uppercase text-blue-600">
-                                  LINE ATIVA
-                                </span>
+                                Elenco
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSubJogadoresAtiva("convites")}
+                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
+                                  subJogadoresAtiva === "convites"
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-200 bg-white text-slate-700"
+                                }`}
+                              >
+                                Convites
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSubJogadoresAtiva("pedidos")}
+                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
+                                  subJogadoresAtiva === "pedidos"
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-200 bg-white text-slate-700"
+                                }`}
+                              >
+                                Pedidos
+                              </button>
+                            </div>
+
+                            {subJogadoresAtiva === "elenco" ? (
+                              <div className="mt-2 border border-slate-200 bg-slate-50">
+                                <div className="border-b border-slate-200 bg-white p-1.5">
+                                  <input
+                                    value={buscaJogadorEquipe}
+                                    onChange={(event) => setBuscaJogadorEquipe(event.target.value)}
+                                    placeholder="Digite para filtrar por nick ou ID de jogo"
+                                    className="h-9 w-full border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold uppercase text-slate-700 outline-none"
+                                  />
+                                  {buscandoJogadorSite ? (
+                                    <p className="mt-1 text-[8px] font-black uppercase text-blue-600">
+                                      Pesquisando...
+                                    </p>
+                                  ) : null}
+                                </div>
+
+                                <div className="divide-y divide-slate-100">
+                                  {(elencoPorEquipe[equipe.id] || [])
+                                    .filter((perfil) => {
+                                      const busca = buscaJogadorEquipe.trim().toLowerCase();
+                                      if (!busca) return true;
+
+                                      const nome = String(getNomePerfil(perfil) || "").toLowerCase();
+                                      const uid = String(getUidPerfil(perfil) || "").toLowerCase();
+
+                                      return nome.includes(busca) || uid.includes(busca);
+                                    }).length ? (
+                                    (elencoPorEquipe[equipe.id] || [])
+                                      .filter((perfil) => {
+                                        const busca = buscaJogadorEquipe.trim().toLowerCase();
+                                        if (!busca) return true;
+
+                                        const nome = String(getNomePerfil(perfil) || "").toLowerCase();
+                                        const uid = String(getUidPerfil(perfil) || "").toLowerCase();
+
+                                        return nome.includes(busca) || uid.includes(busca);
+                                      })
+                                      .map((perfil) => (
+                                        <div
+                                          key={perfil.id}
+                                          className={`bg-white px-2 py-1.5 ${
+                                            jogadorElencoSelecionado === perfil.id ? "ring-1 ring-blue-600" : ""
+                                          }`}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setJogadorElencoSelecionado(
+                                                jogadorElencoSelecionado === perfil.id ? null : perfil.id,
+                                              )
+                                            }
+                                            className="flex w-full items-center gap-2 text-left"
+                                          >
+                                            <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
+                                              {perfil.foto_capa ? (
+                                                <img
+                                                  src={perfil.foto_capa}
+                                                  alt={getNomePerfil(perfil)}
+                                                  className="h-full w-full object-cover"
+                                                />
+                                              ) : null}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                                {getNomePerfil(perfil)}
+                                              </p>
+                                              <p className="text-[8px] font-bold uppercase text-slate-500">
+                                                UID {getUidPerfil(perfil)}
+                                              </p>
+                                            </div>
+                                            <span className="text-[8px] font-black uppercase text-blue-600">
+                                              {jogadorElencoSelecionado === perfil.id ? "Selecionado" : "Jogador"}
+                                            </span>
+                                          </button>
+
+                                          {jogadorElencoSelecionado === perfil.id ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => removerJogadorElencoBeta(equipe, perfil)}
+                                              disabled={operandoJogadorId === perfil.id}
+                                              className="mt-1 h-8 w-full border border-red-200 bg-red-50 text-[8px] font-black uppercase text-red-600"
+                                            >
+                                              Remover do elenco
+                                            </button>
+                                          ) : null}
+                                        </div>
+                                      ))
+                                  ) : resultadosBuscaJogadorSite.filter((perfil) => perfil.equipe_id !== equipe.id).length ? (
+                                    resultadosBuscaJogadorSite
+                                      .filter((perfil) => perfil.equipe_id !== equipe.id)
+                                      .map((perfil) => (
+                                        <div key={perfil.id} className="flex items-center gap-2 bg-white px-2 py-1.5">
+                                          <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
+                                            {perfil.foto_capa ? (
+                                              <img
+                                                src={perfil.foto_capa}
+                                                alt={getNomePerfil(perfil)}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : null}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                              {getNomePerfil(perfil)}
+                                            </p>
+                                            <p className="text-[8px] font-bold uppercase text-slate-500">
+                                              UID {getUidPerfil(perfil)}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            disabled={operandoJogadorId === perfil.id}
+                                            onClick={() => adicionarJogadorElencoBeta(equipe, perfil)}
+                                            className="h-8 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
+                                          >
+                                            Adicionar
+                                          </button>
+                                        </div>
+                                      ))
+                                  ) : (
+                                    <div className="p-2 text-center text-[10px] font-bold text-slate-500">
+                                      Nenhum jogador encontrado.
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            ))}
+                            ) : null}
+
+                            {subJogadoresAtiva === "convites" ? (
+                              <div className="mt-2 border border-slate-200 bg-slate-50">
+                                {(convitesPorEquipe[equipe.id] || []).length ? (
+                                  <div className="divide-y divide-slate-100">
+                                    {(convitesPorEquipe[equipe.id] || []).map((convite) => {
+                                      const perfil = convite.perfil;
+
+                                      return (
+                                        <div
+                                          key={convite.id}
+                                          className="flex items-center gap-2 bg-white px-2 py-1.5"
+                                        >
+                                          <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
+                                            {perfil?.foto_capa ? (
+                                              <img
+                                                src={perfil.foto_capa}
+                                                alt={getNomePerfil(perfil)}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : null}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                              {getNomePerfil(perfil, "Jogador")}
+                                            </p>
+                                            <p className="text-[8px] font-bold uppercase text-slate-500">
+                                              UID {getUidPerfil(perfil)}
+                                            </p>
+                                          </div>
+                                          <span className="text-[8px] font-black uppercase text-amber-600">
+                                            Pendente
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="border border-dashed border-slate-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
+                                    Nenhum convite enviado.
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
+
+                            {subJogadoresAtiva === "pedidos" ? (
+                              <div className="mt-2 border border-dashed border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-500">
+                                Lista de pedidos recebidos será exibida aqui.
+                              </div>
+                            ) : null}
                           </div>
-                        ) : (
-                          <div className="mt-2 border border-dashed border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-500">
-                            Nenhuma line ativa encontrada.
+                        ) : null}
+
+                        {painelEquipeAtivo === "lideres" ? (
+                          <div className="mt-2 border border-slate-200 bg-white p-2">
+                            <p className="mb-2 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                              Líderes / Managers
+                            </p>
+                            <div className="flex gap-1">
+                              <input
+                                value={managerBusca}
+                                onChange={(event) => setManagerBusca(event.target.value)}
+                                placeholder="E-mail ou ID do líder/manager"
+                                className="min-w-0 flex-1 border border-slate-200 bg-white px-2 text-[10px] font-bold outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={adicionarManagerBeta}
+                                className="h-9 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                              >
+                                Adicionar
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removerManagerBeta}
+                              className="mt-1 h-8 w-full border border-red-200 bg-red-50 text-[8px] font-black uppercase text-red-600"
+                            >
+                              Remover líder/manager selecionado
+                            </button>
                           </div>
-                        )}
+                        ) : null}
+
+                        {painelEquipeAtivo === "jogadores" ? (
+                          <>
+                        {(() => {
+                          const linhas = linesPorEquipe[equipe.id] || [];
+                          const lineAtivaId = lineSelecionadaPorEquipe[equipe.id] || linhas[0]?.id || "";
+                          const lineAtiva = linhas.find((line) => line.id === lineAtivaId) || linhas[0];
+                          const jogadoresLine = jogadoresDaLineMobile(lineAtiva?.id);
+
+                          return (
+                            <div className="mt-2 space-y-2">
+                              <div className="border border-slate-200 bg-slate-50 p-2">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                    Lines da equipe
+                                  </p>
+                                  <button
+                                    type="button"
+                                    className="h-7 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                                    onClick={() => alert("Criação de line será aberta aqui no beta.")}
+                                  >
+                                    + Line
+                                  </button>
+                                </div>
+
+                                {linhas.length ? (
+                                  <div className="flex gap-1 overflow-x-auto pb-1">
+                                    {linhas.map((line) => {
+                                      const ativa = line.id === lineAtiva?.id;
+                                      const total = jogadoresDaLineMobile(line.id).length;
+
+                                      return (
+                                        <button
+                                          key={line.id}
+                                          type="button"
+                                          onClick={() =>
+                                            setLineSelecionadaPorEquipe((atual) => ({
+                                              ...atual,
+                                              [equipe.id]: line.id,
+                                            }))
+                                          }
+                                          className={[
+                                            "shrink-0 border px-2 py-1 text-left uppercase",
+                                            ativa
+                                              ? "border-blue-600 bg-blue-600 text-white"
+                                              : "border-slate-200 bg-white text-slate-700",
+                                          ].join(" ")}
+                                        >
+                                          <p className="max-w-[110px] truncate text-[9px] font-black tracking-[0.12em]">
+                                            {line.nome}
+                                          </p>
+                                          <p className={["mt-0.5 text-[8px] font-black", ativa ? "text-blue-100" : "text-blue-600"].join(" ")}>
+                                            {total} jogador{total === 1 ? "" : "es"}
+                                          </p>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="border border-dashed border-slate-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
+                                    Nenhuma line ativa encontrada.
+                                  </div>
+                                )}
+                              </div>
+
+                              {lineAtiva ? (
+                                <div className="border border-slate-200 bg-white">
+                                  <div className="flex items-center justify-between border-b border-slate-200 px-2 py-1.5">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                        {lineAtiva.nome}
+                                      </p>
+                                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-600">
+                                        Line selecionada
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
+                                      className="h-8 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                                    >
+                                      + Jogador
+                                    </button>
+                                  </div>
+
+                                  {jogadoresLine.length ? (
+                                    <div className="divide-y divide-slate-100">
+                                      {jogadoresLine.map((jogador) => (
+                                        <div key={jogador.id} className="flex items-center gap-2 px-2 py-1.5">
+                                          <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
+                                            {getFotoJogador(jogador) ? (
+                                              <img
+                                                src={getFotoJogador(jogador) || ""}
+                                                alt={getNomeJogador(jogador)}
+                                                className="h-full w-full object-cover"
+                                              />
+                                            ) : null}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                              {getNomeJogador(jogador)}
+                                            </p>
+                                            <p className="text-[8px] font-bold uppercase text-slate-500">
+                                              UID {getUidJogador(jogador)}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => removerJogadorLineBeta(jogador)}
+                                            disabled={operandoJogadorId === jogador.id}
+                                            className="h-7 border border-red-200 bg-red-50 px-2 text-[8px] font-black uppercase text-red-600"
+                                          >
+                                            Remover
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="border-t border-slate-100 p-2 text-center text-[10px] font-bold text-slate-500">
+                                      Nenhum jogador nesta line.
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+
+                              {lineAtiva && linePickerAberto?.equipeId === equipe.id && linePickerAberto?.lineId === lineAtiva.id ? (
+                                <div className="border border-blue-200 bg-blue-50 p-2">
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-600">
+                                      Adicionar jogador na line
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => setLinePickerAberto(null)}
+                                      className="h-7 border border-slate-200 bg-white px-2 text-[8px] font-black uppercase text-slate-500"
+                                    >
+                                      Fechar
+                                    </button>
+                                  </div>
+
+                                  {(elencoPorEquipe[equipe.id] || []).filter((perfil) => {
+                                    const usados = new Set(jogadoresLine.map((jogador) => jogador.perfil_jogo_id).filter(Boolean));
+                                    return perfil.id && !usados.has(perfil.id);
+                                  }).length ? (
+                                    <div className="space-y-1">
+                                      {(elencoPorEquipe[equipe.id] || [])
+                                        .filter((perfil) => {
+                                          const usados = new Set(jogadoresLine.map((jogador) => jogador.perfil_jogo_id).filter(Boolean));
+                                          return perfil.id && !usados.has(perfil.id);
+                                        })
+                                        .slice(0, 20)
+                                        .map((perfil) => (
+                                          <button
+                                            key={perfil.id}
+                                            type="button"
+                                            onClick={() => adicionarPerfilNaLineBeta(equipe, lineAtiva, perfil)}
+                                            className="flex w-full items-center gap-2 border border-slate-200 bg-white p-1.5 text-left"
+                                          >
+                                            <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
+                                              {perfil.foto_capa ? (
+                                                <img
+                                                  src={perfil.foto_capa}
+                                                  alt={getNomePerfil(perfil)}
+                                                  className="h-full w-full object-cover"
+                                                />
+                                              ) : null}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                              <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                                {getNomePerfil(perfil)}
+                                              </p>
+                                              <p className="text-[8px] font-bold uppercase text-slate-500">
+                                                UID {getUidPerfil(perfil)}
+                                              </p>
+                                            </div>
+                                            <span className="text-[8px] font-black uppercase text-blue-600">
+                                              Adicionar
+                                            </span>
+                                          </button>
+                                        ))}
+                                    </div>
+                                  ) : (
+                                    <div className="border border-dashed border-blue-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
+                                      Nenhum jogador disponível no elenco.
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+
+
+                            </div>
+                          );
+                        })()}
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -1091,7 +1885,7 @@ export default function EscalaCampeonatoPage() {
                   </div>
                 ) : (
                   <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-                    <div className="relative h-28 bg-gradient-to-r from-blue-600 to-blue-800">
+                    <div className="relative h-28 bg-gradient-to-r from-slate-900 to-blue-700">
                       {getCapaPerfilMobile(perfilJogo) ? (
                         <img
                           src={getCapaPerfilMobile(perfilJogo) || ""}
@@ -1129,6 +1923,21 @@ export default function EscalaCampeonatoPage() {
                     </div>
 
                     <div className="p-3">
+                      <div className="mb-2 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTipoAcesso(null);
+                            setEquipeSelecionadaId(null);
+                            setAba("equipe");
+                          }}
+                          className="inline-flex h-7 items-center justify-center border border-blue-600 bg-blue-600 px-3 text-[8px] font-black uppercase text-white"
+                          title="Trocar perfil de acesso"
+                        >
+                          Jogador
+                        </button>
+                      </div>
+
                       <div className="grid grid-cols-2 gap-1.5">
                         <InfoBox
                           label="Status"
@@ -1254,7 +2063,7 @@ function EscalacaoCards({
   const jogadoresUnicosMap = new Map<string, JogadorEquipe>();
 
   inscricoes.forEach((inscricao) => {
-    (jogadoresPorEquipe[inscricao.id] || []).forEach((jogador) => {
+    (jogadoresPorEquipeLocal[inscricao.id] || []).forEach((jogador) => {
       jogadoresUnicosMap.set(jogador.id, jogador);
     });
   });
@@ -1282,6 +2091,13 @@ function EscalacaoCards({
   const [processando, setProcessando] = useState<string | null>(null);
   const [statsJogador, setStatsJogador] = useState<JogadorStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [jogadoresPorEquipeLocal, setJogadoresPorEquipeLocal] =
+    useState<Record<string, JogadorEquipe[]>>(jogadoresPorEquipe);
+
+  useEffect(() => {
+    setJogadoresPorEquipeLocal(jogadoresPorEquipe);
+  }, [jogadoresPorEquipe]);
+
 
   const idsEscaladosKey = jogadores
     .map((j) => j.perfil_jogo_id)
@@ -1443,7 +2259,19 @@ function EscalacaoCards({
         if (lineError) throw lineError;
       }
 
-      if (!silencioso) window.location.reload();
+      if (!silencioso) {
+        setJogadoresPorEquipeLocal((atual) => {
+          const proximo: Record<string, JogadorEquipe[]> = {};
+
+          Object.entries(atual).forEach(([vagaId, lista]) => {
+            proximo[vagaId] = lista.map((item) =>
+              item.id === jogador.id ? { ...item, status: "removido" } : item,
+            );
+          });
+
+          return proximo;
+        });
+      }
       return true;
     } catch (error: any) {
       alert(error?.message || "Erro ao remover jogador. Tente novamente.");
@@ -1529,7 +2357,32 @@ function EscalacaoCards({
         if (lineError) throw lineError;
       }
 
-      window.location.reload();
+      const novoJogador: JogadorEquipe = {
+        id: String(jogadorId),
+        campeonato_id: campeonato.id,
+        equipe_id: vagaPrincipal.equipe_id,
+        campeonato_equipe_id: vagaPrincipal.id,
+        perfil_jogo_id: perfil.id,
+        jogador_avulso_id: null,
+        status: "ativo",
+        nick_snapshot: getNomePerfil(perfil),
+        uid_jogo_snapshot: getUidPerfil(perfil),
+        perfil,
+        avulso: null,
+      };
+
+      setJogadoresPorEquipeLocal((atual) => {
+        const listaAtual = atual[vagaPrincipal.id] || [];
+        const semDuplicado = listaAtual.filter((item) => item.perfil_jogo_id !== perfil.id);
+
+        return {
+          ...atual,
+          [vagaPrincipal.id]: [...semDuplicado, novoJogador],
+        };
+      });
+
+      setPickerAberto(false);
+      setBusca("");
     } catch (error: any) {
       console.error("Erro ao escalar jogador:", error);
       alert(error?.message || error?.details || "Erro ao escalar jogador.");
