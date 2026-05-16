@@ -300,6 +300,23 @@ export default function EscalaCampeonatoPage() {
   const [buscandoJogadorSite, setBuscandoJogadorSite] = useState(false);
   const [operandoJogadorId, setOperandoJogadorId] = useState<string | null>(null);
   const [convitesPorEquipe, setConvitesPorEquipe] = useState<Record<string, ConviteEquipeBeta[]>>({});
+  const [modoFormularioBeta, setModoFormularioBeta] = useState<"perfil" | "equipe" | null>(null);
+  const [salvandoFormularioBeta, setSalvandoFormularioBeta] = useState(false);
+  const [formPerfilBeta, setFormPerfilBeta] = useState({
+    nick: "",
+    uid_jogo: "",
+    plataforma: "mobile",
+    funcao: "",
+    pais: "BR",
+    foto_capa: "",
+    capa_url: "",
+  });
+  const [formEquipeBeta, setFormEquipeBeta] = useState({
+    nome: "",
+    tag: "",
+    logo_url: "",
+    descricao: "",
+  });
   const [vagaAtivaPorEquipe, setVagaAtivaPorEquipe] = useState<
     Record<string, string>
   >({});
@@ -307,6 +324,12 @@ export default function EscalaCampeonatoPage() {
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
+  const [authModo, setAuthModo] = useState<"login" | "cadastro" | "recuperar">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authSenha, setAuthSenha] = useState("");
+  const [authNome, setAuthNome] = useState("");
+  const [authMensagem, setAuthMensagem] = useState<string | null>(null);
+  const [authProcessando, setAuthProcessando] = useState(false);
 
   useEffect(() => {
     async function verificarAuth() {
@@ -994,6 +1017,116 @@ export default function EscalaCampeonatoPage() {
   }
 
 
+  async function entrarNoLinkBeta() {
+    const email = authEmail.trim().toLowerCase();
+
+    if (!email || !authSenha) {
+      setAuthMensagem("Digite e-mail e senha.");
+      return;
+    }
+
+    setAuthProcessando(true);
+    setAuthMensagem(null);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: authSenha,
+      });
+
+      if (error) throw error;
+
+      setUsuarioLogado(data.user || null);
+      setUserId(data.user?.id || null);
+      setTipoAcesso(null);
+      setAba("equipe");
+      await carregar();
+    } catch (error: any) {
+      setAuthMensagem(error?.message || "Não foi possível entrar na conta.");
+    } finally {
+      setAuthProcessando(false);
+    }
+  }
+
+  async function criarContaNoLinkBeta() {
+    const email = authEmail.trim().toLowerCase();
+
+    if (!email || !authSenha) {
+      setAuthMensagem("Digite e-mail e senha para criar a conta.");
+      return;
+    }
+
+    if (authSenha.length < 6) {
+      setAuthMensagem("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setAuthProcessando(true);
+    setAuthMensagem(null);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: authSenha,
+        options: {
+          data: {
+            nome: authNome.trim() || email.split("@")[0],
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.session?.user) {
+        setUsuarioLogado(data.session.user);
+        setUserId(data.session.user.id);
+        setTipoAcesso(null);
+        setAba("equipe");
+        await carregar();
+        return;
+      }
+
+      setAuthModo("login");
+      setAuthMensagem("Conta criada. Verifique o e-mail se a confirmação estiver ativada e depois entre.");
+    } catch (error: any) {
+      setAuthMensagem(error?.message || "Não foi possível criar a conta.");
+    } finally {
+      setAuthProcessando(false);
+    }
+  }
+
+  async function recuperarSenhaNoLinkBeta() {
+    const email = authEmail.trim().toLowerCase();
+
+    if (!email) {
+      setAuthMensagem("Digite seu e-mail para recuperar a senha.");
+      return;
+    }
+
+    setAuthProcessando(true);
+    setAuthMensagem(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/escala/${campeonatoParam}`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      if (error) throw error;
+
+      setAuthMensagem("Enviamos o link de recuperação para seu e-mail.");
+    } catch (error: any) {
+      setAuthMensagem(error?.message || "Não foi possível enviar a recuperação.");
+    } finally {
+      setAuthProcessando(false);
+    }
+  }
+
+  function executarAuthLinkBeta() {
+    if (authModo === "login") return entrarNoLinkBeta();
+    if (authModo === "cadastro") return criarContaNoLinkBeta();
+    return recuperarSenhaNoLinkBeta();
+  }
 
 
   if (checkingAuth) {
@@ -1007,6 +1140,20 @@ export default function EscalaCampeonatoPage() {
   }
 
   if (!usuarioLogado) {
+    const tituloAuth =
+      authModo === "login"
+        ? "Entrar na conta"
+        : authModo === "cadastro"
+          ? "Criar conta"
+          : "Recuperar senha";
+
+    const textoAuth =
+      authModo === "login"
+        ? "Entre para escolher Jogador, Líder ou Manager neste campeonato."
+        : authModo === "cadastro"
+          ? "Crie sua conta e volte automaticamente para este link beta."
+          : "Receba o link de recuperação e volte para este campeonato.";
+
     return (
       <main className="escala-beta-page flex min-h-screen items-center justify-center bg-[#f5f7fb] px-4 py-6 text-slate-950 [color-scheme:light]">
         <div className="w-full max-w-md border border-slate-200 bg-white shadow-sm">
@@ -1015,39 +1162,218 @@ export default function EscalaCampeonatoPage() {
               Acesso beta
             </p>
             <h1 className="mt-1 text-2xl font-black uppercase tracking-[-0.05em]">
-              Entre na sua conta
+              {tituloAuth}
             </h1>
             <p className="mt-2 text-xs font-bold text-blue-100">
-              Faça login antes de acessar o campeonato.
+              {textoAuth}
             </p>
           </div>
 
-          <div className="space-y-2 p-4">
-            <Link
-              href="/login"
-              className="flex h-11 items-center justify-center border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
-            >
-              Entrar
-            </Link>
+          <div className="space-y-3 p-4">
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModo("login");
+                  setAuthMensagem(null);
+                }}
+                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "login" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModo("cadastro");
+                  setAuthMensagem(null);
+                }}
+                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "cadastro" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
+              >
+                Criar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthModo("recuperar");
+                  setAuthMensagem(null);
+                }}
+                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "recuperar" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
+              >
+                Senha
+              </button>
+            </div>
 
-            <Link
-              href="/registro"
-              className="flex h-11 items-center justify-center border border-slate-200 bg-white text-xs font-black uppercase text-slate-900"
-            >
-              Criar conta
-            </Link>
+            {authModo === "cadastro" ? (
+              <input
+                value={authNome}
+                onChange={(event) => setAuthNome(event.target.value)}
+                placeholder="Seu nome"
+                className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
+              />
+            ) : null}
 
-            <Link
-              href="/recuperar-senha"
-              className="flex h-11 items-center justify-center border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
+            <input
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="E-mail"
+              className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
+            />
+
+            {authModo !== "recuperar" ? (
+              <input
+                value={authSenha}
+                onChange={(event) => setAuthSenha(event.target.value)}
+                type="password"
+                autoComplete={authModo === "login" ? "current-password" : "new-password"}
+                placeholder="Senha"
+                className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") executarAuthLinkBeta();
+                }}
+              />
+            ) : null}
+
+            {authMensagem ? (
+              <div className="border border-amber-200 bg-amber-50 p-2 text-[11px] font-bold text-amber-700">
+                {authMensagem}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={executarAuthLinkBeta}
+              disabled={authProcessando}
+              className="flex h-11 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
             >
-              Recuperar senha
-            </Link>
+              {authProcessando ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar recuperação"}
+            </button>
+
+            <p className="text-center text-[10px] font-bold leading-4 text-slate-500">
+              Depois do login, você continua neste link e vai direto para a escolha de perfil.
+            </p>
           </div>
         </div>
       </main>
     );
   }
+
+
+  async function salvarPerfilBeta() {
+    const nick = formPerfilBeta.nick.trim();
+    const uidJogo = formPerfilBeta.uid_jogo.trim();
+
+    if (!userId) {
+      alert("Faça login para criar perfil.");
+      return;
+    }
+
+    if (!nick || !uidJogo) {
+      alert("Informe nick e ID de jogo.");
+      return;
+    }
+
+    try {
+      setSalvandoFormularioBeta(true);
+
+      const payload = {
+        user_id: userId,
+        nick,
+        uid_jogo: uidJogo,
+        plataforma: formPerfilBeta.plataforma || "mobile",
+        funcao: formPerfilBeta.funcao || null,
+        pais: formPerfilBeta.pais || "BR",
+        foto_capa: formPerfilBeta.foto_capa.trim() || null,
+        capa_url: formPerfilBeta.capa_url.trim() || null,
+        ativo: true,
+      };
+
+      if (perfilJogo?.id) {
+        const { data, error } = await supabase
+          .from("perfis_jogo")
+          .update(payload)
+          .eq("id", perfilJogo.id)
+          .select("*")
+          .single();
+
+        if (error) throw error;
+        setPerfilJogo(data as PerfilJogo);
+      } else {
+        const { data, error } = await supabase
+          .from("perfis_jogo")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (error) throw error;
+        setPerfilJogo(data as PerfilJogo);
+      }
+
+      setModoFormularioBeta(null);
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao salvar perfil de jogo.");
+    } finally {
+      setSalvandoFormularioBeta(false);
+    }
+  }
+
+  async function salvarEquipeBeta() {
+    const nome = formEquipeBeta.nome.trim();
+
+    if (!userId) {
+      alert("Faça login para criar equipe.");
+      return;
+    }
+
+    if (!nome) {
+      alert("Informe o nome da equipe.");
+      return;
+    }
+
+    try {
+      setSalvandoFormularioBeta(true);
+
+      const payload = {
+        nome,
+        tag: formEquipeBeta.tag.trim() || null,
+        logo_url: formEquipeBeta.logo_url.trim() || null,
+        descricao: formEquipeBeta.descricao.trim() || null,
+        criado_por: userId,
+      };
+
+      const { data, error } = await supabase
+        .from("equipes")
+        .insert(payload)
+        .select("id,nome,tag,logo_url,criado_por")
+        .single();
+
+      if (error) throw error;
+
+      const equipeCriada = data as Equipe;
+
+      await supabase
+        .from("membros_equipe")
+        .insert({
+          equipe_id: equipeCriada.id,
+          user_id: userId,
+          tipo: "dono",
+          ativo: true,
+          entrou_em: new Date().toISOString(),
+        });
+
+      setEquipes((atual) => [equipeCriada, ...atual]);
+      setEquipeSelecionadaId(equipeCriada.id);
+      setModoFormularioBeta(null);
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao criar equipe.");
+    } finally {
+      setSalvandoFormularioBeta(false);
+    }
+  }
+
 
 
 
@@ -1228,6 +1554,170 @@ export default function EscalaCampeonatoPage() {
               </section>
             ) : (
               <>
+                {modoFormularioBeta === "perfil" ? (
+                  <section className="mt-2 border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+                          Perfil de jogo
+                        </p>
+                        <h2 className="text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
+                          {perfilJogo ? "Editar perfil" : "Criar perfil"}
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setModoFormularioBeta(null)}
+                        className="h-8 border border-slate-200 bg-white px-2 text-[8px] font-black uppercase text-slate-500"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <CampoBeta
+                        label="Nick"
+                        value={formPerfilBeta.nick}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, nick: value }))}
+                        placeholder="Nick do jogador"
+                      />
+                      <CampoBeta
+                        label="ID de jogo / UID"
+                        value={formPerfilBeta.uid_jogo}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, uid_jogo: value }))}
+                        placeholder="Ex: 239387947"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block">
+                          <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                            Plataforma
+                          </span>
+                          <select
+                            value={formPerfilBeta.plataforma}
+                            onChange={(event) => setFormPerfilBeta((atual) => ({ ...atual, plataforma: event.target.value }))}
+                            className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold uppercase outline-none"
+                          >
+                            <option value="mobile">Mobile</option>
+                            <option value="emulador">Emulador</option>
+                            <option value="misto">Misto</option>
+                          </select>
+                        </label>
+
+                        <label className="block">
+                          <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                            Função
+                          </span>
+                          <select
+                            value={formPerfilBeta.funcao}
+                            onChange={(event) => setFormPerfilBeta((atual) => ({ ...atual, funcao: event.target.value }))}
+                            className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold uppercase outline-none"
+                          >
+                            <option value="">Não definido</option>
+                            <option value="rush">Rush</option>
+                            <option value="suporte">Suporte</option>
+                            <option value="granadeiro">Granadeiro</option>
+                            <option value="capitao">Capitão</option>
+                            <option value="sniper">Sniper</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <CampoBeta
+                        label="País"
+                        value={formPerfilBeta.pais}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, pais: value }))}
+                        placeholder="BR"
+                      />
+                      <CampoBeta
+                        label="Foto do perfil"
+                        value={formPerfilBeta.foto_capa}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, foto_capa: value }))}
+                        placeholder="URL da foto"
+                      />
+                      <CampoBeta
+                        label="Capa do perfil"
+                        value={formPerfilBeta.capa_url}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, capa_url: value }))}
+                        placeholder="URL da capa"
+                      />
+
+                      <button
+                        type="button"
+                        disabled={salvandoFormularioBeta}
+                        onClick={salvarPerfilBeta}
+                        className="mt-1 h-11 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
+                      >
+                        {salvandoFormularioBeta ? "Salvando..." : "Salvar perfil"}
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
+
+                {modoFormularioBeta === "equipe" ? (
+                  <section className="mt-2 border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+                          Organização
+                        </p>
+                        <h2 className="text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
+                          Criar equipe
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setModoFormularioBeta(null)}
+                        className="h-8 border border-slate-200 bg-white px-2 text-[8px] font-black uppercase text-slate-500"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <CampoBeta
+                        label="Nome da equipe"
+                        value={formEquipeBeta.nome}
+                        onChange={(value) => setFormEquipeBeta((atual) => ({ ...atual, nome: value }))}
+                        placeholder="Nome completo"
+                      />
+                      <CampoBeta
+                        label="Tag"
+                        value={formEquipeBeta.tag}
+                        onChange={(value) => setFormEquipeBeta((atual) => ({ ...atual, tag: value.toUpperCase().slice(0, 8) }))}
+                        placeholder="Ex: ALOE"
+                      />
+                      <CampoBeta
+                        label="Logo"
+                        value={formEquipeBeta.logo_url}
+                        onChange={(value) => setFormEquipeBeta((atual) => ({ ...atual, logo_url: value }))}
+                        placeholder="URL da logo"
+                      />
+
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Descrição
+                        </span>
+                        <textarea
+                          value={formEquipeBeta.descricao}
+                          onChange={(event) => setFormEquipeBeta((atual) => ({ ...atual, descricao: event.target.value }))}
+                          placeholder="Descrição da equipe"
+                          className="min-h-20 w-full resize-none border border-slate-200 bg-white px-2 py-2 text-xs font-semibold outline-none"
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        disabled={salvandoFormularioBeta}
+                        onClick={salvarEquipeBeta}
+                        className="mt-1 h-11 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
+                      >
+                        {salvandoFormularioBeta ? "Salvando..." : "Criar equipe"}
+                      </button>
+                    </div>
+                  </section>
+                ) : null}
+
                 <section className="mt-2 flex flex-wrap items-center justify-end gap-1">
                   {tipoAcesso !== "jogador" ? (
                     <>
@@ -1272,12 +1762,17 @@ export default function EscalaCampeonatoPage() {
 {aba === "escala" ? (
               <section className="mt-2 space-y-2">
                 {equipes.length ? null : (
-                  <CardVazio
-                    titulo="Você ainda não tem equipe"
-                    texto="Crie sua organização usando o formulário original do site."
-                    href="#"
-                    label="Criar equipe"
-                  />
+                  <div className="border border-slate-200 bg-white p-4 text-center">
+                    <h3 className="text-sm font-black uppercase text-slate-950">Você ainda não tem equipe</h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">Crie sua organização direto pelo link beta.</p>
+                    <button
+                      type="button"
+                      onClick={() => setModoFormularioBeta("equipe")}
+                      className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                    >
+                      Criar equipe
+                    </button>
+                  </div>
                 )}
 
                 {equipesVisiveis.map((equipe) => {
@@ -1408,12 +1903,17 @@ export default function EscalaCampeonatoPage() {
             {aba === "equipe" ? (
               <section className="mt-2 space-y-2">
                 {!equipesVisiveis.length ? (
-                  <CardVazio
-                    titulo="Você ainda não tem equipe"
-                    texto="Crie sua organização usando o formulário original do site."
-                    href="#"
-                    label="Criar equipe"
-                  />
+                  <div className="border border-slate-200 bg-white p-4 text-center">
+                    <h3 className="text-sm font-black uppercase text-slate-950">Você ainda não tem equipe</h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">Crie sua organização direto pelo link beta.</p>
+                    <button
+                      type="button"
+                      onClick={() => setModoFormularioBeta("equipe")}
+                      className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                    >
+                      Criar equipe
+                    </button>
+                  </div>
                 ) : null}
 
                 {equipesVisiveis.map((equipe) => {
@@ -1752,7 +2252,7 @@ export default function EscalaCampeonatoPage() {
                                   <button
                                     type="button"
                                     className="h-7 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
-                                    onClick={() => alert("Criação de line será aberta aqui no beta.")}
+                                    onClick={() => alert("Criação de line será adicionada depois dos formulários principais.")}
                                   >
                                     + Line
                                   </button>
@@ -1951,7 +2451,7 @@ export default function EscalaCampeonatoPage() {
                     <button
                       type="button"
                       className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                      onClick={() => alert("Edição de perfil será aberta aqui no beta.")}
+                      onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", pais: perfilJogo?.pais || "BR", foto_capa: perfilJogo?.foto_capa || "", capa_url: perfilJogo?.capa_url || "" })); setModoFormularioBeta("perfil"); }}
                     >
                       <Edit3 size={14} /> Criar perfil
                     </button>
@@ -2031,7 +2531,7 @@ export default function EscalaCampeonatoPage() {
                         <button
                           type="button"
                           className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                          onClick={() => alert("Edição de perfil será aberta aqui no beta.")}
+                          onClick={() => setModoFormularioBeta("perfil")}
                         >
                           <Edit3 size={14} /> Editar perfil
                         </button>
@@ -2838,6 +3338,33 @@ function InfoMini({ label, value }: { label: string; value: string }) {
       </p>
       <p className="truncate text-[10px] font-black text-slate-950">{value}</p>
     </div>
+  );
+}
+
+
+function CampoBeta({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold outline-none"
+      />
+    </label>
   );
 }
 
