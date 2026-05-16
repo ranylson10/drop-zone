@@ -6,6 +6,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  CircleDollarSign,
   Database,
   FileSearch,
   Gavel,
@@ -24,6 +25,7 @@ const tabs = [
   { href: '/admin/produtoras', label: 'Produtoras', icon: ShieldCheck },
   { href: '/admin/administradores', label: 'Admins', icon: Database },
   { href: '/admin/moderacao', label: 'Moderação', icon: BarChart3 },
+  { href: '/admin/configuracoes/taxas', label: 'Taxas', icon: CircleDollarSign },
 ]
 
 export default function AdminTabs() {

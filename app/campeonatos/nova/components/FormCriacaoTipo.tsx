@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ChevronDown, Loader2, Plus, Trash2, Swords, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getTipoVisual } from '@/lib/getTipoVisual'
 import { usePerfil } from '@/app/contexts/PerfilContext'
 import {
   TipoCompeticao,
@@ -60,6 +59,16 @@ function slugify(value: string) {
     .replace(/-+/g, '-')
 }
 
+
+function formatarMoeda(valor: number) {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function numeroSeguro(value: unknown) {
+  const n = Number(value || 0)
+  return Number.isFinite(n) ? n : 0
+}
+
 function FormCriacaoTipoInner({ tipo }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -75,7 +84,6 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     [tipo]
   )
 
-  const visual = getTipoVisual(tipo)
   const tipoRuntime = String(tipo)
   const isConfronto = tipoRuntime === 'confronto' || tipoRuntime === '4x4'
   const isCopa = tipo === 'copa'
@@ -111,11 +119,32 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
+  const [taxaCriacao, setTaxaCriacao] = useState(0)
   const [openServidor, setOpenServidor] = useState(false)
   const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState('')
-  const [bannerPreview, setBannerPreview] = useState('')
+
+  useEffect(() => {
+    let ativo = true
+
+    async function carregarTaxaCriacao() {
+      const tipoTaxa = isXtreinoContext ? 'xtreino' : String(tipo || '')
+      const { data } = await supabase
+        .from('campeonato_taxas_criacao')
+        .select('valor, ativo')
+        .eq('tipo', tipoTaxa)
+        .eq('ativo', true)
+        .maybeSingle()
+
+      if (ativo) setTaxaCriacao(numeroSeguro((data as { valor?: number | null } | null)?.valor))
+    }
+
+    carregarTaxaCriacao()
+
+    return () => {
+      ativo = false
+    }
+  }, [tipo, isXtreinoContext])
 
   const [form, setForm] = useState({
     nome: '',
@@ -299,13 +328,16 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     return data.publicUrl
   }
 
-  function extrairMensagemErro(err: any) {
+  function extrairMensagemErro(err: unknown) {
     if (!err) return 'Erro ao criar campeonato.'
     if (typeof err === 'string') return err
-    if (err.message) return err.message
-    if (err.error_description) return err.error_description
-    if (err.details) return err.details
-    if (err.hint) return err.hint
+    if (typeof err === 'object') {
+      const erro = err as { message?: string; error_description?: string; details?: string; hint?: string }
+      if (erro.message) return erro.message
+      if (erro.error_description) return erro.error_description
+      if (erro.details) return erro.details
+      if (erro.hint) return erro.hint
+    }
     try {
       return JSON.stringify(err)
     } catch {
@@ -369,10 +401,6 @@ function FormCriacaoTipoInner({ tipo }: Props) {
         logoUrl = await uploadImagemCampeonato(logoFile, 'logos')
       }
 
-      if (bannerFile) {
-        bannerUrl = await uploadImagemCampeonato(bannerFile, 'banners')
-      }
-
       const quantidadeQuedasPayload =
         isConfronto
           ? 1
@@ -412,7 +440,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
       const modeloCompeticaoFinal = isXtreinoContext ? 'xtreino' : modeloCompeticao
       const formatoFinal = isXtreinoContext ? 'Xtreino' : meta?.formatoBanco
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         produtora_id: produtoraResolvida.id,
         criado_por: user.id,
         nome: form.nome.trim(),
@@ -599,7 +627,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                     numero_partidas: Number(grupo.numero_partidas || 0),
                   },
                   status: 'rascunho',
-                } as any)
+                } as Record<string, unknown>)
                 .select('id')
                 .single()
 
@@ -691,19 +719,16 @@ function FormCriacaoTipoInner({ tipo }: Props) {
             ? `/campeonatos/copas/${data.id}`
             : tipo === 'liga'
               ? `/campeonatos/ligas/${data.id}`
-              : tipo === 'xtreino'
-                ? `/campeonatos/xtreinos/${data.id}`
-                : isConfronto
+              : isConfronto
                   ? `/confrontos/${data.id}`
                   : `/campeonatos/${data.id}`
 
       router.push(destino)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao criar campeonato:', {
         bruto: err,
         mensagem: extrairMensagemErro(err),
         logoSelecionada: !!logoFile,
-        bannerSelecionado: !!bannerFile,
         tipo,
         tipoPerfil,
         produtoraId: produtoraResolvida?.id || null,
@@ -715,40 +740,48 @@ function FormCriacaoTipoInner({ tipo }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] px-3 py-3 text-[#142340] md:px-8 md:py-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-[#f7f7f7] px-4 pb-6 pt-5 text-[#142340]">
+      <div className="mx-auto max-w-[1520px]">
+        <div className="mb-5 flex items-center justify-between gap-4">
           <Link
             href="/campeonatos/nova"
-            className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-400 hover:text-[#7cfc00]"
+            className="inline-flex h-9 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:border-[#2563eb] hover:text-[#2563eb]"
           >
             <ArrowLeft size={14} /> Voltar
           </Link>
 
-          <div className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+          <div className="border border-zinc-200 bg-white px-3 py-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
             Perfil ativo: {tipoPerfil}
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#050506]">
-          <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(124,252,0,0.12),transparent_30%),linear-gradient(180deg,#0a0a0b_0%,#050506_100%)] p-6 md:p-8">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#7cfc00]/30 bg-[#7cfc00]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#7cfc00]">
+        <div className="mb-4 border border-zinc-200 bg-white p-4 text-sm text-[#142340]">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#2563eb]">Taxa de criação</div>
+          <div className="mt-2 text-2xl font-semibold">{formatarMoeda(taxaCriacao)}</div>
+          <p className="mt-2 text-xs font-medium text-zinc-500">
+            Esse valor será debitado automaticamente da carteira ao criar o campeonato. A validação final é feita no banco, então não pode ser burlada pelo frontend.
+          </p>
+        </div>
+
+        <div className="overflow-hidden border border-zinc-200 bg-white">
+          <div className="border-b border-zinc-200 bg-white px-4 py-3 md:px-5">
+            <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
               <Swords size={12} /> {isXtreinoContext ? 'Flexível' : meta?.badge}
             </div>
 
-            <h1 className={`text-[24px] font-semibold uppercase tracking-tight md:text-[30px] ${visual.text}`}>
+            <h1 className="text-[20px] font-semibold tracking-tight text-[#142340] md:text-[22px]">
               Criar {tituloTela}
             </h1>
 
-            <p className="mt-3 max-w-3xl text-sm font-semibold text-zinc-400">
+            <p className="mt-1 max-w-3xl text-xs font-medium text-zinc-500">
               {subtituloTela}
             </p>
 
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-300">
+            <div className="mt-4 border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-medium text-zinc-600">
               {produtoraResolvida ? (
                 <>
                   Campeonato será criado automaticamente na produtora:{' '}
-                  <span className="font-semibold text-white">
+                  <span className="font-semibold text-[#142340]">
                     {produtoraResolvida.nome || 'Produtora'}
                   </span>
                 </>
@@ -761,123 +794,119 @@ function FormCriacaoTipoInner({ tipo }: Props) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="p-4 md:p-5">
             <>
-            <div className="mb-6 grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+            <div className="mb-6">
+              <label className="block max-w-[260px] space-y-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Logo do {String(tituloTela || 'campeonato').toLowerCase()}
                 </span>
 
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0f]">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="block w-full cursor-pointer px-4 py-3 text-sm text-zinc-400 file:mr-4 file:border-0 file:bg-[#7cfc00] file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:text-black"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      setLogoFile(file)
-                      setLogoPreview(file ? URL.createObjectURL(file) : '')
-                    }}
-                  />
+                <input
+                  id="logo-campeonato"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    setLogoFile(file)
+                    setLogoPreview(file ? URL.createObjectURL(file) : '')
+                  }}
+                />
 
+                <label
+                  htmlFor="logo-campeonato"
+                  className="group flex aspect-square w-[150px] cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-zinc-200 bg-zinc-50 shadow-sm transition hover:border-[#2563eb] hover:bg-[#2563eb]/5"
+                >
                   {logoPreview ? (
-                    <div className="border-t border-white/10 p-3">
-                      <img
-                        src={logoPreview}
-                        alt="Preview da logo"
-                        className="h-24 w-24 border border-white/10 object-cover"
-                      />
+                    <img
+                      src={logoPreview}
+                      alt="Preview da logo"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center px-4 text-center">
+                      <Plus size={26} className="mb-2 text-[#2563eb]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#142340]">
+                        Adicionar logo
+                      </span>
+                      <span className="mt-1 text-[10px] font-medium text-zinc-500">
+                        PNG ou JPG
+                      </span>
                     </div>
-                  ) : null}
-                </div>
-              </label>
+                  )}
+                </label>
 
-              <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
-                  Banner do {String(tituloTela || 'campeonato').toLowerCase()}
-                </span>
-
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0f]">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="block w-full cursor-pointer px-4 py-3 text-sm text-zinc-400 file:mr-4 file:border-0 file:bg-[#7cfc00] file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:text-black"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0] || null
-                      setBannerFile(file)
-                      setBannerPreview(file ? URL.createObjectURL(file) : '')
+                {logoFile ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogoFile(null)
+                      setLogoPreview('')
                     }}
-                  />
-
-                  {bannerPreview ? (
-                    <div className="border-t border-white/10 p-3">
-                      <img
-                        src={bannerPreview}
-                        alt="Preview do banner"
-                        className="h-24 w-full border border-white/10 object-cover"
-                      />
-                    </div>
-                  ) : null}
-                </div>
+                    className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:text-red-500"
+                  >
+                    Remover logo
+                  </button>
+                ) : null}
               </label>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Nome
                 </span>
                 <input
                   value={form.nome}
                   onChange={(e) => update('nome', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Edição
                 </span>
                 <input
                   value={form.edicao}
                   onChange={(e) => update('edicao', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Vagas
                 </span>
                 <input
                   type="number"
                   value={form.vagas}
                   onChange={(e) => update('vagas', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Data de início
                 </span>
                 <input
                   type="datetime-local"
                   value={form.data_inicio}
                   onChange={(e) => update('data_inicio', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Plataforma
                 </span>
                 <select
                   value={form.plataforma}
                   onChange={(e) => update('plataforma', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 >
                   <option>Mobile</option>
                   <option>Emulador</option>
@@ -886,13 +915,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Categoria
                 </span>
                 <select
                   value={form.categoria}
                   onChange={(e) => update('categoria', e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                  className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 >
                   <option>Squad</option>
                   <option>Duo</option>
@@ -901,7 +930,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
               </label>
 
               <label className="space-y-2">
-                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Servidor
                 </span>
 
@@ -909,7 +938,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   <button
                     type="button"
                     onClick={() => setOpenServidor((prev) => !prev)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 text-left text-white outline-none"
+                    className="flex w-full items-center justify-between border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                   >
                     <span>{form.regiao}</span>
                     <ChevronDown
@@ -925,7 +954,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                         className="fixed inset-0 z-10 cursor-default"
                         onClick={() => setOpenServidor(false)}
                       />
-                      <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#09090b] p-1 shadow-2xl">
+                      <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto border border-zinc-200 bg-white p-1 shadow-2xl">
                         {OPCOES_SERVIDOR.map((opcao) => (
                           <button
                             key={opcao}
@@ -936,8 +965,8 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                             }}
                             className={`block w-full rounded-xl px-3 py-2 text-left text-sm transition-colors ${
                               form.regiao === opcao
-                                ? 'bg-[#7cfc00] text-black'
-                                : 'text-white hover:bg-white/10'
+                                ? 'bg-[#2563eb] text-white'
+                                : 'text-[#142340] hover:bg-zinc-100'
                             }`}
                           >
                             {opcao}
@@ -952,13 +981,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
               {isXtreinoContext ? (
                 <>
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Formato do xtreino
                     </span>
                     <select
                       value={form.xtreino_modo}
                       onChange={(e) => update('xtreino_modo', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="jogo_unico">Jogo Único</option>
                       <option value="mata_mata">Mata-Mata</option>
@@ -967,13 +996,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Regra do treino
                     </span>
                     <select
                       value={form.xtreino_regra}
                       onChange={(e) => update('xtreino_regra', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="trocacao_livre">Trocação Livre</option>
                       <option value="primeira_safe">Primeira Safe</option>
@@ -983,13 +1012,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Inscrição
                     </span>
                     <select
                       value={form.xtreino_tipo_inscricao}
                       onChange={(e) => update('xtreino_tipo_inscricao', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="gratuito">Gratuito</option>
                       <option value="pago">Pago</option>
@@ -997,13 +1026,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Premiação
                     </span>
                     <select
                       value={form.xtreino_tem_premiacao}
                       onChange={(e) => update('xtreino_tem_premiacao', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="nao">Não</option>
                       <option value="sim">Sim</option>
@@ -1013,26 +1042,26 @@ function FormCriacaoTipoInner({ tipo }: Props) {
               ) : (
                 <>
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Valor por vaga
                     </span>
                     <input
                       type="number"
                       value={form.valor_vaga}
                       onChange={(e) => update('valor_vaga', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     />
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Premiação
                     </span>
                     <input
                       type="number"
                       value={form.valor_premiacao}
                       onChange={(e) => update('valor_premiacao', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     />
                   </label>
                 </>
@@ -1040,28 +1069,28 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
               {isXtreinoContext && form.xtreino_tipo_inscricao === 'pago' && (
                 <label className="space-y-2">
-                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                     Valor por vaga
                   </span>
                   <input
                     type="number"
                     value={form.valor_vaga}
                     onChange={(e) => update('valor_vaga', e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                   />
                 </label>
               )}
 
               {isXtreinoContext && form.xtreino_tem_premiacao === 'sim' && (
                 <label className="space-y-2">
-                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                     Valor da premiação
                   </span>
                   <input
                     type="number"
                     value={form.valor_premiacao}
                     onChange={(e) => update('valor_premiacao', e.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                   />
                 </label>
               )}
@@ -1070,9 +1099,9 @@ function FormCriacaoTipoInner({ tipo }: Props) {
             </>
 
             {isConfronto && (
-              <div className="mt-8 rounded-[24px] border border-white/10 bg-[#09090b] p-5">
+              <div className="mt-8 border border-zinc-200 bg-white p-4">
                 <div className="mb-5">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#7cfc00]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
                     Configuração do confronto
                   </p>
                   <p className="mt-1 text-sm font-semibold text-zinc-500">
@@ -1082,13 +1111,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Modo do confronto
                     </span>
                     <select
                       value={form.modo_confronto}
                       onChange={(e) => update('modo_confronto', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="1x1">1x1</option>
                       <option value="2x2">2x2</option>
@@ -1098,13 +1127,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Estilo
                     </span>
                     <select
                       value={form.estilo_confronto}
                       onChange={(e) => update('estilo_confronto', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="ump">UMP</option>
                       <option value="tatico">Tático</option>
@@ -1112,13 +1141,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Formato do evento
                     </span>
                     <select
                       value={form.formato_evento}
                       onChange={(e) => update('formato_evento', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="mata_mata">Mata-mata</option>
                       <option value="dupla_eliminacao">Dupla eliminação</option>
@@ -1128,13 +1157,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Melhor de
                     </span>
                     <select
                       value={form.melhor_de}
                       onChange={(e) => update('melhor_de', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="1">BO1</option>
                       <option value="3">BO3</option>
@@ -1143,25 +1172,25 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Rounds por lado
                     </span>
                     <input
                       type="number"
                       value={form.rounds_por_lado}
                       onChange={(e) => update('rounds_por_lado', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     />
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Troca de lado
                     </span>
                     <select
                       value={form.troca_de_lado}
                       onChange={(e) => update('troca_de_lado', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="sim">Sim</option>
                       <option value="nao">Não</option>
@@ -1169,13 +1198,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Prorrogação
                     </span>
                     <select
                       value={form.tem_prorrogacao}
                       onChange={(e) => update('tem_prorrogacao', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="nao">Não</option>
                       <option value="sim">Sim</option>
@@ -1183,13 +1212,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Admin mode
                     </span>
                     <select
                       value={form.admin_mode}
                       onChange={(e) => update('admin_mode', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="manual">Manual</option>
                       <option value="automatico">Automático</option>
@@ -1197,13 +1226,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2 md:col-span-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Regra de WO
                     </span>
                     <select
                       value={form.regra_wo}
                       onChange={(e) => update('regra_wo', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="derrota_simples">Derrota simples</option>
                       <option value="eliminacao">Eliminação</option>
@@ -1212,13 +1241,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   </label>
 
                   <label className="space-y-2">
-                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                       Tipo de mapa
                     </span>
                     <select
                       value={form.tipo_mapa}
                       onChange={(e) => update('tipo_mapa', e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                     >
                       <option value="fixo">Mapa fixo</option>
                       <option value="veto">Veto de mapas</option>
@@ -1227,13 +1256,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
                   {form.tipo_mapa === 'fixo' && (
                     <label className="space-y-2">
-                      <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                         Mapa padrão
                       </span>
                       <select
                         value={form.mapa_padrao}
                         onChange={(e) => update('mapa_padrao', e.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                        className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                       >
                         <option value="BERMUDA">BERMUDA</option>
                         <option value="PURGATÓRIO">PURGATÓRIO</option>
@@ -1247,13 +1276,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   {form.formato_evento === 'dupla_eliminacao' && (
                     <>
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Upper / Lower
                         </span>
                         <select
                           value={form.usa_upper_lower}
                           onChange={(e) => update('usa_upper_lower', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         >
                           <option value="sim">Sim</option>
                           <option value="nao">Não</option>
@@ -1261,13 +1290,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                       </label>
 
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Reset na final
                         </span>
                         <select
                           value={form.reset_final}
                           onChange={(e) => update('reset_final', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         >
                           <option value="nao">Não</option>
                           <option value="sim">Sim</option>
@@ -1279,13 +1308,13 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   {form.formato_evento === 'pontos_corridos' && (
                     <>
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Ida e volta
                         </span>
                         <select
                           value={form.ida_e_volta}
                           onChange={(e) => update('ida_e_volta', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         >
                           <option value="nao">Não</option>
                           <option value="sim">Sim</option>
@@ -1293,26 +1322,26 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                       </label>
 
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Pontuação por vitória
                         </span>
                         <input
                           type="number"
                           value={form.pontuacao_vitoria}
                           onChange={(e) => update('pontuacao_vitoria', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         />
                       </label>
 
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Pontuação por derrota
                         </span>
                         <input
                           type="number"
                           value={form.pontuacao_derrota}
                           onChange={(e) => update('pontuacao_derrota', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         />
                       </label>
                     </>
@@ -1321,26 +1350,26 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   {form.formato_evento === 'grupos_playoff' && (
                     <>
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Número de grupos
                         </span>
                         <input
                           type="number"
                           value={form.numero_grupos}
                           onChange={(e) => update('numero_grupos', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         />
                       </label>
 
                       <label className="space-y-2">
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Classificados por grupo
                         </span>
                         <input
                           type="number"
                           value={form.classificados_por_grupo}
                           onChange={(e) => update('classificados_por_grupo', e.target.value)}
-                          className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                          className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                         />
                       </label>
                     </>
@@ -1351,10 +1380,10 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
             {exibirEstruturaCompetitiva && (
               <div className="space-y-6">
-                <div className="rounded-[24px] border border-white/10 bg-[#09090b] p-5">
+                <div className="border border-zinc-200 bg-white p-4">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#7cfc00]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
                         Estrutura competitiva
                       </p>
                       <p className="mt-1 text-sm font-semibold text-zinc-500">
@@ -1365,7 +1394,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                     <button
                       type="button"
                       onClick={adicionarFaseEstrutura}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-[#0d0d0f] px-5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-colors hover:border-[#7cfc00] hover:text-[#7cfc00]"
+                      className="inline-flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-white px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] transition-colors hover:border-[#2563eb] hover:text-[#2563eb]"
                     >
                       <Plus size={15} />
                       Adicionar fase
@@ -1374,16 +1403,16 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
                   <div className="space-y-5">
                     {fasesEstrutura.map((fase, faseIndex) => (
-                      <div key={`fase-${faseIndex}`} className="rounded-[24px] border border-white/10 bg-[#0d0d0f] p-5">
+                      <div key={`fase-${faseIndex}`} className="border border-zinc-200 bg-white p-4">
                         <div className="mb-4 flex items-center justify-between gap-3">
                           <div className="flex-1">
-                            <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                            <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                               Nome da fase
                             </label>
                             <input
                               value={fase.nome}
                               onChange={(e) => atualizarNomeFase(faseIndex, e.target.value)}
-                              className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 outline-none"
+                              className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                             />
                           </div>
 
@@ -1391,7 +1420,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                             type="button"
                             onClick={() => removerFaseEstrutura(faseIndex)}
                             disabled={fasesEstrutura.length <= 1}
-                            className="mt-7 inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400 transition-colors hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+                            className="mt-7 inline-flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-zinc-500 transition-colors hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1401,7 +1430,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                           <button
                             type="button"
                             onClick={() => adicionarGrupoEstrutura(faseIndex)}
-                            className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-colors hover:border-[#7cfc00] hover:text-[#7cfc00]"
+                            className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-zinc-50 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] transition-colors hover:border-[#2563eb] hover:text-[#2563eb]"
                           >
                             <Plus size={14} />
                             Adicionar grupo
@@ -1410,9 +1439,9 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
                         <div className="space-y-4">
                           {fase.grupos.map((grupo, grupoIndex) => (
-                            <div key={`fase-${faseIndex}-grupo-${grupoIndex}`} className="rounded-[22px] border border-white/10 bg-black/20 p-4">
+                            <div key={`fase-${faseIndex}-grupo-${grupoIndex}`} className="border border-zinc-200 bg-zinc-50 p-4">
                               <div className="mb-4 flex items-center justify-between gap-3">
-                                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-[#7cfc00]">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
                                   Grupo {grupoIndex + 1}
                                 </div>
 
@@ -1420,7 +1449,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                                   type="button"
                                   onClick={() => removerGrupoEstrutura(faseIndex, grupoIndex)}
                                   disabled={fase.grupos.length <= 1}
-                                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400 transition-colors hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+                                  className="inline-flex h-10 w-10 items-center justify-center border border-zinc-200 bg-zinc-50 text-zinc-500 transition-colors hover:border-red-500 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                                 >
                                   <Trash2 size={15} />
                                 </button>
@@ -1428,91 +1457,91 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
                               <div className="grid gap-4 md:grid-cols-2">
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Nome do grupo
                                   </span>
                                   <input
                                     value={grupo.nome}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'nome', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Quantidade de equipes
                                   </span>
                                   <input
                                     type="number"
                                     value={grupo.quantidade_equipes}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'quantidade_equipes', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Número de partidas
                                   </span>
                                   <input
                                     type="number"
                                     value={grupo.numero_partidas}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'numero_partidas', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Classificam
                                   </span>
                                   <input
                                     type="number"
                                     value={grupo.classificam}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'classificam', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Dia do jogo
                                   </span>
                                   <input
                                     type="date"
                                     value={grupo.dia_jogo}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'dia_jogo', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Hora do jogo
                                   </span>
                                   <input
                                     type="time"
                                     value={grupo.hora_jogo}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'hora_jogo', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 <label className="space-y-2 md:col-span-2">
-                                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                     Intervalo entre partidas (min)
                                   </span>
                                   <input
                                     type="number"
                                     value={grupo.intervalo_minutos}
                                     onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'intervalo_minutos', e.target.value)}
-                                    className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                    className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                   />
                                 </label>
 
                                 {Array.from({ length: Number(grupo.numero_partidas || 0) || 0 }).map((_, mapaIndex) => (
                                   <label key={`mapa-${mapaIndex}`} className="space-y-2">
-                                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                                       Mapa da partida {mapaIndex + 1}
                                     </span>
                                     <select
@@ -1522,7 +1551,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                                         mapasAtualizados[mapaIndex] = e.target.value
                                         atualizarGrupoEstrutura(faseIndex, grupoIndex, 'mapas', mapasAtualizados)
                                       }}
-                                      className="w-full rounded-2xl border border-white/10 bg-[#0d0d0f] px-4 py-3 outline-none"
+                                      className="w-full border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                                     >
                                       <option value="BERMUDA">BERMUDA</option>
                                       <option value="PURGATÓRIO">PURGATÓRIO</option>
@@ -1544,7 +1573,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
             )}
 
             {erro ? (
-              <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300">
+              <div className="mt-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
                 {erro}
               </div>
             ) : null}
@@ -1564,7 +1593,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                 <button
                   type="submit"
                   disabled={loading || !produtoraResolvida?.id}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#7cfc00] px-6 text-sm font-black uppercase tracking-[0.18em] text-black transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-12 items-center justify-center gap-2 bg-[#2563eb] px-6 text-sm font-semibold uppercase tracking-[0.18em] text-white transition-transform hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="animate-spin" size={16} /> : <Trophy size={16} />}
                   {`Criar ${tituloTela}`}

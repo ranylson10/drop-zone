@@ -305,6 +305,23 @@ export default function EscalaCampeonatoPage() {
   >({});
   const [erro, setErro] = useState<string | null>(null);
 
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
+
+  useEffect(() => {
+    async function verificarAuth() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setUsuarioLogado(session?.user || null);
+      setCheckingAuth(false);
+    }
+
+    verificarAuth();
+  }, []);
+
+
   async function buscarCampeonato() {
     const ehUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -974,6 +991,62 @@ export default function EscalaCampeonatoPage() {
     } finally {
       setOperandoJogadorId(null);
     }
+  }
+
+
+
+
+  if (checkingAuth) {
+    return (
+      <main className="escala-beta-page grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950 [color-scheme:light]">
+        <div className="border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+          <Loader2 className="mr-2 inline animate-spin" size={16} /> Carregando
+        </div>
+      </main>
+    );
+  }
+
+  if (!usuarioLogado) {
+    return (
+      <main className="escala-beta-page flex min-h-screen items-center justify-center bg-[#f5f7fb] px-4 py-6 text-slate-950 [color-scheme:light]">
+        <div className="w-full max-w-md border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-white">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">
+              Acesso beta
+            </p>
+            <h1 className="mt-1 text-2xl font-black uppercase tracking-[-0.05em]">
+              Entre na sua conta
+            </h1>
+            <p className="mt-2 text-xs font-bold text-blue-100">
+              Faça login antes de acessar o campeonato.
+            </p>
+          </div>
+
+          <div className="space-y-2 p-4">
+            <Link
+              href="/login"
+              className="flex h-11 items-center justify-center border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+            >
+              Entrar
+            </Link>
+
+            <Link
+              href="/registro"
+              className="flex h-11 items-center justify-center border border-slate-200 bg-white text-xs font-black uppercase text-slate-900"
+            >
+              Criar conta
+            </Link>
+
+            <Link
+              href="/recuperar-senha"
+              className="flex h-11 items-center justify-center border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
+            >
+              Recuperar senha
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
 

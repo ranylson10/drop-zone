@@ -1,11 +1,21 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ChevronLeft, LayoutGrid, Swords, Trophy, ShieldCheck, Target, CircleDollarSign } from 'lucide-react'
+import { ChevronLeft, LayoutGrid, Swords, Trophy, ShieldCheck, Target, CircleDollarSign, Plus } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
+function moeda(valor: number) {
+ return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function numeroSeguro(value: unknown) {
+ const n = Number(value || 0)
+ return Number.isFinite(n) ? n : 0
+}
 
 const OPCOES = [
  {
@@ -61,6 +71,32 @@ const OPCOES = [
 function PageInner() {
  const searchParams = useSearchParams()
  const produtoraId = searchParams.get('produtoraId')
+ const [taxas, setTaxas] = useState<Record<string, number>>({})
+
+ useEffect(() => {
+  let ativo = true
+
+  async function carregarTaxas() {
+   const { data } = await supabase
+    .from('campeonato_taxas_criacao')
+    .select('tipo, valor, ativo')
+    .eq('ativo', true)
+
+   if (!ativo) return
+
+   setTaxas(
+    Object.fromEntries(
+     (data || []).map((item: { tipo?: string; valor?: number | null }) => [String(item.tipo), numeroSeguro(item.valor)]),
+    ),
+   )
+  }
+
+  carregarTaxas()
+
+  return () => {
+   ativo = false
+  }
+ }, [])
 
  function hrefComProdutora(href: string) {
  if (!produtoraId) return href
@@ -68,58 +104,41 @@ function PageInner() {
  }
 
  return (
- <div className="relative min-h-screen overflow-hidden bg-white text-[#142340]">
- <div className="pointer-events-none absolute inset-0">
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(90,255,0,0.16),transparent_32%),linear-gradient(180deg,#071019_0%,#060b12_60%,#05080d_100%)]" />
- <div
- className="absolute inset-0 opacity-[0.08]"
- style={{
- backgroundImage: `
- linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
- linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)
- `,
- backgroundSize: '36px 36px',
- }}
- />
- </div>
-
- <div className="relative mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
- <section className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white/[0.04] -[0_0_0_1px_rgba(255,255,255,0.03),0_20px_80px_rgba(0,0,0,0.45)] -xl">
- <div className="border-b border-zinc-200 bg-[linear-gradient(180deg,rgba(114,255,0,0.08),rgba(255,255,255,0.02))] p-5 md:p-7">
- <div className="flex flex-col gap-6">
- <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
- <div className="flex items-start gap-4">
- <div className="flex h-16 w-16 shrink-0 items-center justify-center border border-[#2563eb]/30 bg-zinc-500 text-[#2563eb] -[0_0_25px_rgba(124,252,0,0.12)]">
- <Trophy size={28} />
- </div>
-
- <div className="pt-1">
- <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#2563eb]/25 bg-[#2563eb]/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-[#2563eb]">
- <LayoutGrid size={12} />
+ <div className="min-h-screen bg-[#f7f7f7] text-[#142340]">
+ <div className="mx-auto max-w-[1520px] px-4 pb-6 pt-5">
+ <section className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+ <div>
+ <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
+ <Trophy size={18} />
  Mercado de torneios
  </div>
-
- <h1 className="text-3xl font-semibold uppercase tracking-tight text-[#142340] md:text-5xl">
+ <h1 className="text-[20px] font-semibold tracking-tight text-[#142340] md:text-[22px]">
  Criar campeonato
  </h1>
-
- <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-zinc-600 md:text-[15px]">
- Escolha o modo competitivo que você quer criar: confrontos, diários, xtreinos,
- copas, ligas e apostados.
+ <p className="mt-1 text-xs font-medium text-zinc-500">
+ Escolha o modo competitivo que você quer criar: confrontos, diários, xtreinos, copas, ligas e apostados.
  </p>
- </div>
  </div>
 
  <Link
  href="/campeonatos"
- className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-200 bg-white px-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#142340] transition-all hover:-translate-y-0.5 hover:border-[#2563eb]/40 hover:bg-white hover:text-[#2563eb]"
+ className="inline-flex h-9 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:border-[#2563eb] hover:text-[#2563eb]"
  >
- <ChevronLeft size={14} />
+ <ChevronLeft size={16} />
  Voltar
  </Link>
+ </section>
+
+ <section className="mb-4 border border-zinc-200 bg-white">
+ <div className="flex items-center justify-between px-4 py-3 max-md:px-3">
+ <div className="flex items-center gap-2 text-[12px] font-semibold uppercase text-[#142340]">
+ <Plus size={16} className="text-[#2563eb]" />
+ Selecione o tipo de criação
+ </div>
+ <span className="text-[10px] font-medium uppercase text-zinc-500">taxa por modo</span>
  </div>
 
- <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+ <div className="grid gap-3 px-3 pb-3 md:grid-cols-2 xl:grid-cols-6">
  {OPCOES.map((item) => {
  const Icon = item.icon
 
@@ -127,75 +146,62 @@ function PageInner() {
  <Link
  key={item.slug}
  href={hrefComProdutora(item.href)}
- className="group relative overflow-hidden rounded-[26px] border border-zinc-200 bg-white/[0.03] p-5 transition-all duration-200 hover:border-[#2563eb]/30 hover:bg-white/[0.05]"
+ className="group relative flex min-h-[235px] flex-col border border-zinc-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#2563eb] hover:shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
  >
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,252,0,0.10),transparent_40%)] opacity-70" />
-
- <div className="relative">
- <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
+ <div className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#2563eb]">
  <Icon size={11} />
  {item.badge}
  </div>
 
- <div className="text-[28px] font-semibold uppercase leading-none text-[#142340]">
+ <div className="text-[20px] font-semibold uppercase leading-tight text-[#142340]">
  {item.titulo}
  </div>
 
- <div className="mt-3 min-h-[72px] text-sm font-medium leading-6 text-zinc-600">
+ <div className="mt-3 flex-1 text-[13px] font-medium leading-6 text-zinc-600">
  {item.descricao}
  </div>
 
- <div className="mt-5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2563eb] opacity-0 transition-all group-hover:opacity-100">
- Abrir criação
- </div>
+ <div className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-[#2563eb]/20 bg-[#2563eb]/5 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+ <CircleDollarSign size={13} />
+ Taxa: {moeda(taxas[item.slug] || 0)}
  </div>
  </Link>
  )
  })}
  </div>
+ </section>
 
- <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
- <div className="rounded-[24px] border border-zinc-200 bg-white/[0.03] p-5">
- <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-white/20 text-[#2563eb]">
+ <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+ <div className="border border-zinc-200 bg-white p-4">
+ <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-[#2563eb]">
  <LayoutGrid size={20} />
  </div>
- <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
- Modos disponíveis
- </div>
- <div className="mt-2 text-4xl font-semibold text-[#142340]">6</div>
+ <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Modos disponíveis</div>
+ <div className="mt-1 text-[24px] font-semibold text-[#142340]">6</div>
  </div>
 
- <div className="rounded-[24px] border border-zinc-200 bg-white/[0.03] p-5">
- <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-white/20 text-[#2563eb]">
+ <div className="border border-zinc-200 bg-white p-4">
+ <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-[#2563eb]">
  <Swords size={20} />
  </div>
- <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
- Confrontos
- </div>
- <div className="mt-2 text-4xl font-semibold text-[#142340]">1x1 até 4x4</div>
+ <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Confrontos</div>
+ <div className="mt-1 text-[24px] font-semibold text-[#142340]">1x1 até 4x4</div>
  </div>
 
- <div className="rounded-[24px] border border-zinc-200 bg-white/[0.03] p-5">
- <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-white/20 text-[#2563eb]">
+ <div className="border border-zinc-200 bg-white p-4">
+ <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-[#2563eb]">
  <ShieldCheck size={20} />
  </div>
- <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
- Fluxo integrado
- </div>
- <div className="mt-2 text-2xl font-semibold text-[#142340]">Sem duplicação</div>
+ <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Fluxo integrado</div>
+ <div className="mt-1 text-[22px] font-semibold text-[#142340]">Sem duplicação</div>
  </div>
 
- <div className="rounded-[24px] border border-zinc-200 bg-white/[0.03] p-5">
- <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-white/20 text-[#2563eb]">
+ <div className="border border-zinc-200 bg-white p-4">
+ <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-[#2563eb]">
  <Target size={20} />
  </div>
- <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
- Próximo foco
- </div>
- <div className="mt-2 text-2xl font-semibold text-[#142340]">Página do confronto</div>
- </div>
- </div>
- </div>
+ <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Próximo foco</div>
+ <div className="mt-1 text-[22px] font-semibold text-[#142340]">Configurações</div>
  </div>
  </section>
  </div>
