@@ -429,6 +429,11 @@ export default function EscalaCampeonatoPage() {
     Record<string, string>
   >({});
   const [erro, setErro] = useState<string | null>(null);
+  const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar">("login");
+  const [authEmailBeta, setAuthEmailBeta] = useState("");
+  const [authSenhaBeta, setAuthSenhaBeta] = useState("");
+  const [authNomeBeta, setAuthNomeBeta] = useState("");
+  const [authLoadingBeta, setAuthLoadingBeta] = useState(false);
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
@@ -452,6 +457,95 @@ export default function EscalaCampeonatoPage() {
     verificarAuth();
   }, []);
 
+
+  async function entrarContaBeta() {
+    const email = authEmailBeta.trim();
+
+    if (!email || !authSenhaBeta) {
+      alert("Informe e-mail e senha.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: authSenhaBeta,
+      });
+
+      if (error) throw error;
+
+      await carregar();
+    } catch (error: any) {
+      alert(error?.message || "Não foi possível entrar na conta.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+  async function criarContaBeta() {
+    const email = authEmailBeta.trim();
+
+    if (!email || !authSenhaBeta) {
+      alert("Informe e-mail e senha.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: authSenhaBeta,
+        options: {
+          data: {
+            nome: authNomeBeta.trim() || email,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      alert("Conta criada. Se o Supabase exigir confirmação, confira seu e-mail.");
+      await carregar();
+    } catch (error: any) {
+      alert(error?.message || "Não foi possível criar a conta.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+  async function recuperarSenhaBeta() {
+    const email = authEmailBeta.trim();
+
+    if (!email) {
+      alert("Informe seu e-mail.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/resetar-senha`
+          : undefined;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      if (error) throw error;
+
+      alert("Enviamos o link de recuperação para seu e-mail.");
+      setAuthModoBeta("login");
+    } catch (error: any) {
+      alert(error?.message || "Não foi possível enviar recuperação de senha.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
 
   async function buscarCampeonato() {
     const ehUuid =
@@ -1934,36 +2028,116 @@ export default function EscalaCampeonatoPage() {
                     Acesso seguro
                   </p>
                   <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
-                    Entre para continuar
+                    {authModoBeta === "login"
+                      ? "Entre para continuar"
+                      : authModoBeta === "cadastro"
+                        ? "Criar conta"
+                        : "Recuperar senha"}
                   </h2>
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
-                    Faça login ou crie sua conta para acessar as ferramentas do campeonato.
+                    {authModoBeta === "login"
+                      ? "Entre na sua conta para acessar as ferramentas do campeonato."
+                      : authModoBeta === "cadastro"
+                        ? "Crie sua conta sem sair do link do campeonato."
+                        : "Informe seu e-mail para receber o link de recuperação."}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-2 p-3">
-              <Link
-                href="/login"
-                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm"
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("login")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "login"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("cadastro")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "cadastro"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  Cadastro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("recuperar")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "recuperar"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  Senha
+                </button>
+              </div>
+
+              {authModoBeta === "cadastro" ? (
+                <input
+                  value={authNomeBeta}
+                  onChange={(event) => setAuthNomeBeta(event.target.value)}
+                  placeholder="Nome"
+                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+                />
+              ) : null}
+
+              <input
+                value={authEmailBeta}
+                onChange={(event) => setAuthEmailBeta(event.target.value)}
+                placeholder="E-mail"
+                type="email"
+                className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+              />
+
+              {authModoBeta !== "recuperar" ? (
+                <input
+                  value={authSenhaBeta}
+                  onChange={(event) => setAuthSenhaBeta(event.target.value)}
+                  placeholder="Senha"
+                  type="password"
+                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+                />
+              ) : null}
+
+              <button
+                type="button"
+                disabled={authLoadingBeta}
+                onClick={
+                  authModoBeta === "login"
+                    ? entrarContaBeta
+                    : authModoBeta === "cadastro"
+                      ? criarContaBeta
+                      : recuperarSenhaBeta
+                }
+                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
               >
-                <Lock size={15} />
-                Entrar
-              </Link>
-              <Link
-                href="/cadastro"
-                className="flex h-12 items-center justify-center gap-2 border border-slate-200 bg-white text-xs font-black uppercase text-slate-950"
-              >
-                <UserRound size={15} />
-                Criar conta
-              </Link>
-              <Link
-                href="/recuperar-senha"
-                className="flex h-11 items-center justify-center border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
-              >
-                Recuperar senha
-              </Link>
+                {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
+                {authModoBeta === "login"
+                  ? "Entrar"
+                  : authModoBeta === "cadastro"
+                    ? "Criar conta"
+                    : "Enviar recuperação"}
+              </button>
+
+              {authModoBeta === "recuperar" ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("login")}
+                  className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
+                >
+                  Voltar para login
+                </button>
+              ) : null}
             </div>
           </section>
         ) : (
