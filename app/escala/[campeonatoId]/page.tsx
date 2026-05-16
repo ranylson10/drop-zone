@@ -2121,13 +2121,13 @@ export default function EscalaCampeonatoPage() {
             </div>
           </div>
 
-          <div className="grid gap-2 p-3">
+          <div className="grid gap-2 bg-white p-3 dark:bg-black">
             <input
               value={novaSenhaBeta}
               onChange={(event) => setNovaSenhaBeta(event.target.value)}
               placeholder="Nova senha"
               type="password"
-              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
             />
 
             <input
@@ -2135,7 +2135,7 @@ export default function EscalaCampeonatoPage() {
               onChange={(event) => setConfirmarNovaSenhaBeta(event.target.value)}
               placeholder="Confirmar nova senha"
               type="password"
-              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
             />
 
             <button
@@ -2198,30 +2198,192 @@ export default function EscalaCampeonatoPage() {
         ) : null}
 
         {!userId ? (
-          <section className="mt-3 min-h-[calc(100vh-180px)] bg-white px-1 py-3 text-slate-950 dark:bg-black dark:text-white">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthModoBeta("login");
-                setAuthEmailBeta("");
-                setAuthSenhaBeta("");
-                setAuthConfirmarSenhaBeta("");
-                setAuthCodigoBeta("");
-              }}
-              className="mb-4 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300"
-            >
-              <ArrowLeft size={15} className="text-blue-600" />
-              Voltar
-            </button>
+          <section className="mt-3 overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-black">
+            <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
+              <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
+              <div className="relative flex items-start gap-3">
+                <div className="grid h-12 w-12 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
+                  <Lock size={19} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
+                    Acesso seguro
+                  </p>
+                  <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
+                    {authModoBeta === "login"
+                      ? "Entre para continuar"
+                      : authModoBeta === "cadastro"
+                        ? "Criar conta"
+                        : authModoBeta === "confirmar"
+                          ? "Confirmar e-mail"
+                          : "Recuperar senha"}
+                  </h2>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
+                    {authModoBeta === "login"
+                      ? "Entre na sua conta para acessar as ferramentas do campeonato."
+                      : authModoBeta === "cadastro"
+                        ? "Crie sua conta sem sair do link do campeonato."
+                        : authModoBeta === "confirmar"
+                          ? "Digite o código recebido no e-mail para liberar sua conta."
+                          : "Informe seu e-mail para receber o link de recuperação."}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="border border-slate-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-black">
-              <div className="mb-6">
-                <div className="mb-2 flex items-center gap-2 text-blue-600">
-                  {authModoBeta === "cadastro" ? (
-                    <User size={22} />
-                  ) : authModoBeta === "recuperar" ? (
-                    <Mail size={22} />
-                  ) : (
+            <div className="grid gap-2 p-3">
+              <div className="grid grid-cols-4 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("login")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "login"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
+                  }`}
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("cadastro")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "cadastro"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
+                  }`}
+                >
+                  Cadastro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("confirmar")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "confirmar"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
+                  }`}
+                >
+                  Código
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("recuperar")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "recuperar"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
+                  }`}
+                >
+                  Senha
+                </button>
+              </div>
+
+              {authModoBeta === "cadastro" ? (
+                <input
+                  value={authNomeBeta}
+                  onChange={(event) => setAuthNomeBeta(event.target.value)}
+                  placeholder="Nome"
+                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
+                />
+              ) : null}
+
+              <input
+                value={authEmailBeta}
+                onChange={(event) => setAuthEmailBeta(event.target.value)}
+                placeholder="E-mail"
+                type="email"
+                className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
+              />
+
+              {authModoBeta === "confirmar" ? (
+                <input
+                  value={authCodigoBeta}
+                  onChange={(event) =>
+                    setAuthCodigoBeta(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="Código de verificação"
+                  inputMode="numeric"
+                  className="h-11 border border-slate-200 bg-white px-3 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
+                />
+              ) : null}
+
+              {authModoBeta !== "recuperar" && authModoBeta !== "confirmar" ? (
+                <input
+                  value={authSenhaBeta}
+                  onChange={(event) => setAuthSenhaBeta(event.target.value)}
+                  placeholder="Senha"
+                  type="password"
+                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
+                />
+              ) : null}
+
+              {authModoBeta === "cadastro" ? (
+                <input
+                  value={authConfirmarSenhaBeta}
+                  onChange={(event) => setAuthConfirmarSenhaBeta(event.target.value)}
+                  placeholder="Confirmar senha"
+                  type="password"
+                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
+                />
+              ) : null}
+
+              <button
+                type="button"
+                disabled={authLoadingBeta}
+                onClick={
+                  authModoBeta === "login"
+                    ? entrarContaBeta
+                    : authModoBeta === "cadastro"
+                      ? criarContaBeta
+                      : authModoBeta === "confirmar"
+                        ? confirmarCodigoCadastroBeta
+                        : recuperarSenhaBeta
+                }
+                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
+              >
+                {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
+                {authModoBeta === "login"
+                  ? "Entrar"
+                  : authModoBeta === "cadastro"
+                    ? "Criar conta"
+                    : authModoBeta === "confirmar"
+                      ? "Confirmar código"
+                      : "Enviar recuperação"}
+              </button>
+
+              {authModoBeta === "recuperar" ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthModoBeta("login")}
+                  className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
+                >
+                  Voltar para login
+                </button>
+              ) : null}
+
+              {authModoBeta === "confirmar" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={reenviarCodigoCadastroBeta}
+                    disabled={authLoadingBeta}
+                    className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500 disabled:opacity-60"
+                  >
+                    Reenviar código
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthModoBeta("login")}
+                    className="h-10 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-500"
+                  >
+                    Já confirmei
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ) : (
           <>
             <div className="mt-2">
               <button
@@ -4387,57 +4549,6 @@ function CampoBeta({
         className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold outline-none"
       />
     </label>
-  );
-}
-
-
-function AuthInputBeta({
-  icon,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  icon: React.ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  type?: string;
-}) {
-  return (
-    <div className="grid grid-cols-[48px_1fr] border border-slate-200 bg-white dark:border-zinc-700 dark:bg-black">
-      <div className="grid h-12 place-items-center border-r border-slate-200 text-blue-600 dark:border-zinc-700">
-        {icon}
-      </div>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        type={type}
-        className="h-12 bg-white px-3 text-xs font-bold text-slate-950 outline-none placeholder:text-slate-400 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-      />
-    </div>
-  );
-}: {
-  icon: React.ReactNode;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  type?: string;
-}) {
-  return (
-    <div className="grid grid-cols-[48px_1fr] border border-slate-200 bg-white">
-      <div className="grid h-12 place-items-center border-r border-slate-200 text-blue-600">
-        {icon}
-      </div>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        type={type}
-        className="h-12 bg-white px-3 text-xs font-bold text-slate-950 outline-none placeholder:text-slate-400"
-      />
-    </div>
   );
 }
 
