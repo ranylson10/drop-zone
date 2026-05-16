@@ -89,10 +89,8 @@ type PerfilJogo = {
   foto_capa?: string | null;
   avatar_url?: string | null;
   foto_url?: string | null;
-  capa_url?: string | null;
-  banner_url?: string | null;
-  pais?: string | null;
   uid_jogo?: string | null;
+  servidor?: string | null;
   plataforma?: string | null;
   funcao?: string | null;
   ativo?: boolean | null;
@@ -177,7 +175,7 @@ function getFotoPerfilMobile(perfil?: PerfilJogo | null) {
 }
 
 function getCapaPerfilMobile(perfil?: PerfilJogo | null) {
-  return perfil?.capa_url || perfil?.banner_url || perfil?.foto_capa || null;
+  return null;
 }
 
 function getNomeJogador(jogador?: JogadorEquipe | null) {
@@ -305,9 +303,9 @@ export default function EscalaCampeonatoPage() {
   const [formPerfilBeta, setFormPerfilBeta] = useState({
     nick: "",
     uid_jogo: "",
+    servidor: "BR",
     plataforma: "mobile",
     funcao: "",
-    pais: "BR",
     foto_capa: "",
   });
   const [formEquipeBeta, setFormEquipeBeta] = useState({
@@ -1333,9 +1331,9 @@ export default function EscalaCampeonatoPage() {
         user_id: userId,
         nick,
         uid_jogo: uidJogo,
+        servidor: formPerfilBeta.servidor || null,
         plataforma: formPerfilBeta.plataforma || "mobile",
         funcao: formPerfilBeta.funcao || null,
-        pais: formPerfilBeta.pais || "BR",
         foto_capa: formPerfilBeta.foto_capa.trim() || null,
         ativo: true,
       };
@@ -1636,6 +1634,12 @@ export default function EscalaCampeonatoPage() {
                         onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, uid_jogo: value }))}
                         placeholder="Ex: 239387947"
                       />
+                      <CampoBeta
+                        label="Servidor"
+                        value={formPerfilBeta.servidor}
+                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, servidor: value.toUpperCase() }))}
+                        placeholder="Ex: BR"
+                      />
 
                       <div className="grid grid-cols-2 gap-2">
                         <label className="block">
@@ -1671,13 +1675,6 @@ export default function EscalaCampeonatoPage() {
                           </select>
                         </label>
                       </div>
-
-                      <CampoBeta
-                        label="País"
-                        value={formPerfilBeta.pais}
-                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, pais: value }))}
-                        placeholder="BR"
-                      />
                       <label className="block">
                         <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
                           Foto do perfil
@@ -2320,7 +2317,7 @@ export default function EscalaCampeonatoPage() {
                                   <button
                                     type="button"
                                     className="h-7 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
-                                    onClick={() => alert("Criação de line será adicionada depois dos formulários principais.")}
+                                    onClick={() => alert("Criação de line será adicionada depois dos formulários princiservidor.")}
                                   >
                                     + Line
                                   </button>
@@ -2519,7 +2516,7 @@ export default function EscalaCampeonatoPage() {
                     <button
                       type="button"
                       className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                      onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", pais: perfilJogo?.pais || "BR", foto_capa: perfilJogo?.foto_capa || "" })); setModoFormularioBeta("perfil"); }}
+                      onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", servidor: perfilJogo?.servidor || "BR", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", foto_capa: perfilJogo?.foto_capa || "" })); setModoFormularioBeta("perfil"); }}
                     >
                       <Edit3 size={14} /> Criar perfil
                     </button>
