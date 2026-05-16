@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronRight,
   Eye,
   Gamepad2,
   ListChecks,
@@ -385,7 +386,7 @@ export default function EscalaCampeonatoPage() {
   const [killsJogador, setKillsJogador] = useState(0);
   const [partidasJogador, setPartidasJogador] = useState(0);
   const [posicaoMvp, setPosicaoMvp] = useState<number | null>(null);
-  const [tipoAcesso, setTipoAcesso] = useState<"jogador" | "lider" | "manager" | null>(null);
+  const [tipoAcesso, setTipoAcesso] = useState<"jogador" | "equipe" | null>(null);
   const [aba, setAba] = useState<"escala" | "equipe" | "jogador">("equipe");
   const [equipeSelecionadaId, setEquipeSelecionadaId] = useState<string | null>(null);
   const [lineSelecionadaPorEquipe, setLineSelecionadaPorEquipe] = useState<Record<string, string>>({});
@@ -1921,38 +1922,45 @@ export default function EscalaCampeonatoPage() {
         ) : null}
 
         {!userId ? (
-          <section className="mt-3 border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center border border-slate-200 bg-slate-50 text-blue-600">
-                <Lock size={18} />
-              </div>
-              <div>
-                <h2 className="text-lg font-black uppercase tracking-[-0.04em]">
-                  Acesse sua conta
-                </h2>
-                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                  Use o login, cadastro e recuperação que já existem no site.
-                  Depois volte por este link para escolher equipe ou jogador.
-                </p>
+          <section className="mt-3 overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
+              <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
+              <div className="relative flex items-start gap-3">
+                <div className="grid h-12 w-12 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
+                  <Lock size={19} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
+                    Acesso seguro
+                  </p>
+                  <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
+                    Entre para continuar
+                  </h2>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
+                    Faça login ou crie sua conta para acessar as ferramentas do campeonato.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-2">
+            <div className="grid gap-2 p-3">
               <Link
-                href="#"
-                className="flex h-12 items-center justify-center border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                href="/login"
+                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm"
               >
-                Login
+                <Lock size={15} />
+                Entrar
               </Link>
               <Link
-                href="#"
-                className="flex h-12 items-center justify-center border border-slate-300 bg-white text-xs font-black uppercase text-slate-800"
+                href="/cadastro"
+                className="flex h-12 items-center justify-center gap-2 border border-slate-200 bg-white text-xs font-black uppercase text-slate-950"
               >
+                <UserRound size={15} />
                 Criar conta
               </Link>
               <Link
-                href="#"
-                className="flex h-12 items-center justify-center border border-slate-300 bg-white text-xs font-black uppercase text-slate-800"
+                href="/recuperar-senha"
+                className="flex h-11 items-center justify-center border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
               >
                 Recuperar senha
               </Link>
@@ -1960,63 +1968,91 @@ export default function EscalaCampeonatoPage() {
           </section>
         ) : (
           <>
-            {!tipoAcesso ? (
-              <section className="mt-2 space-y-2">
-                <div className="border border-slate-200 bg-white p-3 shadow-sm">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
-                    Acesso beta
-                  </p>
-                  <h2 className="mt-1 text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
-                    Como você quer entrar?
-                  </h2>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                    Escolha seu perfil para abrir apenas as ferramentas necessárias deste campeonato.
-                  </p>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  setUserId(null);
+                  setTipoAcesso(null);
+                  setAba("equipe");
+                }}
+                className="flex h-10 w-full items-center justify-center border border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.16em] text-red-600"
+              >
+                Sair da conta
+              </button>
+            </div>
 
-                  <div className="mt-3 grid gap-2">
+            {!tipoAcesso ? (
+              <section className="mt-2">
+                <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-200 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-600">
+                      Acesso beta
+                    </p>
+                    <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em] text-slate-950">
+                      Como você quer entrar?
+                    </h2>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                      Escolha uma área para abrir somente as ferramentas necessárias.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 p-3">
                     <button
                       type="button"
                       onClick={() => {
                         setTipoAcesso("jogador");
                         setAba("jogador");
                       }}
-                      className="flex h-14 items-center justify-between border border-slate-200 bg-white px-3 text-left"
+                      className="group relative overflow-hidden border border-slate-200 bg-white p-0 text-left shadow-sm transition hover:border-blue-500"
                     >
-                      <span>
-                        <strong className="block text-xs font-black uppercase text-slate-950">Jogador</strong>
-                        <span className="text-[10px] font-bold text-slate-500">Perfil, convites, pedidos e agenda</span>
-                      </span>
-                      <Gamepad2 size={18} className="text-blue-600" />
+                      <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(135deg,rgba(37,99,235,.08)_0_25%,transparent_25%_50%,rgba(37,99,235,.06)_50%_75%,transparent_75%)] [background-size:24px_24px]" />
+                      <div className="relative flex min-h-[96px] items-center gap-3 p-3">
+                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-blue-200 bg-blue-50 text-blue-600">
+                          <Gamepad2 size={26} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">
+                            Jogador
+                          </p>
+                          <h3 className="mt-1 text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
+                            Perfil competitivo
+                          </h3>
+                          <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+                            Perfil, convites, pedidos, equipe e agenda.
+                          </p>
+                        </div>
+                        <ChevronRight size={20} className="text-blue-600 transition group-hover:translate-x-1" />
+                      </div>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => {
-                        setTipoAcesso("lider");
+                        setTipoAcesso("equipe");
                         setAba("equipe");
                       }}
-                      className="flex h-14 items-center justify-between border border-blue-600 bg-blue-600 px-3 text-left text-white"
+                      className="group relative overflow-hidden border border-blue-700 bg-slate-950 p-0 text-left text-white shadow-sm transition hover:border-blue-500"
                     >
-                      <span>
-                        <strong className="block text-xs font-black uppercase">Líder</strong>
-                        <span className="text-[10px] font-bold text-blue-100">Gerenciar equipe, line e escalação</span>
-                      </span>
-                      <Users size={18} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTipoAcesso("manager");
-                        setAba("equipe");
-                      }}
-                      className="flex h-14 items-center justify-between border border-slate-200 bg-slate-50 px-3 text-left"
-                    >
-                      <span>
-                        <strong className="block text-xs font-black uppercase text-slate-950">Manager</strong>
-                        <span className="text-[10px] font-bold text-slate-500">Controlar várias equipes</span>
-                      </span>
-                      <ShieldCheck size={18} className="text-blue-600" />
+                      <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_20%_20%,rgba(37,99,235,.55)_0,transparent_35%),linear-gradient(135deg,transparent_0_44%,rgba(255,255,255,.12)_44%_46%,transparent_46%)]" />
+                      <div className="relative flex min-h-[96px] items-center gap-3 p-3">
+                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
+                          <Users size={26} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">
+                            Equipe
+                          </p>
+                          <h3 className="mt-1 text-lg font-black uppercase tracking-[-0.04em]">
+                            Gestão da equipe
+                          </h3>
+                          <p className="mt-1 text-[11px] font-semibold leading-4 text-blue-100">
+                            Equipes próprias, equipes como manager, lines e escalação.
+                          </p>
+                        </div>
+                        <ChevronRight size={20} className="text-blue-200 transition group-hover:translate-x-1" />
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -2290,7 +2326,7 @@ export default function EscalaCampeonatoPage() {
                   ) : null}
                 </section>
 
-                {(tipoAcesso === "lider" || tipoAcesso === "manager") && equipes.length > 1 ? (
+                {(tipoAcesso === "equipe") && equipes.length > 1 ? (
                   <section className="mt-2 border border-slate-200 bg-white p-2">
                     <p className="mb-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
                       Selecionar equipe
@@ -2300,7 +2336,7 @@ export default function EscalaCampeonatoPage() {
                       onChange={(event) => setEquipeSelecionadaId(event.target.value || null)}
                       className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-black uppercase outline-none"
                     >
-                      <option value="">Todas as equipes</option>
+                      <option value="">Todas as equipes vinculadas</option>
                       {equipes.map((equipe) => (
                         <option key={equipe.id} value={equipe.id}>
                           {equipe.tag ? `[${equipe.tag}] ` : ""}{equipe.nome}
