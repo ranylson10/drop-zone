@@ -57,6 +57,7 @@ type Equipe = {
   tag: string | null;
   logo_url: string | null;
   criado_por: string | null;
+  servidor: string | null;
 };
 
 type CampeonatoEquipe = {
@@ -143,6 +144,25 @@ type JogadorStats = {
   abates: number;
   posicaoMvp: number | null;
 };
+
+const SERVIDORES_FREE_FIRE = [
+  { value: "BR", label: "Brasil (BR)" },
+  { value: "LATAM", label: "Latam (LATAM)" },
+  { value: "NA", label: "América do Norte (NA)" },
+  { value: "US", label: "Estados Unidos (US)" },
+  { value: "SAC", label: "América do Sul (SAC)" },
+  { value: "EU", label: "Europa (EU)" },
+  { value: "MEA", label: "Oriente Médio e África (MEA)" },
+  { value: "IND", label: "Índia (IND)" },
+  { value: "PK", label: "Paquistão (PK)" },
+  { value: "BD", label: "Bangladesh (BD)" },
+  { value: "TH", label: "Tailândia (TH)" },
+  { value: "VN", label: "Vietnã (VN)" },
+  { value: "ID", label: "Indonésia (ID)" },
+  { value: "TW", label: "Taiwan (TW)" },
+  { value: "SG", label: "Singapura (SG)" },
+  { value: "CIS", label: "Comunidade dos Estados Independentes (CIS)" },
+];
 
 const moeda = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -311,6 +331,7 @@ export default function EscalaCampeonatoPage() {
   const [formEquipeBeta, setFormEquipeBeta] = useState({
     nome: "",
     tag: "",
+    servidor: "BR",
     logo_url: "",
     descricao: "",
   });
@@ -402,7 +423,7 @@ export default function EscalaCampeonatoPage() {
       ] = await Promise.all([
         supabase
           .from("equipes")
-          .select("id,nome,tag,logo_url,criado_por")
+          .select("id,nome,tag,logo_url,criado_por,servidor")
           .eq("criado_por", uid),
         supabase
           .from("membros_equipe")
@@ -600,7 +621,7 @@ export default function EscalaCampeonatoPage() {
         if (jogadorAtual?.equipe_id) {
           const { data: equipe } = await supabase
             .from("equipes")
-            .select("id,nome,tag,logo_url,criado_por")
+            .select("id,nome,tag,logo_url,criado_por,servidor")
             .eq("id", jogadorAtual.equipe_id)
             .maybeSingle();
           setEquipeDoJogador((equipe as Equipe | null) || null);
@@ -1386,6 +1407,7 @@ export default function EscalaCampeonatoPage() {
       const payload = {
         nome,
         tag: formEquipeBeta.tag.trim() || null,
+        servidor: formEquipeBeta.servidor || "BR",
         logo_url: formEquipeBeta.logo_url.trim() || null,
         descricao: formEquipeBeta.descricao.trim() || null,
         criado_por: userId,
@@ -1394,7 +1416,7 @@ export default function EscalaCampeonatoPage() {
       const { data, error } = await supabase
         .from("equipes")
         .insert(payload)
-        .select("id,nome,tag,logo_url,criado_por")
+        .select("id,nome,tag,logo_url,criado_por,servidor")
         .single();
 
       if (error) throw error;
@@ -1634,12 +1656,28 @@ export default function EscalaCampeonatoPage() {
                         onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, uid_jogo: value }))}
                         placeholder="Ex: 239387947"
                       />
-                      <CampoBeta
-                        label="Servidor"
-                        value={formPerfilBeta.servidor}
-                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, servidor: value.toUpperCase() }))}
-                        placeholder="Ex: BR"
-                      />
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Servidor
+                        </span>
+                        <select
+                          value={formPerfilBeta.servidor}
+                          onChange={(event) =>
+                            setFormPerfilBeta((atual) => ({
+                              ...atual,
+                              servidor: event.target.value,
+                            }))
+                          }
+                          disabled={salvandoFormularioBeta}
+                          className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold uppercase outline-none disabled:opacity-60"
+                        >
+                          {SERVIDORES_FREE_FIRE.map((servidor) => (
+                            <option key={servidor.value} value={servidor.value}>
+                              {servidor.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
                       <div className="grid grid-cols-2 gap-2">
                         <label className="block">
@@ -1752,6 +1790,28 @@ export default function EscalaCampeonatoPage() {
                         onChange={(value) => setFormEquipeBeta((atual) => ({ ...atual, tag: value.toUpperCase().slice(0, 8) }))}
                         placeholder="Ex: ALOE"
                       />
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Servidor
+                        </span>
+                        <select
+                          value={formEquipeBeta.servidor}
+                          onChange={(event) =>
+                            setFormEquipeBeta((atual) => ({
+                              ...atual,
+                              servidor: event.target.value,
+                            }))
+                          }
+                          disabled={salvandoFormularioBeta}
+                          className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-bold uppercase outline-none disabled:opacity-60"
+                        >
+                          {SERVIDORES_FREE_FIRE.map((servidor) => (
+                            <option key={servidor.value} value={servidor.value}>
+                              {servidor.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       <CampoBeta
                         label="Logo"
                         value={formEquipeBeta.logo_url}
