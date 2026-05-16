@@ -442,7 +442,7 @@ export default function EscalaCampeonatoPage() {
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
-  const [authModo, setAuthModo] = useState<"login" | "cadastro" | "recuperar">("login");
+  const [authModo, setAuthModo] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authSenha, setAuthSenha] = useState("");
   const [authNome, setAuthNome] = useState("");
@@ -2268,6 +2268,17 @@ export default function EscalaCampeonatoPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setAuthModoBeta("confirmar")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "confirmar"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
+                  }`}
+                >
+                  Código
+                </button>
+                <button
+                  type="button"
                   onClick={() => setAuthModoBeta("recuperar")}
                   className={`h-9 border text-[8px] font-black uppercase ${
                     authModoBeta === "recuperar"
@@ -2992,7 +3003,7 @@ export default function EscalaCampeonatoPage() {
 
                         {painelEquipeAtivo === "jogadores" ? (
                           <div className="mt-2 border border-slate-200 bg-white p-2">
-                            <div className="grid grid-cols-3 gap-1">
+                            <div className="grid grid-cols-4 gap-1">
                               <button
                                 type="button"
                                 onClick={() => setSubJogadoresAtiva("elenco")}
