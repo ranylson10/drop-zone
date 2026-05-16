@@ -105,10 +105,25 @@ type ConviteEquipeBeta = {
   id: string;
   equipe_id: string;
   perfil_jogo_id: string;
+  convidado_por_user_id?: string | null;
   status: string;
   tipo?: string | null;
+  tipo_convite?: string | null;
+  origem?: string | null;
+  situacao?: string | null;
+  mensagem?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
+  perfil_id?: string | null;
+  convidado_perfil_jogo_id?: string | null;
+  perfil_jogo_destino_id?: string | null;
+  para_perfil_jogo_id?: string | null;
+  solicitante_perfil_jogo_id?: string | null;
+  de_perfil_jogo_id?: string | null;
+  perfil_solicitante_id?: string | null;
+  jogador_perfil_jogo_id?: string | null;
   perfil?: PerfilJogo | null;
+  equipe?: Equipe | Equipe[] | null;
 };
 
 type JogadorAvulsoCampeonato = {
@@ -279,6 +294,72 @@ function Logo({ url, nome }: { url?: string | null; nome: string }) {
   );
 }
 
+
+function normalizarEquipeBeta(equipe: ConviteEquipeBeta["equipe"] | Equipe | Equipe[] | null | undefined) {
+  if (!equipe) return null;
+  return Array.isArray(equipe) ? equipe[0] || null : equipe;
+}
+
+function valorNormalizadoBeta(valor: unknown) {
+  return String(valor || "").trim().toLowerCase();
+}
+
+function conviteTemPerfilBeta(convite: ConviteEquipeBeta, perfilId: string) {
+  const id = String(perfilId || "").trim();
+  if (!id) return false;
+
+  return [
+    convite.perfil_jogo_id,
+    convite.perfil_id,
+    convite.convidado_perfil_jogo_id,
+    convite.perfil_jogo_destino_id,
+    convite.para_perfil_jogo_id,
+    convite.solicitante_perfil_jogo_id,
+    convite.de_perfil_jogo_id,
+    convite.jogador_perfil_jogo_id,
+  ].some((valor) => String(valor || "").trim() === id);
+}
+
+function ehDestinoDoConviteBeta(convite: ConviteEquipeBeta, perfilId: string) {
+  const id = String(perfilId || "").trim();
+
+  return [
+    convite.convidado_perfil_jogo_id,
+    convite.perfil_jogo_destino_id,
+    convite.para_perfil_jogo_id,
+    convite.jogador_perfil_jogo_id,
+    convite.perfil_jogo_id,
+  ].some((valor) => String(valor || "").trim() === id);
+}
+
+function ehOrigemDoPedidoBeta(convite: ConviteEquipeBeta, perfilId: string) {
+  const id = String(perfilId || "").trim();
+
+  return [
+    convite.solicitante_perfil_jogo_id,
+    convite.de_perfil_jogo_id,
+    convite.perfil_solicitante_id,
+    convite.perfil_jogo_id,
+  ].some((valor) => String(valor || "").trim() === id);
+}
+
+function statusPendenteBeta(convite: ConviteEquipeBeta) {
+  const status = valorNormalizadoBeta(convite.status || convite.situacao);
+  return !status || ["pendente", "enviado", "aguardando", "aberto", "solicitado"].includes(status);
+}
+
+async function rpcFallbackBeta(nameList: string[], payload: Record<string, unknown>) {
+  let lastError: unknown = null;
+
+  for (const fn of nameList) {
+    const { error } = await supabase.rpc(fn, payload);
+    if (!error) return;
+    lastError = error;
+  }
+
+  throw lastError;
+}
+
 export default function EscalaCampeonatoPage() {
   const params = useParams<{ campeonatoId: string }>();
   const campeonatoParam = String(params?.campeonatoId || "");
@@ -318,6 +399,14 @@ export default function EscalaCampeonatoPage() {
   const [buscandoJogadorSite, setBuscandoJogadorSite] = useState(false);
   const [operandoJogadorId, setOperandoJogadorId] = useState<string | null>(null);
   const [convitesPorEquipe, setConvitesPorEquipe] = useState<Record<string, ConviteEquipeBeta[]>>({});
+  const [convitesJogador, setConvitesJogador] = useState<ConviteEquipeBeta[]>([]);
+  const [subAbaJogadorEquipe, setSubAbaJogadorEquipe] = useState<"convites" | "pedidos">("convites");
+  const [buscaEquipeJogador, setBuscaEquipeJogador] = useState("");
+  const [mensagemPedidoJogador, setMensagemPedidoJogador] = useState("");
+  const [equipesBuscaJogador, setEquipesBuscaJogador] = useState<Equipe[]>([]);
+  const [carregandoBuscaEquipeJogador, setCarregandoBuscaEquipeJogador] = useState(false);
+  const [enviandoPedidoJogadorId, setEnviandoPedidoJogadorId] = useState<string | null>(null);
+  const [processandoConviteJogadorId, setProcessandoConviteJogadorId] = useState<string | null>(null);
   const [modoFormularioBeta, setModoFormularioBeta] = useState<"perfil" | "equipe" | null>(null);
   const [salvandoFormularioBeta, setSalvandoFormularioBeta] = useState(false);
   const [formPerfilBeta, setFormPerfilBeta] = useState({
@@ -407,6 +496,7 @@ export default function EscalaCampeonatoPage() {
         setElencoPorEquipe({});
         setLinesPorEquipe({});
         setConvitesPorEquipe({});
+        setConvitesJogador([]);
         setPerfilJogo(null);
         setJogadorNoCampeonato(null);
         setEquipeDoJogador(null);
@@ -455,6 +545,32 @@ export default function EscalaCampeonatoPage() {
 
       const perfil = ((perfis || []) as PerfilJogo[])[0] || null;
       setPerfilJogo(perfil);
+
+      if (perfil?.id) {
+        const { data: convitesPerfilRaw } = await supabase
+          .from("convites_equipe")
+          .select(`
+            *,
+            equipe:equipe_id (
+              id,
+              nome,
+              tag,
+              logo_url,
+              criado_por,
+              servidor
+            )
+          `)
+          .limit(500);
+
+        setConvitesJogador(
+          ((convitesPerfilRaw || []) as ConviteEquipeBeta[]).filter((convite) =>
+            conviteTemPerfilBeta(convite, perfil.id),
+          ),
+        );
+      } else {
+        setConvitesJogador([]);
+      }
+
 
       if (minhasEquipes.length) {
         const equipeIds = minhasEquipes.map((equipe) => equipe.id);
@@ -745,6 +861,181 @@ export default function EscalaCampeonatoPage() {
     return () => window.clearTimeout(buscarJogadoresSiteTimer);
   }, [buscaJogadorEquipe]);
 
+
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function buscarEquipesJogador() {
+      if (
+        !perfilJogo ||
+        equipePrincipalDoJogador?.id ||
+        buscaEquipeJogador.trim().length < 2
+      ) {
+        setEquipesBuscaJogador([]);
+        return;
+      }
+
+      try {
+        setCarregandoBuscaEquipeJogador(true);
+        const termo = `%${buscaEquipeJogador.trim()}%`;
+        const { data, error } = await supabase
+          .from("equipes")
+          .select("id,nome,tag,logo_url,criado_por,servidor")
+          .or(`nome.ilike.${termo},tag.ilike.${termo}`)
+          .limit(8);
+
+        if (error) throw error;
+        if (!ignore) setEquipesBuscaJogador((data || []) as Equipe[]);
+      } catch (error) {
+        console.error("Erro ao buscar equipes:", error);
+        if (!ignore) setEquipesBuscaJogador([]);
+      } finally {
+        if (!ignore) setCarregandoBuscaEquipeJogador(false);
+      }
+    }
+
+    const timer = window.setTimeout(buscarEquipesJogador, 250);
+
+    return () => {
+      ignore = true;
+      window.clearTimeout(timer);
+    };
+  }, [buscaEquipeJogador, perfilJogo, equipePrincipalDoJogador]);
+
+  const convitesDoPerfilJogador = useMemo(() => {
+    if (!perfilJogo) return [];
+
+    return convitesJogador
+      .filter((convite) => conviteTemPerfilBeta(convite, perfilJogo.id) && statusPendenteBeta(convite))
+      .filter((convite) => {
+        const tipo = valorNormalizadoBeta(convite.tipo || convite.tipo_convite || convite.origem);
+        if (tipo.includes("pedido") || tipo.includes("solicit")) return false;
+        return ehDestinoDoConviteBeta(convite, perfilJogo.id);
+      });
+  }, [convitesJogador, perfilJogo]);
+
+  const pedidosDoPerfilJogador = useMemo(() => {
+    if (!perfilJogo) return [];
+
+    return convitesJogador
+      .filter((convite) => conviteTemPerfilBeta(convite, perfilJogo.id))
+      .filter((convite) => {
+        const tipo = valorNormalizadoBeta(convite.tipo || convite.tipo_convite || convite.origem);
+        return tipo.includes("pedido") || tipo.includes("solicit") || ehOrigemDoPedidoBeta(convite, perfilJogo.id);
+      });
+  }, [convitesJogador, perfilJogo]);
+
+  const pedidoPendentePorEquipeJogador = useMemo(() => {
+    const mapa = new Map<string, ConviteEquipeBeta>();
+
+    pedidosDoPerfilJogador.forEach((pedido) => {
+      const equipeId = String(pedido.equipe_id || normalizarEquipeBeta(pedido.equipe)?.id || "").trim();
+      if (!equipeId || !statusPendenteBeta(pedido)) return;
+      mapa.set(equipeId, pedido);
+    });
+
+    return mapa;
+  }, [pedidosDoPerfilJogador]);
+
+  async function responderConviteJogador(conviteId: string, acao: "aceito" | "recusado") {
+    try {
+      setProcessandoConviteJogadorId(conviteId);
+
+      if (acao === "aceito") {
+        await rpcFallbackBeta(["aceitar_convite_equipe_v2", "aceitar_convite_equipe"], {
+          p_convite_id: conviteId,
+        });
+      } else {
+        await rpcFallbackBeta(["recusar_convite_equipe_v2", "recusar_convite_equipe"], {
+          p_convite_id: conviteId,
+        });
+      }
+
+      setConvitesJogador((atual) =>
+        atual.map((convite) =>
+          convite.id === conviteId ? { ...convite, status: acao } : convite,
+        ),
+      );
+
+      await carregar();
+      alert(acao === "aceito" ? "Convite aceito com sucesso." : "Convite recusado.");
+    } catch (error: any) {
+      console.error("Erro ao responder convite:", error);
+      alert(error?.message || "Não foi possível responder o convite.");
+    } finally {
+      setProcessandoConviteJogadorId(null);
+    }
+  }
+
+  async function enviarPedidoJogador(equipeId: string) {
+    if (!perfilJogo) return;
+
+    const mensagem = mensagemPedidoJogador.trim() || null;
+    const pedidoExistente = pedidoPendentePorEquipeJogador.get(equipeId);
+
+    try {
+      setEnviandoPedidoJogadorId(equipeId);
+
+      if (pedidoExistente?.id) {
+        const { error } = await supabase
+          .from("convites_equipe")
+          .update({
+            mensagem,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", pedidoExistente.id);
+
+        if (error) throw error;
+
+        setConvitesJogador((atual) =>
+          atual.map((convite) =>
+            convite.id === pedidoExistente.id
+              ? { ...convite, mensagem, updated_at: new Date().toISOString() }
+              : convite,
+          ),
+        );
+
+        alert("Pedido atualizado para a equipe.");
+        return;
+      }
+
+      await rpcFallbackBeta(["fn_solicitar_entrada_equipe", "solicitar_entrada_equipe"], {
+        p_equipe_id: equipeId,
+        p_perfil_jogo_id: perfilJogo.id,
+        p_mensagem: mensagem,
+      });
+
+      const equipe = equipesBuscaJogador.find((item) => item.id === equipeId) || null;
+      const pedidoLocal: ConviteEquipeBeta = {
+        id: `local-pedido-${equipeId}-${Date.now()}`,
+        equipe_id: equipeId,
+        perfil_jogo_id: perfilJogo.id,
+        status: "pendente",
+        tipo: "pedido",
+        mensagem,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        equipe,
+      };
+
+      setConvitesJogador((atual) => [pedidoLocal, ...atual]);
+      setBuscaEquipeJogador("");
+      setMensagemPedidoJogador("");
+      setEquipesBuscaJogador([]);
+      setSubAbaJogadorEquipe("pedidos");
+      alert("Pedido enviado para a equipe.");
+    } catch (error: any) {
+      console.error("Erro ao enviar pedido:", error);
+      alert(
+        pedidoExistente
+          ? error?.message || "Não foi possível atualizar o pedido."
+          : error?.message || "Não foi possível enviar o pedido.",
+      );
+    } finally {
+      setEnviandoPedidoJogadorId(null);
+    }
+  }
 
   function jogadoresDaLineMobile(lineId?: string | null) {
     if (!lineId) return [];
@@ -2740,10 +3031,190 @@ export default function EscalaCampeonatoPage() {
                         <button
                           type="button"
                           className="flex h-10 items-center justify-center gap-1 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-800"
-                          onClick={() => alert("Convites e pedidos serão listados aqui no beta.")}
+                          onClick={() =>
+                            setSubAbaJogadorEquipe((atual) =>
+                              atual === "convites" ? "pedidos" : "convites",
+                            )
+                          }
                         >
                           <MailPlus size={14} /> Convites/Pedidos
                         </button>
+                      </div>
+
+                      <div className="mt-3 border border-slate-200 bg-white p-2">
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setSubAbaJogadorEquipe("convites")}
+                            className={`h-8 border px-1 text-[8px] font-black uppercase ${
+                              subAbaJogadorEquipe === "convites"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-200 bg-white text-slate-700"
+                            }`}
+                          >
+                            Convites
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSubAbaJogadorEquipe("pedidos")}
+                            className={`h-8 border px-1 text-[8px] font-black uppercase ${
+                              subAbaJogadorEquipe === "pedidos"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-200 bg-white text-slate-700"
+                            }`}
+                          >
+                            Pedidos
+                          </button>
+                        </div>
+
+                        {subAbaJogadorEquipe === "convites" ? (
+                          <div className="mt-2 space-y-1">
+                            {convitesDoPerfilJogador.length ? (
+                              convitesDoPerfilJogador.map((convite) => {
+                                const equipe = normalizarEquipeBeta(convite.equipe);
+
+                                return (
+                                  <div
+                                    key={convite.id}
+                                    className="flex items-center gap-2 border border-slate-200 bg-slate-50 p-2"
+                                  >
+                                    <Logo url={equipe?.logo_url} nome={equipe?.nome || "Equipe"} />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                        {equipe?.tag ? `[${equipe.tag}] ` : ""}
+                                        {equipe?.nome || "Equipe"}
+                                      </p>
+                                      <p className="text-[8px] font-bold uppercase text-slate-500">
+                                        {formatarData(convite.created_at)}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={processandoConviteJogadorId === convite.id}
+                                      onClick={() => responderConviteJogador(convite.id, "aceito")}
+                                      className="h-8 border border-emerald-300 bg-emerald-50 px-2 text-emerald-700 disabled:opacity-50"
+                                      title="Aceitar convite"
+                                    >
+                                      <CheckCircle2 size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={processandoConviteJogadorId === convite.id}
+                                      onClick={() => responderConviteJogador(convite.id, "recusado")}
+                                      className="h-8 border border-red-300 bg-red-50 px-2 text-red-700 disabled:opacity-50"
+                                      title="Recusar convite"
+                                    >
+                                      <XCircle size={13} />
+                                    </button>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="border border-dashed border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-500">
+                                Nenhum convite pendente.
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {subAbaJogadorEquipe === "pedidos" ? (
+                          <div className="mt-2 space-y-2">
+                            {equipePrincipalDoJogador?.id ? (
+                              <div className="border border-slate-200 bg-slate-50 p-2 text-[10px] font-bold uppercase text-slate-500">
+                                Este perfil já está vinculado a uma equipe.
+                              </div>
+                            ) : (
+                              <>
+                                <input
+                                  value={buscaEquipeJogador}
+                                  onChange={(event) => setBuscaEquipeJogador(event.target.value)}
+                                  placeholder="Buscar equipe por nome ou tag"
+                                  className="h-9 w-full border border-slate-200 bg-white px-2 text-[10px] font-bold uppercase outline-none"
+                                />
+                                <input
+                                  value={mensagemPedidoJogador}
+                                  onChange={(event) => setMensagemPedidoJogador(event.target.value)}
+                                  placeholder="Mensagem opcional"
+                                  className="h-9 w-full border border-slate-200 bg-white px-2 text-[10px] font-bold uppercase outline-none"
+                                />
+
+                                <div className="space-y-1">
+                                  {carregandoBuscaEquipeJogador ? (
+                                    <div className="border border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold uppercase text-slate-500">
+                                      Buscando equipes...
+                                    </div>
+                                  ) : equipesBuscaJogador.length ? (
+                                    equipesBuscaJogador.map((equipe) => {
+                                      const pedidoExistente = pedidoPendentePorEquipeJogador.get(equipe.id);
+
+                                      return (
+                                        <div
+                                          key={equipe.id}
+                                          className="flex items-center gap-2 border border-slate-200 bg-slate-50 p-2"
+                                        >
+                                          <Logo url={equipe.logo_url} nome={equipe.nome} />
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
+                                              {equipe.tag ? `[${equipe.tag}] ` : ""}
+                                              {equipe.nome}
+                                            </p>
+                                            <p className="text-[8px] font-bold uppercase text-slate-500">
+                                              {pedidoExistente ? "Pedido já enviado" : "Equipe encontrada"}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            disabled={enviandoPedidoJogadorId === equipe.id}
+                                            onClick={() => enviarPedidoJogador(equipe.id)}
+                                            className={[
+                                              "h-8 shrink-0 border px-2 text-[8px] font-black uppercase disabled:opacity-50",
+                                              pedidoExistente
+                                                ? "border-amber-300 bg-amber-50 text-amber-700"
+                                                : "border-blue-600 bg-blue-600 text-white",
+                                            ].join(" ")}
+                                          >
+                                            {pedidoExistente ? "Editar" : "Solicitar"}
+                                          </button>
+                                        </div>
+                                      );
+                                    })
+                                  ) : buscaEquipeJogador.trim().length >= 2 ? (
+                                    <div className="border border-dashed border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-500">
+                                      Nenhuma equipe encontrada.
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </>
+                            )}
+
+                            <div className="space-y-1">
+                              {pedidosDoPerfilJogador.length ? (
+                                pedidosDoPerfilJogador.map((pedido) => {
+                                  const equipe = normalizarEquipeBeta(pedido.equipe);
+
+                                  return (
+                                    <div
+                                      key={pedido.id}
+                                      className="flex items-center justify-between gap-2 border border-slate-200 bg-white p-2"
+                                    >
+                                      <span className="min-w-0 truncate text-[10px] font-black uppercase text-slate-950">
+                                        {equipe?.tag ? `[${equipe.tag}] ` : ""}
+                                        {equipe?.nome || "Equipe"}
+                                      </span>
+                                      <span className="text-[8px] font-black uppercase text-amber-600">
+                                        {pedido.status || pedido.situacao || "pendente"}
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="border border-dashed border-slate-200 bg-slate-50 p-2 text-center text-[10px] font-bold text-slate-500">
+                                  Nenhum pedido enviado.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="mt-3 border border-slate-200 bg-slate-50 p-2">
