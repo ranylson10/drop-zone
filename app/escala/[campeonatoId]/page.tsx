@@ -970,7 +970,7 @@ export default function EscalaCampeonatoPage() {
             atual.filter((convite) => convite.id !== conviteId),
           );
 
-          alert("Este perfil já estava vinculado nesta equipe. Convite marcado como aceito.");
+          alert("Este perfil já estava vinculado nesta equipe. Convite removido da lista.");
           return;
         }
       }
@@ -999,7 +999,25 @@ export default function EscalaCampeonatoPage() {
         mensagem.includes("uq_membros_equipe_perfil_jogo_ativo") ||
         mensagem.includes("duplicate key value")
       ) {
-        alert("Este perfil de jogo já possui vínculo ativo. Se ele já está nessa equipe, atualize a página. Se está em outra equipe, saia da equipe atual antes de aceitar.");
+        if (acao === "aceito") {
+          await supabase
+            .from("convites_equipe")
+            .update({
+              status: "aceito",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", conviteId);
+
+          setConvitesJogador((atual) =>
+            atual.filter((convite) => convite.id !== conviteId),
+          );
+
+          alert("Este perfil já tinha vínculo ativo. Convite removido da lista.");
+        } else {
+          setConvitesJogador((atual) =>
+            atual.filter((convite) => convite.id !== conviteId),
+          );
+        }
       } else {
         alert(error?.message || "Não foi possível responder o convite.");
       }
@@ -3132,19 +3150,19 @@ export default function EscalaCampeonatoPage() {
                                       type="button"
                                       disabled={processandoConviteJogadorId === convite.id}
                                       onClick={() => responderConviteJogador(convite.id, "aceito")}
-                                      className="flex h-10 w-10 items-center justify-center border border-emerald-500 bg-emerald-500 px-2 text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60"
+                                      className="flex h-10 w-10 items-center justify-center border border-emerald-700 bg-emerald-500 px-2 text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60"
                                       title="Aceitar convite"
                                     >
-                                      <CheckCircle2 size={18} strokeWidth={3} />
+                                      <span className="text-[18px] font-black leading-none text-white">✓</span>
                                     </button>
                                     <button
                                       type="button"
                                       disabled={processandoConviteJogadorId === convite.id}
                                       onClick={() => responderConviteJogador(convite.id, "recusado")}
-                                      className="flex h-10 w-10 items-center justify-center border border-red-500 bg-red-500 px-2 text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
+                                      className="flex h-10 w-10 items-center justify-center border border-red-700 bg-red-500 px-2 text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
                                       title="Recusar convite"
                                     >
-                                      <XCircle size={18} strokeWidth={3} />
+                                      <span className="text-[18px] font-black leading-none text-white">×</span>
                                     </button>
                                   </div>
                                 );
