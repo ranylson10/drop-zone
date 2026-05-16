@@ -942,6 +942,39 @@ export default function EscalaCampeonatoPage() {
     try {
       setProcessandoConviteJogadorId(conviteId);
 
+      const conviteAtual = convitesJogador.find((convite) => convite.id === conviteId);
+
+      if (acao === "aceito" && conviteAtual?.perfil_jogo_id && conviteAtual?.equipe_id) {
+        const { data: vinculoExistente, error: vinculoError } = await supabase
+          .from("membros_equipe")
+          .select("id, ativo")
+          .eq("equipe_id", conviteAtual.equipe_id)
+          .eq("perfil_jogo_id", conviteAtual.perfil_jogo_id)
+          .eq("ativo", true)
+          .maybeSingle();
+
+        if (vinculoError) throw vinculoError;
+
+        if (vinculoExistente?.id) {
+          const { error: conviteError } = await supabase
+            .from("convites_equipe")
+            .update({
+              status: "aceito",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", conviteId);
+
+          if (conviteError) throw conviteError;
+
+          setConvitesJogador((atual) =>
+            atual.filter((convite) => convite.id !== conviteId),
+          );
+
+          alert("Este perfil já estava vinculado nesta equipe. Convite marcado como aceito.");
+          return;
+        }
+      }
+
       if (acao === "aceito") {
         await rpcFallbackBeta(["aceitar_convite_equipe_v2", "aceitar_convite_equipe"], {
           p_convite_id: conviteId,
@@ -953,16 +986,23 @@ export default function EscalaCampeonatoPage() {
       }
 
       setConvitesJogador((atual) =>
-        atual.map((convite) =>
-          convite.id === conviteId ? { ...convite, status: acao } : convite,
-        ),
+        atual.filter((convite) => convite.id !== conviteId),
       );
 
       await carregar();
       alert(acao === "aceito" ? "Convite aceito com sucesso." : "Convite recusado.");
     } catch (error: any) {
-      console.error("Erro ao responder convite:", error);
-      alert(error?.message || "Não foi possível responder o convite.");
+      console.error("Erro ao responder convite do jogador:", error);
+
+      const mensagem = String(error?.message || error?.details || "");
+      if (
+        mensagem.includes("uq_membros_equipe_perfil_jogo_ativo") ||
+        mensagem.includes("duplicate key value")
+      ) {
+        alert("Este perfil de jogo já possui vínculo ativo. Se ele já está nessa equipe, atualize a página. Se está em outra equipe, saia da equipe atual antes de aceitar.");
+      } else {
+        alert(error?.message || "Não foi possível responder o convite.");
+      }
     } finally {
       setProcessandoConviteJogadorId(null);
     }
@@ -3092,19 +3132,19 @@ export default function EscalaCampeonatoPage() {
                                       type="button"
                                       disabled={processandoConviteJogadorId === convite.id}
                                       onClick={() => responderConviteJogador(convite.id, "aceito")}
-                                      className="h-8 border border-emerald-300 bg-emerald-50 px-2 text-emerald-700 disabled:opacity-50"
+                                      className="flex h-10 w-10 items-center justify-center border border-emerald-500 bg-emerald-500 px-2 text-white shadow-sm hover:bg-emerald-600 disabled:opacity-60"
                                       title="Aceitar convite"
                                     >
-                                      <CheckCircle2 size={13} />
+                                      <CheckCircle2 size={18} strokeWidth={3} />
                                     </button>
                                     <button
                                       type="button"
                                       disabled={processandoConviteJogadorId === convite.id}
                                       onClick={() => responderConviteJogador(convite.id, "recusado")}
-                                      className="h-8 border border-red-300 bg-red-50 px-2 text-red-700 disabled:opacity-50"
+                                      className="flex h-10 w-10 items-center justify-center border border-red-500 bg-red-500 px-2 text-white shadow-sm hover:bg-red-600 disabled:opacity-60"
                                       title="Recusar convite"
                                     >
-                                      <XCircle size={13} />
+                                      <XCircle size={18} strokeWidth={3} />
                                     </button>
                                   </div>
                                 );
