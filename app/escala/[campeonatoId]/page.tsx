@@ -309,7 +309,6 @@ export default function EscalaCampeonatoPage() {
     funcao: "",
     pais: "BR",
     foto_capa: "",
-    capa_url: "",
   });
   const [formEquipeBeta, setFormEquipeBeta] = useState({
     nome: "",
@@ -1262,6 +1261,57 @@ export default function EscalaCampeonatoPage() {
   }
 
 
+  async function uploadFotoPerfilBeta(file: File | null) {
+    if (!file) return;
+
+    if (!userId) {
+      alert("Faça login para enviar foto.");
+      return;
+    }
+
+    try {
+      setSalvandoFormularioBeta(true);
+
+      const extensao = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const nomeArquivo = `${userId}/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${extensao}`;
+      const buckets = ["perfis-jogo", "perfil-jogo", "avatars", "imagens"];
+      let publicUrl = "";
+      let ultimoErro: any = null;
+
+      for (const bucket of buckets) {
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(nomeArquivo, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (!error) {
+          const { data } = supabase.storage.from(bucket).getPublicUrl(nomeArquivo);
+          publicUrl = data.publicUrl;
+          break;
+        }
+
+        ultimoErro = error;
+      }
+
+      if (!publicUrl) {
+        throw ultimoErro || new Error("Não foi possível enviar a foto.");
+      }
+
+      setFormPerfilBeta((atual) => ({
+        ...atual,
+        foto_capa: publicUrl,
+      }));
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao enviar foto do perfil.");
+    } finally {
+      setSalvandoFormularioBeta(false);
+    }
+  }
+
   async function salvarPerfilBeta() {
     const nick = formPerfilBeta.nick.trim();
     const uidJogo = formPerfilBeta.uid_jogo.trim();
@@ -1287,7 +1337,6 @@ export default function EscalaCampeonatoPage() {
         funcao: formPerfilBeta.funcao || null,
         pais: formPerfilBeta.pais || "BR",
         foto_capa: formPerfilBeta.foto_capa.trim() || null,
-        capa_url: formPerfilBeta.capa_url.trim() || null,
         ativo: true,
       };
 
@@ -1629,18 +1678,37 @@ export default function EscalaCampeonatoPage() {
                         onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, pais: value }))}
                         placeholder="BR"
                       />
-                      <CampoBeta
-                        label="Foto do perfil"
-                        value={formPerfilBeta.foto_capa}
-                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, foto_capa: value }))}
-                        placeholder="URL da foto"
-                      />
-                      <CampoBeta
-                        label="Capa do perfil"
-                        value={formPerfilBeta.capa_url}
-                        onChange={(value) => setFormPerfilBeta((atual) => ({ ...atual, capa_url: value }))}
-                        placeholder="URL da capa"
-                      />
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Foto do perfil
+                        </span>
+                        <div className="flex items-center gap-2 border border-slate-200 bg-white p-2">
+                          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-slate-200 bg-slate-100 text-blue-600">
+                            {formPerfilBeta.foto_capa ? (
+                              <img
+                                src={formPerfilBeta.foto_capa}
+                                alt="Foto do perfil"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <UserRound size={22} />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                uploadFotoPerfilBeta(event.target.files?.[0] || null)
+                              }
+                              className="w-full text-[10px] font-bold uppercase text-slate-500 file:mr-2 file:h-8 file:border-0 file:bg-blue-600 file:px-3 file:text-[8px] file:font-black file:uppercase file:text-white"
+                            />
+                            <p className="mt-1 text-[8px] font-bold uppercase text-slate-400">
+                              Envie uma imagem para aparecer no card do jogador.
+                            </p>
+                          </div>
+                        </div>
+                      </label>
 
                       <button
                         type="button"
@@ -2437,7 +2505,7 @@ export default function EscalaCampeonatoPage() {
 
             {aba === "jogador" ? (
               <section className="mt-2 space-y-2">
-                {!perfilJogo ? (
+                {!perfilJogo && modoFormularioBeta !== "perfil" ? (
                   <div className="border border-slate-200 bg-white p-4 shadow-sm">
                     <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
                       Perfil de jogo
@@ -2451,7 +2519,7 @@ export default function EscalaCampeonatoPage() {
                     <button
                       type="button"
                       className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
-                      onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", pais: perfilJogo?.pais || "BR", foto_capa: perfilJogo?.foto_capa || "", capa_url: perfilJogo?.capa_url || "" })); setModoFormularioBeta("perfil"); }}
+                      onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", pais: perfilJogo?.pais || "BR", foto_capa: perfilJogo?.foto_capa || "" })); setModoFormularioBeta("perfil"); }}
                     >
                       <Edit3 size={14} /> Criar perfil
                     </button>
