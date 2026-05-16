@@ -429,9 +429,10 @@ export default function EscalaCampeonatoPage() {
     Record<string, string>
   >({});
   const [erro, setErro] = useState<string | null>(null);
-  const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar">("login");
+  const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
   const [authSenhaBeta, setAuthSenhaBeta] = useState("");
+  const [authCodigoBeta, setAuthCodigoBeta] = useState("");
   const [authNomeBeta, setAuthNomeBeta] = useState("");
   const [authLoadingBeta, setAuthLoadingBeta] = useState(false);
   const [resetSenhaBeta, setResetSenhaBeta] = useState(false);
@@ -505,15 +506,83 @@ export default function EscalaCampeonatoPage() {
           data: {
             nome: authNomeBeta.trim() || email,
           },
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? window.location.href.split("#")[0]
+              : undefined,
         },
       });
 
       if (error) throw error;
 
-      alert("Conta criada. Se o Supabase exigir confirmação, confira seu e-mail.");
-      await carregar();
+      setAuthCodigoBeta("");
+      setAuthModoBeta("confirmar");
+      alert("Enviamos o código de verificação para seu e-mail.");
     } catch (error: any) {
       alert(error?.message || "Não foi possível criar a conta.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+  async function confirmarCodigoCadastroBeta() {
+    const email = authEmailBeta.trim();
+    const token = authCodigoBeta.trim();
+
+    if (!email || !token) {
+      alert("Informe o e-mail e o código de verificação.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "signup",
+      });
+
+      if (error) throw error;
+
+      alert("E-mail confirmado com sucesso.");
+      setAuthCodigoBeta("");
+      setAuthModoBeta("login");
+      await carregar();
+    } catch (error: any) {
+      alert(error?.message || "Código inválido ou expirado.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+  async function reenviarCodigoCadastroBeta() {
+    const email = authEmailBeta.trim();
+
+    if (!email) {
+      alert("Informe o e-mail usado no cadastro.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? window.location.href.split("#")[0]
+              : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      alert("Código reenviado para seu e-mail.");
+    } catch (error: any) {
+      alert(error?.message || "Não foi possível reenviar o código.");
     } finally {
       setAuthLoadingBeta(false);
     }
@@ -1687,7 +1756,7 @@ export default function EscalaCampeonatoPage() {
           </div>
 
           <div className="space-y-3 p-4">
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               <button
                 type="button"
                 onClick={() => {
@@ -2139,14 +2208,18 @@ export default function EscalaCampeonatoPage() {
                       ? "Entre para continuar"
                       : authModoBeta === "cadastro"
                         ? "Criar conta"
-                        : "Recuperar senha"}
+                        : authModoBeta === "confirmar"
+                          ? "Confirmar e-mail"
+                          : "Recuperar senha"}
                   </h2>
                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
                     {authModoBeta === "login"
                       ? "Entre na sua conta para acessar as ferramentas do campeonato."
                       : authModoBeta === "cadastro"
                         ? "Crie sua conta sem sair do link do campeonato."
-                        : "Informe seu e-mail para receber o link de recuperação."}
+                        : authModoBeta === "confirmar"
+                          ? "Digite o código recebido no e-mail para liberar sua conta."
+                          : "Informe seu e-mail para receber o link de recuperação."}
                   </p>
                 </div>
               </div>
@@ -2178,6 +2251,17 @@ export default function EscalaCampeonatoPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setAuthModoBeta("confirmar")}
+                  className={`h-9 border text-[8px] font-black uppercase ${
+                    authModoBeta === "confirmar"
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  Código
+                </button>
+                <button
+                  type="button"
                   onClick={() => setAuthModoBeta("recuperar")}
                   className={`h-9 border text-[8px] font-black uppercase ${
                     authModoBeta === "recuperar"
@@ -2206,7 +2290,19 @@ export default function EscalaCampeonatoPage() {
                 className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
               />
 
-              {authModoBeta !== "recuperar" ? (
+              {authModoBeta === "confirmar" ? (
+                <input
+                  value={authCodigoBeta}
+                  onChange={(event) =>
+                    setAuthCodigoBeta(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="Código de verificação"
+                  inputMode="numeric"
+                  className="h-11 border border-slate-200 bg-white px-3 text-center text-lg font-black tracking-[0.35em] outline-none"
+                />
+              ) : null}
+
+              {authModoBeta !== "recuperar" && authModoBeta !== "confirmar" ? (
                 <input
                   value={authSenhaBeta}
                   onChange={(event) => setAuthSenhaBeta(event.target.value)}
@@ -2224,7 +2320,9 @@ export default function EscalaCampeonatoPage() {
                     ? entrarContaBeta
                     : authModoBeta === "cadastro"
                       ? criarContaBeta
-                      : recuperarSenhaBeta
+                      : authModoBeta === "confirmar"
+                        ? confirmarCodigoCadastroBeta
+                        : recuperarSenhaBeta
                 }
                 className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
               >
@@ -2233,7 +2331,9 @@ export default function EscalaCampeonatoPage() {
                   ? "Entrar"
                   : authModoBeta === "cadastro"
                     ? "Criar conta"
-                    : "Enviar recuperação"}
+                    : authModoBeta === "confirmar"
+                      ? "Confirmar código"
+                      : "Enviar recuperação"}
               </button>
 
               {authModoBeta === "recuperar" ? (
@@ -2244,6 +2344,26 @@ export default function EscalaCampeonatoPage() {
                 >
                   Voltar para login
                 </button>
+              ) : null}
+
+              {authModoBeta === "confirmar" ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={reenviarCodigoCadastroBeta}
+                    disabled={authLoadingBeta}
+                    className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500 disabled:opacity-60"
+                  >
+                    Reenviar código
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthModoBeta("login")}
+                    className="h-10 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-500"
+                  >
+                    Já confirmei
+                  </button>
+                </div>
               ) : null}
             </div>
           </section>
