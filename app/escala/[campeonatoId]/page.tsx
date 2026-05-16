@@ -1388,6 +1388,57 @@ export default function EscalaCampeonatoPage() {
     }
   }
 
+  async function uploadLogoEquipeBeta(file: File | null) {
+    if (!file) return;
+
+    if (!userId) {
+      alert("Faça login para enviar logo.");
+      return;
+    }
+
+    try {
+      setSalvandoFormularioBeta(true);
+
+      const extensao = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const nomeArquivo = `${userId}/equipes/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${extensao}`;
+      const buckets = ["equipes", "logos-equipes", "imagens", "avatars"];
+      let publicUrl = "";
+      let ultimoErro: any = null;
+
+      for (const bucket of buckets) {
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(nomeArquivo, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (!error) {
+          const { data } = supabase.storage.from(bucket).getPublicUrl(nomeArquivo);
+          publicUrl = data.publicUrl;
+          break;
+        }
+
+        ultimoErro = error;
+      }
+
+      if (!publicUrl) {
+        throw ultimoErro || new Error("Não foi possível enviar a logo.");
+      }
+
+      setFormEquipeBeta((atual) => ({
+        ...atual,
+        logo_url: publicUrl,
+      }));
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao enviar logo da equipe.");
+    } finally {
+      setSalvandoFormularioBeta(false);
+    }
+  }
+
   async function salvarEquipeBeta() {
     const nome = formEquipeBeta.nome.trim();
 
@@ -1812,12 +1863,38 @@ export default function EscalaCampeonatoPage() {
                           ))}
                         </select>
                       </label>
-                      <CampoBeta
-                        label="Logo"
-                        value={formEquipeBeta.logo_url}
-                        onChange={(value) => setFormEquipeBeta((atual) => ({ ...atual, logo_url: value }))}
-                        placeholder="URL da logo"
-                      />
+                      <label className="block">
+                        <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Logo
+                        </span>
+                        <div className="flex items-center gap-3 border border-slate-200 bg-white p-2">
+                          <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden border border-slate-200 bg-slate-100 text-blue-600">
+                            {formEquipeBeta.logo_url ? (
+                              <img
+                                src={formEquipeBeta.logo_url}
+                                alt="Logo da equipe"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Trophy size={26} />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                uploadLogoEquipeBeta(event.target.files?.[0] || null)
+                              }
+                              className="w-full text-[10px] font-bold uppercase text-slate-500 file:mr-2 file:h-8 file:border-0 file:bg-blue-600 file:px-3 file:text-[8px] file:font-black file:uppercase file:text-white"
+                            />
+                            <p className="mt-1 text-[8px] font-bold uppercase text-slate-400">
+                              Envie a logo quadrada da equipe.
+                            </p>
+                          </div>
+                        </div>
+                      </label>
 
                       <label className="block">
                         <span className="mb-1 block text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
