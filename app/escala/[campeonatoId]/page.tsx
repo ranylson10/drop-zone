@@ -434,6 +434,9 @@ export default function EscalaCampeonatoPage() {
   const [authSenhaBeta, setAuthSenhaBeta] = useState("");
   const [authNomeBeta, setAuthNomeBeta] = useState("");
   const [authLoadingBeta, setAuthLoadingBeta] = useState(false);
+  const [resetSenhaBeta, setResetSenhaBeta] = useState(false);
+  const [novaSenhaBeta, setNovaSenhaBeta] = useState("");
+  const [confirmarNovaSenhaBeta, setConfirmarNovaSenhaBeta] = useState("");
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
@@ -529,7 +532,7 @@ export default function EscalaCampeonatoPage() {
 
       const redirectTo =
         typeof window !== "undefined"
-          ? `${window.location.origin}/resetar-senha`
+          ? window.location.href.split("#")[0]
           : undefined;
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -542,6 +545,44 @@ export default function EscalaCampeonatoPage() {
       setAuthModoBeta("login");
     } catch (error: any) {
       alert(error?.message || "Não foi possível enviar recuperação de senha.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+
+  async function salvarNovaSenhaBeta() {
+    if (!novaSenhaBeta || novaSenhaBeta.length < 6) {
+      alert("A nova senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    if (novaSenhaBeta !== confirmarNovaSenhaBeta) {
+      alert("As senhas não conferem.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.updateUser({
+        password: novaSenhaBeta,
+      });
+
+      if (error) throw error;
+
+      alert("Senha atualizada com sucesso.");
+      setResetSenhaBeta(false);
+      setNovaSenhaBeta("");
+      setConfirmarNovaSenhaBeta("");
+
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+
+      await carregar();
+    } catch (error: any) {
+      alert(error?.message || "Não foi possível atualizar a senha.");
     } finally {
       setAuthLoadingBeta(false);
     }
@@ -890,6 +931,20 @@ export default function EscalaCampeonatoPage() {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campeonatoParam]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const hash = window.location.hash || "";
+    const paramsHash = new URLSearchParams(hash.replace(/^#/, ""));
+    const tipo = paramsHash.get("type");
+
+    if (hash.includes("access_token") && tipo === "recovery") {
+      setResetSenhaBeta(true);
+      setAuthModoBeta("recuperar");
+    }
+  }, []);
+
 
 
   const mostrarAbaJogador = Boolean(perfilJogo || jogadorNoCampeonato || equipeDoJogador);
@@ -1970,6 +2025,58 @@ export default function EscalaCampeonatoPage() {
     );
   }
 
+
+
+  if (resetSenhaBeta) {
+    return (
+      <main className="escala-beta-page flex min-h-screen items-center justify-center bg-slate-50 px-3 py-4 text-slate-950 [color-scheme:light]">
+        <section className="w-full max-w-md overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
+            <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
+            <div className="relative">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
+                Recuperação de senha
+              </p>
+              <h1 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
+                Definir nova senha
+              </h1>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
+                Digite uma nova senha para continuar usando o link do campeonato.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-2 p-3">
+            <input
+              value={novaSenhaBeta}
+              onChange={(event) => setNovaSenhaBeta(event.target.value)}
+              placeholder="Nova senha"
+              type="password"
+              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+            />
+
+            <input
+              value={confirmarNovaSenhaBeta}
+              onChange={(event) => setConfirmarNovaSenhaBeta(event.target.value)}
+              placeholder="Confirmar nova senha"
+              type="password"
+              className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold outline-none"
+            />
+
+            <button
+              type="button"
+              disabled={authLoadingBeta}
+              onClick={salvarNovaSenhaBeta}
+              className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
+            >
+              {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
+              Salvar nova senha
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="escala-beta-page min-h-screen bg-slate-50 px-2 py-2 text-slate-950 [color-scheme:light]">
