@@ -25,8 +25,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { ensureUserProfile } from "@/lib/profileBootstrap";
-import { DropZoneLogo } from "@/app/components/DropZoneLogo";
 import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 import PlayerCard from "@/app/components/PlayerCard";
 
@@ -431,14 +429,13 @@ export default function EscalaCampeonatoPage() {
     Record<string, string>
   >({});
   const [erro, setErro] = useState<string | null>(null);
-  const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
+  const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "confirmar" | "recuperar" | "confirmar_recuperacao" | "nova_senha">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
   const [authSenhaBeta, setAuthSenhaBeta] = useState("");
   const [authConfirmarSenhaBeta, setAuthConfirmarSenhaBeta] = useState("");
   const [authCodigoBeta, setAuthCodigoBeta] = useState("");
   const [authNomeBeta, setAuthNomeBeta] = useState("");
   const [authLoadingBeta, setAuthLoadingBeta] = useState(false);
-  const [authConfirmacaoTipoBeta, setAuthConfirmacaoTipoBeta] = useState<"signup" | "recovery">("signup");
   const [resetSenhaBeta, setResetSenhaBeta] = useState(false);
   const [novaSenhaBeta, setNovaSenhaBeta] = useState("");
   const [confirmarNovaSenhaBeta, setConfirmarNovaSenhaBeta] = useState("");
@@ -484,15 +481,6 @@ export default function EscalaCampeonatoPage() {
 
       if (error) throw error;
 
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        await ensureUserProfile({
-          userId: userData.user.id,
-          email: userData.user.email || email,
-          username: userData.user.user_metadata?.username || email.split("@")[0],
-        });
-      }
-
       await carregar();
     } catch (error: any) {
       alert(error?.message || "Não foi possível entrar na conta.");
@@ -522,9 +510,7 @@ export default function EscalaCampeonatoPage() {
         password: authSenhaBeta,
         options: {
           data: {
-            username: authNomeBeta.trim() || email.split("@")[0],
-            nome_exibicao: authNomeBeta.trim() || email.split("@")[0],
-            nome: authNomeBeta.trim() || email.split("@")[0],
+            nome: authNomeBeta.trim() || email,
           },
           emailRedirectTo:
             typeof window !== "undefined"
@@ -535,7 +521,6 @@ export default function EscalaCampeonatoPage() {
 
       if (error) throw error;
 
-      setAuthConfirmacaoTipoBeta("signup");
       setAuthCodigoBeta("");
       setAuthModoBeta("confirmar");
       alert("Enviamos o código de verificação para seu e-mail.");
@@ -558,28 +543,13 @@ export default function EscalaCampeonatoPage() {
     try {
       setAuthLoadingBeta(true);
 
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email,
         token,
-        type: authConfirmacaoTipoBeta,
+        type: "signup",
       });
 
       if (error) throw error;
-
-      if (authConfirmacaoTipoBeta === "recovery") {
-        setResetSenhaBeta(true);
-        setAuthCodigoBeta("");
-        return;
-      }
-
-      const user = data.user || (await supabase.auth.getUser()).data.user;
-      if (user) {
-        await ensureUserProfile({
-          userId: user.id,
-          email: user.email || email,
-          username: user.user_metadata?.username || authNomeBeta.trim() || email.split("@")[0],
-        });
-      }
 
       alert("E-mail confirmado com sucesso.");
       setAuthCodigoBeta("");
@@ -596,23 +566,22 @@ export default function EscalaCampeonatoPage() {
     const email = authEmailBeta.trim();
 
     if (!email) {
-      alert("Informe o e-mail usado.");
+      alert("Informe o e-mail usado no cadastro.");
       return;
     }
 
     try {
       setAuthLoadingBeta(true);
 
-      if (authConfirmacaoTipoBeta === "recovery") {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        if (error) throw error;
-        alert("Código de recuperação reenviado para seu e-mail.");
-        return;
-      }
-
       const { error } = await supabase.auth.resend({
         type: "signup",
         email,
+        options: {
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? window.location.href.split("#")[0]
+              : undefined,
+        },
       });
 
       if (error) throw error;
@@ -636,16 +605,51 @@ export default function EscalaCampeonatoPage() {
     try {
       setAuthLoadingBeta(true);
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const redirectTo =
+        typeof window !== "undefined"
+          ? window.location.href.split("#")[0]
+          : undefined;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
 
       if (error) throw error;
 
-      setAuthConfirmacaoTipoBeta("recovery");
       setAuthCodigoBeta("");
-      setAuthModoBeta("confirmar");
+      setAuthModoBeta("confirmar_recuperacao");
       alert("Enviamos o código de recuperação para seu e-mail.");
     } catch (error: any) {
       alert(error?.message || "Não foi possível enviar recuperação de senha.");
+    } finally {
+      setAuthLoadingBeta(false);
+    }
+  }
+
+  async function confirmarCodigoRecuperacaoBeta() {
+    const email = authEmailBeta.trim();
+    const token = authCodigoBeta.trim();
+
+    if (!email || !token) {
+      alert("Informe o e-mail e o código de recuperação.");
+      return;
+    }
+
+    try {
+      setAuthLoadingBeta(true);
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "recovery",
+      });
+
+      if (error) throw error;
+
+      setAuthModoBeta("nova_senha");
+      setAuthCodigoBeta("");
+    } catch (error: any) {
+      alert(error?.message || "Código inválido ou expirado.");
     } finally {
       setAuthLoadingBeta(false);
     }
@@ -1757,7 +1761,7 @@ export default function EscalaCampeonatoPage() {
     );
   }
 
-  if (false && !usuarioLogado) {
+  if (!usuarioLogado) {
     const tituloAuth =
       authModo === "login"
         ? "Entrar na conta"
@@ -1867,7 +1871,7 @@ export default function EscalaCampeonatoPage() {
               className="flex h-11 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
             >
               {authProcessando ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar código"}
+              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar recuperação"}
             </button>
 
             <p className="text-center text-[10px] font-bold leading-4 text-slate-500">
@@ -2224,192 +2228,227 @@ export default function EscalaCampeonatoPage() {
         ) : null}
 
         {!userId ? (
-          <section className="mt-3 overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-black">
-            <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
-              <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
-              <div className="relative flex items-start gap-3">
-                <div className="grid h-12 w-12 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
-                  <DropZoneLogo className="w-9" animated />
+          <section className="mt-4 overflow-hidden rounded-[28px] border border-blue-500/30 bg-[#061126] p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,.35)]">
+            <div className="pointer-events-none absolute inset-x-0 h-40 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,.35),transparent_60%)]" />
+            <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-[#071225] p-5">
+              <div className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(59,130,246,.10)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,.10)_1px,transparent_1px)] [background-size:26px_26px]" />
+              <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-600/20 blur-3xl" />
+              <div className="absolute -bottom-20 -left-12 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
+
+              <div className="relative text-center">
+                <div className="mx-auto grid h-24 w-24 place-items-center rounded-[28px] border border-blue-300/30 bg-white/5 shadow-[0_0_34px_rgba(37,99,235,.25)]">
+                  <img
+                    src="/brand/dropzone-icon.png"
+                    alt="Drop Zone"
+                    className="h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(56,189,248,.35)]"
+                  />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
-                    Acesso seguro
-                  </p>
-                  <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
-                    {authModoBeta === "login"
-                      ? "Entre para continuar"
-                      : authModoBeta === "cadastro"
-                        ? "Criar conta"
-                        : authModoBeta === "confirmar"
-                          ? "Confirmar e-mail"
-                          : "Recuperar senha"}
-                  </h2>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
-                    {authModoBeta === "login"
-                      ? "Entre na sua conta para acessar as ferramentas do campeonato."
-                      : authModoBeta === "cadastro"
-                        ? "Crie sua conta sem sair do link do campeonato."
-                        : authModoBeta === "confirmar"
-                          ? "Digite o código recebido no e-mail para liberar sua conta."
-                          : "Informe seu e-mail para receber o código de recuperação."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-2 p-3">
-              <div className="grid grid-cols-4 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("login")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "login"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("cadastro")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "cadastro"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Cadastro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthConfirmacaoTipoBeta("signup");
-                    setAuthModoBeta("confirmar");
-                  }}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "confirmar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Código
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("recuperar")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "recuperar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Senha
-                </button>
-              </div>
-
-              {authModoBeta === "cadastro" ? (
-                <input
-                  value={authNomeBeta}
-                  onChange={(event) => setAuthNomeBeta(event.target.value)}
-                  placeholder="Nome"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              <input
-                value={authEmailBeta}
-                onChange={(event) => setAuthEmailBeta(event.target.value)}
-                placeholder="E-mail"
-                type="email"
-                className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-              />
-
-              {authModoBeta === "confirmar" ? (
-                <input
-                  value={authCodigoBeta}
-                  onChange={(event) =>
-                    setAuthCodigoBeta(event.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="Código de verificação"
-                  inputMode="numeric"
-                  className="h-11 border border-slate-200 bg-white px-3 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              {authModoBeta !== "recuperar" && authModoBeta !== "confirmar" ? (
-                <input
-                  value={authSenhaBeta}
-                  onChange={(event) => setAuthSenhaBeta(event.target.value)}
-                  placeholder="Senha"
-                  type="password"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              {authModoBeta === "cadastro" ? (
-                <input
-                  value={authConfirmarSenhaBeta}
-                  onChange={(event) => setAuthConfirmarSenhaBeta(event.target.value)}
-                  placeholder="Confirmar senha"
-                  type="password"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              <button
-                type="button"
-                disabled={authLoadingBeta}
-                onClick={
-                  authModoBeta === "login"
-                    ? entrarContaBeta
+                <p className="mt-5 text-[10px] font-black uppercase tracking-[0.38em] text-amber-300">
+                  Drop Zone
+                </p>
+                <h2 className="mt-2 text-3xl font-black uppercase tracking-[-0.06em] text-white">
+                  {authModoBeta === "login"
+                    ? "Entrar"
                     : authModoBeta === "cadastro"
-                      ? criarContaBeta
+                      ? "Nova conta"
                       : authModoBeta === "confirmar"
-                        ? confirmarCodigoCadastroBeta
-                        : recuperarSenhaBeta
-                }
-                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
-              >
-                {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
-                {authModoBeta === "login"
-                  ? "Entrar"
-                  : authModoBeta === "cadastro"
-                    ? "Criar conta"
-                    : authModoBeta === "confirmar"
-                      ? authConfirmacaoTipoBeta === "recovery" ? "Validar código" : "Confirmar código"
-                      : "Enviar código"}
-              </button>
+                        ? "Confirmar e-mail"
+                        : authModoBeta === "recuperar"
+                          ? "Recuperar senha"
+                          : authModoBeta === "confirmar_recuperacao"
+                            ? "Código de segurança"
+                            : "Nova senha"}
+                </h2>
+                <p className="mx-auto mt-2 max-w-xs text-sm font-bold leading-6 text-slate-300">
+                  {authModoBeta === "login"
+                    ? "Entre para continuar sua inscrição neste campeonato."
+                    : authModoBeta === "cadastro"
+                      ? "Crie sua conta e confirme o código enviado por e-mail."
+                      : authModoBeta === "confirmar"
+                        ? "Digite o código enviado para ativar sua conta."
+                        : authModoBeta === "recuperar"
+                          ? "Informe seu e-mail para receber o código de recuperação."
+                          : authModoBeta === "confirmar_recuperacao"
+                            ? "Digite o código recebido no e-mail para liberar a troca de senha."
+                            : "Agora defina uma nova senha segura para sua conta."}
+                </p>
+              </div>
 
-              {authModoBeta === "recuperar" ? (
+              <div className="relative mt-6 space-y-4">
+                {authModoBeta === "cadastro" ? (
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Nome de usuário</span>
+                    <input
+                      value={authNomeBeta}
+                      onChange={(event) => setAuthNomeBeta(event.target.value)}
+                      placeholder="Seu nick"
+                      className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                    />
+                  </label>
+                ) : null}
+
+                {authModoBeta !== "nova_senha" ? (
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">E-mail</span>
+                    <input
+                      value={authEmailBeta}
+                      onChange={(event) => setAuthEmailBeta(event.target.value)}
+                      placeholder="seu@email.com"
+                      type="email"
+                      inputMode="email"
+                      className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                    />
+                  </label>
+                ) : null}
+
+                {authModoBeta === "confirmar" || authModoBeta === "confirmar_recuperacao" ? (
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Código recebido</span>
+                    <input
+                      value={authCodigoBeta}
+                      onChange={(event) =>
+                        setAuthCodigoBeta(event.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      placeholder="000000"
+                      inputMode="numeric"
+                      className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-center text-xl font-black tracking-[0.45em] text-slate-950 outline-none placeholder:text-slate-300"
+                    />
+                  </label>
+                ) : null}
+
+                {authModoBeta === "login" || authModoBeta === "cadastro" ? (
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Senha</span>
+                    <input
+                      value={authSenhaBeta}
+                      onChange={(event) => setAuthSenhaBeta(event.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                      type="password"
+                      className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                    />
+                  </label>
+                ) : null}
+
+                {authModoBeta === "cadastro" ? (
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Confirmar senha</span>
+                    <input
+                      value={authConfirmarSenhaBeta}
+                      onChange={(event) => setAuthConfirmarSenhaBeta(event.target.value)}
+                      placeholder="Repita a senha"
+                      type="password"
+                      className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                    />
+                  </label>
+                ) : null}
+
+                {authModoBeta === "nova_senha" ? (
+                  <>
+                    <label className="block">
+                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Nova senha</span>
+                      <input
+                        value={novaSenhaBeta}
+                        onChange={(event) => setNovaSenhaBeta(event.target.value)}
+                        placeholder="Nova senha"
+                        type="password"
+                        className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-slate-300">Confirmar nova senha</span>
+                      <input
+                        value={confirmarNovaSenhaBeta}
+                        onChange={(event) => setConfirmarNovaSenhaBeta(event.target.value)}
+                        placeholder="Repita a nova senha"
+                        type="password"
+                        className="h-12 w-full rounded-xl border border-blue-300/20 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+                      />
+                    </label>
+                  </>
+                ) : null}
+
                 <button
                   type="button"
-                  onClick={() => setAuthModoBeta("login")}
-                  className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
+                  disabled={authLoadingBeta}
+                  onClick={
+                    authModoBeta === "login"
+                      ? entrarContaBeta
+                      : authModoBeta === "cadastro"
+                        ? criarContaBeta
+                        : authModoBeta === "confirmar"
+                          ? confirmarCodigoCadastroBeta
+                          : authModoBeta === "recuperar"
+                            ? recuperarSenhaBeta
+                            : authModoBeta === "confirmar_recuperacao"
+                              ? confirmarCodigoRecuperacaoBeta
+                              : salvarNovaSenhaBeta
+                  }
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-blue-500 bg-blue-600 px-5 py-4 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_18px_50px_rgba(37,99,235,.35)] disabled:opacity-60"
                 >
-                  Voltar para login
+                  {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
+                  {authModoBeta === "login"
+                    ? "Entrar"
+                    : authModoBeta === "cadastro"
+                      ? "Criar conta"
+                      : authModoBeta === "confirmar"
+                        ? "Confirmar código"
+                        : authModoBeta === "recuperar"
+                          ? "Enviar código"
+                          : authModoBeta === "confirmar_recuperacao"
+                            ? "Validar código"
+                            : "Salvar nova senha"}
                 </button>
-              ) : null}
 
-              {authModoBeta === "confirmar" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={reenviarCodigoCadastroBeta}
-                    disabled={authLoadingBeta}
-                    className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500 disabled:opacity-60"
-                  >
-                    Reenviar código
-                  </button>
+                {authModoBeta === "login" ? (
+                  <div className="flex flex-col items-center gap-3 pt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-300">
+                    <button type="button" onClick={() => setAuthModoBeta("recuperar")} className="text-blue-300 hover:text-white">
+                      Esqueci minha senha
+                    </button>
+                    <button type="button" onClick={() => setAuthModoBeta("cadastro")} className="text-white">
+                      Criar nova conta
+                    </button>
+                  </div>
+                ) : null}
+
+                {authModoBeta === "cadastro" ? (
+                  <p className="text-center text-xs font-bold text-slate-300">
+                    Já tem conta?{" "}
+                    <button type="button" onClick={() => setAuthModoBeta("login")} className="font-black uppercase text-white">
+                      Entrar
+                    </button>
+                  </p>
+                ) : null}
+
+                {authModoBeta === "confirmar" ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={reenviarCodigoCadastroBeta}
+                      disabled={authLoadingBeta}
+                      className="h-11 rounded-xl border border-blue-300/20 bg-white/5 text-[10px] font-black uppercase text-slate-200 disabled:opacity-60"
+                    >
+                      Reenviar código
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAuthModoBeta("login")}
+                      className="h-11 rounded-xl border border-blue-300/20 bg-white/5 text-[10px] font-black uppercase text-slate-200"
+                    >
+                      Já confirmei
+                    </button>
+                  </div>
+                ) : null}
+
+                {authModoBeta === "recuperar" || authModoBeta === "confirmar_recuperacao" || authModoBeta === "nova_senha" ? (
                   <button
                     type="button"
                     onClick={() => setAuthModoBeta("login")}
-                    className="h-10 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-500"
+                    className="h-11 w-full rounded-xl border border-blue-300/20 bg-white/5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-200"
                   >
-                    Já confirmei
+                    Voltar para login
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           </section>
         ) : (
