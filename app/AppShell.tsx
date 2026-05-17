@@ -1,14 +1,30 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
 import Navbar from './components/Navbar'
 import ModeradorMatchToast from '@/app/components/ModeradorMatchToast'
 import { PerfilProvider } from './contexts/PerfilContext'
+
+const AUTH_ROUTES = ['/login', '/cadastro', '/recuperar', '/confirmar', '/redefinir-senha']
 
 export default function AppShell({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname() || ''
+  const isAuthRoute = AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+
+  if (isAuthRoute) {
+    return (
+      <PerfilProvider>
+        <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white [color-scheme:dark]">
+          {children}
+        </div>
+      </PerfilProvider>
+    )
+  }
+
   return (
     <PerfilProvider>
       <div className="relative min-h-screen bg-[#f5f7fb] text-slate-950">

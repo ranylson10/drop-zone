@@ -9,6 +9,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCcw, ShieldCheck } from 
 import { supabase } from '@/lib/supabase'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
 import { DropZoneLogo } from '@/app/components/DropZoneLogo'
+import { getSafeRedirectTo } from '@/lib/authRedirect'
 
 const CODE_LENGTH = 6
 
@@ -18,6 +19,7 @@ function ConfirmarContaPageInner() {
 
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
+  const [redirectTo, setRedirectTo] = useState('/perfil')
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''))
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
@@ -30,6 +32,7 @@ function ConfirmarContaPageInner() {
   useEffect(() => {
     const emailUrl = searchParams.get('email')
     const usernameUrl = searchParams.get('username')
+    const redirectUrl = searchParams.get('redirectTo')
 
     const emailStorage =
       typeof window !== 'undefined'
@@ -42,6 +45,7 @@ function ConfirmarContaPageInner() {
 
     setEmail((emailUrl || emailStorage || '').trim().toLowerCase())
     setUsername((usernameUrl || usernameStorage || '').trim())
+    setRedirectTo(getSafeRedirectTo(redirectUrl, '/perfil'))
 
     setTimeout(() => inputsRef.current[0]?.focus(), 100)
   }, [searchParams])
@@ -125,7 +129,7 @@ function ConfirmarContaPageInner() {
       }
 
       setMessage('Conta confirmada. Entrando no perfil...')
-      router.push('/perfil')
+      router.push(redirectTo)
       router.refresh()
     } catch (err: any) {
       setError(err?.message || 'Código inválido ou expirado.')

@@ -25,6 +25,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { ensureUserProfile } from "@/lib/profileBootstrap";
+import { DropZoneLogo } from "@/app/components/DropZoneLogo";
 import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 import PlayerCard from "@/app/components/PlayerCard";
 
@@ -436,6 +438,7 @@ export default function EscalaCampeonatoPage() {
   const [authCodigoBeta, setAuthCodigoBeta] = useState("");
   const [authNomeBeta, setAuthNomeBeta] = useState("");
   const [authLoadingBeta, setAuthLoadingBeta] = useState(false);
+  const [authConfirmacaoTipoBeta, setAuthConfirmacaoTipoBeta] = useState<"signup" | "recovery">("signup");
   const [resetSenhaBeta, setResetSenhaBeta] = useState(false);
   const [novaSenhaBeta, setNovaSenhaBeta] = useState("");
   const [confirmarNovaSenhaBeta, setConfirmarNovaSenhaBeta] = useState("");
@@ -481,6 +484,15 @@ export default function EscalaCampeonatoPage() {
 
       if (error) throw error;
 
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        await ensureUserProfile({
+          userId: userData.user.id,
+          email: userData.user.email || email,
+          username: userData.user.user_metadata?.username || email.split("@")[0],
+        });
+      }
+
       await carregar();
     } catch (error: any) {
       alert(error?.message || "Não foi possível entrar na conta.");
@@ -510,7 +522,9 @@ export default function EscalaCampeonatoPage() {
         password: authSenhaBeta,
         options: {
           data: {
-            nome: authNomeBeta.trim() || email,
+            username: authNomeBeta.trim() || email.split("@")[0],
+            nome_exibicao: authNomeBeta.trim() || email.split("@")[0],
+            nome: authNomeBeta.trim() || email.split("@")[0],
           },
           emailRedirectTo:
             typeof window !== "undefined"
@@ -521,6 +535,7 @@ export default function EscalaCampeonatoPage() {
 
       if (error) throw error;
 
+      setAuthConfirmacaoTipoBeta("signup");
       setAuthCodigoBeta("");
       setAuthModoBeta("confirmar");
       alert("Enviamos o código de verificação para seu e-mail.");
@@ -543,13 +558,28 @@ export default function EscalaCampeonatoPage() {
     try {
       setAuthLoadingBeta(true);
 
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
-        type: "signup",
+        type: authConfirmacaoTipoBeta,
       });
 
       if (error) throw error;
+
+      if (authConfirmacaoTipoBeta === "recovery") {
+        setResetSenhaBeta(true);
+        setAuthCodigoBeta("");
+        return;
+      }
+
+      const user = data.user || (await supabase.auth.getUser()).data.user;
+      if (user) {
+        await ensureUserProfile({
+          userId: user.id,
+          email: user.email || email,
+          username: user.user_metadata?.username || authNomeBeta.trim() || email.split("@")[0],
+        });
+      }
 
       alert("E-mail confirmado com sucesso.");
       setAuthCodigoBeta("");
@@ -566,22 +596,23 @@ export default function EscalaCampeonatoPage() {
     const email = authEmailBeta.trim();
 
     if (!email) {
-      alert("Informe o e-mail usado no cadastro.");
+      alert("Informe o e-mail usado.");
       return;
     }
 
     try {
       setAuthLoadingBeta(true);
 
+      if (authConfirmacaoTipoBeta === "recovery") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
+        alert("Código de recuperação reenviado para seu e-mail.");
+        return;
+      }
+
       const { error } = await supabase.auth.resend({
         type: "signup",
         email,
-        options: {
-          emailRedirectTo:
-            typeof window !== "undefined"
-              ? window.location.href.split("#")[0]
-              : undefined,
-        },
       });
 
       if (error) throw error;
@@ -605,19 +636,14 @@ export default function EscalaCampeonatoPage() {
     try {
       setAuthLoadingBeta(true);
 
-      const redirectTo =
-        typeof window !== "undefined"
-          ? window.location.href.split("#")[0]
-          : undefined;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo,
-      });
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
 
       if (error) throw error;
 
-      alert("Enviamos o link de recuperação para seu e-mail.");
-      setAuthModoBeta("login");
+      setAuthConfirmacaoTipoBeta("recovery");
+      setAuthCodigoBeta("");
+      setAuthModoBeta("confirmar");
+      alert("Enviamos o código de recuperação para seu e-mail.");
     } catch (error: any) {
       alert(error?.message || "Não foi possível enviar recuperação de senha.");
     } finally {
@@ -1731,7 +1757,7 @@ export default function EscalaCampeonatoPage() {
     );
   }
 
-  if (!usuarioLogado) {
+  if (false && !usuarioLogado) {
     const tituloAuth =
       authModo === "login"
         ? "Entrar na conta"
@@ -1841,7 +1867,7 @@ export default function EscalaCampeonatoPage() {
               className="flex h-11 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
             >
               {authProcessando ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar recuperação"}
+              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar código"}
             </button>
 
             <p className="text-center text-[10px] font-bold leading-4 text-slate-500">
@@ -2203,7 +2229,7 @@ export default function EscalaCampeonatoPage() {
               <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
               <div className="relative flex items-start gap-3">
                 <div className="grid h-12 w-12 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
-                  <Lock size={19} />
+                  <DropZoneLogo className="w-9" animated />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
@@ -2225,7 +2251,7 @@ export default function EscalaCampeonatoPage() {
                         ? "Crie sua conta sem sair do link do campeonato."
                         : authModoBeta === "confirmar"
                           ? "Digite o código recebido no e-mail para liberar sua conta."
-                          : "Informe seu e-mail para receber o link de recuperação."}
+                          : "Informe seu e-mail para receber o código de recuperação."}
                   </p>
                 </div>
               </div>
@@ -2257,18 +2283,10 @@ export default function EscalaCampeonatoPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAuthModoBeta("confirmar")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "confirmar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Código
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("confirmar")}
+                  onClick={() => {
+                    setAuthConfirmacaoTipoBeta("signup");
+                    setAuthModoBeta("confirmar");
+                  }}
                   className={`h-9 border text-[8px] font-black uppercase ${
                     authModoBeta === "confirmar"
                       ? "border-blue-600 bg-blue-600 text-white"
@@ -2359,8 +2377,8 @@ export default function EscalaCampeonatoPage() {
                   : authModoBeta === "cadastro"
                     ? "Criar conta"
                     : authModoBeta === "confirmar"
-                      ? "Confirmar código"
-                      : "Enviar recuperação"}
+                      ? authConfirmacaoTipoBeta === "recovery" ? "Validar código" : "Confirmar código"
+                      : "Enviar código"}
               </button>
 
               {authModoBeta === "recuperar" ? (
