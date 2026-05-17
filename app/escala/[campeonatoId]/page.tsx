@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -363,6 +363,7 @@ async function rpcFallbackBeta(nameList: string[], payload: Record<string, unkno
 
 export default function EscalaCampeonatoPage() {
   const params = useParams<{ campeonatoId: string }>();
+  const router = useRouter();
   const campeonatoParam = String(params?.campeonatoId || "");
 
   const [loading, setLoading] = useState(true);
@@ -1751,6 +1752,14 @@ export default function EscalaCampeonatoPage() {
   }
 
 
+
+  useEffect(() => {
+    if (checkingAuth || usuarioLogado) return;
+
+    const redirectTo = `/escala/${encodeURIComponent(campeonatoParam)}`;
+    router.replace(`/login?redirect=${encodeURIComponent(redirectTo)}`);
+  }, [checkingAuth, usuarioLogado, campeonatoParam, router]);
+
   if (checkingAuth) {
     return (
       <main className="escala-beta-page grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950 [color-scheme:light]">
@@ -1761,123 +1770,12 @@ export default function EscalaCampeonatoPage() {
     );
   }
 
+
   if (!usuarioLogado) {
-    const tituloAuth =
-      authModo === "login"
-        ? "Entrar na conta"
-        : authModo === "cadastro"
-          ? "Criar conta"
-          : "Recuperar senha";
-
-    const textoAuth =
-      authModo === "login"
-        ? "Entre para escolher Jogador, Líder ou Manager neste campeonato."
-        : authModo === "cadastro"
-          ? "Crie sua conta e volte automaticamente para este link beta."
-          : "Receba o link de recuperação e volte para este campeonato.";
-
     return (
-      <main className="escala-beta-page flex min-h-screen items-center justify-center bg-[#f5f7fb] px-4 py-6 text-slate-950 [color-scheme:light]">
-        <div className="w-full max-w-md border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 p-4 text-white">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">
-              Acesso beta
-            </p>
-            <h1 className="mt-1 text-2xl font-black uppercase tracking-[-0.05em]">
-              {tituloAuth}
-            </h1>
-            <p className="mt-2 text-xs font-bold text-blue-100">
-              {textoAuth}
-            </p>
-          </div>
-
-          <div className="space-y-3 p-4">
-            <div className="grid grid-cols-4 gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthModo("login");
-                  setAuthMensagem(null);
-                }}
-                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "login" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthModo("cadastro");
-                  setAuthMensagem(null);
-                }}
-                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "cadastro" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
-              >
-                Criar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthModo("recuperar");
-                  setAuthMensagem(null);
-                }}
-                className={`h-9 border px-2 text-[9px] font-black uppercase ${authModo === "recuperar" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700"}`}
-              >
-                Senha
-              </button>
-            </div>
-
-            {authModo === "cadastro" ? (
-              <input
-                value={authNome}
-                onChange={(event) => setAuthNome(event.target.value)}
-                placeholder="Seu nome"
-                className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
-              />
-            ) : null}
-
-            <input
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="E-mail"
-              className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
-            />
-
-            {authModo !== "recuperar" ? (
-              <input
-                value={authSenha}
-                onChange={(event) => setAuthSenha(event.target.value)}
-                type="password"
-                autoComplete={authModo === "login" ? "current-password" : "new-password"}
-                placeholder="Senha"
-                className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-bold outline-none"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") executarAuthLinkBeta();
-                }}
-              />
-            ) : null}
-
-            {authMensagem ? (
-              <div className="border border-amber-200 bg-amber-50 p-2 text-[11px] font-bold text-amber-700">
-                {authMensagem}
-              </div>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={executarAuthLinkBeta}
-              disabled={authProcessando}
-              className="flex h-11 w-full items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
-            >
-              {authProcessando ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
-              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : "Enviar recuperação"}
-            </button>
-
-            <p className="text-center text-[10px] font-bold leading-4 text-slate-500">
-              Depois do login, você continua neste link e vai direto para a escolha de perfil.
-            </p>
-          </div>
+      <main className="escala-beta-page grid min-h-screen place-items-center bg-[#f5f7fb] px-4 text-slate-950 [color-scheme:light]">
+        <div className="border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+          <Loader2 className="mr-2 inline animate-spin" size={16} /> Redirecionando para login
         </div>
       </main>
     );
