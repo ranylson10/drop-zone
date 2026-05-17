@@ -688,7 +688,9 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     }
 
     if (!equipeCompraId || !equipeSelecionadaCompra) {
-      setMensagemCompraVaga('Selecione uma equipe para comprar a vaga.')
+      setMensagemCompraVaga('Você ainda não tem equipe ou line pronta. Use as opções abaixo para criar/vincular e depois finalize a compra.')
+      setSenhaCompra('')
+      setModalConfirmacaoCompraAberto(true)
       return
     }
 
@@ -1404,20 +1406,63 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 <button type="button" onClick={() => { if (comprandoVaga) return; setModalConfirmacaoCompraAberto(false); setSenhaCompra('') }} className="border border-slate-200 bg-white p-2 hover:bg-zinc-200"><X size={18} /></button>
               </div>
               <div className="space-y-4 p-5">
-                <div className="border border-slate-200 bg-slate-50 p-4"><div className="grid gap-3 text-sm font-bold">
-                  <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Campeonato</span><span className="text-right font-black uppercase">{camp?.nome || '---'}</span></div>
-                  <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Equipe</span><span className="text-right font-black uppercase">{equipeSelecionadaCompra?.tag ? `[${equipeSelecionadaCompra.tag}] ` : ''}{equipeSelecionadaCompra?.nome || '---'}</span></div>
-                  <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">Valor</span><span className="text-right text-2xl font-black text-[#18b54a]">{valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'GRÁTIS'}</span></div>
-                </div></div>
-                <div>
-                  <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-zinc-500">Digite sua senha para confirmar</label>
-                  <input type="password" value={senhaCompra} onChange={(event) => setSenhaCompra(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !comprandoVaga) comprarVagaComCarteira() }} className="w-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-lime-50" placeholder="Sua senha do login" autoFocus />
-                  <p className="mt-2 text-[11px] font-semibold text-zinc-500">Essa validação evita compra por engano. A senha é conferida pelo Supabase Auth antes de debitar a carteira.</p>
+                <div className="border border-slate-200 bg-slate-50 p-4">
+                  <div className="grid gap-3 text-sm font-bold">
+                    <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Campeonato</span><span className="text-right font-black uppercase">{camp?.nome || '---'}</span></div>
+                    <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Vagas restantes</span><span className="text-right font-black uppercase">{vagasRestantesCompra}</span></div>
+                    <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Equipe / line</span><span className="text-right font-black uppercase">{equipeSelecionadaCompra ? `${equipeSelecionadaCompra.tag ? `[${equipeSelecionadaCompra.tag}] ` : ''}${equipeSelecionadaCompra.nome}` : 'Pendente'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">Valor</span><span className="text-right text-2xl font-black text-[#18b54a]">{valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'GRÁTIS'}</span></div>
+                  </div>
                 </div>
+
+                {!equipeSelecionadaCompra ? (
+                  <div className="border border-amber-200 bg-amber-50 p-4">
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-800">Equipe ou line necessária</div>
+                    <p className="mt-2 text-xs font-semibold leading-5 text-[#142340]/75">
+                      Para finalizar a vaga, crie ou vincule uma equipe/line. Depois volte para esta mesma página e clique em comprar vaga novamente.
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <a href={linkCriarEquipeCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase tracking-wide text-white hover:bg-blue-500">
+                        <PlusCircle size={14} /> Criar equipe
+                      </a>
+                      <a href={linkGerenciarEquipesCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <Users size={14} /> Minhas equipes
+                      </a>
+                      <a href={linkCriarLineCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <List size={14} /> Criar line
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-2 md:grid-cols-4">
+                      <button type="button" onClick={() => {}} className="inline-flex h-10 items-center justify-center gap-2 border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black uppercase tracking-wide text-emerald-700">
+                        <WalletCards size={14} /> Carteira
+                      </button>
+                      <a href={linkDepositoPixCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <QrCode size={14} /> Pix
+                      </a>
+                      <a href={linkDepositoPaypalCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <CircleDollarSign size={14} /> PayPal
+                      </a>
+                      {linkWhatsAppCompra ? (
+                        <a href={linkWhatsAppCompra} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 border border-green-200 bg-green-50 px-3 text-[10px] font-black uppercase tracking-wide text-green-700 hover:bg-green-100">
+                          <MessageCircle size={14} /> WhatsApp <ExternalLink size={12} />
+                        </a>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-zinc-500">Digite sua senha para pagar com carteira</label>
+                      <input type="password" value={senhaCompra} onChange={(event) => setSenhaCompra(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !comprandoVaga) comprarVagaComCarteira() }} className="w-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-lime-50" placeholder="Sua senha do login" autoFocus />
+                      <p className="mt-2 text-[11px] font-semibold text-zinc-500">A senha é conferida pelo Supabase Auth antes de debitar a carteira.</p>
+                    </div>
+                  </>
+                )}
+
                 {mensagemCompraVaga && <div className="border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{mensagemCompraVaga}</div>}
                 <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => { if (comprandoVaga) return; setModalConfirmacaoCompraAberto(false); setSenhaCompra('') }} disabled={comprandoVaga} className="border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase disabled:opacity-60">Cancelar</button>
-                  <button type="button" onClick={comprarVagaComCarteira} disabled={comprandoVaga || !senhaCompra.trim()} className="border border-cyan-200 bg-cyan-50 text-cyan-700 px-4 py-3 text-xs font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500">{comprandoVaga ? 'Confirmando...' : 'Confirmar compra'}</button>
+                  <button type="button" onClick={() => { if (comprandoVaga) return; setModalConfirmacaoCompraAberto(false); setSenhaCompra('') }} disabled={comprandoVaga} className="border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase disabled:opacity-60">Fechar</button>
+                  <button type="button" onClick={comprarVagaComCarteira} disabled={comprandoVaga || !equipeSelecionadaCompra || !senhaCompra.trim()} className="border border-cyan-200 bg-cyan-50 text-cyan-700 px-4 py-3 text-xs font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500">{comprandoVaga ? 'Confirmando...' : 'Confirmar carteira'}</button>
                 </div>
               </div>
             </div>
@@ -1525,73 +1570,13 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               <button
                 type="button"
                 onClick={abrirConfirmacaoCompra}
-                disabled={comprandoVaga || !usuarioAtual || !equipeCompraId || vagasRestantesCompra <= 0}
+                disabled={comprandoVaga || !usuarioAtual || vagasRestantesCompra <= 0}
                 className={`h-10 border px-4 text-[11px] font-black uppercase tracking-wide transition disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-200 disabled:text-zinc-500 ${tipoVisual.button}`}
               >
-                {comprandoVaga ? 'Processando...' : valorVagaCompra > 0 ? 'Pagar com carteira' : 'Inscrever grátis'}
+                {comprandoVaga ? 'Processando...' : 'Comprar vaga'}
               </button>
             </div>
 
-            {usuarioAtual && minhasEquipesCompra.length === 0 ? (
-              <div className="mt-3 border border-blue-100 bg-blue-50 p-3">
-                <div className="flex items-start gap-3">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center border border-blue-200 bg-white text-blue-600">
-                    <PlusCircle size={17} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-700">Prepare sua inscrição</div>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-[#142340]/75">
-                      Para comprar vaga, crie uma equipe e depois monte ou importe uma line. Ao voltar para esta página, a equipe aparece aqui para finalizar a inscrição.
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <a href={linkCriarEquipeCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase tracking-wide text-white hover:bg-blue-500">
-                        <PlusCircle size={14} /> Criar equipe
-                      </a>
-                      <a href={linkGerenciarEquipesCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
-                        <Users size={14} /> Minhas equipes
-                      </a>
-                      <a href={linkCriarLineCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
-                        <List size={14} /> Criar line
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {usuarioAtual && minhasEquipesCompra.length > 0 ? (
-              <div className="mt-3 grid gap-2 md:grid-cols-4">
-                <button
-                  type="button"
-                  onClick={abrirConfirmacaoCompra}
-                  disabled={comprandoVaga || !equipeCompraId || vagasRestantesCompra <= 0}
-                  className="inline-flex h-10 items-center justify-center gap-2 border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black uppercase tracking-wide text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <WalletCards size={14} /> Carteira
-                </button>
-                <a href={linkDepositoPixCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
-                  <QrCode size={14} /> Pix
-                </a>
-                <a href={linkDepositoPaypalCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
-                  <CircleDollarSign size={14} /> PayPal
-                </a>
-                {linkWhatsAppCompra ? (
-                  <a href={linkWhatsAppCompra} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 border border-green-200 bg-green-50 px-3 text-[10px] font-black uppercase tracking-wide text-green-700 hover:bg-green-100">
-                    <MessageCircle size={14} /> WhatsApp <ExternalLink size={12} />
-                  </a>
-                ) : (
-                  <div className="inline-flex h-10 items-center justify-center border border-zinc-200 bg-zinc-50 px-3 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
-                    WhatsApp indisponível
-                  </div>
-                )}
-              </div>
-            ) : null}
-
-            {mensagemCompraVaga && (
-              <div className="mt-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700">
-                {mensagemCompraVaga}
-              </div>
-            )}
           </div>
 
           <div className="sticky top-[60px] z-40 border-b border-zinc-200 bg-white/95 px-2 py-2 backdrop-blur-sm">
