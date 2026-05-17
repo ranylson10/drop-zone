@@ -1295,6 +1295,11 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   }, [avaliacaoResumo, denunciaMetricas])
 
   useEffect(() => {
+    if (abaAtiva === 'configuracoes' && !podeGerenciarCampeonato) {
+      setAbaAtiva('informacoes')
+      return
+    }
+
     if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
@@ -1304,7 +1309,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       setAbaAtiva('informacoes')
       return
     }
-  }, [usaAbasCopa, usaAbasLiga, abaAtiva])
+  }, [usaAbasCopa, usaAbasLiga, abaAtiva, podeGerenciarCampeonato])
 
   const abasVisiveis = usaAbasCopa
     ? [
@@ -1313,7 +1318,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         { id: 'jogadores', label: 'Jogadores' },
         { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
         { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-        { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
+        ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
       ]
     : usaAbasLiga
       ? [
@@ -1323,7 +1328,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
           { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-          { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
       : [
           { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
@@ -1336,7 +1341,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           { id: 'tabela', label: 'Tabela & MVP', icon: <List size={14} /> },
           { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
           { id: 'regras', label: 'Regras' },
-          { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
 
   if (!idEhUuid) {
@@ -1629,19 +1634,15 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
             {abaAtiva === 'watchparty' && <GerenciarWatchParty campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
             {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'configuracoes' && (
-              podeGerenciarCampeonato ? (
-                <PainelConfiguracoesCampeonato
-                  camp={camp}
-                  campeonatoId={id}
-                  vagasPreenchidas={vagasPreenchidas}
-                  valorVagaCompra={valorVagaCompra}
-                  vagasRestantesCompra={vagasRestantesCompra}
-                  onSalvar={salvarAlteracao}
-                />
-              ) : (
-                <PainelSemPermissaoEdicao />
-              )
+            {abaAtiva === 'configuracoes' && podeGerenciarCampeonato && (
+              <PainelConfiguracoesCampeonato
+                camp={camp}
+                campeonatoId={id}
+                vagasPreenchidas={vagasPreenchidas}
+                valorVagaCompra={valorVagaCompra}
+                vagasRestantesCompra={vagasRestantesCompra}
+                onSalvar={salvarAlteracao}
+              />
             )}
           </main>
         </div>
