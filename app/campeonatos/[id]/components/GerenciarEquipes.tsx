@@ -85,7 +85,16 @@ const ORIGEM_OFICIAL_BANCO = 'oficial'
 const ORIGEM_AVULSA_BANCO = 'avulsa'
 const BUCKET_LOGOS = 'team-logos'
 
-export default function GerenciarEquipes({ campeonatoId }: { campeonatoId: string }) {
+function PainelSemPermissaoEquipes() {
+ return (
+  <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+   <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição de equipes bloqueada</div>
+   <p className="mt-2 leading-6">Você pode acessar a aba, mas adicionar, trocar, confirmar pagamento ou remover equipes é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+  </div>
+ )
+}
+
+export default function GerenciarEquipes({ campeonatoId, canEdit = false }: { campeonatoId: string; canEdit?: boolean }) {
  const [loading, setLoading] = useState(true)
  const [salvando, setSalvando] = useState(false)
  const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -647,6 +656,8 @@ export default function GerenciarEquipes({ campeonatoId }: { campeonatoId: strin
  setSalvando(false)
  }
  }
+
+ if (!canEdit) return <PainelSemPermissaoEquipes />
 
  return (
  <div className="space-y-5">

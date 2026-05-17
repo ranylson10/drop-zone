@@ -75,17 +75,6 @@ type AbaTipo =
 
 type SubAbaTabela = 'classificacao' | 'mvp' | 'sumula' | 'config'
 
-const ABAS_RESTRITAS_EDICAO: AbaTipo[] = [
-  'equipes',
-  'jogadores',
-  'grupos',
-  'jogos',
-  'watchparty',
-  'configuracoes',
-]
-
-const SUB_ABAS_TABELA_RESTRITAS_EDICAO: SubAbaTabela[] = ['sumula', 'config']
-
 type EquipeRelacionada = {
   id: string
   nome: string
@@ -428,6 +417,18 @@ function HeaderStat({ label, value }: { label: string; value: any }) {
     <div className="border-l border-white/15 pl-4">
       <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">{label}</div>
       <div className="mt-1 truncate text-xl font-semibold text-white">{value || '---'}</div>
+    </div>
+  )
+}
+
+
+function PainelSemPermissaoEdicao() {
+  return (
+    <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição bloqueada</div>
+      <p className="mt-2 leading-6">
+        Essa área continua visível, mas só o dono do campeonato ou ajudantes autorizados podem criar, alterar ou remover informações.
+      </p>
     </div>
   )
 }
@@ -1294,73 +1295,48 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   }, [avaliacaoResumo, denunciaMetricas])
 
   useEffect(() => {
-    const abasPermitidasPorTipo = usaAbasCopa
-      ? ['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes']
-      : usaAbasLiga
-        ? ['informacoes', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela', 'configuracoes']
-        : ['informacoes', 'reputacao', 'denuncias', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela', 'watchparty', 'regras', 'configuracoes']
-
-    const abaEhRestrita = ABAS_RESTRITAS_EDICAO.includes(abaAtiva)
-
-    if (!abasPermitidasPorTipo.includes(abaAtiva) || (!podeGerenciarCampeonato && abaEhRestrita)) {
+    if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
     }
 
-    if (!podeGerenciarCampeonato && SUB_ABAS_TABELA_RESTRITAS_EDICAO.includes(subAbaTabela)) {
-      setSubAbaTabela('classificacao')
+    if (usaAbasLiga && !['informacoes', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
+      setAbaAtiva('informacoes')
+      return
     }
-  }, [usaAbasCopa, usaAbasLiga, abaAtiva, subAbaTabela, podeGerenciarCampeonato])
-
-  const abasGerenciaisCopa = podeGerenciarCampeonato
-    ? [
-        { id: 'equipes', label: 'Equipes' },
-        { id: 'jogadores', label: 'Jogadores' },
-        { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
-        { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
-      ]
-    : []
-
-  const abasGerenciaisLiga = podeGerenciarCampeonato
-    ? [
-        { id: 'equipes', label: 'Equipes' },
-        { id: 'jogadores', label: 'Jogadores' },
-        { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
-        { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
-        { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
-      ]
-    : []
-
-  const abasGerenciaisPadrao = podeGerenciarCampeonato
-    ? [
-        { id: 'equipes', label: 'Equipes' },
-        { id: 'jogadores', label: 'Jogadores' },
-        { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
-        { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
-        { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
-        { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
-      ]
-    : []
+  }, [usaAbasCopa, usaAbasLiga, abaAtiva])
 
   const abasVisiveis = usaAbasCopa
     ? [
         { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+        { id: 'equipes', label: 'Equipes' },
+        { id: 'jogadores', label: 'Jogadores' },
+        { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
         { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-        ...abasGerenciaisCopa,
+        { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
       ]
     : usaAbasLiga
       ? [
           { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+          { id: 'equipes', label: 'Equipes' },
+          { id: 'jogadores', label: 'Jogadores' },
+          { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
+          { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-          ...abasGerenciaisLiga,
+          { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
         ]
       : [
           { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
           { id: 'reputacao', label: 'Reputação', icon: <BadgeCheck size={14} /> },
           { id: 'denuncias', label: 'Denúncias', icon: <ShieldAlert size={14} /> },
+          { id: 'equipes', label: 'Equipes' },
+          { id: 'jogadores', label: 'Jogadores' },
+          { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
+          { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela & MVP', icon: <List size={14} /> },
+          { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
           { id: 'regras', label: 'Regras' },
-          ...abasGerenciaisPadrao,
+          { id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> },
         ]
 
   if (!idEhUuid) {
@@ -1388,7 +1364,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   return (
     <TableThemeProvider>
       <div className="dz-shell min-h-screen bg-transparent text-slate-950 py-3 px-2 md:px-4">
-        {podeGerenciarCampeonato && showFloatingEditor && (
+        {showFloatingEditor && (
           <Draggable handle=".handle-drag">
             <div className="fixed top-20 right-5 z-[100] w-[450px] dz-panel overflow-hidden">
               <div className="handle-drag bg-slate-950 text-white px-3 py-2 flex justify-between items-center cursor-move">
@@ -1607,10 +1583,10 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               />
             )}
 
-            {abaAtiva === 'equipes' && podeGerenciarCampeonato && <GerenciarEquipes campeonatoId={id} />}
-            {abaAtiva === 'jogadores' && podeGerenciarCampeonato && <AbaJogadores campeonatoId={id} />}
-            {abaAtiva === 'grupos' && podeGerenciarCampeonato && <GerenciarGrupos campeonatoId={id} />}
-            {abaAtiva === 'jogos' && podeGerenciarCampeonato && <GerenciarJogos campeonatoId={id} />}
+            {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'jogos' && <GerenciarJogos campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
 
             {abaAtiva === 'tabela' && (
               <div className="flex flex-col gap-6">
@@ -1619,12 +1595,8 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                     {[
                       { id: 'classificacao', label: 'Classificação', icon: <Trophy size={14} /> },
                       { id: 'mvp', label: 'Ranking MVP', icon: <Target size={14} /> },
-                      ...(podeGerenciarCampeonato
-                        ? [
-                            { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
-                            { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
-                          ]
-                        : []),
+                      { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
+                      { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
                     ].map((sub) => (
                       <button
                         key={sub.id}
@@ -1645,27 +1617,31 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   {subAbaTabela === 'classificacao' && <PointsTable data={equipesParticipantes} />}
                   {subAbaTabela === 'mvp' && <MVPTable data={rankingMvp} />}
-                  {subAbaTabela === 'sumula' && podeGerenciarCampeonato && <SumulaPartida />}
-                  {subAbaTabela === 'config' && podeGerenciarCampeonato && (
+                  {subAbaTabela === 'sumula' && <SumulaPartida canEdit={podeGerenciarCampeonato} />}
+                  {subAbaTabela === 'config' && (
                     <div className="max-w-4xl dz-card p-2">
-                      <TableEditor />
+                      <TableEditor canEdit={podeGerenciarCampeonato} />
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {abaAtiva === 'watchparty' && podeGerenciarCampeonato && <GerenciarWatchParty campeonatoId={id} />}
-            {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} />}
-            {abaAtiva === 'configuracoes' && podeGerenciarCampeonato && (
-              <PainelConfiguracoesCampeonato
-                camp={camp}
-                campeonatoId={id}
-                vagasPreenchidas={vagasPreenchidas}
-                valorVagaCompra={valorVagaCompra}
-                vagasRestantesCompra={vagasRestantesCompra}
-                onSalvar={salvarAlteracao}
-              />
+            {abaAtiva === 'watchparty' && <GerenciarWatchParty campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'configuracoes' && (
+              podeGerenciarCampeonato ? (
+                <PainelConfiguracoesCampeonato
+                  camp={camp}
+                  campeonatoId={id}
+                  vagasPreenchidas={vagasPreenchidas}
+                  valorVagaCompra={valorVagaCompra}
+                  vagasRestantesCompra={vagasRestantesCompra}
+                  onSalvar={salvarAlteracao}
+                />
+              ) : (
+                <PainelSemPermissaoEdicao />
+              )
             )}
           </main>
         </div>

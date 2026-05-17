@@ -281,9 +281,10 @@ type SumulaPartidaProps = {
  faseInicialId?: string
  jogoInicialId?: string
  quedaInicialId?: string
+ canEdit?: boolean
 }
 
-export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInicialId }: SumulaPartidaProps = {}) {
+export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInicialId, canEdit = false }: SumulaPartidaProps = {}) {
  const params = useParams()
  const campeonatoId = params?.id as string
 
@@ -2233,6 +2234,15 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
 
  // ---------------- Render ----------------
  const temMatchResult = equipesNoLog.length > 0 || dadosRawLog.length > 0 || mvpItems.length > 0
+
+ if (!canEdit) {
+  return (
+   <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Súmula bloqueada</div>
+    <p className="mt-2 leading-6">Registrar pontuação, MVP ou destravar súmula é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+   </div>
+  )
+ }
 
  return (
  <div className="border border-zinc-200 bg-white">

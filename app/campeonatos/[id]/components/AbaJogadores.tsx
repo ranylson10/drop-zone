@@ -30,6 +30,7 @@ import { toast } from 'react-hot-toast'
 
 interface AbaJogadoresProps {
   campeonatoId: string
+  canEdit?: boolean
 }
 
 type OrigemJogador = 'app' | 'avulso' | 'sumula'
@@ -119,7 +120,16 @@ type JogadorFormatado = JogadorCampeonato & {
 
 const BUCKET_AVATAR_JOGADOR = 'avatars'
 
-export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
+function PainelSemPermissaoJogadores() {
+  return (
+    <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição de jogadores bloqueada</div>
+      <p className="mt-2 leading-6">A aba fica disponível, mas adicionar, trocar ou remover jogadores é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+    </div>
+  )
+}
+
+export default function AbaJogadores({ campeonatoId, canEdit = false }: AbaJogadoresProps) {
   const [view, setView] = useState<'equipes' | 'geral'>('equipes')
   const [filtroGrupo, setFiltroGrupo] = useState('TODOS')
   const [filtroOrigem, setFiltroOrigem] = useState<'todas' | OrigemJogador>('todas')
@@ -902,6 +912,8 @@ export default function AbaJogadores({ campeonatoId }: AbaJogadoresProps) {
       </div>
     )
   }
+
+  if (!canEdit) return <PainelSemPermissaoJogadores />
 
   return (
     <div className="space-y-4">

@@ -327,8 +327,10 @@ function InfoLinha({ label, valor }: { label: string; valor: string }) {
 
 export default function RegrasCampeonato({
  campeonatoId,
+ canEdit = false,
 }: {
  campeonatoId: string
+ canEdit?: boolean
 }) {
  const [loading, setLoading] = useState(true)
  const [erro, setErro] = useState<string | null>(null)
@@ -341,7 +343,7 @@ export default function RegrasCampeonato({
  const [colocacoes, setColocacoes] = useState<PontuacaoColocacao[]>([])
  const [blocos, setBlocos] = useState<BlocoComItens[]>([])
  const [abertos, setAbertos] = useState<Record<string, boolean>>({})
- const [modoAdmin, setModoAdmin] = useState(true)
+ const [modoAdmin, setModoAdmin] = useState(canEdit)
 
  const [blocoFormAberto, setBlocoFormAberto] = useState(false)
  const [blocoEditandoId, setBlocoEditandoId] = useState<string | null>(null)
@@ -1113,6 +1115,7 @@ export default function RegrasCampeonato({
  </div>
 
  <div className="flex flex-wrap gap-2">
+ {canEdit && (
  <button
  type="button"
  onClick={() => setModoAdmin((prev) => !prev)}
@@ -1121,6 +1124,7 @@ export default function RegrasCampeonato({
  {modoAdmin ? <EyeOff size={14} /> : <Eye size={14} />}
  {modoAdmin ? 'Ocultar admin' : 'Mostrar admin'}
  </button>
+ )}
 
  <button
  type="button"

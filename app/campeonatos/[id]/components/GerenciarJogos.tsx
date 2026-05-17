@@ -140,9 +140,18 @@ function logStep(label: string, data?: any) {
  console.log(`[GerenciarJogos] ${label}`, data ?? '');
 }
 
-export default function GerenciarJogos() {
+function PainelSemPermissaoJogos() {
+ return (
+  <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+   <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição de jogos bloqueada</div>
+   <p className="mt-2 leading-6">Criar, alterar, sortear mapas ou excluir jogos é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+  </div>
+ )
+}
+
+export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit = false }: { campeonatoId?: string; canEdit?: boolean } = {}) {
  const params = useParams();
- const campeonatoId = params?.id as string;
+ const campeonatoId = campeonatoIdProp || (params?.id as string);
 
  const [loading, setLoading] = useState(true);
  const [saving, setSaving] = useState(false);
@@ -778,6 +787,8 @@ export default function GerenciarJogos() {
  </div>
  );
  }
+
+ if (!canEdit) return <PainelSemPermissaoJogos />
 
  return (
  <div className="flex h-[calc(100vh-280px)] gap-4 text-[#142340] overflow-hidden">

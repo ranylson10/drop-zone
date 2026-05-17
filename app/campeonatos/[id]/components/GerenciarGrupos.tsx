@@ -115,12 +115,21 @@ function sufixoRomano(numero: number) {
   return ROMANOS[numero - 1] || String(numero)
 }
 
+function PainelSemPermissaoGrupos() {
+  return (
+    <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição de grupos bloqueada</div>
+      <p className="mt-2 leading-6">Criar fases, criar grupos, mover equipes ou aceitar trocas é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+    </div>
+  )
+}
+
 function montarNomeComSufixo(nome: string, numero: number) {
   const sufixo = sufixoRomano(numero)
   return sufixo ? `${nome} ${sufixo}` : nome
 }
 
-export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string }) {
+export default function GerenciarGrupos({ campeonatoId, canEdit = false }: { campeonatoId: string; canEdit?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
 
@@ -1188,6 +1197,8 @@ export default function GerenciarGrupos({ campeonatoId }: { campeonatoId: string
       </div>
     )
   }
+
+  if (!canEdit) return <PainelSemPermissaoGrupos />
 
   return (
     <div className="space-y-4">

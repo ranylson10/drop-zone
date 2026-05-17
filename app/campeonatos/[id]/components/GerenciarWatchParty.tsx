@@ -17,7 +17,7 @@ interface WatchParty {
  is_live: boolean
 }
 
-export default function GerenciarWatchParty({ campeonatoId }: { campeonatoId: string }) {
+export default function GerenciarWatchParty({ campeonatoId, canEdit = false }: { campeonatoId: string; canEdit?: boolean }) {
  const [lives, setLives] = useState<WatchParty[]>([])
  const [loading, setLoading] = useState(true)
  const [nomeCanal, setNomeCanal] = useState('')
@@ -90,6 +90,15 @@ export default function GerenciarWatchParty({ campeonatoId }: { campeonatoId: st
  }
 
  if (loading) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-[#142340]" /></div>
+
+ if (!canEdit) {
+  return (
+   <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Watch Party bloqueada</div>
+    <p className="mt-2 leading-6">Adicionar ou remover lives é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+   </div>
+  )
+ }
 
  return (
  <div className="space-y-8">

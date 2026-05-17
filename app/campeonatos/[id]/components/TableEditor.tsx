@@ -37,7 +37,7 @@ function pickLayoutSettings(data: any) {
  }
 }
 
-export default function TableEditor() {
+export default function TableEditor({ canEdit = false }: { canEdit?: boolean } = {}) {
  const params = useParams()
  const campeonatoId = params?.id as string
  
@@ -151,6 +151,15 @@ export default function TableEditor() {
  }
 
  if (loading) return <div className="p-10 text-center uppercase font-semibold text-[10px] animate-pulse">Carregando Estilos...</div>
+
+ if (!canEdit) {
+  return (
+   <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
+    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Ajuste manual bloqueado</div>
+    <p className="mt-2 leading-6">A tabela pode ser visualizada, mas editar layout e ajustes manuais é permitido apenas para o dono do campeonato ou ajudantes autorizados.</p>
+   </div>
+  )
+ }
 
  return (
  <div className="flex flex-col gap-6">
