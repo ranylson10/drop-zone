@@ -8,8 +8,6 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
-import { DropZoneLogo } from '@/app/components/DropZoneLogo'
-import { getSafeRedirectTo } from '@/lib/authRedirect'
 
 const CODE_LENGTH = 6
 
@@ -19,7 +17,6 @@ function ConfirmarContaPageInner() {
 
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
-  const [redirectTo, setRedirectTo] = useState('/perfil')
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''))
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
@@ -32,7 +29,6 @@ function ConfirmarContaPageInner() {
   useEffect(() => {
     const emailUrl = searchParams.get('email')
     const usernameUrl = searchParams.get('username')
-    const redirectUrl = searchParams.get('redirectTo')
 
     const emailStorage =
       typeof window !== 'undefined'
@@ -45,7 +41,6 @@ function ConfirmarContaPageInner() {
 
     setEmail((emailUrl || emailStorage || '').trim().toLowerCase())
     setUsername((usernameUrl || usernameStorage || '').trim())
-    setRedirectTo(getSafeRedirectTo(redirectUrl, '/perfil'))
 
     setTimeout(() => inputsRef.current[0]?.focus(), 100)
   }, [searchParams])
@@ -129,7 +124,7 @@ function ConfirmarContaPageInner() {
       }
 
       setMessage('Conta confirmada. Entrando no perfil...')
-      router.push(redirectTo)
+      router.push('/perfil')
       router.refresh()
     } catch (err: any) {
       setError(err?.message || 'Código inválido ou expirado.')
@@ -175,7 +170,7 @@ function ConfirmarContaPageInner() {
         <section className="hidden border border-slate-200 bg-white/80 p-8 lg:block">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 items-center justify-center border border-orange-200 bg-orange-50">
-              <DropZoneLogo size="md" animated />
+              <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_18px_rgba(56,189,248,0.28)]" />
             </div>
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-600">
@@ -210,7 +205,7 @@ function ConfirmarContaPageInner() {
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-14 w-14 items-center justify-center border border-orange-200 bg-orange-50 lg:hidden">
-                <DropZoneLogo size="sm" animated />
+                <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_14px_rgba(56,189,248,0.24)]" />
               </div>
               <div>
                 <div className="flex items-center gap-2 text-blue-600">

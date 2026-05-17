@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, ChevronRight, KeyRound, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { DropZoneLogo } from '@/app/components/DropZoneLogo'
 
 type Etapa = 'email' | 'codigo' | 'senha' | 'ok'
 
@@ -122,10 +121,10 @@ export default function RecuperarSenha() {
         <Link href="/login" className="mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 hover:text-blue-200"><ArrowLeft size={14} /> Login</Link>
 
         <div className="mb-7 text-center">
-          <div className="mx-auto grid h-24 w-24 place-items-center rounded-[28px] border border-blue-300/30 bg-white/[0.06] shadow-[0_0_45px_rgba(37,99,235,0.22)]">
-            <DropZoneLogo className="w-20" animated />
+          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[30px] border border-blue-300/30 bg-[#071225]/80 p-3 shadow-[0_0_55px_rgba(37,99,235,0.28)]">
+            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_18px_rgba(56,189,248,0.28)]" />
           </div>
-          <div className="mt-5 text-[10px] font-black uppercase tracking-[0.34em] text-orange-300">Drop Zone</div>
+          <div className="mt-4 text-[10px] font-black uppercase tracking-[0.34em] text-orange-300">Drop Zone</div>
           <h1 className="mt-2 text-4xl font-black uppercase tracking-[-0.08em] text-white">{titulo}</h1>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-400">{texto}</p>
         </div>

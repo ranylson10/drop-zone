@@ -18,7 +18,6 @@ import {
   User,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { DropZoneLogo } from '@/app/components/DropZoneLogo'
 
 type NavChild = {
   href: string
@@ -193,9 +192,15 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
         <Link
           href="/feed"
           onClick={onNavigate}
-          className="group flex h-[92px] items-center justify-center overflow-hidden rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#111d35] via-[#0c172b] to-[#08111f] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-400/35"
+          className="group flex min-h-[150px] flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-[#111d35] via-[#0c172b] to-[#08111f] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_35px_rgba(37,99,235,0.10)] transition hover:border-cyan-400/45"
         >
-          <DropZoneLogo animated className="max-w-[220px]" />
+          <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border border-cyan-300/25 bg-[#071225]/80 p-2.5 shadow-[0_0_34px_rgba(34,211,238,0.16)]">
+            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_16px_rgba(56,189,248,0.22)]" />
+          </div>
+          <div className="text-center leading-none">
+            <div className="text-[18px] font-black uppercase tracking-[-0.05em] text-white drop-shadow-[0_0_14px_rgba(56,189,248,0.20)]">DROP<span className="text-cyan-200">ZONE</span></div>
+            <div className="mt-1 text-[9px] font-black uppercase tracking-[0.32em] text-cyan-200/60">Sistema competitivo</div>
+          </div>
         </Link>
       </div>
 
