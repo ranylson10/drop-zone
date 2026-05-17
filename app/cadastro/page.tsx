@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Loader2, Lock, Mail, ShieldCheck, User, UserPlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedirect'
 
 function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
@@ -49,7 +50,16 @@ export default function Cadastro() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [redirectTo, setRedirectTo] = useState('/perfil')
   const router = useRouter()
+
+  useEffect(() => {
+    const destinoSeguro = getRedirectParamFromBrowser('/perfil')
+    setRedirectTo(destinoSeguro)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('dropzone_auth_redirect', destinoSeguro)
+    }
+  }, [])
 
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault()
@@ -74,14 +84,15 @@ export default function Cadastro() {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('dropzone_pending_email', emailLimpo)
         window.localStorage.setItem('dropzone_pending_username', usernameLimpo)
+        window.localStorage.setItem('dropzone_auth_redirect', redirectTo)
       }
       setMessage('Conta criada. Enviamos um código de 6 dígitos para seu e-mail.')
       if (data.session) {
-        router.push('/perfil')
+        router.push(redirectTo)
         router.refresh()
         return
       }
-      router.push(`/confirmar?email=${encodeURIComponent(emailLimpo)}&username=${encodeURIComponent(usernameLimpo)}`)
+      router.push(`/confirmar?email=${encodeURIComponent(emailLimpo)}&username=${encodeURIComponent(usernameLimpo)}&redirect=${encodeURIComponent(redirectTo)}`)
     } catch (err: any) {
       setError(err?.message || 'Erro ao criar conta.')
     } finally {
@@ -122,7 +133,7 @@ export default function Cadastro() {
           </button>
         </form>
 
-        <div className="mt-5 text-center text-xs font-semibold text-slate-400">Já tem conta? <Link href="/login" className="font-black uppercase tracking-[0.12em] text-blue-200 hover:text-white">Entrar</Link></div>
+        <div className="mt-5 text-center text-xs font-semibold text-slate-400">Já tem conta? <Link href={withRedirectParam('/login', redirectTo)} className="font-black uppercase tracking-[0.12em] text-blue-200 hover:text-white">Entrar</Link></div>
       </AuthCard>
     </AuthBackground>
   )

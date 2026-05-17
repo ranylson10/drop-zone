@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
+import { getSafeRedirectTo, withRedirectParam } from '@/lib/authRedirect'
 
 const CODE_LENGTH = 6
 
@@ -22,6 +23,7 @@ function ConfirmarContaPageInner() {
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [redirectTo, setRedirectTo] = useState('/perfil')
   const inputsRef = useRef<Array<HTMLInputElement | null>>([])
 
   const codigo = useMemo(() => digits.join(''), [digits])
@@ -29,6 +31,11 @@ function ConfirmarContaPageInner() {
   useEffect(() => {
     const emailUrl = searchParams.get('email')
     const usernameUrl = searchParams.get('username')
+    const redirectStorage =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('dropzone_auth_redirect')
+        : ''
+    const redirectUrl = getSafeRedirectTo(searchParams.get('redirect') || redirectStorage, '/perfil')
 
     const emailStorage =
       typeof window !== 'undefined'
@@ -41,6 +48,7 @@ function ConfirmarContaPageInner() {
 
     setEmail((emailUrl || emailStorage || '').trim().toLowerCase())
     setUsername((usernameUrl || usernameStorage || '').trim())
+    setRedirectTo(redirectUrl)
 
     setTimeout(() => inputsRef.current[0]?.focus(), 100)
   }, [searchParams])
@@ -121,10 +129,11 @@ function ConfirmarContaPageInner() {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('dropzone_pending_email')
         window.localStorage.removeItem('dropzone_pending_username')
+        window.localStorage.removeItem('dropzone_auth_redirect')
       }
 
-      setMessage('Conta confirmada. Entrando no perfil...')
-      router.push('/perfil')
+      setMessage('Conta confirmada. Voltando para o campeonato...')
+      router.push(redirectTo)
       router.refresh()
     } catch (err: any) {
       setError(err?.message || 'Código inválido ou expirado.')
@@ -170,7 +179,7 @@ function ConfirmarContaPageInner() {
         <section className="hidden border border-slate-200 bg-white/80 p-8 lg:block">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 items-center justify-center border border-orange-200 bg-orange-50">
-              <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_18px_rgba(56,189,248,0.28)]" />
+              <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
             </div>
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-600">
@@ -188,14 +197,14 @@ function ConfirmarContaPageInner() {
               Código de 6 dígitos
             </div>
             <p className="mt-2 text-sm font-medium leading-relaxed text-blue-900/70">
-              Enviamos um código para seu e-mail. Digite no campo ao lado para ativar a conta e entrar direto no perfil.
+              Enviamos um código para seu e-mail. Digite no campo ao lado para ativar a conta e voltar direto para o campeonato.
             </p>
           </div>
         </section>
 
         <section>
           <Link
-            href="/cadastro"
+            href={withRedirectParam('/cadastro', redirectTo)}
             className="mb-4 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500 hover:text-blue-600"
           >
             <ArrowLeft size={15} />
@@ -205,7 +214,7 @@ function ConfirmarContaPageInner() {
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-14 w-14 items-center justify-center border border-orange-200 bg-orange-50 lg:hidden">
-                <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_14px_rgba(56,189,248,0.24)]" />
+                <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-2 text-blue-600">
