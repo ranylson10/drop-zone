@@ -3,7 +3,7 @@
 import './globals.css'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Check,
   ChevronDown,
@@ -306,6 +306,10 @@ function TopHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
 }
 
 function AppChrome({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() || ''
+  const isAuthRoute = ['/login', '/cadastro', '/recuperar', '/confirmar', '/redefinir-senha'].some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  )
   const { user, perfisJogo } = usePerfil()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
@@ -313,6 +317,8 @@ function AppChrome({ children }: { children: React.ReactNode }) {
   const [isManager, setIsManager] = useState(false)
 
   useEffect(() => {
+    if (isAuthRoute) return
+
     let ativo = true
 
     async function carregarPermissoes() {
@@ -345,9 +351,11 @@ function AppChrome({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false
     }
-  }, [user])
+  }, [user, isAuthRoute])
 
   useEffect(() => {
+    if (isAuthRoute) return
+
     let ativo = true
 
     async function carregarManager() {
@@ -379,7 +387,15 @@ function AppChrome({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false
     }
-  }, [user, perfisJogo])
+  }, [user, perfisJogo, isAuthRoute])
+
+  if (isAuthRoute) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-[#020617] text-white [color-scheme:dark]">
+        {children}
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-screen">
