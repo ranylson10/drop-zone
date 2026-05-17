@@ -27,6 +27,11 @@ import {
   LockKeyhole,
   CheckCircle2,
   CircleDollarSign,
+  PlusCircle,
+  WalletCards,
+  QrCode,
+  MessageCircle,
+  ExternalLink,
 } from 'lucide-react'
 import Draggable from 'react-draggable'
 
@@ -421,18 +426,6 @@ function HeaderStat({ label, value }: { label: string; value: any }) {
   )
 }
 
-
-function PainelSemPermissaoEdicao() {
-  return (
-    <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
-      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">Edição bloqueada</div>
-      <p className="mt-2 leading-6">
-        Essa área continua visível, mas só o dono do campeonato ou ajudantes autorizados podem criar, alterar ou remover informações.
-      </p>
-    </div>
-  )
-}
-
 function LealtMiniInfo({ label, value }: { label: string; value: any }) {
   return (
     <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
@@ -536,6 +529,23 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const equipeSelecionadaCompra = useMemo(() => {
     return minhasEquipesCompra.find((equipe) => equipe.id === equipeCompraId) || null
   }, [minhasEquipesCompra, equipeCompraId])
+
+  const redirectCompraAtual = typeof window !== 'undefined'
+    ? `${window.location.pathname}${window.location.search}`
+    : `/campeonatos/${id}`
+
+  const linkCriarEquipeCompra = `/equipe/nova?redirect=${encodeURIComponent(redirectCompraAtual)}`
+  const linkGerenciarEquipesCompra = `/equipe?redirect=${encodeURIComponent(redirectCompraAtual)}`
+  const linkCriarLineCompra = equipeCompraId
+    ? `/equipe/${equipeCompraId}?aba=lines&redirect=${encodeURIComponent(redirectCompraAtual)}`
+    : linkGerenciarEquipesCompra
+  const linkDepositoPixCompra = `/carteira/deposito?metodo=pix&redirect=${encodeURIComponent(redirectCompraAtual)}`
+  const linkDepositoPaypalCompra = `/carteira/deposito?metodo=paypal&redirect=${encodeURIComponent(redirectCompraAtual)}`
+  const whatsappCompraLimpo = String(camp?.whatsapp_suporte || camp?.whatsapp_contato || '').replace(/\D/g, '')
+  const mensagemWhatsAppCompra = `Olá, vim pelo Drop Zone e quero comprar vaga no campeonato ${camp?.nome || ''}.`
+  const linkWhatsAppCompra = whatsappCompraLimpo
+    ? `https://wa.me/${whatsappCompraLimpo}?text=${encodeURIComponent(mensagemWhatsAppCompra)}`
+    : ''
 
   const carregarPainelCompraVaga = useCallback(async () => {
     try {
@@ -1295,11 +1305,6 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   }, [avaliacaoResumo, denunciaMetricas])
 
   useEffect(() => {
-    if (abaAtiva === 'configuracoes' && !podeGerenciarCampeonato) {
-      setAbaAtiva('informacoes')
-      return
-    }
-
     if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
@@ -1309,7 +1314,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       setAbaAtiva('informacoes')
       return
     }
-  }, [usaAbasCopa, usaAbasLiga, abaAtiva, podeGerenciarCampeonato])
+  }, [usaAbasCopa, usaAbasLiga, abaAtiva])
 
   const abasVisiveis = usaAbasCopa
     ? [
@@ -1498,18 +1503,23 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
               <div>
                 <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Equipe / line do usuário</label>
-                <select
-                  value={equipeCompraId}
-                  onChange={(event) => setEquipeCompraId(event.target.value)}
-                  className="h-10 w-full border border-zinc-200 bg-white px-3 text-xs font-bold uppercase text-[#142340] outline-none focus:border-slate-400"
-                >
-                  {minhasEquipesCompra.length === 0 && <option value="">Nenhuma equipe encontrada</option>}
-                  {minhasEquipesCompra.map((equipe) => (
-                    <option key={equipe.id} value={equipe.id}>
-                      {equipe.tag ? `[${equipe.tag}] ` : ''}{equipe.nome}
-                    </option>
-                  ))}
-                </select>
+                {minhasEquipesCompra.length > 0 ? (
+                  <select
+                    value={equipeCompraId}
+                    onChange={(event) => setEquipeCompraId(event.target.value)}
+                    className="h-10 w-full border border-zinc-200 bg-white px-3 text-xs font-bold uppercase text-[#142340] outline-none focus:border-slate-400"
+                  >
+                    {minhasEquipesCompra.map((equipe) => (
+                      <option key={equipe.id} value={equipe.id}>
+                        {equipe.tag ? `[${equipe.tag}] ` : ''}{equipe.nome}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex h-10 items-center border border-amber-200 bg-amber-50 px-3 text-[11px] font-black uppercase tracking-wide text-amber-800">
+                    Nenhuma equipe ou line pronta
+                  </div>
+                )}
               </div>
 
               <button
@@ -1518,9 +1528,64 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 disabled={comprandoVaga || !usuarioAtual || !equipeCompraId || vagasRestantesCompra <= 0}
                 className={`h-10 border px-4 text-[11px] font-black uppercase tracking-wide transition disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-200 disabled:text-zinc-500 ${tipoVisual.button}`}
               >
-                {comprandoVaga ? 'Processando...' : valorVagaCompra > 0 ? 'Comprar vaga' : 'Inscrever grátis'}
+                {comprandoVaga ? 'Processando...' : valorVagaCompra > 0 ? 'Pagar com carteira' : 'Inscrever grátis'}
               </button>
             </div>
+
+            {usuarioAtual && minhasEquipesCompra.length === 0 ? (
+              <div className="mt-3 border border-blue-100 bg-blue-50 p-3">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center border border-blue-200 bg-white text-blue-600">
+                    <PlusCircle size={17} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-700">Prepare sua inscrição</div>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-[#142340]/75">
+                      Para comprar vaga, crie uma equipe e depois monte ou importe uma line. Ao voltar para esta página, a equipe aparece aqui para finalizar a inscrição.
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <a href={linkCriarEquipeCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase tracking-wide text-white hover:bg-blue-500">
+                        <PlusCircle size={14} /> Criar equipe
+                      </a>
+                      <a href={linkGerenciarEquipesCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <Users size={14} /> Minhas equipes
+                      </a>
+                      <a href={linkCriarLineCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                        <List size={14} /> Criar line
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {usuarioAtual && minhasEquipesCompra.length > 0 ? (
+              <div className="mt-3 grid gap-2 md:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={abrirConfirmacaoCompra}
+                  disabled={comprandoVaga || !equipeCompraId || vagasRestantesCompra <= 0}
+                  className="inline-flex h-10 items-center justify-center gap-2 border border-emerald-200 bg-emerald-50 px-3 text-[10px] font-black uppercase tracking-wide text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <WalletCards size={14} /> Carteira
+                </button>
+                <a href={linkDepositoPixCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                  <QrCode size={14} /> Pix
+                </a>
+                <a href={linkDepositoPaypalCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
+                  <CircleDollarSign size={14} /> PayPal
+                </a>
+                {linkWhatsAppCompra ? (
+                  <a href={linkWhatsAppCompra} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center gap-2 border border-green-200 bg-green-50 px-3 text-[10px] font-black uppercase tracking-wide text-green-700 hover:bg-green-100">
+                    <MessageCircle size={14} /> WhatsApp <ExternalLink size={12} />
+                  </a>
+                ) : (
+                  <div className="inline-flex h-10 items-center justify-center border border-zinc-200 bg-zinc-50 px-3 text-center text-[10px] font-black uppercase tracking-wide text-zinc-400">
+                    WhatsApp indisponível
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             {mensagemCompraVaga && (
               <div className="mt-3 border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-bold text-zinc-700">
@@ -1588,10 +1653,10 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               />
             )}
 
-            {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'jogos' && <GerenciarJogos campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} />}
+            {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} />}
+            {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} />}
+            {abaAtiva === 'jogos' && <GerenciarJogos campeonatoId={id} />}
 
             {abaAtiva === 'tabela' && (
               <div className="flex flex-col gap-6">
@@ -1622,18 +1687,18 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   {subAbaTabela === 'classificacao' && <PointsTable data={equipesParticipantes} />}
                   {subAbaTabela === 'mvp' && <MVPTable data={rankingMvp} />}
-                  {subAbaTabela === 'sumula' && <SumulaPartida canEdit={podeGerenciarCampeonato} />}
+                  {subAbaTabela === 'sumula' && <SumulaPartida />}
                   {subAbaTabela === 'config' && (
                     <div className="max-w-4xl dz-card p-2">
-                      <TableEditor canEdit={podeGerenciarCampeonato} />
+                      <TableEditor />
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {abaAtiva === 'watchparty' && <GerenciarWatchParty campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'watchparty' && <GerenciarWatchParty campeonatoId={id} />}
+            {abaAtiva === 'regras' && <RegrasCampeonato campeonatoId={id} />}
             {abaAtiva === 'configuracoes' && podeGerenciarCampeonato && (
               <PainelConfiguracoesCampeonato
                 camp={camp}
