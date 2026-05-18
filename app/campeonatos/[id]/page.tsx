@@ -1638,8 +1638,8 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               />
             )}
 
-            {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} />}
-            {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} />}
+            {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
+            {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
             {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} />}
             {abaAtiva === 'jogos' && <GerenciarJogos campeonatoId={id} />}
 

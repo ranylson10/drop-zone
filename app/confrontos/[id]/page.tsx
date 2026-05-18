@@ -73,6 +73,15 @@ function ConfrontoMiniInfo({ titulo, valor, destaque = false }: { titulo: string
   )
 }
 
+function ConfrontoStatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-zinc-200 bg-white px-3 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{label}</div>
+      <div className="mt-1 truncate text-[14px] font-bold text-[#142340]">{value}</div>
+    </div>
+  )
+}
+
 export default function Page() {
   const params = useParams()
   const router = useRouter()
@@ -82,6 +91,7 @@ export default function Page() {
   const [equipesCount, setEquipesCount] = useState(0)
   const [aba, setAba] = useState<Aba>('avaliacoes')
   const [loading, setLoading] = useState(true)
+  const [canEdit, setCanEdit] = useState(false)
 
   useEffect(() => {
     carregar()
@@ -106,6 +116,24 @@ export default function Page() {
 
     setCampeonato(data)
     setEquipesCount(count || 0)
+
+    const { data: authData } = await supabase.auth.getUser()
+    const user = authData?.user || null
+
+    if (!user) {
+      setCanEdit(false)
+    } else {
+      const { data: permissaoData, error: permissaoError } = await supabase.rpc('fn_usuario_admin_do_campeonato', {
+        p_campeonato_id: id,
+      })
+
+      if (!permissaoError) {
+        setCanEdit(Boolean(permissaoData))
+      } else {
+        setCanEdit(Boolean((data as any)?.criado_por && (data as any).criado_por === user.id))
+      }
+    }
+
     setLoading(false)
   }
 
@@ -120,6 +148,7 @@ export default function Page() {
     []
   )
 
+  const mostrarResumoLateral = aba !== 'avaliacoes'
 
   if (loading) {
     return (
@@ -193,7 +222,7 @@ export default function Page() {
           </div>
         </header>
 
-        <section className="mt-4 grid grid-cols-1 gap-4">
+        <section className={`mt-4 grid gap-4 ${mostrarResumoLateral ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'grid-cols-1'}`}>
           <div className="min-w-0 border border-zinc-200 bg-white">
             <div className="grid grid-cols-2 border-b border-zinc-200 md:grid-cols-5">
               {tabs.map((tab) => {
@@ -217,12 +246,38 @@ export default function Page() {
 
             <main className={`min-h-[520px] ${aba === 'avaliacoes' ? 'p-2 md:p-4' : 'p-3 md:p-4'}`}>
               {aba === 'avaliacoes' && <AvaliacaoCampeonato campeonatoId={id} />}
-              {aba === 'equipes' && <GerenciarEquipes campeonatoId={id} />}
-              {aba === 'jogadores' && <AbaJogadores campeonatoId={id} />}
+              {aba === 'equipes' && <GerenciarEquipes campeonatoId={id} canEdit={canEdit} />}
+              {aba === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={canEdit} />}
               {aba === 'confrontos' && <GerenciarConfrontos campeonatoId={id} />}
               {aba === 'resultados' && <GerenciarResultadosConfronto campeonatoId={id} />}
             </main>
           </div>
+
+          {mostrarResumoLateral && (
+          <aside className="space-y-3">
+            <div className="border border-zinc-200 bg-white p-3">
+              <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+                <h2 className="text-[12px] font-black uppercase tracking-wide text-[#142340]">Resumo do confronto</h2>
+                <span className={`border px-2 py-1 text-[9px] font-bold uppercase tracking-wide ${CONFRONTO_COLOR.badge}`}>
+                  {campeonato.status || 'status'}
+                </span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <ConfrontoStatCard label="Premiação" value={formatarMoeda(campeonato.valor_premiacao)} />
+                <ConfrontoStatCard label="Vagas" value={`${equipesCount}/${campeonato.vagas || 0}`} />
+                <ConfrontoStatCard label="Inscrição" value={formatarMoeda(campeonato.valor_vaga)} />
+                <ConfrontoStatCard label="Início" value={formatarData(campeonato.data_inicio)} />
+              </div>
+            </div>
+
+            {campeonato.banner_url && (
+              <div className="overflow-hidden border border-zinc-200 bg-white p-2">
+                <img src={campeonato.banner_url} alt="" className="max-h-[360px] w-full object-cover" />
+              </div>
+            )}
+          </aside>
+          )}
         </section>
       </div>
     </div>
