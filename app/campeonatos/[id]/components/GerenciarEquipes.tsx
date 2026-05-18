@@ -829,109 +829,62 @@ export default function GerenciarEquipes({
 
   return (
     <div className="space-y-5">
-      <div className="border border-zinc-200 bg-white p-4 -[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <Search
-              size={14}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
-            />
+      <div className="border border-zinc-200 bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_auto_auto] lg:items-end">
+          <label className="block">
+            <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Buscar equipe
+            </span>
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="BUSCAR..."
-              className="h-11 w-full border border-zinc-200 bg-white pl-11 pr-4 text-[11px] font-semibold uppercase text-[#142340] outline-none placeholder:text-zinc-500"
+              placeholder="Buscar por nome ou tag..."
+              className="h-11 w-full border border-zinc-200 bg-white px-4 text-[12px] font-semibold text-[#142340] outline-none placeholder:text-zinc-400 focus:border-[#2563eb]"
             />
-          </div>
+          </label>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setTipoFiltro("todas")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "todas"
-                  ? "bg-[#2563eb] text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
+          <label className="block">
+            <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Filtrar
+            </span>
+            <select
+              value={tipoFiltro}
+              onChange={(e) => setTipoFiltro(e.target.value as TipoFiltro)}
+              className="h-11 w-full cursor-pointer border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase text-[#142340] outline-none focus:border-[#2563eb]"
             >
-              Todas
-            </button>
+              <option value="todas">Todas</option>
+              <option value="site">Vendidas</option>
+              <option value="organizador">Organizador</option>
+              <option value="agendadas">Agendadas</option>
+              <option value="avulsas">Avulsas</option>
+              <option value="app">Do app</option>
+            </select>
+          </label>
 
+          <button
+            onClick={() => carregarEquipes()}
+            className="flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[10px] font-semibold uppercase text-[#142340] transition hover:bg-zinc-50"
+          >
+            <RefreshCw size={14} />
+            Atualizar
+          </button>
+
+          {canManage ? (
             <button
-              onClick={() => setTipoFiltro("site")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "site"
-                  ? "bg-[#2563eb] text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
+              onClick={() => {
+                resetModalNovaEquipe();
+                setShowModalNovaEquipe(true);
+              }}
+              className="flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-[#2563eb] px-4 text-[10px] font-semibold uppercase text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition hover:brightness-95"
             >
-              Vendidas
+              <Plus size={14} />
+              Nova equipe
             </button>
+          ) : null}
+        </div>
 
-            <button
-              onClick={() => setTipoFiltro("organizador")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "organizador"
-                  ? "bg-[#2563eb] text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
-            >
-              Organizador
-            </button>
-
-            <button
-              onClick={() => setTipoFiltro("agendadas")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "agendadas"
-                  ? "bg-orange-400 text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
-            >
-              Agendadas
-            </button>
-
-            <button
-              onClick={() => setTipoFiltro("app")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "app"
-                  ? "bg-[#2563eb] text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
-            >
-              App
-            </button>
-
-            <button
-              onClick={() => setTipoFiltro("avulsas")}
-              className={`px-4 py-2 text-[10px] font-semibold uppercase transition-all ${
-                tipoFiltro === "avulsas"
-                  ? "bg-[#2563eb] text-[#142340] border border-zinc-200"
-                  : "text-zinc-500"
-              }`}
-            >
-              Avulsas
-            </button>
-
-            <button
-              onClick={() => carregarEquipes()}
-              className="flex h-11 items-center gap-2 border border-zinc-200 bg-white px-4 text-[10px] font-semibold uppercase text-[#142340]"
-            >
-              <RefreshCw size={14} />
-              Atualizar
-            </button>
-
-            {canManage ? (
-              <button
-                onClick={() => {
-                  resetModalNovaEquipe();
-                  setShowModalNovaEquipe(true);
-                }}
-                className="flex h-11 items-center gap-2 border border-zinc-200 bg-[#2563eb] px-4 text-[10px] font-semibold uppercase text-[#142340] -[3px_3px_0px_0px_rgba(0,0,0,1)]"
-              >
-                <Plus size={14} />
-                Nova equipe
-              </button>
-            ) : null}
-          </div>
+        <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          {equipesFiltradas.length} equipe(s) encontrada(s)
         </div>
       </div>
 
