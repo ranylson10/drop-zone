@@ -311,6 +311,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
  const [horaJogo, setHoraJogo] = useState('19:00')
  const [melhorDe, setMelhorDe] = useState('1')
  const [quantidadeQuedas, setQuantidadeQuedas] = useState('1')
+ const [showCriarConfronto, setShowCriarConfronto] = useState(false)
 
  const carregar = useCallback(async () => {
   if (!campeonatoId) return
@@ -441,7 +442,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
    nome: nomeConfronto.trim() || `${getEquipeNome(equipeAObj)} x ${getEquipeNome(equipeBObj)}`,
    nome_bloco: tipoConfronto === 'pontos_corridos' ? `RODADA ${String(numeroConfronto).padStart(2, '0')}` : `CONFRONTO ${String(numeroConfronto).padStart(2, '0')}`,
    quantidade_partidas: Number(melhorDe || 1),
-   quedas: criarPayloadQuedas(Number(quantidadeQuedas || 1)),
+   quedas: criarPayloadQuedas(Number(melhorDe || 1)),
    configuracao,
    observacoes: JSON.stringify(configuracao),
    ordem: numeroConfronto,
@@ -560,11 +561,11 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
            const equipe2 = jogo.equipes?.[1] || null
            const r = getResumoJogo(jogo)
            const melhorDeTexto = jogo.configuracao?.melhor_de || jogo.quantidade_partidas || melhorDe
-           const qtdQuedas = jogo.configuracao?.quedas || (Array.isArray(jogo.quedas) ? jogo.quedas.length : quantidadeQuedas)
+           const qtdQuedas = jogo.configuracao?.quedas || jogo.configuracao?.melhor_de || jogo.quantidade_partidas || melhorDe
            const resultadoFinal = r.status === 'Finalizado' ? `${r.vitoriasA} x ${r.vitoriasB}` : 'X'
 
            return (
-            <div key={jogo.id} className="grid items-center gap-3 rounded-sm border border-[#101827] bg-[#121b2a] px-4 py-3 text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,0.35)] lg:grid-cols-[42px_minmax(280px,1fr)_220px_70px_90px_auto]">
+            <div key={jogo.id} className="grid items-center gap-3 rounded-sm border border-[#101827] bg-[#121b2a] px-4 py-3 text-white lg:grid-cols-[42px_minmax(280px,1fr)_220px_70px_90px_auto]">
              <div className="text-center text-[12px] font-black text-zinc-300">{String(jogo.ordem || jogo.numero || index + 1).padStart(2, '0')}</div>
 
              <div className="flex min-w-0 items-center justify-center gap-4">
@@ -603,11 +604,34 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
     </div>
 
     <div className={classNamePainel()}>
-     <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340]">Criar confronto</div>
-     <div className="grid gap-3 md:grid-cols-3"><select value={faseSelecionada} onChange={(e) => setFaseSelecionada(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a fase</option>{fases.map((fase) => <option key={fase.id} value={fase.id}>{fase.nome || 'Fase'} • {getTipoLabel(fase.tipo_fase)}</option>)}</select><select value={tipoConfronto} onChange={(e) => setTipoConfronto(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="mata_mata">Mata-mata</option><option value="dupla_eliminacao">Dupla eliminação</option><option value="pontos_corridos">Pontos corridos</option></select><input value={nomeConfronto} onChange={(e) => setNomeConfronto(e.target.value)} placeholder="Nome do confronto (opcional)" className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" /></div>
-     {tipoConfronto !== 'pontos_corridos' && <div className="mt-3 grid gap-3 md:grid-cols-[1fr,34px,1fr] md:items-center"><select value={equipeA} onChange={(e) => { setEquipeA(e.target.value); if (e.target.value === equipeB) setEquipeB('') }} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a equipe 1</option>{opcoesEquipeA.map((equipe) => <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>)}</select><div className="hidden text-center text-2xl font-black text-[#142340] md:block">X</div><select value={equipeB} onChange={(e) => setEquipeB(e.target.value)} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a equipe 2</option>{opcoesEquipeB.map((equipe) => <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>)}</select></div>}
-     <div className="mt-3 grid gap-3 md:grid-cols-4"><input type="date" value={dataJogo} onChange={(e) => setDataJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" /><input type="time" value={horaJogo} onChange={(e) => setHoraJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" /><select value={melhorDe} onChange={(e) => setMelhorDe(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="1">MD1</option><option value="3">MD3</option><option value="5">MD5</option><option value="7">MD7</option></select><select value={quantidadeQuedas} onChange={(e) => setQuantidadeQuedas(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="1">1 queda</option><option value="2">2 quedas</option><option value="3">3 quedas</option><option value="4">4 quedas</option><option value="5">5 quedas</option><option value="6">6 quedas</option><option value="7">7 quedas</option></select></div>
-     {tipoConfronto === 'pontos_corridos' ? <button type="button" onClick={gerarPontosCorridos} disabled={salvando} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60"><ListOrdered size={14} /> Gerar todos contra todos</button> : <div className="mt-4 grid gap-3 md:grid-cols-2"><button type="button" onClick={criarConfrontoIndividual} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60"><Swords size={14} /> Criar confronto</button><button type="button" onClick={gerarConfrontosAutomaticamente} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] hover:bg-[#f3f3ef] disabled:opacity-60"><Shuffle size={14} /> Gerar automático</button></div>}
+     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340]">Confrontos</div>
+       <p className="mt-2 text-sm font-semibold text-zinc-500">Em pontos corridos, gere todos os jogos de uma vez. Para mata-mata, adicione confrontos manualmente.</p>
+      </div>
+      <button type="button" onClick={() => setShowCriarConfronto((valor) => !valor)} className="inline-flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] hover:bg-[#f3f3ef]">
+       <Plus size={14} /> {showCriarConfronto ? 'Fechar' : 'Adicionar confronto'}
+      </button>
+     </div>
+
+     <div className="grid gap-3 md:grid-cols-2">
+      <select value={faseSelecionada} onChange={(e) => setFaseSelecionada(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a fase</option>{fases.map((fase) => <option key={fase.id} value={fase.id}>{fase.nome || 'Fase'} • {getTipoLabel(fase.tipo_fase)}</option>)}</select>
+      <select value={tipoConfronto} onChange={(e) => setTipoConfronto(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="mata_mata">Mata-mata</option><option value="dupla_eliminacao">Dupla eliminação</option><option value="pontos_corridos">Pontos corridos</option></select>
+     </div>
+
+     {tipoConfronto === 'pontos_corridos' ? (
+      <button type="button" onClick={gerarPontosCorridos} disabled={salvando} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60"><ListOrdered size={14} /> Gerar todos os confrontos</button>
+     ) : null}
+
+     {showCriarConfronto ? (
+      <div className="mt-4 border-t border-zinc-200 pt-4">
+       <input value={nomeConfronto} onChange={(e) => setNomeConfronto(e.target.value)} placeholder="Nome do confronto (opcional)" className="h-11 w-full border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" />
+       <div className="mt-3 grid gap-3 md:grid-cols-[1fr,34px,1fr] md:items-center"><select value={equipeA} onChange={(e) => { setEquipeA(e.target.value); if (e.target.value === equipeB) setEquipeB('') }} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a equipe 1</option>{opcoesEquipeA.map((equipe) => <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>)}</select><div className="hidden text-center text-2xl font-black text-[#142340] md:block">X</div><select value={equipeB} onChange={(e) => setEquipeB(e.target.value)} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="">Selecione a equipe 2</option>{opcoesEquipeB.map((equipe) => <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>)}</select></div>
+       <div className="mt-3 grid gap-3 md:grid-cols-3"><input type="date" value={dataJogo} onChange={(e) => setDataJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" /><input type="time" value={horaJogo} onChange={(e) => setHoraJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" /><select value={melhorDe} onChange={(e) => setMelhorDe(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none"><option value="1">MD1</option><option value="3">MD3</option><option value="5">MD5</option><option value="7">MD7</option></select></div>
+       <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">A quantidade de quedas será definida automaticamente pelo MD selecionado.</div>
+       <div className="mt-4 grid gap-3 md:grid-cols-2"><button type="button" onClick={criarConfrontoIndividual} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60"><Swords size={14} /> Criar confronto</button><button type="button" onClick={gerarConfrontosAutomaticamente} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] hover:bg-[#f3f3ef] disabled:opacity-60"><Shuffle size={14} /> Gerar automático</button></div>
+      </div>
+     ) : null}
     </div>
    </div>
   </div>
