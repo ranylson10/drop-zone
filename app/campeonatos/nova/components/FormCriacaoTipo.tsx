@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import FormProdutora from '@/app/produtora/components/FormProdutora'
+import FormProdutora from '@/app/components/FormCriarProdutora'
 import { ArrowLeft, ChevronDown, Loader2, Plus, Trash2, Swords, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePerfil } from '@/app/contexts/PerfilContext'
