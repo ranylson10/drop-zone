@@ -129,6 +129,8 @@ export default function Page() {
     []
   )
 
+  const mostrarResumoLateral = aba !== 'avaliacoes'
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc] px-4 py-10 text-center text-[13px] font-medium text-zinc-500">
@@ -201,7 +203,7 @@ export default function Page() {
           </div>
         </header>
 
-        <section className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className={`mt-4 grid gap-4 ${mostrarResumoLateral ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'grid-cols-1'}`}>
           <div className="min-w-0 border border-zinc-200 bg-white">
             <div className="grid grid-cols-2 border-b border-zinc-200 md:grid-cols-5">
               {tabs.map((tab) => {
@@ -223,7 +225,7 @@ export default function Page() {
               })}
             </div>
 
-            <main className="min-h-[520px] p-3 md:p-4">
+            <main className={`min-h-[520px] ${aba === 'avaliacoes' ? 'p-2 md:p-4' : 'p-3 md:p-4'}`}>
               {aba === 'avaliacoes' && <AvaliacaoCampeonato campeonatoId={id} />}
               {aba === 'equipes' && <GerenciarEquipes campeonatoId={id} />}
               {aba === 'jogadores' && <AbaJogadores campeonatoId={id} />}
@@ -232,6 +234,7 @@ export default function Page() {
             </main>
           </div>
 
+          {mostrarResumoLateral && (
           <aside className="space-y-3">
             <div className="border border-zinc-200 bg-white p-3">
               <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
@@ -255,6 +258,7 @@ export default function Page() {
               </div>
             )}
           </aside>
+          )}
         </section>
       </div>
     </div>
