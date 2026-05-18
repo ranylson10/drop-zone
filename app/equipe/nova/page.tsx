@@ -1,10 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import FormCriarEquipe from '@/app/components/FormCriarEquipe'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Loader2 } from 'lucide-react'
 
-export default function NovaEquipePage() {
+function NovaEquipeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect')
@@ -32,5 +33,21 @@ export default function NovaEquipePage() {
         />
       </div>
     </main>
+  )
+}
+
+export default function NovaEquipePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center bg-[#f5f8fb] px-4 text-slate-950">
+          <div className="inline-flex items-center gap-2 border border-slate-200 bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+            <Loader2 size={16} className="animate-spin" /> Carregando formulário
+          </div>
+        </main>
+      }
+    >
+      <NovaEquipeContent />
+    </Suspense>
   )
 }
