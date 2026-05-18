@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import FormProdutora from '@/app/components/FormProdutora'
+import FormProdutora from '@/app/produtora/components/FormProdutora'
 import { ArrowLeft, ChevronDown, Loader2, Plus, Trash2, Swords, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePerfil } from '@/app/contexts/PerfilContext'
@@ -157,7 +157,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     edicao: '1',
     valor_vaga: '0',
     valor_premiacao: '0',
-    vagas: isConfronto ? '2' : '12',
+    vagas: isConfronto ? '16' : '12',
     plataforma: 'Mobile',
     categoria: isConfronto ? 'Squad' : 'Squad',
     regiao: 'Brasil (BR)',
@@ -179,7 +179,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
     modo_confronto: '4x4',
     estilo_confronto: 'ump',
-    formato_evento: 'mata_mata',
+    formato_evento: isConfronto ? 'mata_mata' : 'mata_mata',
     tem_prorrogacao: 'nao',
     tipo_mapa: 'fixo',
     mapa_padrao: 'BERMUDA',
@@ -1127,7 +1127,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                     Configuração do confronto
                   </p>
                   <p className="mt-1 text-sm font-semibold text-zinc-500">
-                    Defina o modo do lobby, o estilo e o formato competitivo do evento.
+                    Defina o modo 1x1 até 4x4, quantidade de equipes, mata-mata, pontos corridos ou grupos + playoff.
                   </p>
                 </div>
 
@@ -1607,7 +1607,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                     ? 'Preencha os dados e revise as fases e grupos antes de criar o xtreino.'
                     : 'No xtreino, você escolhe o formato primeiro. Jogo único reaproveita a lógica do diário.'
                   : isConfronto
-                    ? 'Esse formulário já salva os dados base do campeonato e toda a configuração inicial do confronto.'
+                    ? 'Esse formulário cria um campeonato de confronto com várias equipes. Apostado continua separado no fluxo de valor casado.'
                     : 'Esse formulário já salva os dados base do campeonato e a config inicial do modo.'}
               </p>
 
@@ -1627,7 +1627,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
         {produtoraModalAberto ? (
           <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/60 px-4 py-6 backdrop-blur-md">
-            <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-zinc-200 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
+            <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-zinc-200 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
               <FormProdutora
                 mode="create"
                 embedded

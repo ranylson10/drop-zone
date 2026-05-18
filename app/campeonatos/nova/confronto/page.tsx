@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import FormCriacaoTipo from '@/app/campeonatos/nova/components/FormCriacaoTipo'
 
 export default function Page() {
- redirect('/confrontos/nova')
+  return <FormCriacaoTipo tipo="confronto" />
 }
