@@ -264,10 +264,18 @@ export default function GerenciarResultadosConfronto({ campeonatoId }: { campeon
 
  const equipesDoJogo = useMemo(() => {
  if (!jogoSelecionadoId) return [] as EquipeItem[]
- return jogoEquipes
- .filter((item) => item.jogo_id === jogoSelecionadoId)
- .map((item) => mapaEquipes.get(item.campeonato_equipe_id))
- .filter(Boolean) as EquipeItem[]
+ const vinculadas = jogoEquipes.filter((item) => item.jogo_id === jogoSelecionadoId).slice(0, 2)
+ return vinculadas.map((item) => {
+ const equipe = mapaEquipes.get(item.campeonato_equipe_id)
+ if (equipe) return equipe
+ return {
+ id: item.campeonato_equipe_id,
+ equipe_id: null,
+ equipe_avulsa_id: null,
+ equipes: { nome: 'Equipe', tag: null, logo_url: null },
+ equipe_avulsa: null,
+ } as EquipeItem
+ })
  }, [jogoEquipes, jogoSelecionadoId, mapaEquipes])
 
  const equipeA = equipesDoJogo[0] || null

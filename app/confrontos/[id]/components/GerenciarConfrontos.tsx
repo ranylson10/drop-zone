@@ -265,7 +265,7 @@ function PreviewEquipeSelecionada({
 }
 
 
-export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: string }) {
+export default function GerenciarConfrontos({ campeonatoId, canEdit = false }: { campeonatoId: string; canEdit?: boolean }) {
  const [loading, setLoading] = useState(true)
  const [salvando, setSalvando] = useState(false)
 
@@ -536,7 +536,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
              <div className="flex h-12 w-12 items-center justify-center overflow-hidden border border-zinc-200 bg-white">{getEquipeLogo(equipe2) ? <img src={getEquipeLogo(equipe2) as string} alt="" className="h-full w-full object-cover" /> : <span className="text-lg font-black text-zinc-500">{getEquipeNome(equipe2).charAt(0).toUpperCase()}</span>}</div>
              <div className="min-w-0"><div className="truncate text-base font-black uppercase text-[#142340]">{getEquipeNome(equipe2)}</div><div className="text-[11px] font-semibold uppercase text-zinc-500">{getEquipeTag(equipe2) || 'Sem tag'}</div></div>
             </div>
-            <div className="space-y-2 xl:text-right"><div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{jogo.nome_bloco || 'Confronto'} • {formatarHorario(jogo)}</div><span className={`inline-flex border px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${r.status === 'Finalizado' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : r.status === 'Em andamento' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}>{r.status}</span><div className="text-[11px] font-semibold uppercase text-zinc-500">Rounds {r.roundsA}x{r.roundsB} • Kills {r.abatesA}x{r.abatesB}</div>{vencedor && <div className="text-[11px] font-black uppercase text-[#142340]">Vencedor: {vencedor}</div>}<button type="button" onClick={() => excluirConfronto(jogo.id)} className="inline-flex h-8 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#142340] hover:bg-[#ffe5e0]"><Trash2 size={13} /> Excluir</button></div>
+            <div className="space-y-2 xl:text-right"><div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{jogo.nome_bloco || 'Confronto'} • {formatarHorario(jogo)}</div><span className={`inline-flex border px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${r.status === 'Finalizado' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : r.status === 'Em andamento' ? 'border-yellow-200 bg-yellow-50 text-yellow-700' : 'border-zinc-200 bg-zinc-50 text-zinc-600'}`}>{r.status}</span><div className="text-[11px] font-semibold uppercase text-zinc-500">Rounds {r.roundsA}x{r.roundsB} • Kills {r.abatesA}x{r.abatesB}</div>{vencedor && <div className="text-[11px] font-black uppercase text-[#142340]">Vencedor: {vencedor}</div>}{canEdit ? <button type="button" onClick={() => excluirConfronto(jogo.id)} className="inline-flex h-8 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#142340] hover:bg-[#ffe5e0]"><Trash2 size={13} /> Excluir</button> : null}</div>
            </div>
           </div>
          })}
@@ -547,6 +547,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
     )}
    </div>
 
+   {canEdit ? (
    <div className="grid gap-5 xl:grid-cols-2">
     <div className={classNamePainel()}>
      <div className="mb-4"><div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340]">Criar fase</div><p className="mt-2 text-sm font-semibold text-zinc-500">Defina a fase e o formato.</p></div>
@@ -561,6 +562,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
      </div>
     </div>
    </div>
+   ) : null}
   </div>
  )
 }
