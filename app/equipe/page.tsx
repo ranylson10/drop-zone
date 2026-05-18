@@ -7,6 +7,7 @@ import { usePerfil } from "../contexts/PerfilContext";
 import Image from "next/image";
 import Link from "next/link";
 import MessageShortcut from "../components/chat/MessageShortcut";
+import FormCriarEquipe from "../components/FormCriarEquipe";
 import RankingTierBadge, { formatScore } from "../components/RankingTierBadge";
 import { useRouter } from "next/navigation";
 import {
@@ -645,104 +646,21 @@ export default function EquipePage() {
           </div>
         </section>
 
-        {modoEdicao && (
-          <section className="mb-4 border border-slate-200 bg-white p-4">
-            <h2 className="mb-3 text-[16px] font-semibold uppercase text-slate-950">Nova equipe</h2>
+        {modoEdicao ? (
+          <FormCriarEquipe
+            modal
+            onCancel={fecharFormulario}
+            onSuccess={async (equipeCriada) => {
+              await carregarEquipes();
+              await recarregarPerfis();
+              fecharFormulario();
 
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-              <input
-                value={form.nome}
-                onChange={(e) => setForm((s) => ({ ...s, nome: e.target.value }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-sky-500"
-                placeholder="Nome da equipe"
-              />
-
-              <input
-                value={form.tag}
-                onChange={(e) => setForm((s) => ({ ...s, tag: e.target.value.toUpperCase() }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] uppercase text-slate-900 outline-none focus:border-sky-500"
-                placeholder="TAG"
-                maxLength={10}
-              />
-
-              <input
-                type="date"
-                value={form.data_fundacao}
-                onChange={(e) => setForm((s) => ({ ...s, data_fundacao: e.target.value }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-sky-500"
-              />
-
-              <input
-                value={form.cidade}
-                onChange={(e) => setForm((s) => ({ ...s, cidade: e.target.value }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-sky-500"
-                placeholder="Cidade"
-              />
-
-              <input
-                value={form.estado}
-                onChange={(e) => setForm((s) => ({ ...s, estado: e.target.value }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-sky-500"
-                placeholder="Estado"
-              />
-
-              <input
-                value={form.pais}
-                onChange={(e) => setForm((s) => ({ ...s, pais: e.target.value }))}
-                className="h-10 border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none focus:border-sky-500"
-                placeholder="País"
-              />
-
-              <label className="flex h-10 cursor-pointer items-center gap-2 border border-slate-300 bg-slate-50 px-3 text-[13px] text-slate-700 hover:border-sky-400">
-                <Upload size={15} />
-                <span className="truncate">{arquivoLogo ? arquivoLogo.name : "Selecionar logo"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setArquivoLogo(e.target.files?.[0] || null)} />
-              </label>
-
-              <label className="flex h-10 cursor-pointer items-center gap-2 border border-slate-300 bg-slate-50 px-3 text-[13px] text-slate-700 hover:border-sky-400">
-                <ImageIcon size={15} />
-                <span className="truncate">{arquivoCapa ? arquivoCapa.name : "Selecionar capa"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setArquivoCapa(e.target.files?.[0] || null)} />
-              </label>
-
-              <div className="flex gap-2">
-                {previewLogo && (
-                  <div className="relative h-10 w-10 overflow-hidden border border-slate-300 bg-slate-100">
-                    <Image src={previewLogo} alt="Prévia logo" fill className="object-cover" />
-                  </div>
-                )}
-                {previewCapa && (
-                  <div className="relative h-10 w-20 overflow-hidden border border-slate-300 bg-slate-100">
-                    <Image src={previewCapa} alt="Prévia capa" fill className="object-cover" />
-                  </div>
-                )}
-              </div>
-
-              <textarea
-                value={form.descricao}
-                onChange={(e) => setForm((s) => ({ ...s, descricao: e.target.value }))}
-                className="min-h-[74px] border border-slate-300 bg-white px-3 py-2 text-[13px] text-slate-900 outline-none focus:border-sky-500 md:col-span-3"
-                placeholder="Descrição da equipe"
-              />
-            </div>
-
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={salvarEquipe}
-                disabled={salvando}
-                className="bg-sky-500 px-4 py-2 text-[12px] font-semibold uppercase text-[#142340] disabled:opacity-60 hover:bg-sky-600"
-              >
-                {salvando ? "Salvando..." : "Salvar equipe"}
-              </button>
-              <button
-                onClick={fecharFormulario}
-                className="border border-slate-300 bg-white px-4 py-2 text-[12px] font-semibold uppercase text-slate-700 hover:border-slate-400"
-              >
-                Cancelar
-              </button>
-            </div>
-          </section>
-        )}
+              if (equipeCriada?.id) {
+                router.push(`/equipe/${equipeCriada.id}`);
+              }
+            }}
+          />
+        ) : null}
 
         <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {[
