@@ -247,7 +247,6 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
   const [jogoEquipes, setJogoEquipes] = useState<JogoEquipeItem[]>([])
 
   const [showNovaFase, setShowNovaFase] = useState(false)
-  const [showNovoConfronto, setShowNovoConfronto] = useState(false)
 
   const [novaFase, setNovaFase] = useState('')
   const [novoTipoFase, setNovoTipoFase] = useState('mata_mata')
@@ -562,7 +561,6 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
         }
       }
       toast.success('Confrontos gerados')
-      setShowNovoConfronto(false)
       await carregar()
     } catch (error: any) {
       console.error('Erro ao gerar pontos corridos:', error)
@@ -594,7 +592,6 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
       }
 
       toast.success('Confrontos gerados')
-      setShowNovoConfronto(false)
       await carregar()
     } catch (error: any) {
       console.error('Erro ao gerar confrontos:', error)
@@ -694,7 +691,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
             <button type="button" onClick={() => setShowNovaFase((valor) => !valor)} className="inline-flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340] hover:bg-[#f3f3ef]">
               <Plus size={14} /> Nova fase
             </button>
-            <button type="button" onClick={() => setShowNovoConfronto((valor) => !valor)} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-5 text-[11px] font-black uppercase tracking-[0.14em] text-white hover:brightness-95">
+            <button type="button" onClick={criarConfrontoIndividual} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-5 text-[11px] font-black uppercase tracking-[0.14em] text-white hover:brightness-95">
               <Plus size={14} /> Adicionar confronto
             </button>
             <button type="button" onClick={carregar} className="inline-flex h-11 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340] hover:bg-[#f3f3ef]">
@@ -720,74 +717,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
           </div>
         ) : null}
 
-        {showNovoConfronto ? (
-          <div className="mb-5 border border-zinc-200 bg-[#eceee5] p-4">
-            <div className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#142340]">Adicionar confronto</div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <select value={faseSelecionada} onChange={(e) => setFaseSelecionada(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none">
-                <option value="">Selecione a fase</option>
-                {fases.map((fase) => (
-                  <option key={fase.id} value={fase.id}>{fase.nome || 'Fase'} • {getTipoLabel(fase.tipo_fase)}</option>
-                ))}
-              </select>
-              <select value={tipoConfronto} onChange={(e) => setTipoConfronto(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none">
-                <option value="mata_mata">Mata-mata</option>
-                <option value="dupla_eliminacao">Dupla eliminação</option>
-                <option value="pontos_corridos">Pontos corridos</option>
-              </select>
-              <input value={nomeConfronto} onChange={(e) => setNomeConfronto(e.target.value)} placeholder="Nome do confronto (opcional)" className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" />
-            </div>
-
-            {tipoConfronto !== 'pontos_corridos' ? (
-              <>
-                <div className="mt-3 grid gap-3 md:grid-cols-[1fr_34px_1fr] md:items-center">
-                  <select value={equipeA} onChange={(e) => { setEquipeA(e.target.value); if (e.target.value === equipeB) setEquipeB('') }} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none">
-                    <option value="">Equipe 1</option>
-                    {opcoesEquipeA.map((equipe) => (
-                      <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>
-                    ))}
-                  </select>
-                  <div className="hidden text-center text-2xl font-black text-[#142340] md:block">X</div>
-                  <select value={equipeB} onChange={(e) => setEquipeB(e.target.value)} className="h-12 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none">
-                    <option value="">Equipe 2</option>
-                    {opcoesEquipeB.map((equipe) => (
-                      <option key={equipe.id} value={equipe.id}>{getEquipeNome(equipe)}{getEquipeTag(equipe) ? ` • ${getEquipeTag(equipe)}` : ''}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  <input type="date" value={dataJogo} onChange={(e) => setDataJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" />
-                  <input type="time" value={horaJogo} onChange={(e) => setHoraJogo(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none" />
-                  <select value={melhorDe} onChange={(e) => setMelhorDe(e.target.value)} className="h-11 border border-zinc-200 bg-white px-3 text-sm font-semibold outline-none">
-                    <option value="1">MD1</option>
-                    <option value="3">MD3</option>
-                    <option value="5">MD5</option>
-                    <option value="7">MD7</option>
-                  </select>
-                </div>
-                <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">MD define automaticamente a quantidade de quedas.</div>
-              </>
-            ) : null}
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {tipoConfronto === 'pontos_corridos' ? (
-                <button type="button" onClick={gerarPontosCorridos} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60">
-                  <ListOrdered size={14} /> Gerar todos os confrontos
-                </button>
-              ) : (
-                <button type="button" onClick={criarConfrontoIndividual} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] text-white hover:brightness-95 disabled:opacity-60">
-                  <Swords size={14} /> Criar confronto
-                </button>
-              )}
-              {tipoConfronto !== 'pontos_corridos' ? (
-                <button type="button" onClick={gerarConfrontosAutomaticamente} disabled={salvando} className="inline-flex h-12 items-center justify-center gap-2 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#142340] hover:bg-[#f3f3ef] disabled:opacity-60">
-                  <Shuffle size={14} /> Gerar automático
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
+        
         {loading ? (
           <div className="border border-dashed border-zinc-200 bg-white p-8 text-center text-sm font-semibold text-zinc-500">Carregando confrontos...</div>
         ) : confrontosPorFase.length === 0 ? (
@@ -809,7 +739,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
                       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100"><CalendarDays size={19} className="text-zinc-500" /></div>
                       <div className="text-sm font-bold text-[#142340]">Nenhum confronto adicionado</div>
                       <p className="mt-1 text-sm text-zinc-500">Clique em “Adicionar confronto” para criar o primeiro.</p>
-                      <button type="button" onClick={() => { setFaseSelecionada(fase.id); setTipoConfronto(fase.tipo_fase || 'mata_mata'); setShowNovoConfronto(true) }} className="mt-5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#142340]"><Plus size={14} /> Adicionar confronto</button>
+                      <button type="button" onClick={() => { setFaseSelecionada(fase.id); setTipoConfronto(fase.tipo_fase || 'mata_mata'); setTimeout(() => criarConfrontoIndividual(), 0) }} className="mt-5 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#142340]"><Plus size={14} /> Adicionar confronto</button>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -858,7 +788,7 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
                         )
                       })}
 
-                      <button type="button" onClick={() => { setFaseSelecionada(fase.id); setTipoConfronto(fase.tipo_fase || 'mata_mata'); setShowNovoConfronto(true) }} className="flex h-14 min-w-[980px] items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 hover:bg-zinc-50"><Plus size={14} /> Adicionar confronto</button>
+                      <button type="button" onClick={() => { setFaseSelecionada(fase.id); setTipoConfronto(fase.tipo_fase || 'mata_mata'); setTimeout(() => criarConfrontoIndividual(), 0) }} className="flex h-14 min-w-[980px] items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 hover:bg-zinc-50"><Plus size={14} /> Adicionar confronto</button>
                     </div>
                   )}
                 </div>
