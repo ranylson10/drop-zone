@@ -5,8 +5,10 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ChevronLeft, LayoutGrid, Swords, Trophy, ShieldCheck, Target, CircleDollarSign, Plus } from 'lucide-react'
+import { ChevronLeft, LayoutGrid, Swords, Trophy, ShieldCheck, Target, CircleDollarSign, Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import FormCriacaoTipo from './components/FormCriacaoTipo'
+import type { TipoCompeticao } from '@/app/campeonatos/components/tiposCompeticao'
 
 function moeda(valor: number) {
  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -17,13 +19,19 @@ function numeroSeguro(value: unknown) {
  return Number.isFinite(n) ? n : 0
 }
 
-const OPCOES = [
+const OPCOES: Array<{
+ slug: TipoCompeticao | 'apostado'
+ badge: string
+ titulo: string
+ descricao: string
+ href?: string
+ icon: any
+}> = [
  {
  slug: 'confronto',
  badge: 'Confronto',
  titulo: 'CONFRONTOS',
  descricao: 'Sistema de confrontos com múltiplos modos: 1x1, 2x2, 2x3 e 4x4.',
- href: '/confrontos/nova',
  icon: Swords,
  },
  {
@@ -31,7 +39,6 @@ const OPCOES = [
  badge: 'Multi-horários',
  titulo: 'DIÁRIO',
  descricao: 'Múltiplos horários independentes, cada um com inscrições, tabela e campeão próprios.',
- href: '/campeonatos/nova/diario',
  icon: LayoutGrid,
  },
  {
@@ -39,7 +46,6 @@ const OPCOES = [
  badge: 'Flexível',
  titulo: 'XTREINO',
  descricao: 'Formato mais flexível para treino, amistoso ou teste de lobby.',
- href: '/campeonatos/nova/xtreino',
  icon: Target,
  },
  {
@@ -47,7 +53,6 @@ const OPCOES = [
  badge: 'Mata-mata',
  titulo: 'COPA',
  descricao: 'Mata-mata com chave, avanço de fase e decisão por confronto.',
- href: '/campeonatos/nova/copa',
  icon: Swords,
  },
  {
@@ -55,7 +60,6 @@ const OPCOES = [
  badge: 'Pontos corridos',
  titulo: 'LIGA',
  descricao: 'Pontos corridos com rodadas, tabela e classificação acumulada.',
- href: '/campeonatos/nova/liga',
  icon: Trophy,
  },
  {
@@ -72,6 +76,7 @@ function PageInner() {
  const searchParams = useSearchParams()
  const produtoraId = searchParams.get('produtoraId')
  const [taxas, setTaxas] = useState<Record<string, number>>({})
+ const [tipoAberto, setTipoAberto] = useState<TipoCompeticao | null>(null)
 
  useEffect(() => {
   let ativo = true
@@ -99,8 +104,8 @@ function PageInner() {
  }, [])
 
  function hrefComProdutora(href: string) {
- if (!produtoraId) return href
- return `${href}${href.includes('?') ? '&' : '?'}produtoraId=${produtoraId}`
+  if (!produtoraId) return href
+  return `${href}${href.includes('?') ? '&' : '?'}produtoraId=${produtoraId}`
  }
 
  return (
@@ -116,7 +121,7 @@ function PageInner() {
  Criar campeonato
  </h1>
  <p className="mt-1 text-xs font-medium text-zinc-500">
- Escolha o modo competitivo que você quer criar: confrontos, diários, xtreinos, copas, ligas e apostados.
+ Escolha o modo competitivo. O formulário oficial abre em janela com fundo desfocado, sem sair da página.
  </p>
  </div>
 
@@ -141,13 +146,8 @@ function PageInner() {
  <div className="grid gap-3 px-3 pb-3 md:grid-cols-2 xl:grid-cols-6">
  {OPCOES.map((item) => {
  const Icon = item.icon
-
- return (
- <Link
- key={item.slug}
- href={hrefComProdutora(item.href)}
- className="group relative flex min-h-[235px] flex-col border border-zinc-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-[#2563eb] hover:shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
- >
+ const conteudo = (
+ <>
  <div className="mb-4 inline-flex w-fit items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#2563eb]">
  <Icon size={11} />
  {item.badge}
@@ -165,7 +165,26 @@ function PageInner() {
  <CircleDollarSign size={13} />
  Taxa: {moeda(taxas[item.slug] || 0)}
  </div>
- </Link>
+ </>
+ )
+
+ if (item.slug === 'apostado' && item.href) {
+  return (
+   <Link key={item.slug} href={hrefComProdutora(item.href)} className="group relative flex min-h-[235px] flex-col border border-zinc-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#2563eb] hover:shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+    {conteudo}
+   </Link>
+  )
+ }
+
+ return (
+ <button
+ key={item.slug}
+ type="button"
+ onClick={() => setTipoAberto(item.slug as TipoCompeticao)}
+ className="group relative flex min-h-[235px] flex-col border border-zinc-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[#2563eb] hover:shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
+ >
+ {conteudo}
+ </button>
  )
  })}
  </div>
@@ -193,18 +212,32 @@ function PageInner() {
  <ShieldCheck size={20} />
  </div>
  <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Fluxo integrado</div>
- <div className="mt-1 text-[22px] font-semibold text-[#142340]">Sem duplicação</div>
+ <div className="mt-1 text-[22px] font-semibold text-[#142340]">Modal oficial</div>
  </div>
 
  <div className="border border-zinc-200 bg-white p-4">
  <div className="mb-3 flex h-11 w-11 items-center justify-center border border-zinc-200 bg-zinc-50 text-[#2563eb]">
  <Target size={20} />
  </div>
- <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Próximo foco</div>
- <div className="mt-1 text-[22px] font-semibold text-[#142340]">Configurações</div>
+ <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">Produtora</div>
+ <div className="mt-1 text-[22px] font-semibold text-[#142340]">Obrigatória</div>
  </div>
  </section>
  </div>
+
+ {tipoAberto ? (
+  <>
+   <button
+    type="button"
+    onClick={() => setTipoAberto(null)}
+    className="fixed right-5 top-5 z-[120] grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-slate-950/70 text-white shadow-2xl backdrop-blur-md hover:bg-slate-900"
+    aria-label="Fechar formulário"
+   >
+    <X size={18} />
+   </button>
+   <FormCriacaoTipo tipo={tipoAberto} />
+  </>
+ ) : null}
  </div>
  )
 }
