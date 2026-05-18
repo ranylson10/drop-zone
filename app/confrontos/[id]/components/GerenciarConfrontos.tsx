@@ -459,17 +459,22 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
   }
 
   async function inserirJogo(equipeAId: string, equipeBId: string, ordemAtual?: number) {
-    const equipeAObj = mapaEquipes.get(equipeAId)
-    const equipeBObj = mapaEquipes.get(equipeBId)
+    const equipeAObj = equipeAId ? mapaEquipes.get(equipeAId) : null
+    const equipeBObj = equipeBId ? mapaEquipes.get(equipeBId) : null
     const jogosDaFase = jogos.filter((jogo) => (jogo.fase_id || '') === faseSelecionada)
     const numeroConfronto = ordemAtual || jogosDaFase.length + 1
     const md = Number(melhorDe || 1)
     const configuracao = { tipo: tipoConfronto, melhor_de: md, quedas: md }
 
+    const nomePadrao =
+      equipeAObj && equipeBObj
+        ? `${getEquipeNome(equipeAObj)} x ${getEquipeNome(equipeBObj)}`
+        : `Confronto ${String(numeroConfronto).padStart(2, '0')}`
+
     const payloadJogo: Record<string, any> = {
       campeonato_id: campeonatoId,
       fase_id: faseSelecionada,
-      nome: nomeConfronto.trim() || `${getEquipeNome(equipeAObj)} x ${getEquipeNome(equipeBObj)}`,
+      nome: nomeConfronto.trim() || nomePadrao,
       nome_bloco: `CONFRONTO ${String(numeroConfronto).padStart(2, '0')}`,
       quantidade_partidas: md,
       quedas: criarPayloadQuedas(md),
@@ -492,24 +497,20 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
     if (jogoError) throw jogoError
     if (!jogoCriado?.id) throw new Error('Não foi possível criar o confronto')
 
-    const { error: equipesError } = await supabase.from('jogo_equipes').insert([
-      {
+    const vinculos = [equipeAId, equipeBId]
+      .filter(Boolean)
+      .map((campeonatoEquipeId) => ({
         jogo_id: jogoCriado.id,
         campeonato_id: campeonatoId,
         fase_id: jogoCriado.fase_id || faseSelecionada,
         grupo_id: jogoCriado.grupo_id || null,
-        campeonato_equipe_id: equipeAId,
-      },
-      {
-        jogo_id: jogoCriado.id,
-        campeonato_id: campeonatoId,
-        fase_id: jogoCriado.fase_id || faseSelecionada,
-        grupo_id: jogoCriado.grupo_id || null,
-        campeonato_equipe_id: equipeBId,
-      },
-    ])
+        campeonato_equipe_id: campeonatoEquipeId,
+      }))
 
-    if (equipesError) throw equipesError
+    if (vinculos.length > 0) {
+      const { error: equipesError } = await supabase.from('jogo_equipes').insert(vinculos)
+      if (equipesError) throw equipesError
+    }
   }
 
   async function criarConfrontoIndividual() {
@@ -517,37 +518,21 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
       toast.error('Selecione uma fase')
       return
     }
-    if (!equipeA || !equipeB) {
-      toast.error('Selecione as duas equipes')
-      return
-    }
-    if (equipeA === equipeB) {
-      toast.error('As equipes precisam ser diferentes')
-      return
-    }
-
-    if (tipoConfronto !== 'pontos_corridos') {
-      if (equipesJaUsadasNaFase.has(equipeA) || equipesJaUsadasNaFase.has(equipeB)) {
-        toast.error('Uma das equipes já foi usada em outro confronto dessa fase')
-        return
-      }
-    }
 
     setSalvando(true)
     try {
-      await inserirJogo(equipeA, equipeB)
-      toast.success('Confronto criado')
+      await inserirJogo('', '')
+      toast.success('Confronto adicionado')
       setNomeConfronto('')
       setEquipeA('')
       setEquipeB('')
       setDataJogo('')
       setHoraJogo('19:00')
       setMelhorDe('1')
-      setShowNovoConfronto(false)
       await carregar()
     } catch (error: any) {
-      console.error('Erro ao criar confronto:', error)
-      toast.error(getErrorMessage(error, 'Erro ao criar confronto'))
+      console.error('Erro ao adicionar confronto:', error)
+      toast.error(getErrorMessage(error, 'Erro ao adicionar confronto'))
     } finally {
       setSalvando(false)
     }
