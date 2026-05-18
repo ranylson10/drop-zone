@@ -28,7 +28,7 @@ export const TIPOS_COMPETICAO: Array<{
     modelo: 'diario',
     formatoBanco: 'Diário',
     hrefLista: '/campeonatos/diarios',
-    hrefCriacao: '/campeonatos/diarios/criar',
+    hrefCriacao: '/campeonatos/nova/diario',
     badge: 'Multi-horários',
   },
   {

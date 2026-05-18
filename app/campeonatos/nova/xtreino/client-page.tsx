@@ -30,7 +30,7 @@ function PageInner() {
  </div>
 
  <div className="grid gap-6 md:grid-cols-3">
- <button onClick={() => abrir('/campeonatos/diarios/criar?xtreino=1&modo=jogo_unico')} className="rounded-[28px] border border-zinc-200 bg-white/[0.04] p-8 text-left transition hover:border-[#2563eb]/40 hover:bg-white/[0.06]">
+ <button onClick={() => abrir('/campeonatos/nova/diario?xtreino=1&modo=jogo_unico')} className="rounded-[28px] border border-zinc-200 bg-white/[0.04] p-8 text-left transition hover:border-[#2563eb]/40 hover:bg-white/[0.06]">
  <div className="mb-5 flex h-14 w-14 items-center justify-center border border-zinc-200 bg-white/20 text-[#2563eb]"><Trophy size={24} /></div>
  <div className="text-2xl font-semibold">Jogo Único</div>
  <div className="mt-2 text-sm text-zinc-500">Usa o formulário real do diário com horários e slots.</div>
