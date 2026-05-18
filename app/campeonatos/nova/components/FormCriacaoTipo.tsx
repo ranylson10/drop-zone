@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import FormProdutora from '@/app/produtora/components/FormProdutora'
+import FormProdutora from '@/app/components/FormProdutora'
 import { ArrowLeft, ChevronDown, Loader2, Plus, Trash2, Swords, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { usePerfil } from '@/app/contexts/PerfilContext'
@@ -1627,7 +1627,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
         {produtoraModalAberto ? (
           <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/60 px-4 py-6 backdrop-blur-md">
-            <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-zinc-200 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
+            <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-zinc-200 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
               <FormProdutora
                 mode="create"
                 embedded

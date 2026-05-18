@@ -19,7 +19,7 @@ import {
  Users,
  X,
 } from 'lucide-react'
-import FormProdutora from './components/FormProdutora'
+import FormProdutora from '@/app/components/FormProdutora'
 
 type Produtora = {
  id: string

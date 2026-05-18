@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
-import FormProdutora from '../components/FormProdutora'
+import FormProdutora from '@/app/components/FormProdutora'
 
 export default function ConfigProdutoraPage() {
  const router = useRouter()
