@@ -30,6 +30,7 @@ type EquipeOficial = {
   nome: string;
   tag: string | null;
   logo_url: string | null;
+  pais?: string | null;
 };
 
 type EquipeAvulsa = {
@@ -38,6 +39,7 @@ type EquipeAvulsa = {
   nome: string;
   tag: string | null;
   logo_url: string | null;
+  pais?: string | null;
   criada_por: string | null;
   equipe_oficial_id: string | null;
 };
@@ -85,6 +87,8 @@ type EquipeLista = {
   registrado_por: string | null;
   numero_vaga: number | null;
   data_pagamento_confirmada: string | null;
+  pais: string | null;
+  jogadores_escalados: number;
 };
 
 const ORIGEM_OFICIAL_BANCO = "oficial";
@@ -118,6 +122,7 @@ export default function GerenciarEquipes({
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [equipes, setEquipes] = useState<EquipeLista[]>([]);
+  const [permissaoLocal, setPermissaoLocal] = useState(false);
 
   const [busca, setBusca] = useState("");
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>("todas");
@@ -152,6 +157,33 @@ export default function GerenciarEquipes({
   >([]);
   const [equipeTrocaSelecionada, setEquipeTrocaSelecionada] =
     useState<EquipeOficial | null>(null);
+
+  const canManage = canEdit || permissaoLocal;
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function verificarPermissaoLocal() {
+      if (!campeonatoId) return;
+
+      try {
+        const { data, error } = await supabase.rpc("fn_usuario_admin_do_campeonato", {
+          p_campeonato_id: campeonatoId,
+        });
+
+        if (!ativo) return;
+        setPermissaoLocal(!error && Boolean(data));
+      } catch {
+        if (ativo) setPermissaoLocal(false);
+      }
+    }
+
+    verificarPermissaoLocal();
+
+    return () => {
+      ativo = false;
+    };
+  }, [campeonatoId]);
 
   const resetModalNovaEquipe = () => {
     setModoCadastro("app");
@@ -223,7 +255,7 @@ export default function GerenciarEquipes({
       if (idsOficiais.length > 0) {
         const { data: equipesData, error: equipesError } = await supabase
           .from("equipes")
-          .select("id, nome, tag, logo_url")
+          .select("id, nome, tag, logo_url, pais")
           .in("id", idsOficiais);
 
         if (equipesError) throw equipesError;
@@ -245,6 +277,39 @@ export default function GerenciarEquipes({
       const mapaOficiais = new Map(oficiais.map((item) => [item.id, item]));
       const mapaAvulsas = new Map(avulsas.map((item) => [item.id, item]));
 
+      const { data: jogadoresInscritos, error: jogadoresInscritosError } = await supabase
+        .from("jogadores_campeonato")
+        .select("id, campeonato_equipe_id, equipe_id, equipe_avulsa_id")
+        .eq("campeonato_id", campeonatoId)
+        .eq("status", "ativo");
+
+      if (jogadoresInscritosError) throw jogadoresInscritosError;
+
+      const jogadoresPorInscricao = new Map<string, number>();
+      const jogadoresPorEquipe = new Map<string, number>();
+      const jogadoresPorAvulsa = new Map<string, number>();
+
+      (jogadoresInscritos || []).forEach((jogador: any) => {
+        if (jogador.campeonato_equipe_id) {
+          jogadoresPorInscricao.set(
+            jogador.campeonato_equipe_id,
+            (jogadoresPorInscricao.get(jogador.campeonato_equipe_id) || 0) + 1,
+          );
+        }
+        if (jogador.equipe_id) {
+          jogadoresPorEquipe.set(
+            jogador.equipe_id,
+            (jogadoresPorEquipe.get(jogador.equipe_id) || 0) + 1,
+          );
+        }
+        if (jogador.equipe_avulsa_id) {
+          jogadoresPorAvulsa.set(
+            jogador.equipe_avulsa_id,
+            (jogadoresPorAvulsa.get(jogador.equipe_avulsa_id) || 0) + 1,
+          );
+        }
+      });
+
       const contadorRepeticoes = new Map<string, number>();
 
       const listaNormalizada: EquipeLista[] = inscricoesRows
@@ -265,6 +330,14 @@ export default function GerenciarEquipes({
           const nome = oficial?.nome || avulsa?.nome || "Equipe sem nome";
           const tag = oficial?.tag || avulsa?.tag || null;
           const logo_url = oficial?.logo_url || avulsa?.logo_url || null;
+          const pais = oficial?.pais || avulsa?.pais || null;
+          const jogadores_escalados =
+            jogadoresPorInscricao.get(item.id) ||
+            (item.equipe_id ? jogadoresPorEquipe.get(item.equipe_id) : 0) ||
+            (item.equipe_avulsa_id
+              ? jogadoresPorAvulsa.get(item.equipe_avulsa_id)
+              : 0) ||
+            0;
           const chaveRepeticao = oficial?.id
             ? `app:${oficial.id}`
             : avulsa?.equipe_oficial_id
@@ -321,6 +394,8 @@ export default function GerenciarEquipes({
             registrado_por: item.registrado_por || null,
             numero_vaga: item.numero_vaga ?? repeticao_numero,
             data_pagamento_confirmada: item.data_pagamento_confirmada || null,
+            pais,
+            jogadores_escalados,
           };
         })
         .sort(
@@ -381,7 +456,7 @@ export default function GerenciarEquipes({
       try {
         const { data, error } = await supabase
           .from("equipes")
-          .select("id, nome, tag, logo_url")
+          .select("id, nome, tag, logo_url, pais")
           .or(`nome.ilike.%${texto}%,tag.ilike.%${texto}%`)
           .order("nome", { ascending: true })
           .limit(8);
@@ -748,6 +823,10 @@ export default function GerenciarEquipes({
     }
   };
 
+  const gridCols = canManage
+    ? "grid-cols-[minmax(240px,1.6fr)_110px_110px_130px_150px_180px]"
+    : "grid-cols-[minmax(240px,1.6fr)_120px_120px_130px]";
+
   return (
     <div className="space-y-5">
       <div className="border border-zinc-200 bg-white p-4 -[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -840,7 +919,7 @@ export default function GerenciarEquipes({
               Atualizar
             </button>
 
-            {canEdit ? (
+            {canManage ? (
               <button
                 onClick={() => {
                   resetModalNovaEquipe();
@@ -857,12 +936,13 @@ export default function GerenciarEquipes({
       </div>
 
       <div className="overflow-hidden border border-zinc-200 bg-white -[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        <div className="grid grid-cols-[minmax(240px,1.6fr)_130px_150px_150px_180px] items-center border-b-2 border-zinc-200 bg-[#f4f4f4] px-4 py-3 text-[10px] font-semibold uppercase text-[#142340]">
+        <div className={`grid ${gridCols} items-center border-b-2 border-zinc-200 bg-[#f4f4f4] px-4 py-3 text-[10px] font-semibold uppercase text-[#142340]`}>
           <div>Equipe</div>
-          <div>Origem</div>
-          <div>Entrada</div>
+          <div>Jogadores</div>
+          <div>País</div>
+          {canManage ? <div>Entrada</div> : null}
           <div>Status</div>
-          <div className="text-right">{canEdit ? "Ações" : ""}</div>
+          {canManage ? <div className="text-right">Ações</div> : null}
         </div>
 
         {loading ? (
@@ -888,7 +968,7 @@ export default function GerenciarEquipes({
               return (
                 <div
                   key={item.inscricao_id}
-                  className="grid grid-cols-[minmax(240px,1.6fr)_130px_150px_150px_180px] items-center border-b border-zinc-200 px-4 py-3 last:border-b-0"
+                  className={`grid ${gridCols} items-center border-b border-zinc-200 px-4 py-3 last:border-b-0`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
@@ -940,20 +1020,19 @@ export default function GerenciarEquipes({
                   </div>
 
                   <div>
-                    <span
-                      className={`inline-flex items-center border border-zinc-200 px-2 py-1 text-[9px] font-semibold uppercase ${
-                        item.tipo_origem === "app"
-                          ? "bg-[#2563eb] text-[#142340]"
-                          : "bg-orange-400 text-[#142340]"
-                      }`}
-                    >
-                      {item.tipo_origem === "app"
-                        ? "Equipe do app"
-                        : "Temporária"}
+                    <span className="text-[10px] font-semibold uppercase text-[#142340]">
+                      {item.jogadores_escalados} jogador{item.jogadores_escalados === 1 ? "" : "es"}
                     </span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase text-slate-600">
+                      {item.pais || "Não informado"}
+                    </span>
+                  </div>
+
+                  {canManage ? (
+                    <div className="space-y-1">
                     <span
                       className={`inline-flex items-center border border-zinc-200 px-2 py-1 text-[9px] font-semibold uppercase ${
                         item.origem_inscricao === "site"
@@ -980,7 +1059,8 @@ export default function GerenciarEquipes({
                         ).toLocaleDateString("pt-BR")}
                       </div>
                     ) : null}
-                  </div>
+                    </div>
+                  ) : null}
 
                   <div>
                     <span className="text-[10px] font-semibold uppercase text-slate-600">
@@ -991,8 +1071,9 @@ export default function GerenciarEquipes({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2">
-                    {canEdit && podeTrocar && (
+                  {canManage ? (
+                    <div className="flex items-center justify-end gap-2">
+                    {podeTrocar && (
                       <button
                         onClick={() => abrirTrocaParaEquipeDoApp(item)}
                         className="inline-flex h-9 items-center gap-2 border border-zinc-200 bg-white px-3 text-[9px] font-semibold uppercase text-[#142340]"
@@ -1002,8 +1083,7 @@ export default function GerenciarEquipes({
                       </button>
                     )}
 
-                    {canEdit &&
-                      (item.status_pagamento === "agendado" ||
+                    {(item.status_pagamento === "agendado" ||
                         item.status === "agendada") && (
                         <>
                           <button
@@ -1026,8 +1106,7 @@ export default function GerenciarEquipes({
                         </>
                       )}
 
-                    {canEdit ? (
-                      <button
+                    <button
                         onClick={() => handleRemoverEquipe(item)}
                         disabled={!podeRemover || salvando}
                         className={`inline-flex h-9 items-center gap-2 border border-zinc-200 px-3 text-[9px] font-semibold uppercase ${
@@ -1044,8 +1123,8 @@ export default function GerenciarEquipes({
                         <Trash2 size={13} />
                         Remover
                       </button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
