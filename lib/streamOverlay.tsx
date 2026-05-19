@@ -1,4 +1,7 @@
 import { Users } from 'lucide-react'
+import type { CSSProperties, MouseEvent } from 'react'
+
+export type StreamOverlayBlock = 'image' | 'text' | 'table'
 
 export type StreamOverlayConfig = {
   title?: string
@@ -18,6 +21,14 @@ export type StreamOverlayConfig = {
     nameSize?: number
     titleSize?: number
     textColor?: string
+    textX?: number
+    textY?: number
+    textW?: number
+    textH?: number
+    textScale?: number
+    textOpacity?: number
+    fontWeight?: number
+    italic?: boolean
   }
   theme?: {
     primary?: string
@@ -87,6 +98,14 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     nameSize: 54,
     titleSize: 24,
     textColor: '#ffffff',
+    textX: 420,
+    textY: 66,
+    textW: 1180,
+    textH: 116,
+    textScale: 100,
+    textOpacity: 100,
+    fontWeight: 900,
+    italic: false,
   },
   theme: {
     primary: '#e60012',
@@ -239,10 +258,16 @@ export function TabelaGeralOverlay({
   config,
   rows,
   previewScale,
+  editable,
+  selectedBlock,
+  onSelectBlock,
 }: {
   config: StreamOverlayConfig
   rows: RankingRow[]
   previewScale?: number
+  editable?: boolean
+  selectedBlock?: StreamOverlayBlock
+  onSelectBlock?: (block: StreamOverlayBlock) => void
 }) {
   const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
   const maxRows = Number(merged.layout?.maxRows || 12)
@@ -253,6 +278,8 @@ export function TabelaGeralOverlay({
   const tableScale = Math.max(10, Number(merged.layout?.scale || 100)) / 100
   const brandScale = Math.max(10, Number(merged.brand?.scale || 100)) / 100
   const brandOpacity = Math.max(0, Math.min(100, Number(merged.brand?.opacity ?? 100))) / 100
+  const textScale = Math.max(10, Number(merged.brand?.textScale || 100)) / 100
+  const textOpacity = Math.max(0, Math.min(100, Number(merged.brand?.textOpacity ?? 100))) / 100
   const blockCount = Math.max(1, Math.min(4, Number(merged.layout?.blockCount || 1)))
   const rowsPerBlock = Math.max(1, Number(merged.layout?.rowsPerBlock || Math.ceil(maxRows / blockCount)))
   const blocks = blockCount > 1 ? chunkRows(lista, rowsPerBlock, blockCount) : [lista]
@@ -261,38 +288,70 @@ export function TabelaGeralOverlay({
   const blockWidth = blockDirection === 'horizontal'
     ? (Number(merged.layout?.w || 1560) - blockGap * (blocks.length - 1)) / Math.max(1, blocks.length)
     : Number(merged.layout?.w || 1560)
+  const selectedStyle = (block: StreamOverlayBlock): CSSProperties => editable
+    ? {
+        cursor: 'pointer',
+        outline: selectedBlock === block ? '4px solid #ef4444' : '2px dashed rgba(239, 68, 68, 0.55)',
+        outlineOffset: 4,
+      }
+    : {}
+  const selectBlock = (block: StreamOverlayBlock) => (event: MouseEvent) => {
+    if (!editable) return
+    event.stopPropagation()
+    onSelectBlock?.(block)
+  }
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
       {merged.brand?.enabled ? (
-        <div
-          className="absolute overflow-hidden uppercase"
-          style={{
-            left: Number(merged.brand?.x || 180),
-            top: Number(merged.brand?.y || 54),
-            width: Number(merged.brand?.w || 1560),
-            height: Number(merged.brand?.h || 120),
-            opacity: brandOpacity,
-            transform: `scale(${brandScale})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          {merged.brand?.logoDataUrl ? (
+        <>
+          <div
+            className="absolute overflow-hidden uppercase"
+            onMouseDown={selectBlock('image')}
+            style={{
+              left: Number(merged.brand?.x || 180),
+              top: Number(merged.brand?.y || 54),
+              width: Number(merged.brand?.w || 1560),
+              height: Number(merged.brand?.h || 120),
+              opacity: brandOpacity,
+              transform: `scale(${brandScale})`,
+              transformOrigin: 'top left',
+              ...selectedStyle('image'),
+            }}
+          >
+            {merged.brand?.logoDataUrl ? (
             <img
               src={merged.brand.logoDataUrl}
               alt={merged.brand.name || 'Logo do campeonato'}
               className="absolute inset-0 h-full w-full"
               style={{ objectFit: merged.brand.objectFit || 'contain' }}
             />
-          ) : null}
+            ) : editable ? (
+              <div className="flex h-full w-full items-center justify-center border border-white/20 bg-black/10 text-[24px] font-black tracking-[0.14em] text-white/70">
+                IMAGEM
+              </div>
+            ) : null}
+          </div>
+
           <div
-            className="absolute inset-0 flex flex-col justify-center font-black"
+            className="absolute flex flex-col justify-center overflow-hidden uppercase"
+            onMouseDown={selectBlock('text')}
             style={{
+              left: Number(merged.brand?.textX ?? 420),
+              top: Number(merged.brand?.textY ?? 66),
+              width: Number(merged.brand?.textW ?? 1180),
+              height: Number(merged.brand?.textH ?? 116),
+              opacity: textOpacity,
+              transform: `scale(${textScale})`,
+              transformOrigin: 'top left',
               color: merged.brand?.textColor || '#ffffff',
               textAlign: merged.brand?.align || 'left',
               paddingLeft: 18,
               paddingRight: 18,
               textShadow: `0 8px 22px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'}`,
+              fontWeight: Number(merged.brand?.fontWeight || 900),
+              fontStyle: merged.brand?.italic ? 'italic' : 'normal',
+              ...selectedStyle('text'),
             }}
           >
             <div style={{ fontSize: Number(merged.brand?.nameSize || 54), lineHeight: 1 }}>{merged.brand?.name || ''}</div>
@@ -300,11 +359,12 @@ export function TabelaGeralOverlay({
               {merged.brand?.title || merged.title || 'TABELA GERAL'}
             </div>
           </div>
-        </div>
+        </>
       ) : null}
 
       <div
         className="absolute overflow-hidden uppercase"
+        onMouseDown={selectBlock('table')}
         style={{
           left: Number(merged.layout?.x || 180),
           top: Number(merged.layout?.y || 140),
@@ -315,6 +375,7 @@ export function TabelaGeralOverlay({
           transform: `scale(${tableScale})`,
           transformOrigin: 'top left',
           filter: `drop-shadow(0 24px 32px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'})`,
+          ...selectedStyle('table'),
         }}
       >
         <div

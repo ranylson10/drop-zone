@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Copy, Eye, EyeOff, Loader2, MonitorUp, Plus, RefreshCw, Save, SlidersHorizontal } from 'lucide-react'
+import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Type } from 'lucide-react'
 import {
   RankingRow,
+  StreamOverlayBlock,
   TabelaGeralOverlay,
   defaultTabelaGeralConfig,
   mergeOverlayConfig,
@@ -37,6 +38,22 @@ type Projeto = {
   nome: string
   stream_key: string
   campeonato_id: string | null
+}
+
+type EditorAction = 'move' | 'content' | 'style' | 'table'
+
+const blockLabels: Record<StreamOverlayBlock, string> = {
+  image: 'Imagem',
+  text: 'Texto',
+  table: 'Overlay',
+}
+
+const checkerboardStyle = {
+  backgroundColor: '#ffffff',
+  backgroundImage:
+    'linear-gradient(45deg, #d7d7d7 25%, transparent 25%), linear-gradient(-45deg, #d7d7d7 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d7d7d7 75%), linear-gradient(-45deg, transparent 75%, #d7d7d7 75%)',
+  backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+  backgroundSize: '20px 20px',
 }
 
 type CampeonatoEquipeRow = {
@@ -169,6 +186,8 @@ export default function StreamOverlayEditorPage() {
   const [overlayId, setOverlayId] = useState('')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [selectedBlock, setSelectedBlock] = useState<StreamOverlayBlock>('table')
+  const [activeAction, setActiveAction] = useState<EditorAction>('move')
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -332,8 +351,8 @@ export default function StreamOverlayEditorPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#080d16] p-5 text-white">
-      <section className="mx-auto max-w-[1700px]">
+    <main className="h-screen overflow-hidden bg-[#080d16] p-5 text-white">
+      <section className="mx-auto flex h-full max-w-[1700px] flex-col">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-[11px] font-black uppercase tracking-[0.24em] text-red-500">Overlay Editor</div>
@@ -355,8 +374,8 @@ export default function StreamOverlayEditorPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[280px_1fr_360px]">
-          <aside className="border border-white/10 bg-[#111827] p-4">
+        <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[280px_minmax(620px,1fr)_360px]">
+          <aside className="min-h-0 overflow-y-auto border border-white/10 bg-[#111827] p-4">
             <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Overlays do projeto</div>
 
             <div className="space-y-2">
@@ -381,7 +400,7 @@ export default function StreamOverlayEditorPage() {
             </div>
           </aside>
 
-          <section className="border border-white/10 bg-[#111827] p-4">
+          <section className="flex min-h-0 flex-col border border-white/10 bg-[#111827] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Preview 1920x1080</div>
@@ -395,8 +414,21 @@ export default function StreamOverlayEditorPage() {
               ) : null}
             </div>
 
-            <div className="relative aspect-video overflow-hidden border border-white/10 bg-[#050816]">
-              <TabelaGeralOverlay config={config} rows={previewRows} previewScale={0.5} />
+            <div className="min-h-0 flex-1">
+              <div
+                className="relative aspect-video max-h-full overflow-hidden border border-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.35)]"
+                style={checkerboardStyle}
+                onMouseDown={() => setSelectedBlock('table')}
+              >
+                <TabelaGeralOverlay
+                  config={config}
+                  rows={previewRows}
+                  previewScale={0.5}
+                  editable
+                  selectedBlock={selectedBlock}
+                  onSelectBlock={setSelectedBlock}
+                />
+              </div>
             </div>
 
             {renderUrl ? (
@@ -404,7 +436,7 @@ export default function StreamOverlayEditorPage() {
             ) : null}
           </section>
 
-          <aside className="border border-white/10 bg-[#111827] p-4">
+          <aside className="min-h-0 overflow-y-auto border border-white/10 bg-[#111827] p-4">
             <div className="mb-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">
               <SlidersHorizontal size={15} />
               Editor visual
@@ -413,7 +445,179 @@ export default function StreamOverlayEditorPage() {
             {!overlayAtual ? (
               <div className="text-sm font-semibold text-zinc-400">Crie ou selecione uma overlay.</div>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {(['image', 'text', 'table'] as StreamOverlayBlock[]).map((block) => (
+                    <button
+                      key={block}
+                      type="button"
+                      onClick={() => {
+                        setSelectedBlock(block)
+                        if (block !== 'table') atualizarCampo('brand.enabled', true)
+                      }}
+                      className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
+                    >
+                      {block === 'image' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
+                      {blockLabels[block]}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    ['move', Move],
+                    ['content', Type],
+                    ['style', Palette],
+                    ['table', Columns3],
+                  ] as const).map(([action, Icon]) => (
+                    <button
+                      key={action}
+                      type="button"
+                      onClick={() => setActiveAction(action)}
+                      className={`flex h-11 items-center justify-center border text-[10px] font-black uppercase tracking-[0.12em] ${activeAction === action ? 'border-white bg-white text-[#101827]' : 'border-white/10 bg-[#0b1220] text-zinc-300'}`}
+                    >
+                      <Icon size={15} />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border border-white/10 bg-[#0b1220] p-3">
+                  <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    {blockLabels[selectedBlock]} / {activeAction === 'move' ? 'Mover bloco' : activeAction === 'content' ? 'Conteudo' : activeAction === 'style' ? 'Visual' : 'Tabela'}
+                  </div>
+
+                  {activeAction === 'move' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedBlock === 'image' ? (
+                        <>
+                          <EditorNumber label="X" value={config.brand?.x || 0} onChange={(v) => atualizarCampo('brand.x', v)} />
+                          <EditorNumber label="Y" value={config.brand?.y || 0} onChange={(v) => atualizarCampo('brand.y', v)} />
+                          <EditorNumber label="Largura" value={config.brand?.w || 0} onChange={(v) => atualizarCampo('brand.w', v)} />
+                          <EditorNumber label="Altura" value={config.brand?.h || 0} onChange={(v) => atualizarCampo('brand.h', v)} />
+                          <EditorNumber label="Escala" value={config.brand?.scale || 100} onChange={(v) => atualizarCampo('brand.scale', v)} />
+                          <EditorNumber label="Opacidade" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
+                        </>
+                      ) : selectedBlock === 'text' ? (
+                        <>
+                          <EditorNumber label="X" value={config.brand?.textX || 0} onChange={(v) => atualizarCampo('brand.textX', v)} />
+                          <EditorNumber label="Y" value={config.brand?.textY || 0} onChange={(v) => atualizarCampo('brand.textY', v)} />
+                          <EditorNumber label="Largura" value={config.brand?.textW || 0} onChange={(v) => atualizarCampo('brand.textW', v)} />
+                          <EditorNumber label="Altura" value={config.brand?.textH || 0} onChange={(v) => atualizarCampo('brand.textH', v)} />
+                          <EditorNumber label="Escala" value={config.brand?.textScale || 100} onChange={(v) => atualizarCampo('brand.textScale', v)} />
+                          <EditorNumber label="Opacidade" value={config.brand?.textOpacity || 100} onChange={(v) => atualizarCampo('brand.textOpacity', v)} />
+                        </>
+                      ) : (
+                        <>
+                          <EditorNumber label="X" value={config.layout.x || 0} onChange={(v) => atualizarCampo('layout.x', v)} />
+                          <EditorNumber label="Y" value={config.layout.y || 0} onChange={(v) => atualizarCampo('layout.y', v)} />
+                          <EditorNumber label="Largura" value={config.layout.w || 0} onChange={(v) => atualizarCampo('layout.w', v)} />
+                          <EditorNumber label="Escala" value={config.layout.scale || 100} onChange={(v) => atualizarCampo('layout.scale', v)} />
+                          <EditorNumber label="Opacidade" value={config.layout.opacity || 100} onChange={(v) => atualizarCampo('layout.opacity', v)} />
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {activeAction === 'content' ? (
+                    <div className="space-y-3">
+                      {selectedBlock === 'image' ? (
+                        <>
+                          <label className="block">
+                            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem ate 1920x1080</span>
+                            <input type="file" accept="image/*" onChange={(e) => uploadLogoCampeonato(e.target.files?.[0] || null)} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                          </label>
+                          {config.brand?.logoDataUrl ? (
+                            <button type="button" onClick={() => atualizarCampo('brand.logoDataUrl', null)} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Remover imagem
+                            </button>
+                          ) : null}
+                        </>
+                      ) : selectedBlock === 'text' ? (
+                        <>
+                          <EditorInput label="Nome grande" value={config.brand?.name || ''} onChange={(v) => atualizarCampo('brand.name', v)} />
+                          <EditorInput label="Titulo" value={config.brand?.title || ''} onChange={(v) => atualizarCampo('brand.title', v)} />
+                        </>
+                      ) : (
+                        <>
+                          <EditorInput label="Titulo da tabela" value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
+                          <EditorSelect label="Entrada" value={config.animation.enter || 'slide'} onChange={(v) => atualizarCampo('animation.enter', v)} options={[['slide', 'Slide'], ['fade', 'Fade'], ['zoom', 'Zoom'], ['none', 'Sem animacao']]} />
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {activeAction === 'style' ? (
+                    <div className="space-y-3">
+                      {selectedBlock === 'image' ? (
+                        <EditorSelect label="Ajuste imagem" value={config.brand?.objectFit || 'contain'} onChange={(v) => atualizarCampo('brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
+                      ) : selectedBlock === 'text' ? (
+                        <>
+                          <EditorColor label="Cor fonte" value={config.brand?.textColor || '#ffffff'} onChange={(v) => atualizarCampo('brand.textColor', v)} />
+                          <EditorSelect label="Alinhamento" value={config.brand?.align || 'left'} onChange={(v) => atualizarCampo('brand.align', v)} options={[['left', 'Esquerda'], ['center', 'Centro'], ['right', 'Direita']]} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <EditorNumber label="Fonte nome" value={config.brand?.nameSize || 54} onChange={(v) => atualizarCampo('brand.nameSize', v)} />
+                            <EditorNumber label="Fonte titulo" value={config.brand?.titleSize || 24} onChange={(v) => atualizarCampo('brand.titleSize', v)} />
+                            <EditorNumber label="Peso" value={config.brand?.fontWeight || 900} onChange={(v) => atualizarCampo('brand.fontWeight', v)} />
+                            <label className="flex items-end gap-2 pb-2 text-xs font-bold uppercase text-zinc-200">
+                              <input type="checkbox" checked={Boolean(config.brand?.italic)} onChange={(e) => atualizarCampo('brand.italic', e.target.checked)} />
+                              Italico
+                            </label>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
+                          <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
+                          <EditorColor label="Cor fundo" value={config.theme.background} onChange={(v) => atualizarCampo('theme.background', v)} />
+                          <EditorColor label="Cor linha" value={config.theme.rowBackground} onChange={(v) => atualizarCampo('theme.rowBackground', v)} />
+                          <EditorColor label="Cor alternada" value={config.theme.rowAltBackground} onChange={(v) => atualizarCampo('theme.rowAltBackground', v)} />
+                          <EditorColor label="Cor texto" value={config.theme.text} onChange={(v) => atualizarCampo('theme.text', v)} />
+                          <EditorColor label="Cor cabecalho" value={config.theme.headerText} onChange={(v) => atualizarCampo('theme.headerText', v)} />
+                          <EditorInput label="Borda" value={config.theme.border || ''} onChange={(v) => atualizarCampo('theme.border', v)} />
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {activeAction === 'table' ? (
+                    <div className="space-y-3">
+                      {selectedBlock !== 'table' ? (
+                        <div className="text-xs font-semibold text-zinc-400">Selecione o bloco Overlay para editar linhas, blocos e colunas.</div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <EditorNumber label="Linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
+                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
+                            <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock || 6} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
+                            <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
+                            <EditorNumber label="Altura linha" value={config.layout.rowHeight || 62} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
+                            <EditorNumber label="Altura topo" value={config.layout.headerHeight || 72} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
+                            <EditorNumber label="Fonte" value={config.layout.fontSize || 24} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
+                            <EditorNumber label="Logo" value={config.layout.logoSize || 44} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
+                            <EditorNumber label="Espaco" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
+                            <EditorNumber label="Raio" value={config.layout.radius || 4} onChange={(v) => atualizarCampo('layout.radius', v)} />
+                          </div>
+
+                          <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
+
+                          <div>
+                            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.keys(tabelaGeralColumnLabels).map((key) => (
+                                <label key={key} className="flex items-center gap-2 border border-white/10 bg-[#111827] px-3 py-2 text-xs font-bold uppercase">
+                                  <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
+                                  {tabelaGeralColumnLabels[key] || key}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="hidden">
                 <div className="border border-white/10 bg-[#0b1220] p-3">
                   <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Area do campeonato</div>
                   <div className="space-y-3">
@@ -504,6 +708,12 @@ export default function StreamOverlayEditorPage() {
                     <option value="none">Sem animação</option>
                   </select>
                 </label>
+
+                <button disabled={salvando} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
+                  {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Salvar
+                </button>
+                </div>
 
                 <button disabled={salvando} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
                   {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
