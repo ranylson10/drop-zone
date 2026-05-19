@@ -601,6 +601,9 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
     }
   }
 
+  
+
+
   async function excluirConfronto(jogoId: string) {
     const confirmar = window.confirm('Deseja excluir este confronto?')
     if (!confirmar) return
@@ -630,20 +633,47 @@ export default function GerenciarConfrontos({ campeonatoId }: { campeonatoId: st
   }
 
   async function atualizarEquipeDoJogo(jogo: ConfrontoComEquipes, indice: number, novoCampeonatoEquipeId: string) {
-    const vinculadas = jogoEquipes.filter((item) => item.jogo_id === jogo.id)
-    const vinculo = vinculadas[indice]
-    if (!vinculo) return
+    if (!novoCampeonatoEquipeId) return
 
-    const { error } = await supabase
-      .from('jogo_equipes')
-      .update({ campeonato_equipe_id: novoCampeonatoEquipeId })
-      .eq('id', vinculo.id)
+    try {
+      const vinculadas = jogoEquipes
+        .filter((item) => item.jogo_id === jogo.id)
+        .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')))
 
-    if (error) {
+      const vinculo = vinculadas[indice]
+
+      if (vinculo?.id) {
+        const { error } = await supabase
+          .from('jogo_equipes')
+          .update({
+            campeonato_equipe_id: novoCampeonatoEquipeId,
+            campeonato_id: campeonatoId,
+            fase_id: jogo.fase_id || faseSelecionada || null,
+            grupo_id: jogo.grupo_id || null,
+          })
+          .eq('id', vinculo.id)
+
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('jogo_equipes')
+          .insert({
+            jogo_id: jogo.id,
+            campeonato_id: campeonatoId,
+            fase_id: jogo.fase_id || faseSelecionada || null,
+            grupo_id: jogo.grupo_id || null,
+            campeonato_equipe_id: novoCampeonatoEquipeId,
+          })
+
+        if (error) throw error
+      }
+
+      toast.success('Equipe atualizada')
+      await carregar()
+    } catch (error: any) {
+      console.error('Erro ao alterar equipe:', error)
       toast.error(getErrorMessage(error, 'Erro ao alterar equipe'))
-      return
     }
-    await carregar()
   }
 
   async function atualizarMd(jogo: ConfrontoComEquipes, valor: string) {
