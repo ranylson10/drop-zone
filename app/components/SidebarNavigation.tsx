@@ -16,6 +16,7 @@ import {
   Gavel,
   MessageCircle,
   User,
+  Radio,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -58,6 +59,17 @@ const baseItems: NavItem[] = [
       { href: '/campeonatos/xtreinos', label: 'Xtreinos' },
       { href: '/campeonatos/confrontos', label: 'Confrontos 4x4' },
       { href: '/produtora', label: 'Produtoras' },
+    ],
+  },
+
+  {
+    href: '/stream/projects',
+    label: 'Stream',
+    icon: <Radio size={18} />,
+    badge: 'OBS',
+    children: [
+      { href: '/stream/projects', label: 'Projetos' },
+      { href: '/stream', label: 'Teste OBS' },
     ],
   },
   {
