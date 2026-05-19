@@ -6,7 +6,9 @@ import { supabase } from '@/lib/supabase'
 
 type OverlayState = {
   id: string
+  campeonato_equipe_id: string | null
   nome_equipe: string
+  tag_equipe: string | null
   logo_url: string | null
   visivel: boolean
   updated_at?: string | null
@@ -22,7 +24,7 @@ export default function StreamOverlayPage() {
 
     const { data, error } = await supabase
       .from('stream_overlay_test')
-      .select('id, nome_equipe, logo_url, visivel, updated_at')
+      .select('id, campeonato_equipe_id, nome_equipe, tag_equipe, logo_url, visivel, updated_at')
       .eq('id', id)
       .maybeSingle()
 
@@ -69,6 +71,9 @@ export default function StreamOverlayPage() {
         <div>
           <div className="text-[13px] font-black uppercase tracking-[0.32em] text-red-400">Equipe em destaque</div>
           <div className="mt-1 text-5xl font-black uppercase tracking-tight drop-shadow">{dados.nome_equipe || 'Equipe'}</div>
+          {dados.tag_equipe ? (
+            <div className="mt-1 text-lg font-black uppercase tracking-[0.2em] text-zinc-300">{dados.tag_equipe}</div>
+          ) : null}
         </div>
       </div>
     </main>

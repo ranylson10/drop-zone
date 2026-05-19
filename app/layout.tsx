@@ -310,6 +310,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
   const isAuthRoute = ['/login', '/cadastro', '/recuperar', '/confirmar', '/redefinir-senha'].some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   )
+  const isCleanRoute = pathname === '/stream' || pathname.startsWith('/stream/')
   const { user, perfisJogo } = usePerfil()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
@@ -317,7 +318,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
   const [isManager, setIsManager] = useState(false)
 
   useEffect(() => {
-    if (isAuthRoute) return
+    if (isAuthRoute || isCleanRoute) return
 
     let ativo = true
 
@@ -351,10 +352,10 @@ function AppChrome({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false
     }
-  }, [user, isAuthRoute])
+  }, [user, isAuthRoute, isCleanRoute])
 
   useEffect(() => {
-    if (isAuthRoute) return
+    if (isAuthRoute || isCleanRoute) return
 
     let ativo = true
 
@@ -387,7 +388,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
     return () => {
       ativo = false
     }
-  }, [user, perfisJogo, isAuthRoute])
+  }, [user, perfisJogo, isAuthRoute, isCleanRoute])
 
   if (isAuthRoute) {
     return (
@@ -395,6 +396,10 @@ function AppChrome({ children }: { children: React.ReactNode }) {
         {children}
       </div>
     )
+  }
+
+  if (isCleanRoute) {
+    return <>{children}</>
   }
 
   return (
