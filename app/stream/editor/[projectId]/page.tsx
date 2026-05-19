@@ -302,6 +302,31 @@ export default function StreamOverlayEditorPage() {
     alert('Link copiado')
   }
 
+  async function uploadLogoCampeonato(file: File | null) {
+    if (!file) return
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    const dimensoes = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+      image.onerror = reject
+      image.src = dataUrl
+    })
+
+    if (dimensoes.width > 1920 || dimensoes.height > 1080) {
+      alert('A imagem precisa ter no maximo 1920x1080.')
+      return
+    }
+
+    await atualizarCampo('brand.logoDataUrl', dataUrl)
+  }
+
   if (loading) {
     return <main className="flex min-h-screen items-center justify-center bg-[#080d16] text-white"><Loader2 className="animate-spin" /></main>
   }
@@ -389,7 +414,46 @@ export default function StreamOverlayEditorPage() {
               <div className="text-sm font-semibold text-zinc-400">Crie ou selecione uma overlay.</div>
             ) : (
               <div className="space-y-5">
-                <EditorInput label="Título" value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
+                <div className="border border-white/10 bg-[#0b1220] p-3">
+                  <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Area do campeonato</div>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-200">
+                      <input type="checkbox" checked={config.brand?.enabled !== false} onChange={(e) => atualizarCampo('brand.enabled', e.target.checked)} />
+                      Exibir area superior
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Logo/arte ate 1920x1080</span>
+                      <input type="file" accept="image/*" onChange={(e) => uploadLogoCampeonato(e.target.files?.[0] || null)} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                    </label>
+
+                    {config.brand?.logoDataUrl ? (
+                      <button type="button" onClick={() => atualizarCampo('brand.logoDataUrl', null)} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                        Remover logo
+                      </button>
+                    ) : null}
+
+                    <EditorInput label="Nome grande" value={config.brand?.name || ''} onChange={(v) => atualizarCampo('brand.name', v)} />
+                    <EditorInput label="Titulo superior" value={config.brand?.title || ''} onChange={(v) => atualizarCampo('brand.title', v)} />
+                    <EditorColor label="Cor texto superior" value={config.brand?.textColor || '#ffffff'} onChange={(v) => atualizarCampo('brand.textColor', v)} />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <EditorNumber label="Logo X" value={config.brand?.x || 0} onChange={(v) => atualizarCampo('brand.x', v)} />
+                      <EditorNumber label="Logo Y" value={config.brand?.y || 0} onChange={(v) => atualizarCampo('brand.y', v)} />
+                      <EditorNumber label="Logo largura" value={config.brand?.w || 0} onChange={(v) => atualizarCampo('brand.w', v)} />
+                      <EditorNumber label="Logo altura" value={config.brand?.h || 0} onChange={(v) => atualizarCampo('brand.h', v)} />
+                      <EditorNumber label="Escala logo" value={config.brand?.scale || 100} onChange={(v) => atualizarCampo('brand.scale', v)} />
+                      <EditorNumber label="Opacidade logo" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
+                      <EditorNumber label="Nome fonte" value={config.brand?.nameSize || 54} onChange={(v) => atualizarCampo('brand.nameSize', v)} />
+                      <EditorNumber label="Titulo fonte" value={config.brand?.titleSize || 24} onChange={(v) => atualizarCampo('brand.titleSize', v)} />
+                    </div>
+
+                    <EditorSelect label="Ajuste imagem" value={config.brand?.objectFit || 'contain'} onChange={(v) => atualizarCampo('brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
+                    <EditorSelect label="Alinhamento texto" value={config.brand?.align || 'left'} onChange={(v) => atualizarCampo('brand.align', v)} options={[['left', 'Esquerda'], ['center', 'Centro'], ['right', 'Direita']]} />
+                  </div>
+                </div>
+
+                <EditorInput label="Titulo" value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
                 <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
                 <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
                 <EditorColor label="Cor fundo" value={config.theme.background} onChange={(v) => atualizarCampo('theme.background', v)} />
@@ -403,7 +467,11 @@ export default function StreamOverlayEditorPage() {
                   <EditorNumber label="X" value={config.layout.x} onChange={(v) => atualizarCampo('layout.x', v)} />
                   <EditorNumber label="Y" value={config.layout.y} onChange={(v) => atualizarCampo('layout.y', v)} />
                   <EditorNumber label="Largura" value={config.layout.w} onChange={(v) => atualizarCampo('layout.w', v)} />
+                  <EditorNumber label="Escala tabela" value={config.layout.scale} onChange={(v) => atualizarCampo('layout.scale', v)} />
                   <EditorNumber label="Linhas" value={config.layout.maxRows} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
+                  <EditorNumber label="Blocos" value={config.layout.blockCount} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
+                  <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
+                  <EditorNumber label="Espaco blocos" value={config.layout.blockGap} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                   <EditorNumber label="Altura linha" value={config.layout.rowHeight} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                   <EditorNumber label="Altura topo" value={config.layout.headerHeight} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                   <EditorNumber label="Fonte" value={config.layout.fontSize} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
@@ -412,6 +480,8 @@ export default function StreamOverlayEditorPage() {
                   <EditorNumber label="Raio" value={config.layout.radius} onChange={(v) => atualizarCampo('layout.radius', v)} />
                   <EditorNumber label="Opacidade" value={config.layout.opacity} onChange={(v) => atualizarCampo('layout.opacity', v)} />
                 </div>
+
+                <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
 
                 <div>
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
@@ -471,6 +541,19 @@ function EditorNumber({ label, value, onChange }: { label: string; value: number
     <label className="block">
       <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
       <input type="number" value={Number(value || 0)} onChange={(e) => onChange(Number(e.target.value))} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none" />
+    </label>
+  )
+}
+
+function EditorSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<[string, string]> }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none">
+        {options.map(([optionValue, labelText]) => (
+          <option key={optionValue} value={optionValue}>{labelText}</option>
+        ))}
+      </select>
     </label>
   )
 }

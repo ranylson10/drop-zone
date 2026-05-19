@@ -2,6 +2,23 @@ import { Users } from 'lucide-react'
 
 export type StreamOverlayConfig = {
   title?: string
+  brand?: {
+    enabled?: boolean
+    logoDataUrl?: string | null
+    name?: string
+    title?: string
+    x?: number
+    y?: number
+    w?: number
+    h?: number
+    scale?: number
+    opacity?: number
+    objectFit?: 'contain' | 'cover'
+    align?: 'left' | 'center' | 'right'
+    nameSize?: number
+    titleSize?: number
+    textColor?: string
+  }
   theme?: {
     primary?: string
     secondary?: string
@@ -27,6 +44,11 @@ export type StreamOverlayConfig = {
     logoSize?: number
     paddingX?: number
     opacity?: number
+    scale?: number
+    blockCount?: number
+    rowsPerBlock?: number
+    blockGap?: number
+    blockDirection?: 'horizontal' | 'vertical'
   }
   columns?: Record<string, boolean>
   animation?: {
@@ -49,6 +71,23 @@ export type RankingRow = {
 
 export const defaultTabelaGeralConfig: StreamOverlayConfig = {
   title: 'TABELA GERAL',
+  brand: {
+    enabled: true,
+    logoDataUrl: null,
+    name: 'NOME DO CAMPEONATO',
+    title: 'TABELA GERAL',
+    x: 180,
+    y: 54,
+    w: 1560,
+    h: 120,
+    scale: 100,
+    opacity: 100,
+    objectFit: 'contain',
+    align: 'left',
+    nameSize: 54,
+    titleSize: 24,
+    textColor: '#ffffff',
+  },
   theme: {
     primary: '#e60012',
     secondary: '#f6c453',
@@ -74,6 +113,11 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     logoSize: 44,
     paddingX: 18,
     opacity: 100,
+    scale: 100,
+    blockCount: 1,
+    rowsPerBlock: 6,
+    blockGap: 36,
+    blockDirection: 'horizontal',
   },
   columns: {
     rank: true,
@@ -105,21 +149,22 @@ export const tabelaGeralColumnLabels: Record<string, string> = {
 }
 
 const columnWidths: Record<string, string> = {
-  rank: '76px',
-  logo: '78px',
-  nome: 'minmax(320px, 1fr)',
-  tag: '112px',
-  grupo: '96px',
-  quedas: '92px',
-  booyahs: '100px',
-  kills: '104px',
-  pontos: '126px',
+  rank: '0.62fr',
+  logo: '0.66fr',
+  nome: '2.35fr',
+  tag: '0.9fr',
+  grupo: '0.72fr',
+  quedas: '0.72fr',
+  booyahs: '0.78fr',
+  kills: '0.9fr',
+  pontos: '1fr',
 }
 
 export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?: StreamOverlayConfig | null): StreamOverlayConfig {
   return {
     ...(base || {}),
     ...(override || {}),
+    brand: { ...(base?.brand || {}), ...(override?.brand || {}) },
     theme: { ...(base?.theme || {}), ...(override?.theme || {}) },
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
@@ -178,6 +223,18 @@ function displayValue(row: RankingRow, column: string, rank: number) {
   return ''
 }
 
+function chunkRows(rows: RankingRow[], rowsPerBlock: number, blockCount: number) {
+  const chunks: RankingRow[][] = []
+  const safeRows = Math.max(1, rowsPerBlock)
+  const safeCount = Math.max(1, blockCount)
+
+  for (let index = 0; index < safeCount; index += 1) {
+    chunks.push(rows.slice(index * safeRows, index * safeRows + safeRows))
+  }
+
+  return chunks.filter((chunk) => chunk.length > 0)
+}
+
 export function TabelaGeralOverlay({
   config,
   rows,
@@ -193,9 +250,59 @@ export function TabelaGeralOverlay({
   const gridTemplateColumns = buildTabelaGrid(visibleColumns)
   const lista = (rows.length > 0 ? rows : sampleRankingRows(maxRows)).slice(0, maxRows)
   const opacity = Math.max(0, Math.min(100, Number(merged.layout?.opacity ?? 100))) / 100
+  const tableScale = Math.max(10, Number(merged.layout?.scale || 100)) / 100
+  const brandScale = Math.max(10, Number(merged.brand?.scale || 100)) / 100
+  const brandOpacity = Math.max(0, Math.min(100, Number(merged.brand?.opacity ?? 100))) / 100
+  const blockCount = Math.max(1, Math.min(4, Number(merged.layout?.blockCount || 1)))
+  const rowsPerBlock = Math.max(1, Number(merged.layout?.rowsPerBlock || Math.ceil(maxRows / blockCount)))
+  const blocks = blockCount > 1 ? chunkRows(lista, rowsPerBlock, blockCount) : [lista]
+  const blockDirection = merged.layout?.blockDirection || 'horizontal'
+  const blockGap = Number(merged.layout?.blockGap || 36)
+  const blockWidth = blockDirection === 'horizontal'
+    ? (Number(merged.layout?.w || 1560) - blockGap * (blocks.length - 1)) / Math.max(1, blocks.length)
+    : Number(merged.layout?.w || 1560)
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
+      {merged.brand?.enabled ? (
+        <div
+          className="absolute overflow-hidden uppercase"
+          style={{
+            left: Number(merged.brand?.x || 180),
+            top: Number(merged.brand?.y || 54),
+            width: Number(merged.brand?.w || 1560),
+            height: Number(merged.brand?.h || 120),
+            opacity: brandOpacity,
+            transform: `scale(${brandScale})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {merged.brand?.logoDataUrl ? (
+            <img
+              src={merged.brand.logoDataUrl}
+              alt={merged.brand.name || 'Logo do campeonato'}
+              className="absolute inset-0 h-full w-full"
+              style={{ objectFit: merged.brand.objectFit || 'contain' }}
+            />
+          ) : null}
+          <div
+            className="absolute inset-0 flex flex-col justify-center font-black"
+            style={{
+              color: merged.brand?.textColor || '#ffffff',
+              textAlign: merged.brand?.align || 'left',
+              paddingLeft: 18,
+              paddingRight: 18,
+              textShadow: `0 8px 22px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'}`,
+            }}
+          >
+            <div style={{ fontSize: Number(merged.brand?.nameSize || 54), lineHeight: 1 }}>{merged.brand?.name || ''}</div>
+            <div className="mt-2 tracking-[0.28em]" style={{ fontSize: Number(merged.brand?.titleSize || 24), color: merged.theme?.accent || '#f6c453' }}>
+              {merged.brand?.title || merged.title || 'TABELA GERAL'}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className="absolute overflow-hidden uppercase"
         style={{
@@ -205,9 +312,20 @@ export function TabelaGeralOverlay({
           color: merged.theme?.text || '#09111f',
           fontSize: Number(merged.layout?.fontSize || 24),
           opacity,
+          transform: `scale(${tableScale})`,
+          transformOrigin: 'top left',
           filter: `drop-shadow(0 24px 32px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'})`,
         }}
       >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: blockDirection === 'horizontal' ? `repeat(${blocks.length}, minmax(0, 1fr))` : '1fr',
+            gap: blockGap,
+          }}
+        >
+          {blocks.map((blockRows, blockIndex) => (
+            <div key={blockIndex} style={{ width: blockWidth }}>
         <div
           className="grid items-center overflow-hidden font-black"
           style={{
@@ -229,8 +347,9 @@ export function TabelaGeralOverlay({
         </div>
 
         <div className="mt-2" style={{ display: 'grid', gap: Number(merged.layout?.rowGap || 5) }}>
-          {lista.map((row, index) => {
-            const rowBackground = index % 2 === 0 ? merged.theme?.rowBackground : merged.theme?.rowAltBackground || merged.theme?.rowBackground
+          {blockRows.map((row, rowIndex) => {
+            const globalIndex = blockIndex * rowsPerBlock + rowIndex
+            const rowBackground = globalIndex % 2 === 0 ? merged.theme?.rowBackground : merged.theme?.rowAltBackground || merged.theme?.rowBackground
 
             return (
               <div
@@ -276,13 +395,16 @@ export function TabelaGeralOverlay({
                         color: column === 'pontos' ? merged.theme?.primary || '#e60012' : undefined,
                       }}
                     >
-                      {displayValue(row, column, index + 1)}
+                      {displayValue(row, column, globalIndex + 1)}
                     </div>
                   )
                 })}
               </div>
             )
           })}
+        </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
