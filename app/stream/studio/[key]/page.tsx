@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff, Loader2, Minus, MonitorUp, Plus, RefreshCw, RotateCcw, Save } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Minus, MonitorUp, Plus, RefreshCw, RotateCcw } from 'lucide-react'
 
 type EquipeOption = {
   campeonatoEquipeId: string
@@ -51,6 +51,26 @@ function getEquipeLogo(item: any) {
   return item?.equipes?.logo_url || item?.equipe_avulsa?.logo_url || null
 }
 
+function criarEstadoPadrao(projectId: string, equipes: EquipeOption[]): Partial<State> {
+  return {
+    project_id: projectId,
+    campeonato_equipe_a_id: equipes[0]?.campeonatoEquipeId || null,
+    campeonato_equipe_b_id: equipes[1]?.campeonatoEquipeId || null,
+    nome_a: equipes[0]?.nome || 'Equipe A',
+    nome_b: equipes[1]?.nome || 'Equipe B',
+    tag_a: equipes[0]?.tag || 'A',
+    tag_b: equipes[1]?.tag || 'B',
+    logo_a: equipes[0]?.logoUrl || null,
+    logo_b: equipes[1]?.logoUrl || null,
+    score_a: 0,
+    score_b: 0,
+    md: 1,
+    rodada: 'Rodada 1',
+    status: 'pre_jogo',
+    visivel: true,
+  }
+}
+
 export default function StreamStudioPage() {
   const params = useParams<{ key: string }>()
   const streamKey = params?.key
@@ -60,6 +80,7 @@ export default function StreamStudioPage() {
   const [equipes, setEquipes] = useState<EquipeOption[]>([])
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState('')
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
   const overlayUrl = `${origem}/stream/overlay/${streamKey}/scoreboard`
@@ -69,83 +90,93 @@ export default function StreamStudioPage() {
 
   const carregar = useCallback(async () => {
     if (!streamKey) return
+
     setLoading(true)
+    setErro('')
 
-    const { data: proj, error: projError } = await supabase
-      .from('stream_projects')
-      .select('id, campeonato_id, nome, stream_key')
-      .eq('stream_key', streamKey)
-      .maybeSingle()
+    try {
+      const { data: proj, error: projError } = await supabase
+        .from('stream_projects')
+        .select('id, campeonato_id, nome, stream_key')
+        .eq('stream_key', streamKey)
+        .maybeSingle()
 
-    if (projError || !proj) {
-      setLoading(false)
-      alert('Projeto não encontrado')
-      return
-    }
+      if (projError) throw projError
 
-    setProjeto(proj as Projeto)
+      if (!proj) {
+        setErro('Projeto não encontrado para essa chave.')
+        setLoading(false)
+        return
+      }
 
-    const { data: equipesData } = await supabase
-      .from('campeonato_equipes')
-      .select(`
-        id,
-        nome_exibicao,
-        tipo_origem,
-        created_at,
-        equipes ( nome, tag, logo_url ),
-        equipe_avulsa:equipes_avulsas_campeonato ( nome, tag, logo_url )
-      `)
-      .eq('campeonato_id', proj.campeonato_id)
-      .order('created_at', { ascending: true })
+      setProjeto(proj as Projeto)
 
-    const opts = (equipesData || []).map((item: any) => ({
-      campeonatoEquipeId: item.id,
-      nome: getEquipeNome(item),
-      tag: getEquipeTag(item),
-      logoUrl: getEquipeLogo(item),
-    }))
+      const { data: equipesData, error: equipesError } = await supabase
+        .from('campeonato_equipes')
+        .select(`
+          id,
+          nome_exibicao,
+          tipo_origem,
+          created_at,
+          equipes ( nome, tag, logo_url ),
+          equipe_avulsa:equipes_avulsas_campeonato ( nome, tag, logo_url )
+        `)
+        .eq('campeonato_id', proj.campeonato_id)
+        .order('created_at', { ascending: true })
 
-    setEquipes(opts)
+      if (equipesError) {
+        console.error('Erro ao carregar equipes:', equipesError)
+      }
 
-    const { data: scoreState, error: scoreError } = await supabase
-      .from('stream_scoreboard_state')
-      .select('*')
-      .eq('project_id', proj.id)
-      .maybeSingle()
+      const opts = (equipesData || []).map((item: any) => ({
+        campeonatoEquipeId: item.id,
+        nome: getEquipeNome(item),
+        tag: getEquipeTag(item),
+        logoUrl: getEquipeLogo(item),
+      }))
 
-    if (scoreError) {
-      setLoading(false)
-      alert(`Erro ao carregar scoreboard: ${scoreError.message}`)
-      return
-    }
+      setEquipes(opts)
 
-    if (!scoreState) {
-      const { data: criado } = await supabase
+      const { data: scoreState, error: scoreError } = await supabase
         .from('stream_scoreboard_state')
-        .insert({
-          project_id: proj.id,
-          nome_a: opts[0]?.nome || 'Equipe A',
-          tag_a: opts[0]?.tag || 'A',
-          logo_a: opts[0]?.logoUrl || null,
-          campeonato_equipe_a_id: opts[0]?.campeonatoEquipeId || null,
-          nome_b: opts[1]?.nome || 'Equipe B',
-          tag_b: opts[1]?.tag || 'B',
-          logo_b: opts[1]?.logoUrl || null,
-          campeonato_equipe_b_id: opts[1]?.campeonatoEquipeId || null,
-          md: 1,
-          rodada: 'Rodada 1',
-          status: 'pre_jogo',
-          visivel: true,
-        })
+        .select('*')
+        .eq('project_id', proj.id)
+        .maybeSingle()
+
+      if (scoreError) throw scoreError
+
+      if (scoreState) {
+        setState(scoreState as State)
+        setLoading(false)
+        return
+      }
+
+      const payloadInicial = criarEstadoPadrao(proj.id, opts)
+
+      const { data: criado, error: createError } = await supabase
+        .from('stream_scoreboard_state')
+        .insert(payloadInicial)
         .select('*')
         .single()
 
-      setState(criado as State)
-    } else {
-      setState(scoreState as State)
-    }
+      if (createError) {
+        console.error('Erro ao criar estado inicial:', createError)
+        setErro(`Projeto encontrado, mas não foi possível criar o scoreboard inicial: ${createError.message}`)
+        setState({
+          id: 'local-preview',
+          ...(payloadInicial as State),
+        } as State)
+        setLoading(false)
+        return
+      }
 
-    setLoading(false)
+      setState(criado as State)
+      setLoading(false)
+    } catch (error: any) {
+      console.error('Erro no studio:', error)
+      setErro(error?.message || 'Erro ao carregar o studio.')
+      setLoading(false)
+    }
   }, [streamKey])
 
   useEffect(() => {
@@ -153,9 +184,13 @@ export default function StreamStudioPage() {
   }, [carregar])
 
   async function atualizar(payload: Partial<State>) {
-    if (!state) return
+    if (!state || state.id === 'local-preview') {
+      setState((prev) => prev ? { ...prev, ...payload } : prev)
+      return
+    }
 
     setSalvando(true)
+
     const { error } = await supabase
       .from('stream_scoreboard_state')
       .update({
@@ -195,13 +230,42 @@ export default function StreamStudioPage() {
     }
   }
 
-  if (loading || !state) {
-    return <main className="flex min-h-screen items-center justify-center bg-[#080d16] text-white"><Loader2 className="animate-spin" /></main>
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#080d16] text-white">
+        <div className="text-center">
+          <Loader2 className="mx-auto animate-spin" />
+          <div className="mt-4 text-sm font-bold uppercase tracking-[0.16em] text-zinc-400">Carregando studio...</div>
+        </div>
+      </main>
+    )
   }
+
+  if (erro && !state) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#080d16] p-5 text-white">
+        <div className="max-w-xl border border-red-500/40 bg-red-500/10 p-6">
+          <div className="text-xl font-black uppercase text-red-400">Erro ao abrir Studio</div>
+          <p className="mt-3 text-sm font-semibold text-red-100">{erro}</p>
+          <button onClick={carregar} className="mt-5 h-11 border border-white/10 bg-white/5 px-4 text-[11px] font-black uppercase tracking-[0.16em]">
+            Tentar novamente
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  if (!state) return null
 
   return (
     <main className="min-h-screen bg-[#080d16] p-5 text-white">
       <section className="mx-auto max-w-6xl">
+        {erro ? (
+          <div className="mb-4 border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm font-semibold text-yellow-100">
+            {erro}
+          </div>
+        ) : null}
+
         <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-[11px] font-black uppercase tracking-[0.22em] text-red-500">Stream Studio</div>
@@ -210,8 +274,12 @@ export default function StreamStudioPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button onClick={carregar} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><RefreshCw size={14} /> Atualizar</button>
-            <Link href={`/stream/overlay/${streamKey}/scoreboard`} target="_blank" className="inline-flex h-10 items-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><MonitorUp size={14} /> Overlay OBS</Link>
+            <button onClick={carregar} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+              <RefreshCw size={14} /> Atualizar
+            </button>
+            <Link href={`/stream/overlay/${streamKey}/scoreboard`} target="_blank" className="inline-flex h-10 items-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+              <MonitorUp size={14} /> Overlay OBS
+            </Link>
           </div>
         </div>
 
