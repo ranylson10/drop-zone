@@ -15,8 +15,8 @@ type OverlayState = {
 }
 
 export default function StreamOverlayPage() {
-  const params = useParams<{ id: string }>()
-  const id = params?.id
+  const params = useParams<{ key: string }>()
+  const id = params?.key
   const [dados, setDados] = useState<OverlayState | null>(null)
 
   const carregar = useCallback(async () => {
@@ -37,6 +37,7 @@ export default function StreamOverlayPage() {
   }, [id])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar()
   }, [carregar])
 

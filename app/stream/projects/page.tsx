@@ -41,6 +41,7 @@ export default function StreamProjectsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar()
   }, [])
 
@@ -152,7 +153,7 @@ export default function StreamProjectsPage() {
                       <Copy size={14} />
                       Copiar chave
                     </button>
-                    <Link href={`/stream/studio/${projeto.stream_key}`} target="_blank" className="inline-flex h-10 items-center border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                    <Link href={`/stream/editor/${projeto.id}`} target="_blank" className="inline-flex h-10 items-center border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
                       Abrir Studio
                     </Link>
                     <Link href={`/stream/overlay/${projeto.stream_key}/scoreboard`} target="_blank" className="inline-flex h-10 items-center border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
