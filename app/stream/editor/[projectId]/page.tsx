@@ -5,6 +5,14 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Copy, Eye, EyeOff, Loader2, MonitorUp, Plus, RefreshCw, Save, SlidersHorizontal } from 'lucide-react'
+import {
+  RankingRow,
+  TabelaGeralOverlay,
+  defaultTabelaGeralConfig,
+  mergeOverlayConfig,
+  sampleRankingRows,
+  tabelaGeralColumnLabels,
+} from '@/lib/streamOverlay'
 
 type Template = {
   id: string
@@ -31,53 +39,123 @@ type Projeto = {
   campeonato_id: string | null
 }
 
-const defaultConfig = {
-  title: 'RESULTADO GERAL',
-  theme: {
-    primary: '#3d2378',
-    secondary: '#b9aee0',
-    background: 'rgba(20, 13, 48, 0.92)',
-    rowBackground: 'rgba(215, 207, 240, 0.90)',
-    text: '#101020',
-    headerText: '#ffffff',
-    accent: '#ffffff',
-  },
-  layout: {
-    x: 180,
-    y: 150,
-    w: 1560,
-    rowHeight: 58,
-    rowGap: 4,
-    maxRows: 12,
-    radius: 0,
-    fontSize: 24,
-  },
-  columns: {
-    rank: true,
-    logo: true,
-    nome: true,
-    tag: true,
-    grupo: true,
-    quedas: true,
-    booyahs: true,
-    kills: true,
-    pontos: true,
-  },
-  animation: {
-    enter: 'slide',
-    duration: 650,
-  },
+type CampeonatoEquipeRow = {
+  id: string
+  equipe_id: string | null
+  equipe_avulsa_id: string | null
+  nome_exibicao?: string | null
+  grupo_id: string | null
+  equipes?: { nome?: string | null; tag?: string | null; logo_url?: string | null } | null
+  equipe_avulsa?: { nome?: string | null; tag?: string | null; logo_url?: string | null } | null
 }
 
-function mergeConfig(base: any, override: any) {
-  return {
-    ...base,
-    ...(override || {}),
-    theme: { ...(base?.theme || {}), ...(override?.theme || {}) },
-    layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
-    columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
-    animation: { ...(base?.animation || {}), ...(override?.animation || {}) },
-  }
+type ResultadoRow = {
+  equipe_id: string | null
+  grupo_id?: string | null
+  colocacao?: number | null
+  posicao?: number | null
+  abates?: number | null
+  pontos_total?: number | null
+  total_pontos?: number | null
+}
+
+function textoSeguro(valor: unknown, fallback = '') {
+  const texto = String(valor || '').trim()
+  return texto || fallback
+}
+
+function numero(valor: unknown) {
+  return Number(valor || 0)
+}
+
+function getEquipeNome(item: CampeonatoEquipeRow) {
+  return item.equipes?.nome || item.equipe_avulsa?.nome || item.nome_exibicao || `Equipe ${String(item.id || '').slice(0, 6)}`
+}
+
+function getEquipeTag(item: CampeonatoEquipeRow) {
+  return item.equipes?.tag || item.equipe_avulsa?.tag || null
+}
+
+function getEquipeLogo(item: CampeonatoEquipeRow) {
+  return item.equipes?.logo_url || item.equipe_avulsa?.logo_url || null
+}
+
+async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
+  const [{ data: equipes }, { data: grupos }, partidasRes, jogosRes] = await Promise.all([
+    supabase
+      .from('campeonato_equipes')
+      .select(`
+        id,
+        equipe_id,
+        equipe_avulsa_id,
+        nome_exibicao,
+        grupo_id,
+        equipes ( nome, tag, logo_url ),
+        equipe_avulsa:equipes_avulsas_campeonato ( nome, tag, logo_url )
+      `)
+      .eq('campeonato_id', campeonatoId)
+      .order('created_at', { ascending: true }),
+    supabase.from('campeonato_grupos').select('id, nome').eq('campeonato_id', campeonatoId),
+    supabase.from('resultados_partidas_equipes').select('equipe_id, grupo_id, colocacao, abates, pontos_total').eq('campeonato_id', campeonatoId),
+    supabase.from('resultados_jogos').select('equipe_id, grupo_id, posicao, abates, total_pontos').eq('campeonato_id', campeonatoId),
+  ])
+
+  const equipesLista = (equipes || []) as CampeonatoEquipeRow[]
+  const gruposMap = new Map(((grupos || []) as any[]).map((grupo) => [textoSeguro(grupo.id), textoSeguro(grupo.nome, '-')]))
+  const resultadosPartidas = ((partidasRes.data || []) as ResultadoRow[]).map((row) => ({
+    equipe_id: row.equipe_id,
+    grupo_id: row.grupo_id,
+    colocacao: row.colocacao,
+    abates: row.abates,
+    pontos: row.pontos_total,
+  }))
+  const resultadosJogos = ((jogosRes.data || []) as ResultadoRow[]).map((row) => ({
+    equipe_id: row.equipe_id,
+    grupo_id: row.grupo_id,
+    colocacao: row.posicao,
+    abates: row.abates,
+    pontos: row.total_pontos,
+  }))
+  const resultados = resultadosPartidas.length > 0 ? resultadosPartidas : resultadosJogos
+  const statsMap = new Map<string, { quedas: number; booyahs: number; kills: number; pontos: number; grupoId: string | null }>()
+  const publicToCampeonato = new Map<string, string>()
+
+  equipesLista.forEach((equipe) => {
+    ;[equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id].map((item) => textoSeguro(item)).filter(Boolean).forEach((ref) => publicToCampeonato.set(ref, equipe.id))
+  })
+
+  resultados.forEach((resultado) => {
+    const ref = textoSeguro(resultado.equipe_id)
+    const campeonatoEquipeId = publicToCampeonato.get(ref) || ref
+    if (!campeonatoEquipeId) return
+    const atual = statsMap.get(campeonatoEquipeId) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null as string | null }
+
+    atual.quedas += 1
+    atual.kills += numero(resultado.abates)
+    atual.pontos += numero(resultado.pontos)
+    if (numero(resultado.colocacao) === 1) atual.booyahs += 1
+    if (!atual.grupoId && resultado.grupo_id) atual.grupoId = textoSeguro(resultado.grupo_id)
+
+    statsMap.set(campeonatoEquipeId, atual)
+  })
+
+  return equipesLista
+    .map((equipe) => {
+      const stats = statsMap.get(equipe.id) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null }
+      const grupoId = textoSeguro(stats.grupoId || equipe.grupo_id)
+      return {
+        id: equipe.id,
+        nome: getEquipeNome(equipe),
+        tag: getEquipeTag(equipe),
+        logo: getEquipeLogo(equipe),
+        grupo: grupoId ? gruposMap.get(grupoId) || '-' : '-',
+        quedas: stats.quedas,
+        booyahs: stats.booyahs,
+        kills: stats.kills,
+        pontos: stats.pontos,
+      }
+    })
+    .sort((a, b) => b.pontos - a.pontos || b.booyahs - a.booyahs || b.kills - a.kills || a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
 export default function StreamOverlayEditorPage() {
@@ -87,6 +165,7 @@ export default function StreamOverlayEditorPage() {
   const [projeto, setProjeto] = useState<Projeto | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [overlays, setOverlays] = useState<Overlay[]>([])
+  const [rankingRows, setRankingRows] = useState<RankingRow[]>([])
   const [overlayId, setOverlayId] = useState('')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -95,8 +174,9 @@ export default function StreamOverlayEditorPage() {
 
   const overlayAtual = useMemo(() => overlays.find((item) => item.id === overlayId) || overlays[0] || null, [overlays, overlayId])
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
-  const config = useMemo(() => mergeConfig(templateAtual?.config_padrao || defaultConfig, overlayAtual?.config || {}), [templateAtual, overlayAtual])
+  const config = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
   const renderUrl = overlayAtual ? `${origem}/stream/render/${overlayAtual.id}` : ''
+  const previewRows = rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -120,8 +200,20 @@ export default function StreamOverlayEditorPage() {
   }, [projectId, overlayId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar()
   }, [carregar])
+
+  useEffect(() => {
+    if (!projeto?.campeonato_id) return
+
+    async function carregarRanking() {
+      if (!projeto?.campeonato_id) return
+      setRankingRows(await carregarRankingTabelaGeral(projeto.campeonato_id))
+    }
+
+    carregarRanking()
+  }, [projeto?.campeonato_id])
 
   async function criarOverlay(template: Template) {
     if (!projectId) return
@@ -133,7 +225,7 @@ export default function StreamOverlayEditorPage() {
         project_id: projectId,
         template_id: template.id,
         nome: template.nome,
-        config: template.config_padrao || {},
+        config: mergeOverlayConfig(defaultTabelaGeralConfig, template.config_padrao || {}),
         visivel: true,
         ordem: overlays.length + 1,
       })
@@ -221,7 +313,7 @@ export default function StreamOverlayEditorPage() {
           <div>
             <div className="text-[11px] font-black uppercase tracking-[0.24em] text-red-500">Overlay Editor</div>
             <h1 className="mt-2 text-2xl font-black uppercase">{projeto?.nome || 'Projeto de transmissão'}</h1>
-            <p className="mt-1 text-xs font-semibold text-zinc-400">Templates fixos editáveis: dados automáticos + visual limitado.</p>
+            <p className="mt-1 text-xs font-semibold text-zinc-400">Preview com dados reais do campeonato e visual salvo direto no link OBS.</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -279,7 +371,7 @@ export default function StreamOverlayEditorPage() {
             </div>
 
             <div className="relative aspect-video overflow-hidden border border-white/10 bg-[#050816]">
-              <PreviewTabelaGeral config={config} />
+              <TabelaGeralOverlay config={config} rows={previewRows} previewScale={0.5} />
             </div>
 
             {renderUrl ? (
@@ -290,7 +382,7 @@ export default function StreamOverlayEditorPage() {
           <aside className="border border-white/10 bg-[#111827] p-4">
             <div className="mb-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">
               <SlidersHorizontal size={15} />
-              Editor limitado
+              Editor visual
             </div>
 
             {!overlayAtual ? (
@@ -299,9 +391,13 @@ export default function StreamOverlayEditorPage() {
               <div className="space-y-5">
                 <EditorInput label="Título" value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
                 <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
+                <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
                 <EditorColor label="Cor fundo" value={config.theme.background} onChange={(v) => atualizarCampo('theme.background', v)} />
                 <EditorColor label="Cor linha" value={config.theme.rowBackground} onChange={(v) => atualizarCampo('theme.rowBackground', v)} />
+                <EditorColor label="Cor linha alternada" value={config.theme.rowAltBackground} onChange={(v) => atualizarCampo('theme.rowAltBackground', v)} />
                 <EditorColor label="Cor texto" value={config.theme.text} onChange={(v) => atualizarCampo('theme.text', v)} />
+                <EditorColor label="Cor cabecalho" value={config.theme.headerText} onChange={(v) => atualizarCampo('theme.headerText', v)} />
+                <EditorInput label="Borda" value={config.theme.border || ''} onChange={(v) => atualizarCampo('theme.border', v)} />
 
                 <div className="grid grid-cols-2 gap-3">
                   <EditorNumber label="X" value={config.layout.x} onChange={(v) => atualizarCampo('layout.x', v)} />
@@ -309,16 +405,21 @@ export default function StreamOverlayEditorPage() {
                   <EditorNumber label="Largura" value={config.layout.w} onChange={(v) => atualizarCampo('layout.w', v)} />
                   <EditorNumber label="Linhas" value={config.layout.maxRows} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
                   <EditorNumber label="Altura linha" value={config.layout.rowHeight} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
+                  <EditorNumber label="Altura topo" value={config.layout.headerHeight} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                   <EditorNumber label="Fonte" value={config.layout.fontSize} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
+                  <EditorNumber label="Logo" value={config.layout.logoSize} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
+                  <EditorNumber label="Espaco" value={config.layout.rowGap} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
+                  <EditorNumber label="Raio" value={config.layout.radius} onChange={(v) => atualizarCampo('layout.radius', v)} />
+                  <EditorNumber label="Opacidade" value={config.layout.opacity} onChange={(v) => atualizarCampo('layout.opacity', v)} />
                 </div>
 
                 <div>
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
                   <div className="grid grid-cols-2 gap-2">
-                    {Object.keys(config.columns || {}).map((key) => (
+                    {Object.keys(tabelaGeralColumnLabels).map((key) => (
                       <label key={key} className="flex items-center gap-2 border border-white/10 bg-[#0b1220] px-3 py-2 text-xs font-bold uppercase">
                         <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
-                        {key}
+                        {tabelaGeralColumnLabels[key] || key}
                       </label>
                     ))}
                   </div>
@@ -371,63 +472,5 @@ function EditorNumber({ label, value, onChange }: { label: string; value: number
       <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
       <input type="number" value={Number(value || 0)} onChange={(e) => onChange(Number(e.target.value))} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none" />
     </label>
-  )
-}
-
-function PreviewTabelaGeral({ config }: { config: any }) {
-  const rows = Array.from({ length: Number(config.layout?.maxRows || 12) }, (_, idx) => ({
-    rank: idx + 1,
-    nome: ['RED WAVE', 'ALOE', 'BRAVUS BR', 'TEAM ÓDIO', 'MANDELA GAMING'][idx % 5],
-    tag: ['RW', 'ALOE', 'BRA', 'ODIO', 'MDL'][idx % 5],
-    grupo: ['A', 'B', 'C', 'D'][idx % 4],
-    quedas: 4,
-    booyahs: idx % 3,
-    kills: 20 - idx,
-    pontos: 100 - idx * 5,
-  }))
-
-  const scale = 0.5
-
-  return (
-    <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left" style={{ transform: `scale(${scale})`, background: 'transparent' }}>
-      <div
-        className="absolute"
-        style={{
-          left: config.layout?.x || 180,
-          top: config.layout?.y || 150,
-          width: config.layout?.w || 1560,
-          color: config.theme?.text,
-          fontSize: config.layout?.fontSize || 24,
-        }}
-      >
-        <div style={{ background: config.theme?.primary, color: config.theme?.headerText }} className="mb-2 px-6 py-3 text-center font-black uppercase tracking-[0.18em]">
-          {config.title || 'RESULTADO GERAL'}
-        </div>
-
-        <div className="space-y-1">
-          {rows.map((row) => (
-            <div
-              key={row.rank}
-              className="grid items-center gap-2 px-3 font-black uppercase"
-              style={{
-                gridTemplateColumns: '70px 90px 1fr 100px 90px 100px 100px 100px',
-                height: config.layout?.rowHeight || 58,
-                background: config.theme?.rowBackground,
-                borderRadius: config.layout?.radius || 0,
-              }}
-            >
-              {config.columns?.rank ? <div className="text-center">{row.rank}</div> : null}
-              {config.columns?.logo ? <div className="mx-auto h-10 w-10 rounded-full bg-white" /> : null}
-              {config.columns?.nome ? <div>{row.nome}</div> : null}
-              {config.columns?.tag ? <div className="text-center">{row.tag}</div> : null}
-              {config.columns?.grupo ? <div className="text-center">{row.grupo}</div> : null}
-              {config.columns?.booyahs ? <div className="text-center">{row.booyahs}</div> : null}
-              {config.columns?.kills ? <div className="text-center">{row.kills}</div> : null}
-              {config.columns?.pontos ? <div className="text-center">{row.pontos}</div> : null}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }
