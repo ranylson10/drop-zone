@@ -167,12 +167,9 @@ export default function StreamObsControllerPage() {
     carregarProducerKeys()
   }, [carregarProducerKeys])
 
-  async function gerarProducerKey() {
+  async function criarProducerKeySilenciosa() {
     const { data: auth } = await supabase.auth.getUser()
-    if (!auth.user) {
-      alert('Faça login para gerar uma chave de produtor.')
-      return
-    }
+    if (!auth.user) throw new Error('Faça login para ativar o painel.')
 
     const { data, error } = await supabase
       .from('stream_producer_keys')
@@ -183,25 +180,54 @@ export default function StreamObsControllerPage() {
       .select('id, label, producer_key, active_session_id, active_until')
       .single()
 
-    if (error) {
-      alert(`Erro ao gerar chave: ${error.message}`)
-      return
+    if (error) throw error
+
+    const created = data as ProducerKey
+    setProducerKeys((prev) => [...prev, created])
+    setProducerKey(created.producer_key)
+    setProducerKeyId(created.id)
+    localStorage.setItem('stream.controller.producerKey', created.producer_key)
+    return created
+  }
+
+  async function garantirProducerKeyAtual() {
+    const saved = safeText(localStorage.getItem('stream.controller.producerKey'))
+    const encontrada = producerKeys.find((item) => item.producer_key === producerKey || item.producer_key === saved) || producerKeys[0]
+
+    if (encontrada) {
+      setProducerKey(encontrada.producer_key)
+      setProducerKeyId(encontrada.id)
+      localStorage.setItem('stream.controller.producerKey', encontrada.producer_key)
+      return encontrada
     }
 
-    setProducerKeys((prev) => [...prev, data as ProducerKey])
-    setProducerKey(data.producer_key)
-    localStorage.setItem('stream.controller.producerKey', data.producer_key)
+    return await criarProducerKeySilenciosa()
+  }
+
+  async function gerarProducerKey() {
+    try {
+      await criarProducerKeySilenciosa()
+      alert('Novo painel criado e salvo. Agora clique em Ativar painel.')
+    } catch (error: any) {
+      alert(`Erro ao gerar painel: ${error?.message || error}`)
+    }
   }
 
   async function ativarProducerKey() {
-    if (!producerKey) {
-      alert('Cole ou gere uma chave de produtor.')
+    setLoading(true)
+
+    let keyAtual = producerKey
+    try {
+      const garantida = await garantirProducerKeyAtual()
+      keyAtual = garantida.producer_key
+    } catch (error: any) {
+      setLoading(false)
+      alert(error?.message || 'Não consegui preparar o painel do streamer.')
       return
     }
 
-    setLoading(true)
     const { data, error } = await supabase.rpc('stream_claim_producer_key', {
-      p_producer_key: producerKey,
+      p_producer_key: keyAtual,
       p_session_id: sessionId,
     })
     setLoading(false)
@@ -220,7 +246,7 @@ export default function StreamObsControllerPage() {
 
     setProducerKeyId(result.producer_key_id)
     setProducerActive(true)
-    localStorage.setItem('stream.controller.producerKey', producerKey)
+    localStorage.setItem('stream.controller.producerKey', keyAtual)
     await carregarProducerProjects(result.producer_key_id)
   }
 
@@ -236,20 +262,6 @@ export default function StreamObsControllerPage() {
 
     return () => clearInterval(interval)
   }, [producerActive, producerKey, sessionId])
-
-  function selecionarProducerKey(value: string) {
-    const clean = safeText(value)
-    setProducerKey(clean)
-    localStorage.setItem('stream.controller.producerKey', clean)
-    const encontrada = producerKeys.find((item) => item.producer_key === clean)
-    setProducerKeyId(encontrada?.id || '')
-    setProducerActive(false)
-    setProducerProjects([])
-    setSelectedProducerProjectId('')
-    setOverlays([])
-    setButtons([])
-    if (encontrada?.id) carregarProducerProjects(encontrada.id)
-  }
 
   function salvarObsConfig() {
     localStorage.setItem('stream.obs.host', safeText(obsHost) || '127.0.0.1')
@@ -333,11 +345,16 @@ export default function StreamObsControllerPage() {
   }
 
   async function adicionarProjetoNaLista() {
-    const keyIdParaSalvar = producerKeyId || producerKeys.find((item) => item.producer_key === producerKey)?.id || ''
+    let keyIdParaSalvar = producerKeyId || producerKeys.find((item) => item.producer_key === producerKey)?.id || ''
 
     if (!keyIdParaSalvar) {
-      alert('Selecione ou gere uma chave de produtor primeiro.')
-      return
+      try {
+        const garantida = await garantirProducerKeyAtual()
+        keyIdParaSalvar = garantida.id
+      } catch (error: any) {
+        alert(error?.message || 'Não consegui preparar o painel do streamer.')
+        return
+      }
     }
 
     if (!projectKey) {
@@ -556,34 +573,36 @@ export default function StreamObsControllerPage() {
           <div className="border border-white/10 bg-[#0b1220] p-3">
             <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
               <KeyRound size={14} />
-              Chave do produtor
+              Painel do streamer
             </div>
-            <div className="flex gap-2">
-              <select value={producerKey} onChange={(e) => selecionarProducerKey(e.target.value)} className="h-11 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none">
-                <option value="">Selecione ou gere uma chave</option>
-                {producerKeys.map((key) => (
-                  <option key={key.id} value={key.producer_key}>
-                    {key.label} • {key.producer_key.slice(0, 14)}...
-                  </option>
-                ))}
-              </select>
-              <button onClick={gerarProducerKey} className="h-11 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-                Gerar
-              </button>
+
+            <div className="border border-white/10 bg-[#080d16] p-3">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Status</div>
+              <div className="mt-1 text-sm font-black uppercase">
+                {producerActive ? 'Painel ativo' : producerKey ? 'Painel preparado' : 'Painel ainda não criado'}
+              </div>
+              <div className="mt-1 text-[11px] font-semibold leading-relaxed text-zinc-500">
+                A chave interna fica oculta. Use esta tela para configurar e depois copie apenas o link do painel limpo para o Dock do OBS.
+              </div>
             </div>
-            <div className="mt-2 flex gap-2">
-              <button onClick={ativarProducerKey} disabled={loading} className="inline-flex h-10 flex-1 items-center justify-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-60">
+
+            <div className="mt-2 grid gap-2">
+              <button onClick={ativarProducerKey} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-60">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
-                {producerActive ? 'Chave ativa' : 'Ativar chave'}
+                {producerActive ? 'Painel ativo' : 'Ativar painel'}
               </button>
-              <button onClick={() => producerKey && copiar(producerKey)} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-                Copiar
+              <button onClick={gerarProducerKey} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Criar novo painel
               </button>
             </div>
+
             {panelUrl ? (
               <div className="mt-3 border border-white/10 bg-[#080d16] p-3">
                 <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Link do painel para Dock OBS</div>
                 <div className="mt-1 break-all text-xs font-semibold text-zinc-300">{panelUrl}</div>
+                <button onClick={() => copiar(panelUrl)} className="mt-2 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                  Copiar link do painel
+                </button>
               </div>
             ) : null}
           </div>
@@ -617,7 +636,7 @@ export default function StreamObsControllerPage() {
             <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
               <input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} placeholder="Chave do campeonato/projeto" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
               <input value={projectLabel} onChange={(e) => setProjectLabel(e.target.value)} placeholder="Nome para aparecer no painel" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
-              <button onClick={adicionarProjetoNaLista} disabled={loading || !projectKey.trim() || !producerKey} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
+              <button onClick={adicionarProjetoNaLista} disabled={loading || !projectKey.trim()} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
                 <Plus size={14} />
                 Adicionar
               </button>
