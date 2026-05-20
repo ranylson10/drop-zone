@@ -191,6 +191,14 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
 
 export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
   {
+    id: 'tela-de-espera',
+    slug: 'tela-de-espera',
+    nome: 'Tela de espera',
+    categoria: 'transmissao',
+    descricao: 'Tela de espera antes da transmissao.',
+    config_padrao: fixedTemplateConfig('TELA DE ESPERA', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 110, rowHeight: 90 } }),
+  },
+  {
     id: 'booyah',
     slug: 'booyah',
     nome: 'Booyah',
@@ -245,6 +253,14 @@ export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
     categoria: 'estatisticas',
     descricao: 'Classificacao do dia.',
     config_padrao: fixedTemplateConfig('TABELA DO DIA'),
+  },
+  {
+    id: 'mvp-do-dia',
+    slug: 'mvp-do-dia',
+    nome: 'MVP do dia',
+    categoria: 'estatisticas',
+    descricao: 'Ranking MVP do dia.',
+    config_padrao: fixedTemplateConfig('MVP DO DIA', { layout: { maxRows: 8, rowsPerBlock: 8 } }),
   },
   {
     id: 'agradecimentos',

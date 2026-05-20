@@ -56,6 +56,14 @@ function numero(valor: unknown) {
   return Number(valor || 0)
 }
 
+function getActiveProjectStorageKey(controllerKey: string) {
+  return `stream.controller.activeProject.${controllerKey}`
+}
+
+function getActiveProjectChannelName(controllerKey: string) {
+  return `stream-controller-active-project-${controllerKey}`
+}
+
 function getEquipeNome(item: CampeonatoEquipeRow) {
   return item.equipes?.nome || item.equipe_avulsa?.nome || item.nome_exibicao || `Equipe ${String(item.id || '').slice(0, 6)}`
 }
@@ -68,7 +76,7 @@ function getEquipeLogo(item: CampeonatoEquipeRow) {
   return item.equipes?.logo_url || item.equipe_avulsa?.logo_url || null
 }
 
-async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
+async function carregarRankingTabelaGeral(campeonatoId: string, liveRows: ResultadoRow[] = []): Promise<RankingRow[]> {
   const [{ data: equipes }, { data: grupos }, partidasRes, jogosRes] = await Promise.all([
     supabase
       .from('campeonato_equipes')
@@ -104,7 +112,14 @@ async function carregarRankingTabelaGeral(campeonatoId: string): Promise<Ranking
     abates: row.abates,
     pontos: row.total_pontos,
   }))
-  const resultados = resultadosPartidas.length > 0 ? resultadosPartidas : resultadosJogos
+  const resultadosLive = (liveRows || []).map((row) => ({
+    equipe_id: row.equipe_id,
+    grupo_id: row.grupo_id,
+    colocacao: row.posicao,
+    abates: row.abates,
+    pontos: row.total_pontos,
+  }))
+  const resultados = resultadosLive.length > 0 ? resultadosLive : resultadosPartidas.length > 0 ? resultadosPartidas : resultadosJogos
   const statsMap = new Map<string, { quedas: number; booyahs: number; kills: number; pontos: number; grupoId: string | null }>()
   const publicToCampeonato = new Map<string, string>()
 
@@ -155,11 +170,22 @@ export default function FixedOverlayRenderPage() {
   const [overlay, setOverlay] = useState<Overlay | null>(null)
   const [rows, setRows] = useState<RankingRow[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [genericOnly, setGenericOnly] = useState(false)
 
   const config = useMemo(() => {
     const fallbackConfig = fixedTemplate?.config_padrao || mergeOverlayConfig(defaultTabelaGeralConfig, { title: String(overlayType || 'OVERLAY').toUpperCase() })
     return mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(fallbackConfig, overlay?.config || {}))
   }, [fixedTemplate, overlay, overlayType])
+
+  const carregarPorStreamKey = useCallback(async (keyToLoad: string) => {
+    const { data: projectData } = await supabase
+      .from('stream_projects')
+      .select('id, campeonato_id, stream_key')
+      .eq('stream_key', keyToLoad)
+      .maybeSingle()
+
+    return (projectData as Projeto | null) || null
+  }, [])
 
   const carregar = useCallback(async () => {
     if (!streamKey || !fixedTemplate) {
@@ -167,20 +193,21 @@ export default function FixedOverlayRenderPage() {
       return
     }
 
-    const { data: projectData } = await supabase
-      .from('stream_projects')
-      .select('id, campeonato_id, stream_key')
-      .eq('stream_key', streamKey)
-      .maybeSingle()
+    const activeStreamKey = typeof window !== 'undefined'
+      ? textoSeguro(localStorage.getItem(getActiveProjectStorageKey(streamKey)))
+      : ''
+    const projectData = await carregarPorStreamKey(activeStreamKey || streamKey)
 
     if (!projectData) {
       setProject(null)
       setOverlay(null)
+      setGenericOnly(true)
       setRows(sampleRankingRows(Number(fixedTemplate.config_padrao.layout?.maxRows || 8)))
       setLoaded(true)
       return
     }
 
+    setGenericOnly(false)
     setProject(projectData as Projeto)
 
     const { data: overlayData } = await supabase
@@ -193,18 +220,36 @@ export default function FixedOverlayRenderPage() {
     setOverlay((overlayData as Overlay) || null)
 
     if (projectData.campeonato_id) {
-      setRows(await carregarRankingTabelaGeral(projectData.campeonato_id))
+      const liveRows = ((overlayData as Overlay | null)?.config as any)?.__liveResults?.rows || []
+      setRows(await carregarRankingTabelaGeral(projectData.campeonato_id, liveRows))
     } else {
       setRows(sampleRankingRows(Number(fixedTemplate.config_padrao.layout?.maxRows || 8)))
     }
 
     setLoaded(true)
-  }, [fixedTemplate, streamKey])
+  }, [carregarPorStreamKey, fixedTemplate, streamKey])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar()
   }, [carregar])
+
+  useEffect(() => {
+    if (!streamKey) return
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === getActiveProjectStorageKey(streamKey)) carregar()
+    }
+    window.addEventListener('storage', onStorage)
+
+    const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(getActiveProjectChannelName(streamKey)) : null
+    channel?.addEventListener('message', carregar)
+
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      channel?.close()
+    }
+  }, [carregar, streamKey])
 
   useEffect(() => {
     if (!overlay?.id) return
@@ -228,6 +273,7 @@ export default function FixedOverlayRenderPage() {
       .channel(`fixed-overlay-ranking-${project.campeonato_id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resultados_partidas_equipes', filter: `campeonato_id=eq.${project.campeonato_id}` }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resultados_jogos', filter: `campeonato_id=eq.${project.campeonato_id}` }, carregar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stream_project_overlays', filter: `project_id=eq.${project.id}` }, carregar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'campeonato_equipes', filter: `campeonato_id=eq.${project.campeonato_id}` }, carregar)
       .subscribe()
 
@@ -241,6 +287,19 @@ export default function FixedOverlayRenderPage() {
       <>
         <ObsTransparentPageStyle />
         <main className="h-screen w-screen overflow-hidden bg-transparent" />
+      </>
+    )
+  }
+
+  if (genericOnly) {
+    return (
+      <>
+        <ObsTransparentPageStyle />
+        <main className="flex h-[1080px] w-[1920px] items-center justify-center overflow-hidden bg-transparent">
+          <div className="border border-white/20 bg-black/35 px-16 py-10 text-center text-6xl font-black uppercase tracking-[0.08em] text-white">
+            {fixedTemplate?.nome || String(overlayType || 'Overlay')}
+          </div>
+        </main>
       </>
     )
   }

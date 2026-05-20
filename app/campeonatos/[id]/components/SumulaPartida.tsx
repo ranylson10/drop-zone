@@ -282,11 +282,15 @@ type SumulaPartidaProps = {
  jogoInicialId?: string
  quedaInicialId?: string
  canEdit?: boolean
+ campeonatoIdOverride?: string
+ pontuadorLinkId?: string
+ projectIdOverride?: string
+ streamKeyOverride?: string
 }
 
-export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInicialId, canEdit = false }: SumulaPartidaProps = {}) {
+export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInicialId, canEdit = false, campeonatoIdOverride, pontuadorLinkId, projectIdOverride, streamKeyOverride }: SumulaPartidaProps = {}) {
  const params = useParams()
- const campeonatoId = params?.id as string
+ const campeonatoId = campeonatoIdOverride || (params?.id as string)
 
  // Tabs
  const [tab, setTab] = useState<'classificacao' | 'mvp'>('classificacao')
@@ -2074,16 +2078,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  }, [campeonatoId, blocoSelecionado, quedaAtiva, buscarPartidaAtual, mvpEdits, mvpItems, mvpEquipe, teamRawToEquipeId, equipes, mvpMeta, faseSelecionadaId])
 
  // ---------------- Salvar CLASSIFICAÇÃO ----------------
- const salvarClassificacao = async () => {
- if (!quedaAtiva || !blocoSelecionado) return
- if (locked) return alert('🔒 Queda travada. Clique em EDITAR/DESTRAVAR para alterar.')
-
- setLoading(true)
- try {
- const jogoIdAtual = getJogoIdAtual()
- await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
-
- const inserts = equipes
+ const montarInsertsClassificacao = (jogoIdAtual: string) => equipes
  .filter((i) => i.equipe)
  .map((i) => ({
  campeonato_id: campeonatoId,
@@ -2096,6 +2091,52 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  posicao: resultadosCalculados[getVagaKey(i)].rank,
  total_pontos: resultadosCalculados[getVagaKey(i)].total,
  }))
+
+ const salvarClassificacaoLive = async () => {
+ if (!quedaAtiva || !blocoSelecionado) return
+
+ setLoading(true)
+ try {
+ const jogoIdAtual = getJogoIdAtual()
+ const inserts = montarInsertsClassificacao(jogoIdAtual)
+
+ const response = await fetch('/api/stream/live-score', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ projectId: projectIdOverride || null,
+ streamKey: streamKeyOverride || null,
+ campeonatoId,
+ jogoId: jogoIdAtual,
+ mapa: quedaAtiva.mapa,
+ rows: inserts,
+ }),
+ })
+ const result = await response.json()
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel atualizar a live.')
+ }
+
+ salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
+ alert('Live atualizada. A tabela do site continua congelada ate publicar no site.')
+ } catch (e: any) {
+ console.error(e)
+ alert(`Erro ao atualizar a live: ${e?.message || e?.details || 'veja console'}`)
+ } finally {
+ setLoading(false)
+ }
+ }
+
+ const salvarClassificacao = async () => {
+ if (!quedaAtiva || !blocoSelecionado) return
+ if (locked) return alert('🔒 Queda travada. Clique em EDITAR/DESTRAVAR para alterar.')
+
+ setLoading(true)
+ try {
+ const jogoIdAtual = getJogoIdAtual()
+ await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
+
+ const inserts = montarInsertsClassificacao(jogoIdAtual)
 
  await supabase.from('resultados_jogos').insert(inserts)
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
@@ -2161,21 +2202,34 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  setLoading(true)
  try {
  const jogoIdAtual = getJogoIdAtual()
- await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
+ const insertsClassificacao = montarInsertsClassificacao(jogoIdAtual)
 
- const insertsClassificacao = equipes
- .filter((i) => i.equipe)
- .map((i) => ({
- campeonato_id: campeonatoId,
- fase_id: faseSelecionadaId,
- jogo_id: jogoIdAtual,
- equipe_id: i.campeonato_equipe_id,
- grupo_id: i.grupo_id,
+ if (projectIdOverride || streamKeyOverride) {
+ const response = await fetch('/api/stream/publish-score', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ projectId: projectIdOverride || null,
+ streamKey: streamKeyOverride || null,
+ campeonatoId,
+ jogoId: jogoIdAtual,
  mapa: quedaAtiva.mapa,
- abates: resultadosCalculados[getVagaKey(i)].abates,
- posicao: resultadosCalculados[getVagaKey(i)].rank,
- total_pontos: resultadosCalculados[getVagaKey(i)].total,
- }))
+ rows: insertsClassificacao,
+ }),
+ })
+ const result = await response.json()
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel publicar no site.')
+ }
+
+ salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
+ await carregarVinculosDoJogo(jogoIdAtual)
+ await handleSelecionarQueda({ ...quedaAtiva, jogo_id: jogoIdAtual }, blocoSelecionado, equipes)
+ alert('Classificacao publicada no site. MVP fica para publicar pela sumula autorizada do dono/ajudante.')
+ return
+ }
+
+ await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
 
  if (insertsClassificacao.length > 0) {
  await supabase.from('resultados_jogos').insert(insertsClassificacao)
@@ -2406,12 +2460,23 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  </label>
 
  <button
+ onClick={salvarClassificacaoLive}
+ disabled={loading || isChanging || !quedaAtiva}
+ title="Atualizar live sem publicar no site"
+ className="inline-flex h-8 items-center justify-center gap-2 border border-emerald-600 bg-emerald-600 px-3 text-[9px] font-black uppercase tracking-[0.10em] text-white disabled:opacity-50"
+ >
+ {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+ <span>Atualizar live</span>
+ </button>
+
+ <button
  onClick={salvarTudo}
  disabled={loading || isChanging || !quedaAtiva}
- title="Salvar tudo"
- className="inline-flex h-8 w-8 items-center justify-center border border-[#2563eb] bg-[#2563eb] text-white disabled:opacity-50"
+ title="Publicar pontuacao na tabela do site"
+ className="inline-flex h-8 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[9px] font-black uppercase tracking-[0.10em] text-white disabled:opacity-50"
  >
  {loading ? <Loader2 size={14} className="animate-spin" /> : <SaveAll size={14} />}
+ <span>Publicar site</span>
  </button>
 
  {tab === 'classificacao' ? (

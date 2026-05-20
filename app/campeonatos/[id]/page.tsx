@@ -1351,6 +1351,55 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
 
+  async function copiarLinkPontuador() {
+    if (!podeGerenciarCampeonato) return
+
+    const { data: existente, error: buscaError } = await supabase
+      .from('stream_projects')
+      .select('id, stream_key')
+      .eq('campeonato_id', id)
+      .eq('ativo', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (buscaError) {
+      alert(`Nao consegui buscar a chave do pontuador: ${buscaError.message}`)
+      return
+    }
+
+    let streamKey = String((existente as any)?.stream_key || '').trim()
+
+    if (!streamKey) {
+      const { data: criado, error: criarError } = await supabase
+        .from('stream_projects')
+        .insert({
+          campeonato_id: id,
+          nome: `Transmissao - ${camp?.nome || 'Campeonato'}`,
+          ativo: true,
+        })
+        .select('stream_key')
+        .single()
+
+      if (criarError) {
+        alert(`Nao consegui criar a chave do pontuador: ${criarError.message}`)
+        return
+      }
+
+      streamKey = String((criado as any)?.stream_key || '').trim()
+    }
+
+    if (!streamKey) {
+      alert('Nao consegui gerar a chave do pontuador.')
+      return
+    }
+
+    const origem = typeof window !== 'undefined' ? window.location.origin : ''
+    const link = `${origem}/stream/pontuador?key=${encodeURIComponent(streamKey)}`
+    await navigator.clipboard.writeText(link)
+    alert('Link do pontuador copiado.')
+  }
+
   if (!idEhUuid) {
     return (
       <div className="min-h-[55vh] dz-card flex flex-col items-center justify-center text-center p-6">
@@ -1667,12 +1716,22 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                       </button>
                     ))}
                   </div>
+                  {podeGerenciarCampeonato ? (
+                    <button
+                      type="button"
+                      onClick={copiarLinkPontuador}
+                      className="mt-2 flex h-9 w-full items-center justify-center gap-2 border border-emerald-600 bg-emerald-600 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white"
+                    >
+                      <FileText size={14} />
+                      Copiar link do pontuador
+                    </button>
+                  ) : null}
                 </div>
 
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   {subAbaTabela === 'classificacao' && <PointsTable data={equipesParticipantes} />}
                   {subAbaTabela === 'mvp' && <MVPTable data={rankingMvp} />}
-                  {subAbaTabela === 'sumula' && <SumulaPartida />}
+                  {subAbaTabela === 'sumula' && <SumulaPartida canEdit={podeGerenciarCampeonato} />}
                   {subAbaTabela === 'config' && (
                     <div className="max-w-4xl dz-card p-2">
                       <TableEditor />

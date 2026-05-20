@@ -164,6 +164,30 @@ function getEquipeLogo(item: CampeonatoEquipeRow) {
   return item.equipes?.logo_url || item.equipe_avulsa?.logo_url || null
 }
 
+function normalizarTemplateNome(value: unknown) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/gi, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+async function sincronizarTemplatesFixos() {
+  const { error } = await supabase
+    .from('stream_overlay_templates')
+    .upsert(fixedStreamOverlayTemplates.map((template) => ({
+      id: template.id,
+      nome: template.nome,
+      categoria: template.categoria,
+      descricao: template.descricao,
+      config_padrao: template.config_padrao,
+      ativo: true,
+    })), { onConflict: 'id' })
+
+  if (error) throw error
+}
+
 async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
   const [{ data: equipes }, { data: grupos }, partidasRes, jogosRes] = await Promise.all([
     supabase
@@ -291,6 +315,12 @@ export default function StreamOverlayEditorPage() {
     if (!projectId) return
     setLoading(true)
 
+    try {
+      await sincronizarTemplatesFixos()
+    } catch (error) {
+      console.warn('Nao foi possivel sincronizar templates oficiais.', error)
+    }
+
     const [projRes, tplRes, overlayRes, authRes] = await Promise.all([
       supabase.from('stream_projects').select('id, nome, stream_key, campeonato_id').eq('id', projectId).maybeSingle(),
       supabase.from('stream_overlay_templates').select('id, nome, categoria, descricao, config_padrao').eq('ativo', true).order('nome'),
@@ -314,7 +344,11 @@ export default function StreamOverlayEditorPage() {
       setIsSiteAdmin(adminAtivo)
     }
 
-    const dbTemplates = ((tplRes.data || []) as Template[]).filter((template) => !fixedStreamOverlayTemplates.some((fixed) => fixed.id === template.id))
+    const fixedTemplateNames = new Set(fixedStreamOverlayTemplates.map((fixed) => normalizarTemplateNome(fixed.nome)))
+    const dbTemplates = ((tplRes.data || []) as Template[]).filter((template) => {
+      if (fixedStreamOverlayTemplates.some((fixed) => fixed.id === template.id)) return false
+      return !fixedTemplateNames.has(normalizarTemplateNome(template.nome))
+    })
     setTemplates(adminAtivo ? [...fixedTemplates, ...dbTemplates] : fixedTemplates)
 
     let lista = (overlayRes.data || []) as Overlay[]
@@ -386,6 +420,29 @@ export default function StreamOverlayEditorPage() {
     }
 
     setSalvando(true)
+    try {
+      if (fixedStreamOverlayTemplates.some((fixed) => fixed.id === template.id)) {
+        await sincronizarTemplatesFixos()
+      } else {
+        const { error: templateError } = await supabase
+          .from('stream_overlay_templates')
+          .upsert({
+            id: template.id,
+            nome: template.nome,
+            categoria: template.categoria,
+            descricao: template.descricao,
+            config_padrao: template.config_padrao,
+            ativo: true,
+          }, { onConflict: 'id' })
+
+        if (templateError) throw templateError
+      }
+    } catch (error: any) {
+      setSalvando(false)
+      alert(`Erro ao preparar template: ${error?.message || 'template nao sincronizado'}`)
+      return
+    }
+
     const { data, error } = await supabase
       .from('stream_project_overlays')
       .insert({

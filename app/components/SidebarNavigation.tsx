@@ -70,6 +70,7 @@ const baseItems: NavItem[] = [
     children: [
       { href: '/stream/projects', label: 'Projetos' },
       { href: '/stream/controller', label: 'Controlador OBS' },
+      { href: '/stream/pontuador', label: 'Pontuador' },
     ],
   },
   {

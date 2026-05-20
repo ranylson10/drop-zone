@@ -4,12 +4,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-
-type ProducerKey = {
-  id: string
-  producer_key: string
-}
 
 type ProducerProject = {
   id: string
@@ -34,17 +28,8 @@ type ButtonItem = {
   enabled: boolean
 }
 
-type ObsScene = {
-  sceneName: string
-}
-
 function safeText(value: unknown) {
   return String(value || '').trim()
-}
-
-function createSessionId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 async function sha256Base64(text: string) {
@@ -61,20 +46,18 @@ async function computeObsAuth(password: string, salt: string, challenge: string)
 
 const OBS_EVENT_SUBSCRIPTIONS = 64 | 128
 
+function getActiveProjectStorageKey(controllerKey: string) {
+  return `stream.controller.activeProject.${controllerKey}`
+}
+
+function getActiveProjectChannelName(controllerKey: string) {
+  return `stream-controller-active-project-${controllerKey}`
+}
+
 export default function StreamControllerPanelPage() {
   const params = useParams<{ producerKey: string }>()
   const producerKey = decodeURIComponent(params?.producerKey || '')
 
-  const [sessionId] = useState(() => {
-    if (typeof window === 'undefined') return ''
-    const saved = localStorage.getItem('stream.controller.panelSessionId')
-    if (saved) return saved
-    const created = createSessionId()
-    localStorage.setItem('stream.controller.panelSessionId', created)
-    return created
-  })
-
-  const [producerKeyId, setProducerKeyId] = useState('')
   const [projects, setProjects] = useState<ProducerProject[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState('')
   const [buttons, setButtons] = useState<ButtonItem[]>([])
@@ -88,88 +71,60 @@ export default function StreamControllerPanelPage() {
   const carregar = useCallback(async () => {
     if (!producerKey) return
 
-    const { data, error } = await supabase.rpc('stream_claim_producer_key', {
-      p_producer_key: producerKey,
-      p_session_id: sessionId,
+    const response = await fetch(`/api/stream/controller/panel/${encodeURIComponent(producerKey)}`, {
+      cache: 'no-store',
     })
+    const result = await response.json()
 
-    if (error) {
-      setStatus(error.message)
+    if (!response.ok || !result?.ok) {
+      setStatus(result?.error || 'Chave do controlador invalida.')
       return
     }
 
-    const result = Array.isArray(data) ? data[0] : data
-    if (!result?.ok) {
-      setStatus(result?.reason || 'Chave bloqueada.')
-      return
-    }
-
-    setProducerKeyId(result.producer_key_id)
     setStatus('Chave ativa')
 
-    const { data: projectData, error: projectError } = await supabase
-      .from('stream_producer_projects')
-      .select(`
-        id,
-        producer_key_id,
-        project_id,
-        label,
-        ordem,
-        stream_projects ( id, nome, stream_key )
-      `)
-      .eq('producer_key_id', result.producer_key_id)
-      .eq('ativo', true)
-      .order('ordem', { ascending: true })
-
-    if (projectError) {
-      setStatus(projectError.message)
-      return
-    }
-
-    const lista = (projectData || []) as ProducerProject[]
+    const lista = (result.projects || []) as ProducerProject[]
     setProjects(lista)
-    const primeiro = lista[0]?.project_id || ''
+    const primeiro = result.selected_project_id || lista[0]?.project_id || ''
     setSelectedProjectId((prev) => prev || primeiro)
-    if (primeiro) carregarBotoes(result.producer_key_id, primeiro)
-  }, [producerKey, sessionId])
+    const projetoInicial = lista.find((project) => project.project_id === primeiro)
+    if (projetoInicial?.stream_projects?.stream_key) publicarProjetoAtivo(projetoInicial.stream_projects.stream_key)
+    setButtons((result.buttons || []) as ButtonItem[])
+  }, [producerKey])
 
   useEffect(() => {
     carregar()
   }, [carregar])
 
-  useEffect(() => {
-    if (!producerKey) return
+  async function carregarBotoes(projectId: string) {
+    const response = await fetch(`/api/stream/controller/panel/${encodeURIComponent(producerKey)}?projectId=${encodeURIComponent(projectId)}`, {
+      cache: 'no-store',
+    })
+    const result = await response.json()
 
-    const interval = setInterval(() => {
-      supabase.rpc('stream_heartbeat_producer_key', {
-        p_producer_key: producerKey,
-        p_session_id: sessionId,
-      })
-    }, 15000)
-
-    return () => clearInterval(interval)
-  }, [producerKey, sessionId])
-
-  async function carregarBotoes(keyId: string, projectId: string) {
-    const { data, error } = await supabase
-      .from('stream_controller_buttons')
-      .select('id, label, action_type, obs_scene_name, overlay_id, ordem, enabled')
-      .eq('producer_key_id', keyId)
-      .eq('project_id', projectId)
-      .eq('enabled', true)
-      .order('ordem', { ascending: true })
-
-    if (error) {
-      setStatus(error.message)
+    if (!response.ok || !result?.ok) {
+      setStatus(result?.error || 'Erro ao carregar botoes.')
       return
     }
 
-    setButtons((data || []) as ButtonItem[])
+    setButtons((result.buttons || []) as ButtonItem[])
   }
 
   async function selecionarProjeto(projectId: string) {
     setSelectedProjectId(projectId)
-    if (producerKeyId) carregarBotoes(producerKeyId, projectId)
+    const projeto = projects.find((item) => item.project_id === projectId)
+    if (projeto?.stream_projects?.stream_key) publicarProjetoAtivo(projeto.stream_projects.stream_key)
+    carregarBotoes(projectId)
+  }
+
+  function publicarProjetoAtivo(streamKey: string) {
+    if (!producerKey || !streamKey) return
+    localStorage.setItem(getActiveProjectStorageKey(producerKey), streamKey)
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(getActiveProjectChannelName(producerKey))
+      channel.postMessage({ streamKey })
+      channel.close()
+    }
   }
 
   function nextRequestId() {
