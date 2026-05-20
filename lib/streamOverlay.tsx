@@ -7,6 +7,8 @@ export type StreamOverlayConfig = {
   title?: string
   brand?: {
     enabled?: boolean
+    imageEnabled?: boolean
+    textEnabled?: boolean
     logoDataUrl?: string | null
     name?: string
     title?: string
@@ -44,6 +46,8 @@ export type StreamOverlayConfig = {
   }
   columnStyles?: Record<string, { background?: string; text?: string }>
   rowStyles?: Record<string, { background?: string; text?: string }>
+  columnWidths?: Record<string, number>
+  columnsOrder?: string[]
   layout?: {
     x?: number
     y?: number
@@ -83,10 +87,33 @@ export type RankingRow = {
   empty?: boolean
 }
 
+export type FixedStreamOverlayTemplate = {
+  id: string
+  slug: string
+  nome: string
+  categoria: string
+  descricao: string
+  config_padrao: StreamOverlayConfig
+}
+
+function fixedTemplateConfig(title: string, overrides: StreamOverlayConfig = {}): StreamOverlayConfig {
+  return mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig({
+    title,
+    brand: {
+      name: title,
+      title,
+      textEnabled: true,
+      imageEnabled: false,
+    },
+  }, overrides))
+}
+
 export const defaultTabelaGeralConfig: StreamOverlayConfig = {
   title: 'TABELA GERAL',
   brand: {
     enabled: true,
+    imageEnabled: true,
+    textEnabled: true,
     logoDataUrl: null,
     name: 'NOME DO CAMPEONATO',
     title: 'TABELA GERAL',
@@ -124,6 +151,8 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
   },
   columnStyles: {},
   rowStyles: {},
+  columnWidths: {},
+  columnsOrder: ['rank', 'logo', 'nome', 'tag', 'grupo', 'quedas', 'booyahs', 'kills', 'pontos'],
   layout: {
     x: 180,
     y: 140,
@@ -160,6 +189,80 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
   },
 }
 
+export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
+  {
+    id: 'booyah',
+    slug: 'booyah',
+    nome: 'Booyah',
+    categoria: 'transmissao',
+    descricao: 'Chamada de Booyah da queda.',
+    config_padrao: fixedTemplateConfig('BOOYAH', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 96, rowHeight: 90 } }),
+  },
+  {
+    id: 'countdown',
+    slug: 'countdown',
+    nome: 'Countdown',
+    categoria: 'transmissao',
+    descricao: 'Contagem regressiva de entrada ou intervalo.',
+    config_padrao: fixedTemplateConfig('COUNTDOWN', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 96, rowHeight: 90 } }),
+  },
+  {
+    id: 'tabela-da-queda',
+    slug: 'tabela-da-queda',
+    nome: 'Tabela da queda',
+    categoria: 'estatisticas',
+    descricao: 'Tabela de pontuacao da queda atual.',
+    config_padrao: fixedTemplateConfig('TABELA DA QUEDA'),
+  },
+  {
+    id: 'mvp-da-queda',
+    slug: 'mvp-da-queda',
+    nome: 'MVP da queda',
+    categoria: 'estatisticas',
+    descricao: 'MVP da queda atual.',
+    config_padrao: fixedTemplateConfig('MVP DA QUEDA', { layout: { maxRows: 6, rowsPerBlock: 6 } }),
+  },
+  {
+    id: 'tabela-geral',
+    slug: 'tabela-geral',
+    nome: 'Tabela geral',
+    categoria: 'estatisticas',
+    descricao: 'Classificacao geral acumulada.',
+    config_padrao: fixedTemplateConfig('TABELA GERAL'),
+  },
+  {
+    id: 'mvp-geral',
+    slug: 'mvp-geral',
+    nome: 'MVP geral',
+    categoria: 'estatisticas',
+    descricao: 'Ranking MVP geral.',
+    config_padrao: fixedTemplateConfig('MVP GERAL', { layout: { maxRows: 8, rowsPerBlock: 8 } }),
+  },
+  {
+    id: 'tabela-do-dia',
+    slug: 'tabela-do-dia',
+    nome: 'Tabela do dia',
+    categoria: 'estatisticas',
+    descricao: 'Classificacao do dia.',
+    config_padrao: fixedTemplateConfig('TABELA DO DIA'),
+  },
+  {
+    id: 'agradecimentos',
+    slug: 'agradecimentos',
+    nome: 'Agradecimentos',
+    categoria: 'transmissao',
+    descricao: 'Tela final de agradecimentos.',
+    config_padrao: fixedTemplateConfig('AGRADECIMENTOS', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 110, rowHeight: 90 } }),
+  },
+]
+
+export const fixedStreamOverlaySlugs = fixedStreamOverlayTemplates.map((template) => template.slug)
+
+export function getFixedStreamOverlayTemplate(slugOrId?: string | null) {
+  const value = String(slugOrId || '').trim().toLowerCase()
+  return fixedStreamOverlayTemplates.find((template) => template.slug === value || template.id === value) || null
+}
+
 export const tabelaGeralColumnLabels: Record<string, string> = {
   rank: 'POS',
   logo: '',
@@ -172,16 +275,16 @@ export const tabelaGeralColumnLabels: Record<string, string> = {
   pontos: 'PTS',
 }
 
-const columnWidths: Record<string, string> = {
-  rank: '0.62fr',
-  logo: '0.66fr',
-  nome: '2.35fr',
-  tag: '0.9fr',
-  grupo: '0.72fr',
-  quedas: '0.72fr',
-  booyahs: '0.78fr',
-  kills: '0.9fr',
-  pontos: '1fr',
+export const defaultTabelaGeralColumnWidths: Record<string, number> = {
+  rank: 0.62,
+  logo: 0.66,
+  nome: 2.35,
+  tag: 0.9,
+  grupo: 0.72,
+  quedas: 0.72,
+  booyahs: 0.78,
+  kills: 0.9,
+  pontos: 1,
 }
 
 export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?: StreamOverlayConfig | null): StreamOverlayConfig {
@@ -192,6 +295,8 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
     theme: { ...(base?.theme || {}), ...(override?.theme || {}) },
     columnStyles: { ...(base?.columnStyles || {}), ...(override?.columnStyles || {}) },
     rowStyles: { ...(base?.rowStyles || {}), ...(override?.rowStyles || {}) },
+    columnWidths: { ...(base?.columnWidths || {}), ...(override?.columnWidths || {}) },
+    columnsOrder: override?.columnsOrder || base?.columnsOrder,
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
     animation: { ...(base?.animation || {}), ...(override?.animation || {}) },
@@ -200,11 +305,19 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
 
 export function getVisibleTabelaColumns(config: StreamOverlayConfig) {
   const columns = config.columns || defaultTabelaGeralConfig.columns || {}
-  return Object.keys(tabelaGeralColumnLabels).filter((key) => columns[key] !== false)
+  const defaultOrder = Object.keys(tabelaGeralColumnLabels)
+  const savedOrder = (config.columnsOrder || []).filter((key) => defaultOrder.includes(key))
+  const orderedColumns = [...savedOrder, ...defaultOrder.filter((key) => !savedOrder.includes(key))]
+  return orderedColumns.filter((key) => columns[key] !== false)
 }
 
-export function buildTabelaGrid(columns: string[]) {
-  return columns.map((key) => columnWidths[key] || '100px').join(' ')
+export function buildTabelaGrid(columns: string[], config?: StreamOverlayConfig) {
+  return columns
+    .map((key) => {
+      const width = Number(config?.columnWidths?.[key] ?? defaultTabelaGeralColumnWidths[key] ?? 1)
+      return `${Math.max(0.2, width)}fr`
+    })
+    .join(' ')
 }
 
 export function sampleRankingRows(maxRows = 12): RankingRow[] {
@@ -289,7 +402,9 @@ export function TabelaGeralOverlay({
   previewScale,
   editable,
   selectedBlock,
+  selectedColumn,
   onSelectBlock,
+  onSelectColumn,
   onStartDrag,
 }: {
   config: StreamOverlayConfig
@@ -297,13 +412,15 @@ export function TabelaGeralOverlay({
   previewScale?: number
   editable?: boolean
   selectedBlock?: StreamOverlayBlock
+  selectedColumn?: string
   onSelectBlock?: (block: StreamOverlayBlock) => void
+  onSelectColumn?: (column: string) => void
   onStartDrag?: (block: StreamOverlayBlock, event: PointerEvent) => void
 }) {
   const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
   const maxRows = Number(merged.layout?.maxRows || 12)
   const visibleColumns = getVisibleTabelaColumns(merged)
-  const gridTemplateColumns = buildTabelaGrid(visibleColumns)
+  const gridTemplateColumns = buildTabelaGrid(visibleColumns, merged)
   const lista = fillRows(rows, maxRows)
   const opacity = Math.max(0, Math.min(100, Number(merged.layout?.opacity ?? 100))) / 100
   const tableScale = Math.max(10, Number(merged.layout?.scale || 100)) / 100
@@ -333,65 +450,82 @@ export function TabelaGeralOverlay({
     onSelectBlock?.(block)
     onStartDrag?.(block, event)
   }
+  const selectColumn = (column: string) => (event: PointerEvent) => {
+    if (!editable) return
+    event.preventDefault()
+    event.stopPropagation()
+    onSelectBlock?.('table')
+    onSelectColumn?.(column)
+  }
+  const selectedColumnStyle = (column: string): CSSProperties => editable && selectedColumn === column
+    ? {
+        outline: '3px solid rgba(250, 204, 21, 0.9)',
+        outlineOffset: -3,
+      }
+    : {}
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
       {merged.brand?.enabled ? (
         <>
-          <div
-            className="absolute overflow-hidden uppercase"
-            onPointerDown={selectBlock('image')}
-            style={{
-              left: Number(merged.brand?.x || 180),
-              top: Number(merged.brand?.y || 54),
-              width: Number(merged.brand?.w || 1560),
-              height: Number(merged.brand?.h || 120),
-              opacity: brandOpacity,
-              transform: `scale(${brandScale})`,
-              transformOrigin: 'top left',
-              ...selectedStyle('image'),
-            }}
-          >
-            {merged.brand?.logoDataUrl ? (
-            <img
-              src={merged.brand.logoDataUrl}
-              alt={merged.brand.name || 'Logo do campeonato'}
-              className="absolute inset-0 h-full w-full"
-              style={{ objectFit: merged.brand.objectFit || 'contain' }}
-            />
-            ) : editable ? (
-              <div className="flex h-full w-full items-center justify-center border border-white/20 bg-black/10 text-[24px] font-black tracking-[0.14em] text-white/70">
-                IMAGEM
-              </div>
-            ) : null}
-          </div>
-
-          <div
-            className="absolute flex flex-col justify-center overflow-hidden uppercase"
-            onPointerDown={selectBlock('text')}
-            style={{
-              left: Number(merged.brand?.textX ?? 420),
-              top: Number(merged.brand?.textY ?? 66),
-              width: Number(merged.brand?.textW ?? 1180),
-              height: Number(merged.brand?.textH ?? 116),
-              opacity: textOpacity,
-              transform: `scale(${textScale})`,
-              transformOrigin: 'top left',
-              color: merged.brand?.textColor || '#ffffff',
-              textAlign: merged.brand?.align || 'left',
-              paddingLeft: 18,
-              paddingRight: 18,
-              textShadow: 'none',
-              fontWeight: Number(merged.brand?.fontWeight || 900),
-              fontStyle: merged.brand?.italic ? 'italic' : 'normal',
-              ...selectedStyle('text'),
-            }}
-          >
-            <div style={{ fontSize: Number(merged.brand?.nameSize || 54), lineHeight: 1 }}>{merged.brand?.name || ''}</div>
-            <div className="mt-2 tracking-[0.28em]" style={{ fontSize: Number(merged.brand?.titleSize || 24), color: merged.theme?.accent || '#f6c453' }}>
-              {merged.brand?.title || merged.title || 'TABELA GERAL'}
+          {merged.brand?.imageEnabled !== false ? (
+            <div
+              className="absolute overflow-hidden uppercase"
+              onPointerDown={selectBlock('image')}
+              style={{
+                left: Number(merged.brand?.x || 180),
+                top: Number(merged.brand?.y || 54),
+                width: Number(merged.brand?.w || 1560),
+                height: Number(merged.brand?.h || 120),
+                opacity: brandOpacity,
+                transform: `scale(${brandScale})`,
+                transformOrigin: 'top left',
+                ...selectedStyle('image'),
+              }}
+            >
+              {merged.brand?.logoDataUrl ? (
+              <img
+                src={merged.brand.logoDataUrl}
+                alt={merged.brand.name || 'Logo do campeonato'}
+                className="absolute inset-0 h-full w-full"
+                style={{ objectFit: merged.brand.objectFit || 'contain' }}
+              />
+              ) : editable ? (
+                <div className="flex h-full w-full items-center justify-center border border-white/20 bg-black/10 text-[24px] font-black tracking-[0.14em] text-white/70">
+                  IMAGEM
+                </div>
+              ) : null}
             </div>
-          </div>
+          ) : null}
+
+          {merged.brand?.textEnabled !== false ? (
+            <div
+              className="absolute flex flex-col justify-center overflow-hidden uppercase"
+              onPointerDown={selectBlock('text')}
+              style={{
+                left: Number(merged.brand?.textX ?? 420),
+                top: Number(merged.brand?.textY ?? 66),
+                width: Number(merged.brand?.textW ?? 1180),
+                height: Number(merged.brand?.textH ?? 116),
+                opacity: textOpacity,
+                transform: `scale(${textScale})`,
+                transformOrigin: 'top left',
+                color: merged.brand?.textColor || '#ffffff',
+                textAlign: merged.brand?.align || 'left',
+                paddingLeft: 18,
+                paddingRight: 18,
+                textShadow: 'none',
+                fontWeight: Number(merged.brand?.fontWeight || 900),
+                fontStyle: merged.brand?.italic ? 'italic' : 'normal',
+                ...selectedStyle('text'),
+              }}
+            >
+              <div style={{ fontSize: Number(merged.brand?.nameSize || 54), lineHeight: 1 }}>{merged.brand?.name || ''}</div>
+              <div className="mt-2 tracking-[0.28em]" style={{ fontSize: Number(merged.brand?.titleSize || 24), color: merged.theme?.accent || '#f6c453' }}>
+                {merged.brand?.title || merged.title || 'TABELA GERAL'}
+              </div>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -436,10 +570,16 @@ export function TabelaGeralOverlay({
           {visibleColumns.map((column) => (
             <div
               key={column}
+              onPointerDown={selectColumn(column)}
               className={`${column === 'nome' ? 'text-left' : 'text-center'} text-[0.68em] tracking-[0.18em]`}
               style={{
                 color: merged.columnStyles?.[column]?.text || undefined,
                 background: merged.columnStyles?.[column]?.background || undefined,
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: column === 'nome' ? 'flex-start' : 'center',
+                ...selectedColumnStyle(column),
               }}
             >
               {column === 'nome' ? merged.title || 'TABELA GERAL' : tabelaGeralColumnLabels[column]}
@@ -462,6 +602,9 @@ export function TabelaGeralOverlay({
                   gridTemplateColumns,
                   height: Number(merged.layout?.rowHeight || 62),
                   background: rowBackground || 'rgba(248,250,252,0.94)',
+                  backgroundSize: '100% 100%',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
                   borderRadius: Number(merged.layout?.radius || 4),
                   border: `1px solid ${merged.theme?.border || 'rgba(255,255,255,0.18)'}`,
                   paddingLeft: Number(merged.layout?.paddingX || 18),
@@ -474,8 +617,11 @@ export function TabelaGeralOverlay({
                       return (
                         <div
                           key={column}
+                          onPointerDown={selectColumn(column)}
                           style={{
                             background: merged.columnStyles?.[column]?.background || undefined,
+                            height: '100%',
+                            ...selectedColumnStyle(column),
                           }}
                         />
                       )
@@ -484,10 +630,13 @@ export function TabelaGeralOverlay({
                     return (
                       <div
                         key={column}
+                        onPointerDown={selectColumn(column)}
                         className="flex items-center justify-center"
                         style={{
                           background: merged.columnStyles?.[column]?.background || undefined,
                           color: merged.columnStyles?.[column]?.text || rowText || undefined,
+                          height: '100%',
+                          ...selectedColumnStyle(column),
                         }}
                       >
                         <div
@@ -512,9 +661,16 @@ export function TabelaGeralOverlay({
                     <div
                       key={column}
                       className={`${column === 'nome' ? 'truncate text-left' : 'text-center'} ${column === 'pontos' ? 'font-black' : ''}`}
+                      onPointerDown={selectColumn(column)}
                       style={{
                         color: merged.columnStyles?.[column]?.text || (column === 'pontos' && !row.empty ? merged.theme?.primary || '#e60012' : rowText || undefined),
                         background: merged.columnStyles?.[column]?.background || undefined,
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: column === 'nome' ? 'flex-start' : 'center',
+                        minWidth: 0,
+                        ...selectedColumnStyle(column),
                       }}
                     >
                       {displayValue(row, column, globalIndex + 1)}

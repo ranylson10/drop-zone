@@ -9,7 +9,10 @@ import {
   RankingRow,
   StreamOverlayBlock,
   TabelaGeralOverlay,
+  defaultTabelaGeralColumnWidths,
   defaultTabelaGeralConfig,
+  fixedStreamOverlayTemplates,
+  getFixedStreamOverlayTemplate,
   mergeOverlayConfig,
   sampleRankingRows,
   tabelaGeralColumnLabels,
@@ -21,6 +24,7 @@ type Template = {
   categoria: string
   descricao: string | null
   config_padrao: any
+  fixed?: boolean
 }
 
 type Overlay = {
@@ -73,6 +77,7 @@ const colorSwatches = [
 
 const STREAM_ASSET_BUCKET = 'imagem_campeonatos'
 const DATA_IMAGE_REGEX = /data:image\/[a-zA-Z0-9.+-]+;base64,[^"')\s]+/g
+const tabelaGeralColumnKeys = Object.keys(tabelaGeralColumnLabels)
 
 function extractColor(value?: string) {
   const text = String(value || '').trim()
@@ -85,7 +90,7 @@ function gradientValue(start: string, end: string, direction = '90deg') {
 }
 
 function imageBackgroundValue(url: string) {
-  return `url("${url}") center/cover no-repeat`
+  return `url("${url}")`
 }
 
 function assetExtensao(fileName: string, mime?: string) {
@@ -245,6 +250,7 @@ export default function StreamOverlayEditorPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [overlays, setOverlays] = useState<Overlay[]>([])
   const [rankingRows, setRankingRows] = useState<RankingRow[]>([])
+  const [isSiteAdmin, setIsSiteAdmin] = useState(false)
   const [overlayId, setOverlayId] = useState('')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -258,28 +264,91 @@ export default function StreamOverlayEditorPage() {
   const overlayAtual = useMemo(() => overlays.find((item) => item.id === overlayId) || overlays[0] || null, [overlays, overlayId])
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
   const config = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
-  const renderUrl = overlayAtual ? `${origem}/stream/render/${overlayAtual.id}` : ''
+  const fixedOverlayAtual = getFixedStreamOverlayTemplate(overlayAtual?.template_id)
+  const renderUrl = overlayAtual
+    ? fixedOverlayAtual && projeto?.stream_key
+      ? `${origem}/stream/overlay/${projeto.stream_key}/${fixedOverlayAtual.slug}`
+      : `${origem}/stream/render/${overlayAtual.id}`
+    : ''
   const previewRows = rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
   const previewScale = 0.5
+  const orderedColumnKeys = useMemo(() => {
+    const savedOrder = ((config.columnsOrder || []) as string[]).filter((key) => tabelaGeralColumnKeys.includes(key))
+    return [...savedOrder, ...tabelaGeralColumnKeys.filter((key) => !savedOrder.includes(key))]
+  }, [config.columnsOrder])
+  const selectedColumnIndex = Math.max(0, orderedColumnKeys.indexOf(selectedColumn))
+  const selectedColumnWidth = Number(config.columnWidths?.[selectedColumn] ?? defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)
 
   const carregar = useCallback(async () => {
     if (!projectId) return
     setLoading(true)
 
-    const [projRes, tplRes, overlayRes] = await Promise.all([
+    const [projRes, tplRes, overlayRes, authRes] = await Promise.all([
       supabase.from('stream_projects').select('id, nome, stream_key, campeonato_id').eq('id', projectId).maybeSingle(),
       supabase.from('stream_overlay_templates').select('id, nome, categoria, descricao, config_padrao').eq('ativo', true).order('nome'),
       supabase.from('stream_project_overlays').select('id, project_id, template_id, nome, config, visivel, ordem').eq('project_id', projectId).order('ordem'),
+      supabase.auth.getUser(),
     ])
 
     if (projRes.data) setProjeto(projRes.data as Projeto)
-    if (tplRes.data) setTemplates(tplRes.data as Template[])
-    if (overlayRes.data) {
-      const lista = overlayRes.data as Overlay[]
-      setOverlays(lista)
-      if (!overlayId && lista[0]) setOverlayId(lista[0].id)
+    const fixedTemplates = fixedStreamOverlayTemplates.map((template) => ({ ...template, fixed: true }))
+    let adminAtivo = false
+
+    if (authRes.data.user?.id) {
+      const { data: adminData } = await supabase
+        .from('site_administradores')
+        .select('id')
+        .eq('user_id', authRes.data.user.id)
+        .eq('ativo', true)
+        .limit(1)
+
+      adminAtivo = Boolean(adminData?.length)
+      setIsSiteAdmin(adminAtivo)
     }
 
+    const dbTemplates = ((tplRes.data || []) as Template[]).filter((template) => !fixedStreamOverlayTemplates.some((fixed) => fixed.id === template.id))
+    setTemplates(adminAtivo ? [...fixedTemplates, ...dbTemplates] : fixedTemplates)
+
+    let lista = (overlayRes.data || []) as Overlay[]
+
+    if (projRes.data) {
+      const missingTemplates = fixedStreamOverlayTemplates.filter((template) => !lista.some((overlay) => overlay.template_id === template.id))
+
+      if (missingTemplates.length > 0) {
+        await supabase
+          .from('stream_overlay_templates')
+          .upsert(missingTemplates.map((template) => ({
+            id: template.id,
+            nome: template.nome,
+            categoria: template.categoria,
+            descricao: template.descricao,
+            config_padrao: template.config_padrao,
+            ativo: true,
+          })), { onConflict: 'id' })
+
+        await supabase
+          .from('stream_project_overlays')
+          .insert(missingTemplates.map((template, index) => ({
+            project_id: projectId,
+            template_id: template.id,
+            nome: template.nome,
+            config: template.config_padrao,
+            visivel: true,
+            ordem: lista.length + index + 1,
+          })))
+
+        const { data: refreshed } = await supabase
+          .from('stream_project_overlays')
+          .select('id, project_id, template_id, nome, config, visivel, ordem')
+          .eq('project_id', projectId)
+          .order('ordem')
+
+        lista = (refreshed || lista) as Overlay[]
+      }
+    }
+
+    setOverlays(lista)
+    if (!overlayId && lista[0]) setOverlayId(lista[0].id)
     setLoading(false)
   }, [projectId, overlayId])
 
@@ -478,6 +547,19 @@ export default function StreamOverlayEditorPage() {
     await salvarConfig(novo)
   }
 
+  async function moverColuna(direcao: -1 | 1) {
+    if (!overlayAtual) return
+
+    const atual = orderedColumnKeys.indexOf(selectedColumn)
+    const destino = atual + direcao
+    if (atual < 0 || destino < 0 || destino >= orderedColumnKeys.length) return
+
+    const novaOrdem = [...orderedColumnKeys]
+    const [coluna] = novaOrdem.splice(atual, 1)
+    novaOrdem.splice(destino, 0, coluna)
+    await atualizarCampo('columnsOrder', novaOrdem)
+  }
+
   async function alternarVisivel() {
     if (!overlayAtual) return
 
@@ -623,9 +705,9 @@ export default function StreamOverlayEditorPage() {
                   <button
                     type="button"
                     onClick={() => removerOverlay(overlay)}
-                    disabled={salvando}
+                    disabled={salvando || Boolean(getFixedStreamOverlayTemplate(overlay.template_id))}
                     className="flex w-10 items-center justify-center border-l border-white/10 text-white/80 hover:bg-black/20 disabled:opacity-50"
-                    title="Remover overlay"
+                    title={getFixedStreamOverlayTemplate(overlay.template_id) ? 'Overlay fixa' : 'Remover overlay'}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -635,9 +717,16 @@ export default function StreamOverlayEditorPage() {
 
             <div className="mt-6 border-t border-white/10 pt-4">
               <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Adicionar template</div>
+              {!isSiteAdmin ? (
+                <div className="mb-3 border border-white/10 bg-[#0b1220] p-3 text-[11px] font-semibold leading-5 text-zinc-400">
+                  As overlays oficiais sao fixas. Apenas administradores do site podem adicionar novos modelos.
+                </div>
+              ) : null}
               <div className="space-y-2">
                 {templates.map((tpl) => {
                   const jaAdicionado = overlays.some((overlay) => overlay.template_id === tpl.id)
+                  const isExtraTemplate = !tpl.fixed
+                  if (isExtraTemplate && !isSiteAdmin) return null
                   return (
                     <button
                       key={tpl.id}
@@ -680,7 +769,12 @@ export default function StreamOverlayEditorPage() {
                   previewScale={previewScale}
                   editable
                   selectedBlock={selectedBlock}
+                  selectedColumn={selectedColumn}
                   onSelectBlock={setSelectedBlock}
+                  onSelectColumn={(column) => {
+                    setSelectedColumn(column)
+                    setActiveAction('table')
+                  }}
                   onStartDrag={iniciarArrasto}
                 />
               </div>
@@ -708,7 +802,11 @@ export default function StreamOverlayEditorPage() {
                       type="button"
                       onClick={() => {
                         setSelectedBlock(block)
-                        if (block !== 'table') atualizarCampo('brand.enabled', true)
+                        if (block === 'image') {
+                          atualizarCampo('brand.imageEnabled', true)
+                        } else if (block === 'text') {
+                          atualizarCampo('brand.textEnabled', true)
+                        }
                       }}
                       className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
                     >
@@ -777,20 +875,49 @@ export default function StreamOverlayEditorPage() {
                     <div className="space-y-3">
                       {selectedBlock === 'image' ? (
                         <>
+                          <label className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
+                            <input type="checkbox" checked={config.brand?.imageEnabled !== false} onChange={(e) => atualizarCampo('brand.imageEnabled', e.target.checked)} />
+                            Mostrar imagem
+                          </label>
                           <label className="block">
                             <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem ate 1920x1080</span>
                             <input type="file" accept="image/*" onChange={(e) => uploadLogoCampeonato(e.target.files?.[0] || null)} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
                           </label>
-                          {config.brand?.logoDataUrl ? (
-                            <button type="button" onClick={() => atualizarCampo('brand.logoDataUrl', null)} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                              Remover imagem
+                          <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => atualizarCampo('brand.imageEnabled', false)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Ocultar imagem
                             </button>
-                          ) : null}
+                            <button type="button" onClick={() => atualizarCampo('brand.logoDataUrl', null)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Limpar arquivo
+                            </button>
+                          </div>
                         </>
                       ) : selectedBlock === 'text' ? (
                         <>
+                          <label className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
+                            <input type="checkbox" checked={config.brand?.textEnabled !== false} onChange={(e) => atualizarCampo('brand.textEnabled', e.target.checked)} />
+                            Mostrar texto
+                          </label>
                           <EditorInput label="Nome grande" value={config.brand?.name || ''} onChange={(v) => atualizarCampo('brand.name', v)} />
                           <EditorInput label="Titulo" value={config.brand?.title || ''} onChange={(v) => atualizarCampo('brand.title', v)} />
+                          <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => atualizarCampo('brand.textEnabled', false)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Ocultar texto
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const novo = JSON.parse(JSON.stringify(config || {}))
+                                novo.brand = novo.brand || {}
+                                novo.brand.name = ''
+                                novo.brand.title = ''
+                                await salvarConfig(novo)
+                              }}
+                              className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]"
+                            >
+                              Limpar texto
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <>
@@ -858,30 +985,70 @@ export default function StreamOverlayEditorPage() {
                           <div>
                             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
                             <div className="grid grid-cols-2 gap-2">
-                              {Object.keys(tabelaGeralColumnLabels).map((key) => (
-                                <label key={key} className="flex items-center gap-2 border border-white/10 bg-[#111827] px-3 py-2 text-xs font-bold uppercase">
+                              {orderedColumnKeys.map((key) => (
+                                <label key={key} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#111827]'}`}>
                                   <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
-                                  {tabelaGeralColumnLabels[key] || key}
+                                  <button type="button" onClick={() => setSelectedColumn(key)} className="min-w-0 flex-1 text-left uppercase">
+                                    {tabelaGeralColumnLabels[key] || key}
+                                  </button>
                                 </label>
                               ))}
                             </div>
                           </div>
 
                           <div className="border-t border-white/10 pt-3">
-                            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Destaque por coluna</div>
+                            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Ajuste da coluna</div>
                             <EditorSelect
-                              label="Coluna"
+                              label="Selecionar coluna"
                               value={selectedColumn}
                               onChange={setSelectedColumn}
-                              options={Object.keys(tabelaGeralColumnLabels).map((key) => [key, tabelaGeralColumnLabels[key] || key])}
+                              options={orderedColumnKeys.map((key) => [key, tabelaGeralColumnLabels[key] || key])}
                             />
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => moverColuna(-1)}
+                                disabled={selectedColumnIndex <= 0}
+                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Mover esquerda
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moverColuna(1)}
+                                disabled={selectedColumnIndex >= orderedColumnKeys.length - 1}
+                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Mover direita
+                              </button>
+                            </div>
+                            <div className="mt-3 grid grid-cols-[1fr_88px] items-end gap-3">
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Largura</span>
+                                <input
+                                  type="range"
+                                  min={0.2}
+                                  max={4}
+                                  step={0.05}
+                                  value={selectedColumnWidth}
+                                  onChange={(e) => atualizarCampo(`columnWidths.${selectedColumn}`, Number(e.target.value))}
+                                  className="h-10 w-full accent-red-600"
+                                />
+                              </label>
+                              <EditorNumber label="Peso" value={selectedColumnWidth} onChange={(v) => atualizarCampo(`columnWidths.${selectedColumn}`, Math.max(0.2, v))} />
+                            </div>
                             <div className="mt-3 grid grid-cols-2 gap-3">
                               <EditorColor label="Fundo coluna" value={config.columnStyles?.[selectedColumn]?.background || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.background`, v)} />
                               <EditorColor label="Texto coluna" value={config.columnStyles?.[selectedColumn]?.text || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.text`, v)} />
                             </div>
-                            <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}`, {})} className="mt-3 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                              Limpar coluna
-                            </button>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}`, {})} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Limpar visual
+                              </button>
+                              <button type="button" onClick={() => atualizarCampo(`columnWidths.${selectedColumn}`, defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Reset largura
+                              </button>
+                            </div>
                           </div>
 
                           <div className="border-t border-white/10 pt-3">
