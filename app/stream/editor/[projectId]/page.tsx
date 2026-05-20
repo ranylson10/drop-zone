@@ -258,12 +258,15 @@ export default function StreamOverlayEditorPage() {
   const [activeAction, setActiveAction] = useState<EditorAction>('move')
   const [selectedColumn, setSelectedColumn] = useState('nome')
   const [selectedRow, setSelectedRow] = useState(1)
+  const [draftConfig, setDraftConfig] = useState<any | null>(null)
+  const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
   const overlayAtual = useMemo(() => overlays.find((item) => item.id === overlayId) || overlays[0] || null, [overlays, overlayId])
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
-  const config = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
+  const configSalva = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
+  const config = draftConfig || configSalva
   const fixedOverlayAtual = getFixedStreamOverlayTemplate(overlayAtual?.template_id)
   const renderUrl = overlayAtual
     ? fixedOverlayAtual && projeto?.stream_key
@@ -278,6 +281,11 @@ export default function StreamOverlayEditorPage() {
   }, [config.columnsOrder])
   const selectedColumnIndex = Math.max(0, orderedColumnKeys.indexOf(selectedColumn))
   const selectedColumnWidth = Number(config.columnWidths?.[selectedColumn] ?? defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)
+
+  useEffect(() => {
+    setDraftConfig(configSalva)
+    setTemAlteracoesPendentes(false)
+  }, [overlayAtual?.id, configSalva])
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -499,6 +507,8 @@ export default function StreamOverlayEditorPage() {
       }
 
       setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, config: configLeve } : item))
+      setDraftConfig(configLeve)
+      setTemAlteracoesPendentes(false)
     } catch (error) {
       alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao enviar imagem'}`)
     } finally {
@@ -533,9 +543,10 @@ export default function StreamOverlayEditorPage() {
     }
   }
 
-  async function atualizarCampo(path: string, valor: any) {
+  function atualizarCampo(path: string, valor: any) {
     const partes = path.split('.')
-    const novo = JSON.parse(JSON.stringify(config || {}))
+    const base = draftConfig || configSalva || {}
+    const novo = JSON.parse(JSON.stringify(base))
     let alvo = novo
 
     for (let i = 0; i < partes.length - 1; i += 1) {
@@ -544,8 +555,10 @@ export default function StreamOverlayEditorPage() {
     }
 
     alvo[partes[partes.length - 1]] = valor
-    await salvarConfig(novo)
+    setDraftConfig(novo)
+    setTemAlteracoesPendentes(true)
   }
+
 
   async function moverColuna(direcao: -1 | 1) {
     if (!overlayAtual) return
@@ -1160,15 +1173,15 @@ export default function StreamOverlayEditorPage() {
                   </select>
                 </label>
 
-                <button disabled={salvando} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
+                <button disabled={salvando || !temAlteracoesPendentes} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
                   {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Salvar
+                  {temAlteracoesPendentes ? 'Salvar alterações' : 'Tudo salvo'}
                 </button>
                 </div>
 
-                <button disabled={salvando} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
+                <button disabled={salvando || !temAlteracoesPendentes} onClick={() => salvarConfig(config)} className="inline-flex h-11 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[11px] font-black uppercase tracking-[0.16em] disabled:opacity-60">
                   {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Salvar
+                  {temAlteracoesPendentes ? 'Salvar alterações' : 'Tudo salvo'}
                 </button>
               </div>
             )}

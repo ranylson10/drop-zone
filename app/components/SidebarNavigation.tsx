@@ -69,7 +69,7 @@ const baseItems: NavItem[] = [
     badge: 'OBS',
     children: [
       { href: '/stream/projects', label: 'Projetos' },
-      { href: '/stream', label: 'Teste OBS' },
+      { href: '/stream/controller', label: 'Controlador OBS' },
     ],
   },
   {
