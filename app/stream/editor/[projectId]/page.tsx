@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -227,6 +227,7 @@ export default function StreamOverlayEditorPage() {
   const config = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
   const renderUrl = overlayAtual ? `${origem}/stream/render/${overlayAtual.id}` : ''
   const previewRows = rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
+  const previewScale = 0.5
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -419,6 +420,63 @@ export default function StreamOverlayEditorPage() {
     await atualizarCampo(path, imageBackgroundValue(dataUrl))
   }
 
+  function configComPosicao(baseConfig: any, block: StreamOverlayBlock, x: number, y: number) {
+    const novo = JSON.parse(JSON.stringify(baseConfig || {}))
+    novo.brand = novo.brand || {}
+    novo.layout = novo.layout || {}
+
+    if (block === 'image') {
+      novo.brand.x = Math.round(x)
+      novo.brand.y = Math.round(y)
+    } else if (block === 'text') {
+      novo.brand.textX = Math.round(x)
+      novo.brand.textY = Math.round(y)
+    } else {
+      novo.layout.x = Math.round(x)
+      novo.layout.y = Math.round(y)
+    }
+
+    return novo
+  }
+
+  function lerPosicaoBloco(block: StreamOverlayBlock) {
+    if (block === 'image') return { x: Number(config.brand?.x || 0), y: Number(config.brand?.y || 0) }
+    if (block === 'text') return { x: Number(config.brand?.textX || 0), y: Number(config.brand?.textY || 0) }
+    return { x: Number(config.layout?.x || 0), y: Number(config.layout?.y || 0) }
+  }
+
+  function atualizarPreviewConfig(novoConfig: any) {
+    if (!overlayAtual) return
+    setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, config: novoConfig } : item))
+  }
+
+  function iniciarArrasto(block: StreamOverlayBlock, event: PointerEvent) {
+    if (!overlayAtual) return
+
+    setSelectedBlock(block)
+    setActiveAction('move')
+
+    const inicioMouse = { x: event.clientX, y: event.clientY }
+    const inicioBloco = lerPosicaoBloco(block)
+    let ultimoConfig = config
+
+    const mover = (moveEvent: globalThis.PointerEvent) => {
+      const deltaX = (moveEvent.clientX - inicioMouse.x) / previewScale
+      const deltaY = (moveEvent.clientY - inicioMouse.y) / previewScale
+      ultimoConfig = configComPosicao(config, block, inicioBloco.x + deltaX, inicioBloco.y + deltaY)
+      atualizarPreviewConfig(ultimoConfig)
+    }
+
+    const soltar = () => {
+      window.removeEventListener('pointermove', mover)
+      window.removeEventListener('pointerup', soltar)
+      salvarConfig(ultimoConfig)
+    }
+
+    window.addEventListener('pointermove', mover)
+    window.addEventListener('pointerup', soltar)
+  }
+
   if (loading) {
     return <main className="flex min-h-screen items-center justify-center bg-[#080d16] text-white"><Loader2 className="animate-spin" /></main>
   }
@@ -515,10 +573,11 @@ export default function StreamOverlayEditorPage() {
                 <TabelaGeralOverlay
                   config={config}
                   rows={previewRows}
-                  previewScale={0.5}
+                  previewScale={previewScale}
                   editable
                   selectedBlock={selectedBlock}
                   onSelectBlock={setSelectedBlock}
+                  onStartDrag={iniciarArrasto}
                 />
               </div>
             </div>

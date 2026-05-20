@@ -18,9 +18,18 @@ type Projeto = {
   ativo: boolean
 }
 
+type OverlayProjeto = {
+  id: string
+  project_id: string
+  nome: string
+  visivel: boolean
+  ordem: number
+}
+
 export default function StreamProjectsPage() {
   const [campeonatos, setCampeonatos] = useState<Campeonato[]>([])
   const [projetos, setProjetos] = useState<Projeto[]>([])
+  const [overlays, setOverlays] = useState<OverlayProjeto[]>([])
   const [campeonatoId, setCampeonatoId] = useState('')
   const [nomeProjeto, setNomeProjeto] = useState('')
   const [loading, setLoading] = useState(true)
@@ -29,13 +38,15 @@ export default function StreamProjectsPage() {
   async function carregar() {
     setLoading(true)
 
-    const [campRes, projRes] = await Promise.all([
+    const [campRes, projRes, overlayRes] = await Promise.all([
       supabase.from('campeonatos').select('id, nome').order('created_at', { ascending: false }).limit(80),
       supabase.from('stream_projects').select('id, campeonato_id, nome, stream_key, ativo').order('created_at', { ascending: false }),
+      supabase.from('stream_project_overlays').select('id, project_id, nome, visivel, ordem').order('ordem', { ascending: true }),
     ])
 
     if (!campRes.error) setCampeonatos((campRes.data || []) as Campeonato[])
     if (!projRes.error) setProjetos((projRes.data || []) as Projeto[])
+    if (!overlayRes.error) setOverlays((overlayRes.data || []) as OverlayProjeto[])
 
     setLoading(false)
   }
@@ -138,6 +149,11 @@ export default function StreamProjectsPage() {
           <div className="grid gap-4">
             {projetos.map((projeto) => (
               <div key={projeto.id} className="border border-white/10 bg-[#111827] p-5">
+                {(() => {
+                  const overlaysDoProjeto = overlays.filter((overlay) => overlay.project_id === projeto.id)
+
+                  return (
+                    <>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="flex items-center gap-2 text-xl font-black uppercase">
@@ -156,11 +172,34 @@ export default function StreamProjectsPage() {
                     <Link href={`/stream/editor/${projeto.id}`} target="_blank" className="inline-flex h-10 items-center border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
                       Abrir Studio
                     </Link>
-                    <Link href={`/stream/overlay/${projeto.stream_key}/scoreboard`} target="_blank" className="inline-flex h-10 items-center border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-                      Overlay OBS
-                    </Link>
                   </div>
                 </div>
+
+                <div className="mt-4 border-t border-white/10 pt-4">
+                  <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Links OBS criados no editor</div>
+                  {overlaysDoProjeto.length > 0 ? (
+                    <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+                      {overlaysDoProjeto.map((overlay) => (
+                        <Link
+                          key={overlay.id}
+                          href={`/stream/render/${overlay.id}`}
+                          target="_blank"
+                          className={`flex h-11 items-center justify-between border px-3 text-[10px] font-black uppercase tracking-[0.14em] ${overlay.visivel ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-400'}`}
+                        >
+                          <span className="truncate">{overlay.nome}</span>
+                          <span className="ml-2 text-[9px] opacity-80">{overlay.visivel ? 'OBS' : 'Oculta'}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-white/10 p-4 text-xs font-semibold text-zinc-400">
+                      Nenhuma overlay criada neste projeto. Abra o Studio e adicione uma overlay.
+                    </div>
+                  )}
+                </div>
+                    </>
+                  )
+                })()}
               </div>
             ))}
 

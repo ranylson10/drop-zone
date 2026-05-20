@@ -1,5 +1,5 @@
 import { Users } from 'lucide-react'
-import type { CSSProperties, MouseEvent } from 'react'
+import type { CSSProperties, PointerEvent } from 'react'
 
 export type StreamOverlayBlock = 'image' | 'text' | 'table'
 
@@ -290,6 +290,7 @@ export function TabelaGeralOverlay({
   editable,
   selectedBlock,
   onSelectBlock,
+  onStartDrag,
 }: {
   config: StreamOverlayConfig
   rows: RankingRow[]
@@ -297,6 +298,7 @@ export function TabelaGeralOverlay({
   editable?: boolean
   selectedBlock?: StreamOverlayBlock
   onSelectBlock?: (block: StreamOverlayBlock) => void
+  onStartDrag?: (block: StreamOverlayBlock, event: PointerEvent) => void
 }) {
   const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
   const maxRows = Number(merged.layout?.maxRows || 12)
@@ -324,10 +326,12 @@ export function TabelaGeralOverlay({
         outlineOffset: 4,
       }
     : {}
-  const selectBlock = (block: StreamOverlayBlock) => (event: MouseEvent) => {
+  const selectBlock = (block: StreamOverlayBlock) => (event: PointerEvent) => {
     if (!editable) return
+    event.preventDefault()
     event.stopPropagation()
     onSelectBlock?.(block)
+    onStartDrag?.(block, event)
   }
 
   return (
@@ -336,7 +340,7 @@ export function TabelaGeralOverlay({
         <>
           <div
             className="absolute overflow-hidden uppercase"
-            onMouseDown={selectBlock('image')}
+            onPointerDown={selectBlock('image')}
             style={{
               left: Number(merged.brand?.x || 180),
               top: Number(merged.brand?.y || 54),
@@ -364,7 +368,7 @@ export function TabelaGeralOverlay({
 
           <div
             className="absolute flex flex-col justify-center overflow-hidden uppercase"
-            onMouseDown={selectBlock('text')}
+            onPointerDown={selectBlock('text')}
             style={{
               left: Number(merged.brand?.textX ?? 420),
               top: Number(merged.brand?.textY ?? 66),
@@ -393,7 +397,7 @@ export function TabelaGeralOverlay({
 
       <div
         className="absolute overflow-hidden uppercase"
-        onMouseDown={selectBlock('table')}
+        onPointerDown={selectBlock('table')}
         style={{
           left: Number(merged.layout?.x || 180),
           top: Number(merged.layout?.y || 140),
