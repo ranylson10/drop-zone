@@ -71,6 +71,9 @@ const colorSwatches = [
   'rgba(8,13,22,0.92)',
 ]
 
+const STREAM_ASSET_BUCKET = 'imagem_campeonatos'
+const DATA_IMAGE_REGEX = /data:image\/[a-zA-Z0-9.+-]+;base64,[^"')\s]+/g
+
 function extractColor(value?: string) {
   const text = String(value || '').trim()
   const hex = text.match(/#[0-9a-fA-F]{6}/)?.[0]
@@ -81,8 +84,38 @@ function gradientValue(start: string, end: string, direction = '90deg') {
   return `linear-gradient(${direction}, ${start || '#ffffff'}, ${end || '#101827'})`
 }
 
-function imageBackgroundValue(dataUrl: string) {
-  return `url("${dataUrl}") center/cover no-repeat`
+function imageBackgroundValue(url: string) {
+  return `url("${url}") center/cover no-repeat`
+}
+
+function assetExtensao(fileName: string, mime?: string) {
+  const fromName = fileName.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (fromName) return fromName
+  if (mime?.includes('jpeg')) return 'jpg'
+  if (mime?.includes('webp')) return 'webp'
+  if (mime?.includes('gif')) return 'gif'
+  return 'png'
+}
+
+function pastaSegura(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'asset'
+}
+
+function dataUrlToFile(dataUrl: string, fileName: string) {
+  const [header, base64] = dataUrl.split(',')
+  const mime = header.match(/data:([^;]+);/)?.[1] || 'image/png'
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+
+  return new File([bytes], fileName, { type: mime })
 }
 
 type CampeonatoEquipeRow = {
@@ -323,26 +356,112 @@ export default function StreamOverlayEditorPage() {
     })
   }
 
+  async function uploadStreamAsset(file: File, pasta: string) {
+    if (!overlayAtual) throw new Error('Selecione uma overlay antes de enviar imagem.')
+
+    const extensao = assetExtensao(file.name, file.type)
+    const pastaAsset = pastaSegura(pasta)
+    const nomeArquivo = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extensao}`
+    const caminho = `stream-overlays/${overlayAtual.id}/${pastaAsset}/${nomeArquivo}`
+
+    const { data, error } = await supabase.storage
+      .from(STREAM_ASSET_BUCKET)
+      .upload(caminho, file, { upsert: false, contentType: file.type || undefined })
+
+    if (error) throw error
+
+    const { data: publicData } = supabase.storage
+      .from(STREAM_ASSET_BUCKET)
+      .getPublicUrl(data.path)
+
+    return publicData.publicUrl
+  }
+
+  async function migrarInlineAssetsParaStorage(valor: any, caminho = 'asset'): Promise<any> {
+    if (typeof valor === 'string') {
+      const matches = Array.from(new Set(valor.match(DATA_IMAGE_REGEX) || []))
+      if (!matches.length) return valor
+
+      let texto = valor
+
+      for (const dataUrl of matches) {
+        const mime = dataUrl.match(/data:([^;]+);/)?.[1] || 'image/png'
+        const extensao = assetExtensao('', mime)
+        const file = dataUrlToFile(dataUrl, `${pastaSegura(caminho)}.${extensao}`)
+        const publicUrl = await uploadStreamAsset(file, caminho)
+        texto = texto.split(dataUrl).join(publicUrl)
+      }
+
+      return texto
+    }
+
+    if (Array.isArray(valor)) {
+      return Promise.all(valor.map((item, index) => migrarInlineAssetsParaStorage(item, `${caminho}-${index}`)))
+    }
+
+    if (valor && typeof valor === 'object') {
+      const novo: any = {}
+      for (const [chave, item] of Object.entries(valor)) {
+        novo[chave] = await migrarInlineAssetsParaStorage(item, `${caminho}-${chave}`)
+      }
+      return novo
+    }
+
+    return valor
+  }
+
   async function salvarConfig(novoConfig: any) {
     if (!overlayAtual) return
 
     setSalvando(true)
-    const { error } = await supabase
-      .from('stream_project_overlays')
-      .update({
-        config: novoConfig,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', overlayAtual.id)
+    try {
+      const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
+      const { error } = await supabase
+        .from('stream_project_overlays')
+        .update({
+          config: configLeve,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', overlayAtual.id)
 
-    setSalvando(false)
+      if (error) {
+        alert(`Erro ao salvar: ${error.message}`)
+        return
+      }
 
-    if (error) {
-      alert(`Erro ao salvar: ${error.message}`)
-      return
+      setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, config: configLeve } : item))
+    } catch (error) {
+      alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao enviar imagem'}`)
+    } finally {
+      setSalvando(false)
     }
+  }
 
-    setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, config: novoConfig } : item))
+  async function validarDimensoesImagem(file: File) {
+    const objectUrl = URL.createObjectURL(file)
+
+    try {
+      return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const image = new Image()
+        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
+        image.onerror = reject
+        image.src = objectUrl
+      })
+    } finally {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }
+
+  async function salvarImagemNoCampo(path: string, file: File, pasta: string, formatarUrl: (url: string) => string = (url) => url) {
+    try {
+      setSalvando(true)
+      const publicUrl = await uploadStreamAsset(file, pasta)
+      await atualizarCampo(path, formatarUrl(publicUrl))
+    } catch (error) {
+      alert(`Erro ao enviar imagem: ${error instanceof Error ? error.message : 'tente novamente'}`)
+    } finally {
+      setSalvando(false)
+    }
   }
 
   async function atualizarCampo(path: string, valor: any) {
@@ -385,39 +504,24 @@ export default function StreamOverlayEditorPage() {
   async function uploadLogoCampeonato(file: File | null) {
     if (!file) return
 
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-
-    const dimensoes = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-      const image = new Image()
-      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight })
-      image.onerror = reject
-      image.src = dataUrl
-    })
-
-    if (dimensoes.width > 1920 || dimensoes.height > 1080) {
-      alert('A imagem precisa ter no maximo 1920x1080.')
+    try {
+      const dimensoes = await validarDimensoesImagem(file)
+      if (dimensoes.width > 1920 || dimensoes.height > 1080) {
+        alert('A imagem precisa ter no maximo 1920x1080.')
+        return
+      }
+    } catch {
+      alert('Nao foi possivel ler essa imagem.')
       return
     }
 
-    await atualizarCampo('brand.logoDataUrl', dataUrl)
+    await salvarImagemNoCampo('brand.logoDataUrl', file, 'brand')
   }
 
   async function uploadBackgroundImage(path: string, file: File | null) {
     if (!file) return
 
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-
-    await atualizarCampo(path, imageBackgroundValue(dataUrl))
+    await salvarImagemNoCampo(path, file, 'background', imageBackgroundValue)
   }
 
   function configComPosicao(baseConfig: any, block: StreamOverlayBlock, x: number, y: number) {

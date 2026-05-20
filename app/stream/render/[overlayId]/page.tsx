@@ -241,12 +241,43 @@ export default function OverlayRenderPage() {
   }, [campeonatoId, carregarRanking])
 
   if (!overlay || !overlay.visivel) {
-    return <main className="h-screen w-screen overflow-hidden bg-transparent" />
+    return (
+      <>
+        <ObsTransparentPageStyle />
+        <main className="h-screen w-screen overflow-hidden bg-transparent" />
+      </>
+    )
   }
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-transparent">
-      <TabelaGeralOverlay config={config} rows={rows} />
-    </main>
+    <>
+      <ObsTransparentPageStyle />
+      <main className="relative h-[1080px] w-[1920px] overflow-hidden bg-transparent">
+        <TabelaGeralOverlay config={config} rows={rows} />
+      </main>
+    </>
+  )
+}
+
+function ObsTransparentPageStyle() {
+  return (
+    <style jsx global>{`
+      html,
+      body {
+        width: 1920px !important;
+        height: 1080px !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        background-image: none !important;
+      }
+
+      body::before,
+      body::after {
+        display: none !important;
+        background: transparent !important;
+      }
+    `}</style>
   )
 }
