@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { Loader2, Plus, Radio, Copy } from 'lucide-react'
+import { fixedStreamOverlayTemplates, getFixedStreamOverlayTemplate } from '@/lib/streamOverlay'
+import { Copy, ExternalLink, Gamepad2, Loader2, MonitorUp, Plus, Radio, SlidersHorizontal } from 'lucide-react'
 
 type Campeonato = {
   id: string
@@ -22,6 +23,7 @@ type OverlayProjeto = {
   id: string
   project_id: string
   nome: string
+  template_id: string
   visivel: boolean
   ordem: number
 }
@@ -34,6 +36,7 @@ export default function StreamProjectsPage() {
   const [nomeProjeto, setNomeProjeto] = useState('')
   const [loading, setLoading] = useState(true)
   const [criando, setCriando] = useState(false)
+  const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
   async function carregar() {
     setLoading(true)
@@ -41,7 +44,7 @@ export default function StreamProjectsPage() {
     const [campRes, projRes, overlayRes] = await Promise.all([
       supabase.from('campeonatos').select('id, nome').order('created_at', { ascending: false }).limit(80),
       supabase.from('stream_projects').select('id, campeonato_id, nome, stream_key, ativo').order('created_at', { ascending: false }),
-      supabase.from('stream_project_overlays').select('id, project_id, nome, visivel, ordem').order('ordem', { ascending: true }),
+      supabase.from('stream_project_overlays').select('id, project_id, nome, template_id, visivel, ordem').order('ordem', { ascending: true }),
     ])
 
     if (!campRes.error) setCampeonatos((campRes.data || []) as Campeonato[])
@@ -151,6 +154,24 @@ export default function StreamProjectsPage() {
               <div key={projeto.id} className="border border-white/10 bg-[#111827] p-5">
                 {(() => {
                   const overlaysDoProjeto = overlays.filter((overlay) => overlay.project_id === projeto.id)
+                  const overlayLinks = fixedStreamOverlayTemplates.map((template, index) => {
+                    const saved = overlaysDoProjeto.find((overlay) => overlay.template_id === template.id)
+                    return {
+                      id: saved?.id || template.id,
+                      nome: saved?.nome || template.nome,
+                      template_id: template.id,
+                      slug: template.slug,
+                      visivel: saved?.visivel ?? true,
+                      ordem: saved?.ordem ?? index + 1,
+                      fixed: true,
+                    }
+                  })
+                  const extraOverlayLinks = overlaysDoProjeto
+                    .filter((overlay) => !getFixedStreamOverlayTemplate(overlay.template_id))
+                    .map((overlay) => ({ ...overlay, slug: '', fixed: false }))
+                  const studioUrl = `${origem}/stream/studio/${projeto.stream_key}`
+                  const controllerUrl = `${origem}/stream/controller?key=${projeto.stream_key}`
+                  const scoreboardUrl = `${origem}/stream/overlay/${projeto.stream_key}/scoreboard`
 
                   return (
                     <>
@@ -169,27 +190,75 @@ export default function StreamProjectsPage() {
                       <Copy size={14} />
                       Copiar chave
                     </button>
-                    <Link href={`/stream/editor/${projeto.id}`} target="_blank" className="inline-flex h-10 items-center border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-                      Abrir Studio
+                    <button onClick={() => copiar(studioUrl)} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                      <Copy size={14} />
+                      Link controlador
+                    </button>
+                    <Link href={`/stream/controller?key=${projeto.stream_key}`} target="_blank" className="inline-flex h-10 items-center gap-2 border border-yellow-500 bg-yellow-500 px-3 text-[10px] font-black uppercase tracking-[0.14em] text-[#101827]">
+                      <Gamepad2 size={14} />
+                      Controlador OBS
                     </Link>
+                    <Link href={`/stream/studio/${projeto.stream_key}`} target="_blank" className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                      <ExternalLink size={14} />
+                      Controlador live
+                    </Link>
+                    <Link href={`/stream/editor/${projeto.id}`} target="_blank" className="inline-flex h-10 items-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                      <SlidersHorizontal size={14} />
+                      Editor visual
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 border-t border-white/10 pt-4 md:grid-cols-2">
+                  <div className="border border-white/10 bg-[#0b1220] p-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Controlador OBS com cenas</div>
+                    <div className="mt-2 break-all text-xs font-semibold text-zinc-300">{controllerUrl}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => copiar(controllerUrl)} className="inline-flex h-9 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><Copy size={13} /> Copiar</button>
+                      <Link href={`/stream/controller?key=${projeto.stream_key}`} target="_blank" className="inline-flex h-9 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><Gamepad2 size={13} /> Abrir</Link>
+                    </div>
+                  </div>
+                  <div className="border border-white/10 bg-[#0b1220] p-3">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Placar OBS por chave</div>
+                    <div className="mt-2 break-all text-xs font-semibold text-zinc-300">{scoreboardUrl}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => copiar(scoreboardUrl)} className="inline-flex h-9 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><Copy size={13} /> Copiar OBS</button>
+                      <Link href={`/stream/overlay/${projeto.stream_key}/scoreboard`} target="_blank" className="inline-flex h-9 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]"><MonitorUp size={13} /> Abrir OBS</Link>
+                    </div>
                   </div>
                 </div>
 
                 <div className="mt-4 border-t border-white/10 pt-4">
                   <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Links OBS criados no editor</div>
-                  {overlaysDoProjeto.length > 0 ? (
+                  {overlayLinks.length > 0 ? (
                     <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                      {overlaysDoProjeto.map((overlay) => (
-                        <Link
-                          key={overlay.id}
-                          href={`/stream/render/${overlay.id}`}
-                          target="_blank"
-                          className={`flex h-11 items-center justify-between border px-3 text-[10px] font-black uppercase tracking-[0.14em] ${overlay.visivel ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-400'}`}
-                        >
-                          <span className="truncate">{overlay.nome}</span>
-                          <span className="ml-2 text-[9px] opacity-80">{overlay.visivel ? 'OBS' : 'Oculta'}</span>
-                        </Link>
-                      ))}
+                      {[...overlayLinks, ...extraOverlayLinks].map((overlay) => {
+                        const overlayUrl = overlay.fixed
+                          ? `${origem}/stream/overlay/${projeto.stream_key}/${overlay.slug}`
+                          : `${origem}/stream/render/${overlay.id}`
+                        return (
+                          <div
+                            key={overlay.id}
+                            className={`border ${overlay.visivel ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-400'}`}
+                          >
+                            <Link
+                              href={`/stream/render/${overlay.id}`}
+                              target="_blank"
+                              className="flex h-11 items-center justify-between px-3 text-[10px] font-black uppercase tracking-[0.14em]"
+                            >
+                              <span className="truncate">{overlay.nome}</span>
+                              <span className="ml-2 text-[9px] opacity-80">{overlay.visivel ? 'OBS' : 'Oculta'}</span>
+                            </Link>
+                            <div className="border-t border-white/15 p-2">
+                              <div className="mb-2 break-all text-[10px] font-semibold opacity-80">{overlayUrl}</div>
+                              <button onClick={() => copiar(overlayUrl)} className="inline-flex h-8 w-full items-center justify-center gap-2 border border-white/20 bg-black/10 px-2 text-[9px] font-black uppercase tracking-[0.14em]">
+                                <Copy size={12} />
+                                Copiar link OBS
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : (
                     <div className="border border-dashed border-white/10 p-4 text-xs font-semibold text-zinc-400">

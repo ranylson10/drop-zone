@@ -1,46 +1,74 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { fixedStreamOverlayTemplates, getFixedStreamOverlayTemplate } from '@/lib/streamOverlay'
-import { Copy, Eye, EyeOff, Gamepad2, Loader2, MonitorUp, PlugZap, Radio, RefreshCw, Settings, SlidersHorizontal } from 'lucide-react'
+import {
+  Copy,
+  Eye,
+  EyeOff,
+  Gamepad2,
+  KeyRound,
+  Loader2,
+  MonitorUp,
+  Plus,
+  PlugZap,
+  Radio,
+  RefreshCw,
+  Save,
+  Settings,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from 'lucide-react'
 
-type Projeto = {
+type ProducerKey = {
+  id: string
+  label: string
+  producer_key: string
+  active_session_id: string | null
+  active_until: string | null
+}
+
+type Project = {
   id: string
   nome: string
   stream_key: string
 }
 
-type OverlayProjeto = {
+type Overlay = {
   id: string
-  project_id: string
   nome: string
   template_id: string
-  slug?: string
   visivel: boolean
   ordem: number
-  fixed?: boolean
-  saved?: boolean
 }
 
 type ObsScene = {
   sceneName: string
 }
 
-type ObsRequestResult = Record<string, unknown>
-
-type PendingRequest = {
-  resolve: (value: ObsRequestResult) => void
-  reject: (error: Error) => void
+type ButtonItem = {
+  id: string
+  label: string
+  action_type: string
+  obs_scene_name: string | null
+  overlay_id: string | null
+  ordem: number
+  enabled: boolean
 }
 
 type ConnStatus = 'offline' | 'connecting' | 'online' | 'error'
 
 const OBS_EVENT_SUBSCRIPTIONS = 64 | 128
 
-function textoSeguro(value: unknown) {
+function safeText(value: unknown) {
   return String(value || '').trim()
+}
+
+function createSessionId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 async function sha256Base64(text: string) {
@@ -56,120 +84,220 @@ async function computeObsAuth(password: string, salt: string, challenge: string)
 }
 
 export default function StreamObsControllerPage() {
-  const [streamKey, setStreamKey] = useState(() => {
+  const [sessionId] = useState(() => {
     if (typeof window === 'undefined') return ''
-    return textoSeguro(new URLSearchParams(window.location.search).get('key'))
+    const saved = localStorage.getItem('stream.controller.sessionId')
+    if (saved) return saved
+    const created = createSessionId()
+    localStorage.setItem('stream.controller.sessionId', created)
+    return created
   })
-  const [projeto, setProjeto] = useState<Projeto | null>(null)
-  const [overlays, setOverlays] = useState<OverlayProjeto[]>(() => fixedStreamOverlayTemplates.map((template, index) => ({
-    id: template.id,
-    project_id: '',
-    nome: template.nome,
-    template_id: template.id,
-    slug: template.slug,
-    visivel: true,
-    ordem: index + 1,
-    fixed: true,
-    saved: false,
-  })))
-  const [loadingProject, setLoadingProject] = useState(false)
-  const [salvandoOverlay, setSalvandoOverlay] = useState('')
-  const [host, setHost] = useState(() => typeof window !== 'undefined' ? textoSeguro(localStorage.getItem('stream.obs.host')) || '127.0.0.1' : '127.0.0.1')
-  const [port, setPort] = useState(() => typeof window !== 'undefined' ? textoSeguro(localStorage.getItem('stream.obs.port')) || '4455' : '4455')
+
+  const [producerKeys, setProducerKeys] = useState<ProducerKey[]>([])
+  const [producerKey, setProducerKey] = useState(() => typeof window !== 'undefined' ? safeText(localStorage.getItem('stream.controller.producerKey')) : '')
+  const [producerKeyId, setProducerKeyId] = useState('')
+  const [producerActive, setProducerActive] = useState(false)
+
+  const [projectKey, setProjectKey] = useState(() => typeof window !== 'undefined' ? safeText(localStorage.getItem('stream.controller.projectKey')) : '')
+  const [project, setProject] = useState<Project | null>(null)
+  const [overlays, setOverlays] = useState<Overlay[]>([])
+  const [buttons, setButtons] = useState<ButtonItem[]>([])
+
+  const [host, setHost] = useState(() => typeof window !== 'undefined' ? safeText(localStorage.getItem('stream.obs.host')) || '127.0.0.1' : '127.0.0.1')
+  const [port, setPort] = useState(() => typeof window !== 'undefined' ? safeText(localStorage.getItem('stream.obs.port')) || '4455' : '4455')
   const [password, setPassword] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('stream.obs.password') || '' : '')
   const [status, setStatus] = useState<ConnStatus>('offline')
   const [statusText, setStatusText] = useState('OBS desconectado')
   const [scenes, setScenes] = useState<ObsScene[]>([])
   const [currentScene, setCurrentScene] = useState('')
-  const [tab, setTab] = useState<'controle' | 'overlays' | 'cenas' | 'config'>('controle')
+
+  const [tab, setTab] = useState<'controle' | 'config'>('controle')
+  const [loading, setLoading] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
-  const pendingRef = useRef<Map<string, PendingRequest>>(new Map())
+  const pendingRef = useRef<Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>>(new Map())
   const requestIdRef = useRef(1)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
-  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const producerKeyActive = producerActive && producerKeyId
 
-  const carregarProjeto = useCallback(async (keyParam?: string) => {
-    const key = textoSeguro(keyParam || streamKey)
-    if (!key) {
-      alert('Cole a chave do projeto primeiro.')
+  const overlayLinks = useMemo(() => {
+    if (!project) return []
+    return overlays.map((overlay) => ({
+      ...overlay,
+      url: `${origem}/stream/render/${overlay.id}`,
+    }))
+  }, [overlays, project, origem])
+
+  const carregarProducerKeys = useCallback(async () => {
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) return
+
+    const { data, error } = await supabase
+      .from('stream_producer_keys')
+      .select('id, label, producer_key, active_session_id, active_until')
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error(error)
       return
     }
 
-    setLoadingProject(true)
+    setProducerKeys((data || []) as ProducerKey[])
+
+    if (!producerKey && data?.[0]?.producer_key) {
+      setProducerKey(data[0].producer_key)
+      localStorage.setItem('stream.controller.producerKey', data[0].producer_key)
+    }
+  }, [producerKey])
+
+  useEffect(() => {
+    carregarProducerKeys()
+  }, [carregarProducerKeys])
+
+  async function gerarProducerKey() {
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) {
+      alert('Faça login para gerar uma chave de produtor.')
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('stream_producer_keys')
+      .insert({
+        user_id: auth.user.id,
+        label: `Controlador OBS ${producerKeys.length + 1}`,
+      })
+      .select('id, label, producer_key, active_session_id, active_until')
+      .single()
+
+    if (error) {
+      alert(`Erro ao gerar chave: ${error.message}`)
+      return
+    }
+
+    setProducerKeys((prev) => [...prev, data as ProducerKey])
+    setProducerKey(data.producer_key)
+    localStorage.setItem('stream.controller.producerKey', data.producer_key)
+  }
+
+  async function ativarProducerKey() {
+    if (!producerKey) {
+      alert('Cole ou gere uma chave de produtor.')
+      return
+    }
+
+    setLoading(true)
+    const { data, error } = await supabase.rpc('stream_claim_producer_key', {
+      p_producer_key: producerKey,
+      p_session_id: sessionId,
+    })
+    setLoading(false)
+
+    if (error) {
+      alert(`Erro ao ativar chave: ${error.message}`)
+      return
+    }
+
+    const result = Array.isArray(data) ? data[0] : data
+    if (!result?.ok) {
+      setProducerActive(false)
+      alert(result?.reason || 'Chave bloqueada.')
+      return
+    }
+
+    setProducerKeyId(result.producer_key_id)
+    setProducerActive(true)
+    localStorage.setItem('stream.controller.producerKey', producerKey)
+  }
+
+  useEffect(() => {
+    if (!producerActive || !producerKey) return
+
+    const interval = setInterval(() => {
+      supabase.rpc('stream_heartbeat_producer_key', {
+        p_producer_key: producerKey,
+        p_session_id: sessionId,
+      })
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [producerActive, producerKey, sessionId])
+
+  useEffect(() => {
+    if (!producerActive || !producerKey) return
+
+    const release = () => {
+      try {
+        supabase.rpc('stream_release_producer_key', {
+          p_producer_key: producerKey,
+          p_session_id: sessionId,
+        })
+      } catch {}
+    }
+
+    window.addEventListener('beforeunload', release)
+    return () => {
+      window.removeEventListener('beforeunload', release)
+    }
+  }, [producerActive, producerKey, sessionId])
+
+  async function copiar(texto: string) {
+    await navigator.clipboard.writeText(texto)
+    alert('Copiado')
+  }
+
+  async function carregarProject() {
+    if (!producerKeyActive) {
+      alert('Ative sua chave de produtor antes de carregar um projeto.')
+      return
+    }
+
+    if (!projectKey) {
+      alert('Cole a chave do campeonato/projeto.')
+      return
+    }
+
+    setLoading(true)
+
     const { data: proj, error: projError } = await supabase
       .from('stream_projects')
       .select('id, nome, stream_key')
-      .eq('stream_key', key)
+      .eq('stream_key', projectKey)
       .maybeSingle()
 
-    if (projError) {
-      setLoadingProject(false)
-      alert(`Erro ao buscar projeto: ${projError.message}`)
-      return
-    }
-
-    if (!proj) {
-      setLoadingProject(false)
-      setProjeto(null)
-      setOverlays(fixedStreamOverlayTemplates.map((template, index) => ({
-        id: template.id,
-        project_id: '',
-        nome: template.nome,
-        template_id: template.id,
-        slug: template.slug,
-        visivel: true,
-        ordem: index + 1,
-        fixed: true,
-        saved: false,
-      })))
-      alert('Nenhum projeto encontrado com essa chave.')
+    if (projError || !proj) {
+      setLoading(false)
+      alert(projError?.message || 'Projeto não encontrado.')
       return
     }
 
     const { data: overlayData, error: overlayError } = await supabase
       .from('stream_project_overlays')
-      .select('id, project_id, nome, template_id, visivel, ordem')
+      .select('id, nome, template_id, visivel, ordem')
       .eq('project_id', proj.id)
       .order('ordem', { ascending: true })
 
-    setLoadingProject(false)
-
     if (overlayError) {
-      alert(`Projeto carregado, mas falhou ao buscar overlays: ${overlayError.message}`)
+      setLoading(false)
+      alert(`Erro ao carregar overlays: ${overlayError.message}`)
+      return
     }
 
-    const overlayRows = (overlayData || []) as OverlayProjeto[]
-    const mergedOverlays = fixedStreamOverlayTemplates.map((template, index) => {
-      const saved = overlayRows.find((overlay) => overlay.template_id === template.id)
-      return saved
-        ? { ...saved, slug: template.slug, fixed: true, saved: true }
-        : {
-            id: template.id,
-            project_id: proj.id,
-            nome: template.nome,
-            template_id: template.id,
-            slug: template.slug,
-            visivel: true,
-            ordem: index + 1,
-            fixed: true,
-            saved: false,
-          }
-    })
-    const extraOverlays = overlayRows
-      .filter((overlay) => !getFixedStreamOverlayTemplate(overlay.template_id))
-      .map((overlay) => ({ ...overlay, saved: true }))
+    const { data: btnData } = await supabase
+      .from('stream_controller_buttons')
+      .select('id, label, action_type, obs_scene_name, overlay_id, ordem, enabled')
+      .eq('producer_key_id', producerKeyId)
+      .eq('project_id', proj.id)
+      .order('ordem', { ascending: true })
 
-    setStreamKey(key)
-    setProjeto(proj as Projeto)
-    setOverlays([...mergedOverlays, ...extraOverlays])
-  }, [streamKey])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (streamKey) carregarProjeto(streamKey)
-  }, [carregarProjeto, streamKey])
+    setProject(proj as Project)
+    setOverlays((overlayData || []) as Overlay[])
+    setButtons((btnData || []) as ButtonItem[])
+    localStorage.setItem('stream.controller.projectKey', projectKey)
+    setLoading(false)
+  }
 
   function nextRequestId() {
     const id = String(requestIdRef.current)
@@ -177,11 +305,11 @@ export default function StreamObsControllerPage() {
     return id
   }
 
-  const sendRequest = useCallback((requestType: string, requestData: ObsRequestResult = {}) => {
-    return new Promise<ObsRequestResult>((resolve, reject) => {
+  const sendRequest = useCallback((requestType: string, requestData: Record<string, unknown> = {}) => {
+    return new Promise<Record<string, unknown>>((resolve, reject) => {
       const ws = wsRef.current
       if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error('OBS nao conectado'))
+        reject(new Error('OBS não conectado'))
         return
       }
 
@@ -204,8 +332,8 @@ export default function StreamObsControllerPage() {
 
       const obsScenes = Array.isArray(sceneData.scenes) ? sceneData.scenes as ObsScene[] : []
       setScenes(obsScenes)
-      setCurrentScene(textoSeguro(currentData.currentProgramSceneName || sceneData.currentProgramSceneName))
-      setStatusText(`Conectado: ${obsScenes.length} cenas encontradas`)
+      setCurrentScene(safeText(currentData.currentProgramSceneName || sceneData.currentProgramSceneName))
+      setStatusText(`Conectado: ${obsScenes.length} cenas`)
     } catch (error) {
       setStatusText(error instanceof Error ? error.message : 'Falha ao atualizar cenas')
     }
@@ -226,22 +354,17 @@ export default function StreamObsControllerPage() {
     const ws = new WebSocket(`ws://${host}:${port}`)
     wsRef.current = ws
 
-    ws.onopen = () => {
-      setStatusText('Handshake com OBS...')
-    }
-
+    ws.onopen = () => setStatusText('Handshake com OBS...')
     ws.onerror = () => {
       setStatus('error')
-      setStatusText('Falha ao conectar. Confira se OBS WebSocket esta ativo e porta/senha estao corretas.')
+      setStatusText('Falha ao conectar. Confira OBS WebSocket, porta e senha.')
     }
-
     ws.onclose = () => {
       setStatus((current) => current === 'online' ? 'offline' : current)
-      setStatusText((current) => current === 'Conectado ao OBS' ? 'OBS desconectado' : current)
     }
 
     ws.onmessage = async (event) => {
-      let msg: { op?: number; d?: Record<string, unknown> }
+      let msg: { op?: number; d?: Record<string, any> }
       try {
         msg = JSON.parse(String(event.data))
       } catch {
@@ -253,10 +376,7 @@ export default function StreamObsControllerPage() {
         const auth = data.authentication as { salt?: string; challenge?: string } | undefined
         const identify: { op: number; d: { rpcVersion: number; eventSubscriptions: number; authentication?: string } } = {
           op: 1,
-          d: {
-            rpcVersion: 1,
-            eventSubscriptions: OBS_EVENT_SUBSCRIPTIONS,
-          },
+          d: { rpcVersion: 1, eventSubscriptions: OBS_EVENT_SUBSCRIPTIONS },
         }
 
         if (auth?.salt && auth?.challenge && password) {
@@ -277,257 +397,248 @@ export default function StreamObsControllerPage() {
       if (msg.op === 5) {
         const data = msg.d || {}
         if (data.eventType === 'CurrentProgramSceneChanged') {
-          const eventData = data.eventData as { sceneName?: string } | undefined
-          setCurrentScene(textoSeguro(eventData?.sceneName))
+          setCurrentScene(safeText(data.eventData?.sceneName))
         }
         return
       }
 
       if (msg.op === 7) {
         const data = msg.d || {}
-        const requestId = textoSeguro(data.requestId)
+        const requestId = safeText(data.requestId)
         const pending = pendingRef.current.get(requestId)
         if (!pending) return
 
         pendingRef.current.delete(requestId)
-        const requestStatus = data.requestStatus as { result?: boolean; comment?: string } | undefined
-
-        if (requestStatus?.result) {
-          pending.resolve((data.responseData || {}) as ObsRequestResult)
-        } else {
-          pending.reject(new Error(requestStatus?.comment || 'Falha no request ao OBS'))
+        const status = data.requestStatus as { result?: boolean; comment?: string } | undefined
+        if (status?.result === false) {
+          pending.reject(new Error(status.comment || 'OBS retornou erro'))
+          return
         }
+        pending.resolve((data.responseData || {}) as Record<string, unknown>)
       }
     }
   }
 
-  async function trocarCena(sceneName: string) {
-    try {
-      await sendRequest('SetCurrentProgramScene', { sceneName })
-      setCurrentScene(sceneName)
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Falha ao trocar cena')
+  async function executarBotao(button: ButtonItem) {
+    if (!button.enabled) return
+
+    if (button.action_type === 'scene' && button.obs_scene_name) {
+      try {
+        await sendRequest('SetCurrentProgramScene', { sceneName: button.obs_scene_name })
+      } catch (error: any) {
+        alert(error?.message || 'Erro ao trocar cena')
+      }
+    }
+
+    if (button.action_type === 'overlay' && button.overlay_id) {
+      const overlay = overlays.find((item) => item.id === button.overlay_id)
+      if (overlay) window.open(`${origem}/stream/render/${overlay.id}`, '_blank')
     }
   }
 
-  async function alternarOverlay(overlay: OverlayProjeto) {
-    if (!projeto) {
-      alert('Carregue uma chave de stream antes de controlar overlays.')
+  async function adicionarBotao() {
+    if (!producerKeyId || !project) {
+      alert('Ative a chave do produtor e carregue o projeto.')
       return
     }
 
-    setSalvandoOverlay(overlay.id)
-    const novoValor = !overlay.visivel
-    let error: { message: string } | null = null
+    const label = prompt('Nome do botão:')
+    if (!label) return
 
-    if (!overlay.saved) {
-      const fixedTemplate = getFixedStreamOverlayTemplate(overlay.template_id)
+    const sceneName = prompt('Nome da cena no OBS para vincular:')
+    if (!sceneName) return
 
-      if (fixedTemplate) {
-        await supabase
-          .from('stream_overlay_templates')
-          .upsert({
-            id: fixedTemplate.id,
-            nome: fixedTemplate.nome,
-            categoria: fixedTemplate.categoria,
-            descricao: fixedTemplate.descricao,
-            config_padrao: fixedTemplate.config_padrao,
-            ativo: true,
-          }, { onConflict: 'id' })
-
-        const result = await supabase
-          .from('stream_project_overlays')
-          .insert({
-            project_id: projeto.id,
-            template_id: fixedTemplate.id,
-            nome: fixedTemplate.nome,
-            config: fixedTemplate.config_padrao,
-            visivel: novoValor,
-            ordem: overlay.ordem,
-          })
-          .select('id')
-          .single()
-
-        error = result.error
-
-        if (!error && result.data?.id) {
-          setOverlays((prev) => prev.map((item) => item.id === overlay.id ? { ...item, id: result.data.id, project_id: projeto.id, visivel: novoValor, saved: true } : item))
-        }
-      }
-    } else {
-      const result = await supabase
-        .from('stream_project_overlays')
-        .update({ visivel: novoValor, updated_at: new Date().toISOString() })
-        .eq('id', overlay.id)
-
-      error = result.error
-    }
-
-    setSalvandoOverlay('')
+    const { data, error } = await supabase
+      .from('stream_controller_buttons')
+      .insert({
+        producer_key_id: producerKeyId,
+        project_id: project.id,
+        label,
+        action_type: 'scene',
+        obs_scene_name: sceneName,
+        enabled: true,
+        ordem: buttons.length + 1,
+      })
+      .select('id, label, action_type, obs_scene_name, overlay_id, ordem, enabled')
+      .single()
 
     if (error) {
-      alert(`Erro ao atualizar overlay: ${error.message}`)
+      alert(`Erro ao criar botão: ${error.message}`)
       return
     }
 
-    setOverlays((prev) => prev.map((item) => item.id === overlay.id ? { ...item, visivel: novoValor } : item))
+    setButtons((prev) => [...prev, data as ButtonItem])
   }
 
-  async function copiar(text: string) {
-    await navigator.clipboard.writeText(text)
-    alert('Copiado')
-  }
+  async function removerBotao(id: string) {
+    if (!confirm('Remover este botão?')) return
 
-  const sceneButtons = scenes.map((scene, index) => ({
-    ...scene,
-    icon: ['SC', 'TR', 'TB', 'AO', 'GM', 'VS', 'CP', 'GO'][index % 8],
-  }))
+    const { error } = await supabase
+      .from('stream_controller_buttons')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      alert(error.message)
+      return
+    }
+
+    setButtons((prev) => prev.filter((item) => item.id !== id))
+  }
 
   return (
-    <main className="min-h-screen bg-[#080d16] p-3 text-white">
-      <section className="mx-auto flex min-h-[calc(100vh-24px)] max-w-7xl flex-col border border-white/10 bg-[#111827]">
-        <header className="flex flex-col gap-3 border-b border-white/10 p-4 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-screen bg-[#080d16] p-4 text-white">
+      <section className="mx-auto max-w-[1200px] border border-white/10 bg-[#111827]">
+        <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-500">
-              <Radio size={14} />
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">
+              <Radio size={13} />
               Controlador OBS
             </div>
-            <h1 className="mt-2 text-xl font-black uppercase">{projeto?.nome || 'Conectar projeto de stream'}</h1>
-            <div className="mt-1 text-xs font-semibold text-zinc-400">{projeto ? `Chave: ${projeto.stream_key}` : 'Cole a chave copiada em Projetos de Transmissao.'}</div>
+            <h1 className="mt-2 text-2xl font-black uppercase">Painel limpo de transmissão</h1>
+            <p className="mt-1 text-xs font-semibold text-zinc-400">
+              Ative sua chave de produtor, carregue a chave do campeonato e controle cenas/overlays.
+            </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
-            <input
-              value={streamKey}
-              onChange={(event) => setStreamKey(event.target.value)}
-              placeholder="Cole a chave do projeto"
-              className="h-11 border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none focus:border-red-500"
-            />
-            <button onClick={() => carregarProjeto()} disabled={loadingProject} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-60">
-              {loadingProject ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              Carregar
-            </button>
-            {projeto ? (
-              <Link href={`/stream/editor/${projeto.id}`} target="_blank" className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-white/5 px-4 text-[10px] font-black uppercase tracking-[0.14em]">
-                <SlidersHorizontal size={14} />
-                Editor
-              </Link>
-            ) : null}
-          </div>
-        </header>
+          <button onClick={() => setShowConfig((v) => !v)} className="inline-flex h-10 items-center justify-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+            <Settings size={14} />
+            Config
+          </button>
+        </div>
 
-        {isHttps ? (
-          <div className="border-b border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-semibold text-yellow-100">
-            Aviso: se o OBS bloquear conexao com ws://127.0.0.1 por a pagina estar em HTTPS, use este controlador como dock em ambiente HTTP/local ou habilite WebSocket seguro no OBS.
+        <div className="grid gap-4 border-b border-white/10 p-4 lg:grid-cols-[1fr_1fr_auto]">
+          <div className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <KeyRound size={14} />
+              Chave do produtor
+            </div>
+            <div className="flex gap-2">
+              <select value={producerKey} onChange={(e) => setProducerKey(e.target.value)} className="h-11 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none">
+                <option value="">Selecione ou gere uma chave</option>
+                {producerKeys.map((key) => (
+                  <option key={key.id} value={key.producer_key}>
+                    {key.label} • {key.producer_key.slice(0, 14)}...
+                  </option>
+                ))}
+              </select>
+              <button onClick={gerarProducerKey} className="h-11 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Gerar
+              </button>
+            </div>
+            <div className="mt-2 flex gap-2">
+              <button onClick={ativarProducerKey} disabled={loading} className="inline-flex h-10 flex-1 items-center justify-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-60">
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
+                {producerActive ? 'Ativa' : 'Ativar chave'}
+              </button>
+              <button onClick={() => producerKey && copiar(producerKey)} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Copiar
+              </button>
+            </div>
+          </div>
+
+          <div className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Chave do campeonato/projeto</div>
+            <div className="flex gap-2">
+              <input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} placeholder="Cole a chave do projeto" className="h-11 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <button onClick={carregarProject} disabled={loading || !producerKeyActive} className="inline-flex h-11 items-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-50">
+                <RefreshCw size={14} />
+                Carregar
+              </button>
+            </div>
+            <div className="mt-2 text-xs font-bold uppercase text-zinc-400">
+              {project ? project.nome : 'Nenhum projeto carregado'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 lg:w-[260px]">
+            <StatusCard label="Produtor" value={producerActive ? 'ATIVO' : 'INATIVO'} active={producerActive} />
+            <StatusCard label="OBS" value={status === 'online' ? 'ONLINE' : 'OFFLINE'} active={status === 'online'} />
+            <StatusCard label="Cena" value={currentScene || '-'} />
+            <StatusCard label="Overlays" value={String(overlays.length)} />
+          </div>
+        </div>
+
+        {showConfig ? (
+          <div className="border-b border-white/10 bg-[#0b1220] p-4">
+            <div className="grid gap-3 md:grid-cols-[1fr_120px_1fr_auto]">
+              <input value={host} onChange={(e) => setHost(e.target.value)} placeholder="Host OBS" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <input value={port} onChange={(e) => setPort(e.target.value)} placeholder="Porta" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha OBS WebSocket" type="password" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <button onClick={conectarObs} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em]">
+                <PlugZap size={14} />
+                Conectar OBS
+              </button>
+            </div>
+            <div className="mt-2 text-xs font-semibold text-zinc-400">{statusText}</div>
           </div>
         ) : null}
 
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_340px]">
-          <div className="min-h-0 p-4">
-            <div className="mb-4 grid grid-cols-4 gap-2">
-              {([
-                ['controle', 'Controle', Gamepad2],
-                ['overlays', 'Overlays', Eye],
-                ['cenas', 'Cenas', MonitorUp],
-                ['config', 'OBS', Settings],
-              ] as const).map(([id, label, Icon]) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={`flex h-11 items-center justify-center gap-2 border text-[10px] font-black uppercase tracking-[0.12em] ${tab === id ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-[#0b1220] text-zinc-300'}`}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'controle' ? (
-              <div className="grid gap-4 xl:grid-cols-2">
-                <PanelTitle title="Cenas OBS" subtitle={statusText} />
-                <PanelTitle title="Overlays do projeto" subtitle={projeto ? `${overlays.length} overlays carregadas` : 'Carregue uma chave'} />
-                <SceneGrid scenes={sceneButtons} currentScene={currentScene} onScene={trocarCena} />
-                <OverlayGrid overlays={overlays} origem={origem} streamKey={projeto?.stream_key || streamKey || 'generico'} salvandoOverlay={salvandoOverlay} onToggle={alternarOverlay} onCopy={copiar} />
-              </div>
-            ) : null}
-
-            {tab === 'overlays' ? (
-              <div>
-                <PanelTitle title="Overlays" subtitle="Mostre, esconda e copie links para o OBS." />
-                <OverlayGrid overlays={overlays} origem={origem} streamKey={projeto?.stream_key || streamKey || 'generico'} salvandoOverlay={salvandoOverlay} onToggle={alternarOverlay} onCopy={copiar} />
-              </div>
-            ) : null}
-
-            {tab === 'cenas' ? (
-              <div>
-                <PanelTitle title="Cenas OBS" subtitle={statusText} />
-                <SceneGrid scenes={sceneButtons} currentScene={currentScene} onScene={trocarCena} />
-              </div>
-            ) : null}
-
-            {tab === 'config' ? (
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="border border-white/10 bg-[#0b1220] p-4">
-                  <div className="mb-4 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Conexao OBS WebSocket</div>
-                  <div className="grid gap-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <EditorField label="Host" value={host} onChange={setHost} />
-                      <EditorField label="Porta" value={port} onChange={setPort} />
-                    </div>
-                    <EditorField label="Senha" value={password} type="password" onChange={setPassword} />
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={conectarObs} className="inline-flex h-11 items-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em]">
-                        <PlugZap size={14} />
-                        Conectar OBS
-                      </button>
-                      <button onClick={atualizarCenas} disabled={status !== 'online'} className="inline-flex h-11 items-center gap-2 border border-white/10 bg-white/5 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
-                        <RefreshCw size={14} />
-                        Importar cenas
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="border border-white/10 bg-[#0b1220] p-4">
-                  <div className="mb-4 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Links principais</div>
-                  {projeto ? (
-                    <div className="space-y-3">
-                      <LinkBox label="Controlador OBS" url={`${origem}/stream/controller?key=${projeto.stream_key}`} onCopy={copiar} />
-                      <LinkBox label="Scoreboard OBS" url={`${origem}/stream/overlay/${projeto.stream_key}/scoreboard`} onCopy={copiar} />
-                    </div>
-                  ) : (
-                    <div className="text-sm font-semibold text-zinc-400">Carregue uma chave para ver os links.</div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <aside className="border-t border-white/10 bg-[#0b1220] p-4 lg:border-l lg:border-t-0">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Status</div>
-                <div className={`mt-1 text-sm font-black uppercase ${status === 'online' ? 'text-emerald-400' : status === 'error' ? 'text-red-400' : 'text-zinc-300'}`}>{status}</div>
-              </div>
-              <button onClick={conectarObs} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-                <PlugZap size={14} />
-                OBS
+        <div className="grid gap-4 p-4 lg:grid-cols-[1fr_360px]">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Botões do controlador</div>
+              <button onClick={adicionarBotao} disabled={!project || !producerKeyActive} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
+                <Plus size={14} />
+                Adicionar botão
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="border border-white/10 bg-[#111827] p-3">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Cena atual</div>
-                <div className="mt-2 truncate text-lg font-black uppercase">{currentScene || '-'}</div>
+            {buttons.length === 0 ? (
+              <div className="flex min-h-[250px] items-center justify-center border border-dashed border-white/10 text-center text-sm font-semibold text-zinc-400">
+                Ative sua chave, carregue o projeto e adicione botões vinculados às cenas do OBS.
               </div>
-              <div className="border border-white/10 bg-[#111827] p-3">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Overlays visiveis</div>
-                <div className="mt-2 text-3xl font-black">{overlays.filter((overlay) => overlay.visivel).length}</div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {buttons.map((button) => (
+                  <div key={button.id} className="border border-white/10 bg-[#0b1220] p-3">
+                    <button onClick={() => executarBotao(button)} className="h-24 w-full border border-red-600 bg-red-600 px-4 text-lg font-black uppercase tracking-[0.08em] hover:brightness-110">
+                      {button.label}
+                    </button>
+                    <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+                      <span>{button.obs_scene_name || button.action_type}</span>
+                      <button onClick={() => removerBotao(button.id)} className="text-red-400">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="border border-white/10 bg-[#111827] p-3">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Projeto</div>
-                <div className="mt-2 text-sm font-black uppercase">{projeto?.nome || 'Nao carregado'}</div>
-              </div>
+            )}
+          </div>
+
+          <aside className="border border-white/10 bg-[#0b1220] p-4">
+            <div className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <MonitorUp size={15} />
+              Overlays do projeto
             </div>
+
+            {!project ? (
+              <div className="text-sm font-semibold text-zinc-500">Carregue a chave do campeonato.</div>
+            ) : (
+              <div className="space-y-2">
+                {overlayLinks.map((overlay) => (
+                  <div key={overlay.id} className="border border-white/10 bg-[#080d16] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-black uppercase">{overlay.nome}</div>
+                        <div className="text-[10px] font-bold uppercase text-zinc-500">{overlay.template_id}</div>
+                      </div>
+                      {overlay.visivel ? <Eye size={16} className="text-green-400" /> : <EyeOff size={16} className="text-zinc-500" />}
+                    </div>
+                    <div className="mt-2 break-all text-[10px] font-semibold text-zinc-400">{overlay.url}</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button onClick={() => copiar(overlay.url)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                        Copiar OBS
+                      </button>
+                      <Link href={`/stream/render/${overlay.id}`} target="_blank" className="inline-flex h-9 items-center justify-center border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                        Abrir
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </aside>
         </div>
       </section>
@@ -535,115 +646,11 @@ export default function StreamObsControllerPage() {
   )
 }
 
-function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function StatusCard({ label, value, active }: { label: string; value: string; active?: boolean }) {
   return (
-    <div className="border border-white/10 bg-[#0b1220] p-4">
-      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">{title}</div>
-      <div className="mt-2 text-xs font-semibold text-zinc-500">{subtitle}</div>
-    </div>
-  )
-}
-
-function SceneGrid({ scenes, currentScene, onScene }: { scenes: Array<ObsScene & { icon: string }>; currentScene: string; onScene: (sceneName: string) => void }) {
-  if (!scenes.length) {
-    return <div className="border border-dashed border-white/10 bg-[#0b1220] p-6 text-sm font-semibold text-zinc-400 xl:col-span-2">Conecte no OBS e clique em Importar cenas.</div>
-  }
-
-  return (
-    <div className="grid gap-3 xl:col-span-2 md:grid-cols-2">
-      {scenes.map((scene) => {
-        const active = scene.sceneName === currentScene
-        return (
-          <button
-            key={scene.sceneName}
-            onClick={() => onScene(scene.sceneName)}
-            className={`flex min-h-[82px] items-center gap-4 border p-4 text-left transition hover:-translate-y-0.5 ${active ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#0b1220] text-white'}`}
-          >
-            <span className="flex h-12 w-12 items-center justify-center border border-white/10 bg-white/5 text-xl">{scene.icon}</span>
-            <span className="min-w-0 flex-1 truncate text-base font-black uppercase">{scene.sceneName}</span>
-            {active ? <span className="text-lg font-black text-yellow-300">ON</span> : null}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function OverlayGrid({
-  overlays,
-  origem,
-  streamKey,
-  salvandoOverlay,
-  onToggle,
-  onCopy,
-}: {
-  overlays: OverlayProjeto[]
-  origem: string
-  streamKey: string
-  salvandoOverlay: string
-  onToggle: (overlay: OverlayProjeto) => void
-  onCopy: (text: string) => void
-}) {
-  if (!overlays.length) {
-    return <div className="border border-dashed border-white/10 bg-[#0b1220] p-6 text-sm font-semibold text-zinc-400 xl:col-span-2">Nenhuma overlay criada. Abra o Editor visual e adicione uma overlay.</div>
-  }
-
-  return (
-    <div className="grid gap-3 xl:col-span-2 md:grid-cols-2">
-      {overlays.map((overlay) => {
-        const fixedTemplate = getFixedStreamOverlayTemplate(overlay.template_id)
-        const url = fixedTemplate
-          ? `${origem}/stream/overlay/${streamKey || 'generico'}/${fixedTemplate.slug}`
-          : `${origem}/stream/render/${overlay.id}`
-        return (
-          <div key={overlay.id} className={`border ${overlay.visivel ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-[#0b1220] text-zinc-300'}`}>
-            <div className="flex min-h-[74px] items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <div className="truncate text-base font-black uppercase">{overlay.nome}</div>
-                <div className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.14em] opacity-75">{overlay.template_id}</div>
-              </div>
-              <button onClick={() => onToggle(overlay)} disabled={salvandoOverlay === overlay.id} className="flex h-11 w-11 items-center justify-center border border-white/20 bg-black/10 disabled:opacity-50">
-                {salvandoOverlay === overlay.id ? <Loader2 size={16} className="animate-spin" /> : overlay.visivel ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <div className="border-t border-white/15 p-3">
-              <div className="mb-2 break-all text-[10px] font-semibold opacity-80">{url}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => onCopy(url)} className="inline-flex h-9 items-center justify-center gap-2 border border-white/20 bg-black/10 px-2 text-[9px] font-black uppercase tracking-[0.14em]">
-                  <Copy size={12} />
-                  Copiar OBS
-                </button>
-                <Link href={`/stream/render/${overlay.id}`} target="_blank" className="inline-flex h-9 items-center justify-center gap-2 border border-white/20 bg-black/10 px-2 text-[9px] font-black uppercase tracking-[0.14em]">
-                  <MonitorUp size={12} />
-                  Abrir
-                </Link>
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function EditorField({ label, value, type = 'text', onChange }: { label: string; value: string; type?: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
-      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full border border-white/10 bg-[#111827] px-3 text-sm font-bold outline-none focus:border-red-500" />
-    </label>
-  )
-}
-
-function LinkBox({ label, url, onCopy }: { label: string; url: string; onCopy: (text: string) => void }) {
-  return (
-    <div className="border border-white/10 bg-[#111827] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
-      <div className="mt-2 break-all text-xs font-semibold text-zinc-300">{url}</div>
-      <button onClick={() => onCopy(url)} className="mt-3 inline-flex h-9 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
-        <Copy size={13} />
-        Copiar
-      </button>
+    <div className="border border-white/10 bg-[#0b1220] p-3">
+      <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+      <div className={`mt-1 truncate text-sm font-black uppercase ${active === true ? 'text-green-400' : active === false ? 'text-red-400' : 'text-white'}`}>{value}</div>
     </div>
   )
 }
