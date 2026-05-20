@@ -56,6 +56,35 @@ const checkerboardStyle = {
   backgroundSize: '20px 20px',
 }
 
+const colorSwatches = [
+  '#e60012',
+  '#f6c453',
+  '#101827',
+  '#d8ab4f',
+  '#ffffff',
+  '#0ea5e9',
+  '#22c55e',
+  '#8b5cf6',
+  '#f97316',
+  '#020617',
+  'rgba(255,255,255,0.88)',
+  'rgba(8,13,22,0.92)',
+]
+
+function extractColor(value?: string) {
+  const text = String(value || '').trim()
+  const hex = text.match(/#[0-9a-fA-F]{6}/)?.[0]
+  return hex || '#ffffff'
+}
+
+function gradientValue(start: string, end: string, direction = '90deg') {
+  return `linear-gradient(${direction}, ${start || '#ffffff'}, ${end || '#101827'})`
+}
+
+function imageBackgroundValue(dataUrl: string) {
+  return `url("${dataUrl}") center/cover no-repeat`
+}
+
 type CampeonatoEquipeRow = {
   id: string
   equipe_id: string | null
@@ -377,6 +406,19 @@ export default function StreamOverlayEditorPage() {
     await atualizarCampo('brand.logoDataUrl', dataUrl)
   }
 
+  async function uploadBackgroundImage(path: string, file: File | null) {
+    if (!file) return
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    await atualizarCampo(path, imageBackgroundValue(dataUrl))
+  }
+
   if (loading) {
     return <main className="flex min-h-screen items-center justify-center bg-[#080d16] text-white"><Loader2 className="animate-spin" /></main>
   }
@@ -619,8 +661,8 @@ export default function StreamOverlayEditorPage() {
                           <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
                           <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
                           <EditorColor label="Cor fundo" value={config.theme.background} onChange={(v) => atualizarCampo('theme.background', v)} />
-                          <EditorColor label="Cor linha" value={config.theme.rowBackground} onChange={(v) => atualizarCampo('theme.rowBackground', v)} />
-                          <EditorColor label="Cor alternada" value={config.theme.rowAltBackground} onChange={(v) => atualizarCampo('theme.rowAltBackground', v)} />
+                          <EditorBackground label="Fundo linha" value={config.theme.rowBackground || ''} onChange={(v) => atualizarCampo('theme.rowBackground', v)} onImage={(file) => uploadBackgroundImage('theme.rowBackground', file)} />
+                          <EditorBackground label="Fundo alternado" value={config.theme.rowAltBackground || ''} onChange={(v) => atualizarCampo('theme.rowAltBackground', v)} onImage={(file) => uploadBackgroundImage('theme.rowAltBackground', file)} />
                           <EditorColor label="Cor texto" value={config.theme.text} onChange={(v) => atualizarCampo('theme.text', v)} />
                           <EditorColor label="Cor cabecalho" value={config.theme.headerText} onChange={(v) => atualizarCampo('theme.headerText', v)} />
                           <EditorInput label="Borda" value={config.theme.border || ''} onChange={(v) => atualizarCampo('theme.border', v)} />
@@ -683,7 +725,7 @@ export default function StreamOverlayEditorPage() {
                             <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Destaque por linha</div>
                             <EditorNumber label="Linha" value={selectedRow} onChange={(v) => setSelectedRow(Math.max(1, v))} />
                             <div className="mt-3 grid grid-cols-2 gap-3">
-                              <EditorColor label="Fundo linha" value={config.rowStyles?.[String(selectedRow)]?.background || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.background`, v)} />
+                              <EditorBackground label="Fundo linha" value={config.rowStyles?.[String(selectedRow)]?.background || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.background`, v)} onImage={(file) => uploadBackgroundImage(`rowStyles.${selectedRow}.background`, file)} />
                               <EditorColor label="Texto linha" value={config.rowStyles?.[String(selectedRow)]?.text || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.text`, v)} />
                             </div>
                             <button type="button" onClick={() => atualizarCampo(`rowStyles.${selectedRow}`, {})} className="mt-3 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
@@ -820,8 +862,85 @@ function EditorColor({ label, value, onChange }: { label: string; value: string;
   return (
     <label className="block">
       <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
-      <input value={value ?? ''} placeholder="#ffffff ou rgba(...)" onChange={(e) => onChange(e.target.value)} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none" />
+      <div className="flex overflow-hidden border border-white/10 bg-[#0b1220]">
+        <input
+          type="color"
+          value={extractColor(value)}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-12 cursor-pointer border-0 bg-transparent p-1"
+        />
+        <input
+          value={value ?? ''}
+          placeholder="#ffffff ou rgba(...)"
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm font-bold outline-none"
+        />
+      </div>
+      <div className="mt-2 grid grid-cols-6 gap-1">
+        {colorSwatches.map((color) => (
+          <button
+            key={color}
+            type="button"
+            onClick={() => onChange(color)}
+            className="h-6 border border-white/10"
+            style={{ background: color }}
+            title={color}
+          />
+        ))}
+      </div>
     </label>
+  )
+}
+
+function EditorBackground({
+  label,
+  value,
+  onChange,
+  onImage,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  onImage: (file: File | null) => void
+}) {
+  return (
+    <div className="block">
+      <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</div>
+      <div className="space-y-3 border border-white/10 bg-[#0b1220] p-3">
+        <div className="h-8 border border-white/10" style={{ background: value || 'transparent' }} />
+
+        <EditorColor label="Cor solida" value={value?.startsWith('linear-gradient') || value?.startsWith('url(') ? '' : value} onChange={onChange} />
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onChange(gradientValue('#ffffff', '#101827', '90deg'))}
+            className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.12em]"
+          >
+            Degrade H
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange(gradientValue('#ffffff', '#101827', '180deg'))}
+            className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.12em]"
+          >
+            Degrade V
+          </button>
+        </div>
+
+        <EditorInput label="CSS do fundo" value={value || ''} onChange={onChange} />
+
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem</span>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => onImage(e.target.files?.[0] || null)}
+            className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white"
+          />
+        </label>
+      </div>
+    </div>
   )
 }
 
