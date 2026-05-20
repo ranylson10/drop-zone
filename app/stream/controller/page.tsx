@@ -1,10 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import {
-  Copy,
   Eye,
   EyeOff,
   KeyRound,
@@ -12,8 +11,6 @@ import {
   MonitorUp,
   Plus,
   Radio,
-  RefreshCw,
-  Settings,
   Trash2,
   Wifi,
 } from 'lucide-react'
@@ -69,6 +66,11 @@ function createSessionId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function produtorProjectsNextOrder(projects: ProducerProject[]) {
+  const maior = projects.reduce((max, item) => Math.max(max, Number(item.ordem || 0)), 0)
+  return maior + 1
+}
+
 export default function StreamObsControllerPage() {
   const [sessionId] = useState(() => {
     if (typeof window === 'undefined') return ''
@@ -98,6 +100,15 @@ export default function StreamObsControllerPage() {
   const selectedProject = selectedProducerProject?.stream_projects || null
   const panelUrl = producerKey ? `${origem}/stream/controller/panel/${encodeURIComponent(producerKey)}` : ''
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || projectKey) return
+    const keyFromUrl = safeText(new URLSearchParams(window.location.search).get('key'))
+    if (keyFromUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProjectKey(keyFromUrl)
+    }
+  }, [projectKey])
+
   const carregarProducerKeys = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser()
     if (!auth.user) return
@@ -120,6 +131,7 @@ export default function StreamObsControllerPage() {
   }, [producerKey])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregarProducerKeys()
   }, [carregarProducerKeys])
 
@@ -218,8 +230,13 @@ export default function StreamObsControllerPage() {
 
     const lista = (data || []) as ProducerProject[]
     setProducerProjects(lista)
-    if (!selectedProducerProjectId && lista[0]) setSelectedProducerProjectId(lista[0].id)
-    if (lista[0]) await carregarProjetoDetalhes(lista[0].stream_projects?.id || '', keyId)
+    const selecionadoAtual = lista.find((item) => item.id === selectedProducerProjectId) || lista[0] || null
+    setSelectedProducerProjectId(selecionadoAtual?.id || '')
+    if (selecionadoAtual?.stream_projects?.id) await carregarProjetoDetalhes(selecionadoAtual.stream_projects.id, keyId)
+    if (!selecionadoAtual) {
+      setOverlays([])
+      setButtons([])
+    }
   }
 
   async function adicionarProjetoNaLista() {
@@ -247,18 +264,58 @@ export default function StreamObsControllerPage() {
       return
     }
 
-    const { error } = await supabase
+    const labelFinal = projectLabel.trim() || projeto.nome
+
+    const { data: existente, error: consultaError } = await supabase
       .from('stream_producer_projects')
-      .upsert({
-        producer_key_id: producerKeyId,
-        project_id: projeto.id,
-        label: projectLabel.trim() || projeto.nome,
-        ativo: true,
-        ordem: producerProjects.length + 1,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'producer_key_id,project_id',
-      })
+      .select('id')
+      .eq('producer_key_id', producerKeyId)
+      .eq('project_id', projeto.id)
+      .maybeSingle()
+
+    if (consultaError) {
+      setLoading(false)
+      alert(`Erro ao verificar lista: ${consultaError.message}`)
+      return
+    }
+
+    const payload = {
+      producer_key_id: producerKeyId,
+      project_id: projeto.id,
+      label: labelFinal,
+      ativo: true,
+      ordem: produtorProjectsNextOrder(producerProjects),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: salvo, error } = existente?.id
+      ? await supabase
+          .from('stream_producer_projects')
+          .update({ label: labelFinal, ativo: true, updated_at: payload.updated_at })
+          .eq('id', existente.id)
+          .select(`
+            id,
+            producer_key_id,
+            project_id,
+            label,
+            ordem,
+            ativo,
+            stream_projects ( id, nome, stream_key )
+          `)
+          .single()
+      : await supabase
+          .from('stream_producer_projects')
+          .insert(payload)
+          .select(`
+            id,
+            producer_key_id,
+            project_id,
+            label,
+            ordem,
+            ativo,
+            stream_projects ( id, nome, stream_key )
+          `)
+          .single()
 
     setLoading(false)
 
@@ -269,6 +326,7 @@ export default function StreamObsControllerPage() {
 
     setProjectKey('')
     setProjectLabel('')
+    if (salvo?.id) setSelectedProducerProjectId(salvo.id)
     await carregarProducerProjects()
   }
 
@@ -521,6 +579,11 @@ export default function StreamObsControllerPage() {
               <div className="text-sm font-semibold text-zinc-500">Selecione um campeonato.</div>
             ) : (
               <div className="space-y-2">
+                {overlays.length === 0 ? (
+                  <div className="rounded border border-dashed border-white/10 p-4 text-xs font-semibold text-zinc-500">
+                    Nenhum link gerado ainda. O dono precisa abrir o editor uma vez para criar as overlays fixas desse projeto.
+                  </div>
+                ) : null}
                 {overlays.map((overlay) => {
                   const url = `${origem}/stream/render/${overlay.id}`
                   return (
