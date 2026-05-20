@@ -289,15 +289,7 @@ export default function StreamObsControllerPage() {
 
     const { data, error } = await supabase
       .from('stream_producer_projects')
-      .select(`
-        id,
-        producer_key_id,
-        project_id,
-        label,
-        ordem,
-        ativo,
-        stream_projects ( id, nome, stream_key )
-      `)
+      .select('id, producer_key_id, project_id, label, ordem, ativo')
       .eq('producer_key_id', keyId)
       .eq('ativo', true)
       .order('ordem', { ascending: true })
@@ -307,7 +299,29 @@ export default function StreamObsControllerPage() {
       return
     }
 
-    const lista = (data || []) as ProducerProject[]
+    const rows = (data || []) as Omit<ProducerProject, 'stream_projects'>[]
+    const projectIds = rows.map((item) => item.project_id).filter(Boolean)
+
+    let projectsMap = new Map<string, Project>()
+    if (projectIds.length > 0) {
+      const { data: projetos, error: projetosError } = await supabase
+        .from('stream_projects')
+        .select('id, nome, stream_key')
+        .in('id', projectIds)
+
+      if (projetosError) {
+        alert(`Erro ao carregar projetos salvos: ${projetosError.message}`)
+        return
+      }
+
+      projectsMap = new Map(((projetos || []) as Project[]).map((projeto) => [projeto.id, projeto]))
+    }
+
+    const lista = rows.map((item) => ({
+      ...item,
+      stream_projects: projectsMap.get(item.project_id) || null,
+    })) as ProducerProject[]
+
     setProducerProjects(lista)
     const selecionadoAtual = lista.find((item) => item.id === selectedProducerProjectId) || lista[0] || null
     setSelectedProducerProjectId(selecionadoAtual?.id || '')
@@ -382,28 +396,12 @@ export default function StreamObsControllerPage() {
           .from('stream_producer_projects')
           .update({ label: labelFinal, ativo: true, updated_at: payload.updated_at })
           .eq('id', existente.id)
-          .select(`
-            id,
-            producer_key_id,
-            project_id,
-            label,
-            ordem,
-            ativo,
-            stream_projects ( id, nome, stream_key )
-          `)
+.select('id, producer_key_id, project_id, label, ordem, ativo')
           .single()
       : await supabase
           .from('stream_producer_projects')
           .insert(payload)
-          .select(`
-            id,
-            producer_key_id,
-            project_id,
-            label,
-            ordem,
-            ativo,
-            stream_projects ( id, nome, stream_key )
-          `)
+.select('id, producer_key_id, project_id, label, ordem, ativo')
           .single()
 
     setLoading(false)
@@ -699,28 +697,29 @@ export default function StreamObsControllerPage() {
               <div className="text-sm font-semibold text-zinc-500">Selecione um campeonato.</div>
             ) : (
               <div className="space-y-2">
-                {overlays.length === 0 ? (
-                  <div className="rounded border border-dashed border-white/10 p-4 text-xs font-semibold text-zinc-500">
-                    Nenhum link gerado ainda. O dono precisa abrir o editor uma vez para criar as overlays fixas desse projeto.
-                  </div>
-                ) : null}
-                {overlays.map((overlay) => {
-                  const url = `${origem}/stream/render/${overlay.id}`
+                <div className="border border-red-600/30 bg-red-600/10 p-3 text-[11px] font-semibold leading-relaxed text-zinc-300">
+                  Links fixos para o OBS. O que muda é a chave do campeonato selecionado: ela puxa as configurações salvas pelo dono.
+                </div>
+
+                {DEFAULT_OVERLAYS.map((template) => {
+                  const overlaySalva = overlays.find((overlay) => overlay.template_id === template.template_id)
+                  const url = `${origem}/stream/overlay/${encodeURIComponent(selectedProject.stream_key)}/${template.template_id}`
+
                   return (
-                    <div key={overlay.id} className="border border-white/10 bg-[#080d16] p-3">
+                    <div key={template.template_id} className="border border-white/10 bg-[#080d16] p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <div className="text-sm font-black uppercase">{overlay.nome}</div>
-                          <div className="text-[10px] font-bold uppercase text-zinc-500">{overlay.template_id}</div>
+                          <div className="text-sm font-black uppercase">{template.nome}</div>
+                          <div className="text-[10px] font-bold uppercase text-zinc-500">{template.template_id}</div>
                         </div>
-                        {overlay.visivel ? <Eye size={16} className="text-green-400" /> : <EyeOff size={16} className="text-zinc-500" />}
+                        {overlaySalva?.visivel !== false ? <Eye size={16} className="text-green-400" /> : <EyeOff size={16} className="text-zinc-500" />}
                       </div>
                       <div className="mt-2 break-all text-[10px] font-semibold text-zinc-400">{url}</div>
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <button onClick={() => copiar(url)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                          Copiar
+                          Copiar link
                         </button>
-                        <Link href={`/stream/render/${overlay.id}`} target="_blank" className="inline-flex h-9 items-center justify-center border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                        <Link href={url} target="_blank" className="inline-flex h-9 items-center justify-center border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
                           Abrir
                         </Link>
                       </div>
