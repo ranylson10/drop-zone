@@ -42,6 +42,8 @@ export type StreamOverlayConfig = {
     border?: string
     shadow?: string
   }
+  columnStyles?: Record<string, { background?: string; text?: string }>
+  rowStyles?: Record<string, { background?: string; text?: string }>
   layout?: {
     x?: number
     y?: number
@@ -78,6 +80,7 @@ export type RankingRow = {
   booyahs: number
   kills: number
   pontos: number
+  empty?: boolean
 }
 
 export const defaultTabelaGeralConfig: StreamOverlayConfig = {
@@ -117,8 +120,10 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     headerText: '#ffffff',
     accent: '#f6c453',
     border: 'rgba(255, 255, 255, 0.18)',
-    shadow: 'rgba(0, 0, 0, 0.42)',
+    shadow: 'transparent',
   },
+  columnStyles: {},
+  rowStyles: {},
   layout: {
     x: 180,
     y: 140,
@@ -185,6 +190,8 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
     ...(override || {}),
     brand: { ...(base?.brand || {}), ...(override?.brand || {}) },
     theme: { ...(base?.theme || {}), ...(override?.theme || {}) },
+    columnStyles: { ...(base?.columnStyles || {}), ...(override?.columnStyles || {}) },
+    rowStyles: { ...(base?.rowStyles || {}), ...(override?.rowStyles || {}) },
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
     animation: { ...(base?.animation || {}), ...(override?.animation || {}) },
@@ -231,6 +238,7 @@ export function sampleRankingRows(maxRows = 12): RankingRow[] {
 }
 
 function displayValue(row: RankingRow, column: string, rank: number) {
+  if (row.empty) return ''
   if (column === 'rank') return `${rank}`
   if (column === 'nome') return row.nome
   if (column === 'tag') return row.tag || '-'
@@ -240,6 +248,27 @@ function displayValue(row: RankingRow, column: string, rank: number) {
   if (column === 'kills') return row.kills
   if (column === 'pontos') return row.pontos
   return ''
+}
+
+function fillRows(rows: RankingRow[], maxRows: number) {
+  const trimmed = rows.slice(0, maxRows)
+  const missing = Math.max(0, maxRows - trimmed.length)
+
+  return [
+    ...trimmed,
+    ...Array.from({ length: missing }, (_, index) => ({
+      id: `empty-${index}`,
+      nome: '',
+      tag: null,
+      logo: null,
+      grupo: null,
+      quedas: 0,
+      booyahs: 0,
+      kills: 0,
+      pontos: 0,
+      empty: true,
+    })),
+  ]
 }
 
 function chunkRows(rows: RankingRow[], rowsPerBlock: number, blockCount: number) {
@@ -273,7 +302,7 @@ export function TabelaGeralOverlay({
   const maxRows = Number(merged.layout?.maxRows || 12)
   const visibleColumns = getVisibleTabelaColumns(merged)
   const gridTemplateColumns = buildTabelaGrid(visibleColumns)
-  const lista = (rows.length > 0 ? rows : sampleRankingRows(maxRows)).slice(0, maxRows)
+  const lista = fillRows(rows, maxRows)
   const opacity = Math.max(0, Math.min(100, Number(merged.layout?.opacity ?? 100))) / 100
   const tableScale = Math.max(10, Number(merged.layout?.scale || 100)) / 100
   const brandScale = Math.max(10, Number(merged.brand?.scale || 100)) / 100
@@ -348,7 +377,7 @@ export function TabelaGeralOverlay({
               textAlign: merged.brand?.align || 'left',
               paddingLeft: 18,
               paddingRight: 18,
-              textShadow: `0 8px 22px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'}`,
+              textShadow: 'none',
               fontWeight: Number(merged.brand?.fontWeight || 900),
               fontStyle: merged.brand?.italic ? 'italic' : 'normal',
               ...selectedStyle('text'),
@@ -374,7 +403,7 @@ export function TabelaGeralOverlay({
           opacity,
           transform: `scale(${tableScale})`,
           transformOrigin: 'top left',
-          filter: `drop-shadow(0 24px 32px ${merged.theme?.shadow || 'rgba(0,0,0,0.42)'})`,
+          filter: 'none',
           ...selectedStyle('table'),
         }}
       >
@@ -401,7 +430,14 @@ export function TabelaGeralOverlay({
           }}
         >
           {visibleColumns.map((column) => (
-            <div key={column} className={`${column === 'nome' ? 'text-left' : 'text-center'} text-[0.68em] tracking-[0.18em]`}>
+            <div
+              key={column}
+              className={`${column === 'nome' ? 'text-left' : 'text-center'} text-[0.68em] tracking-[0.18em]`}
+              style={{
+                color: merged.columnStyles?.[column]?.text || undefined,
+                background: merged.columnStyles?.[column]?.background || undefined,
+              }}
+            >
               {column === 'nome' ? merged.title || 'TABELA GERAL' : tabelaGeralColumnLabels[column]}
             </div>
           ))}
@@ -410,7 +446,9 @@ export function TabelaGeralOverlay({
         <div className="mt-2" style={{ display: 'grid', gap: Number(merged.layout?.rowGap || 5) }}>
           {blockRows.map((row, rowIndex) => {
             const globalIndex = blockIndex * rowsPerBlock + rowIndex
-            const rowBackground = globalIndex % 2 === 0 ? merged.theme?.rowBackground : merged.theme?.rowAltBackground || merged.theme?.rowBackground
+            const rowStyle = merged.rowStyles?.[String(globalIndex + 1)] || {}
+            const rowBackground = rowStyle.background || (globalIndex % 2 === 0 ? merged.theme?.rowBackground : merged.theme?.rowAltBackground || merged.theme?.rowBackground)
+            const rowText = rowStyle.text || merged.theme?.text
 
             return (
               <div
@@ -428,8 +466,26 @@ export function TabelaGeralOverlay({
               >
                 {visibleColumns.map((column) => {
                   if (column === 'logo') {
+                    if (row.empty) {
+                      return (
+                        <div
+                          key={column}
+                          style={{
+                            background: merged.columnStyles?.[column]?.background || undefined,
+                          }}
+                        />
+                      )
+                    }
+
                     return (
-                      <div key={column} className="flex items-center justify-center">
+                      <div
+                        key={column}
+                        className="flex items-center justify-center"
+                        style={{
+                          background: merged.columnStyles?.[column]?.background || undefined,
+                          color: merged.columnStyles?.[column]?.text || rowText || undefined,
+                        }}
+                      >
                         <div
                           className="flex items-center justify-center overflow-hidden bg-white text-[0.78em] text-slate-900"
                           style={{
@@ -453,7 +509,8 @@ export function TabelaGeralOverlay({
                       key={column}
                       className={`${column === 'nome' ? 'truncate text-left' : 'text-center'} ${column === 'pontos' ? 'font-black' : ''}`}
                       style={{
-                        color: column === 'pontos' ? merged.theme?.primary || '#e60012' : undefined,
+                        color: merged.columnStyles?.[column]?.text || (column === 'pontos' && !row.empty ? merged.theme?.primary || '#e60012' : rowText || undefined),
+                        background: merged.columnStyles?.[column]?.background || undefined,
                       }}
                     >
                       {displayValue(row, column, globalIndex + 1)}

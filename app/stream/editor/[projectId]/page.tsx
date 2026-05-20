@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Type } from 'lucide-react'
+import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
 import {
   RankingRow,
   StreamOverlayBlock,
@@ -188,6 +188,8 @@ export default function StreamOverlayEditorPage() {
   const [salvando, setSalvando] = useState(false)
   const [selectedBlock, setSelectedBlock] = useState<StreamOverlayBlock>('table')
   const [activeAction, setActiveAction] = useState<EditorAction>('move')
+  const [selectedColumn, setSelectedColumn] = useState('nome')
+  const [selectedRow, setSelectedRow] = useState(1)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -236,6 +238,12 @@ export default function StreamOverlayEditorPage() {
 
   async function criarOverlay(template: Template) {
     if (!projectId) return
+    const existente = overlays.find((overlay) => overlay.template_id === template.id)
+    if (existente) {
+      setOverlayId(existente.id)
+      alert('Esse template ja foi adicionado neste projeto.')
+      return
+    }
 
     setSalvando(true)
     const { data, error } = await supabase
@@ -260,6 +268,29 @@ export default function StreamOverlayEditorPage() {
 
     setOverlayId(data.id)
     await carregar()
+  }
+
+  async function removerOverlay(overlay: Overlay) {
+    if (!confirm(`Remover overlay "${overlay.nome}" deste projeto?`)) return
+
+    setSalvando(true)
+    const { error } = await supabase
+      .from('stream_project_overlays')
+      .delete()
+      .eq('id', overlay.id)
+
+    setSalvando(false)
+
+    if (error) {
+      alert(`Erro ao remover overlay: ${error.message}`)
+      return
+    }
+
+    setOverlays((prev) => {
+      const novaLista = prev.filter((item) => item.id !== overlay.id)
+      if (overlayId === overlay.id) setOverlayId(novaLista[0]?.id || '')
+      return novaLista
+    })
   }
 
   async function salvarConfig(novoConfig: any) {
@@ -380,22 +411,41 @@ export default function StreamOverlayEditorPage() {
 
             <div className="space-y-2">
               {overlays.map((overlay) => (
-                <button key={overlay.id} onClick={() => setOverlayId(overlay.id)} className={`w-full border px-3 py-3 text-left text-sm font-black uppercase ${overlayAtual?.id === overlay.id ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-200'}`}>
-                  {overlay.nome}
-                  <div className="mt-1 text-[10px] font-semibold text-zinc-300">{overlay.template_id}</div>
-                </button>
+                <div key={overlay.id} className={`flex border ${overlayAtual?.id === overlay.id ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-200'}`}>
+                  <button onClick={() => setOverlayId(overlay.id)} className="min-w-0 flex-1 px-3 py-3 text-left text-sm font-black uppercase">
+                    {overlay.nome}
+                    <div className="mt-1 truncate text-[10px] font-semibold text-zinc-300">{overlay.template_id}</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removerOverlay(overlay)}
+                    disabled={salvando}
+                    className="flex w-10 items-center justify-center border-l border-white/10 text-white/80 hover:bg-black/20 disabled:opacity-50"
+                    title="Remover overlay"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               ))}
             </div>
 
             <div className="mt-6 border-t border-white/10 pt-4">
               <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Adicionar template</div>
               <div className="space-y-2">
-                {templates.map((tpl) => (
-                  <button key={tpl.id} onClick={() => criarOverlay(tpl)} disabled={salvando} className="flex w-full items-center justify-between border border-white/10 bg-white/5 px-3 py-3 text-left text-xs font-black uppercase text-zinc-200 hover:bg-white/10">
-                    {tpl.nome}
-                    <Plus size={14} />
-                  </button>
-                ))}
+                {templates.map((tpl) => {
+                  const jaAdicionado = overlays.some((overlay) => overlay.template_id === tpl.id)
+                  return (
+                    <button
+                      key={tpl.id}
+                      onClick={() => criarOverlay(tpl)}
+                      disabled={salvando || jaAdicionado}
+                      className={`flex w-full items-center justify-between border px-3 py-3 text-left text-xs font-black uppercase ${jaAdicionado ? 'border-white/5 bg-white/[0.03] text-zinc-500' : 'border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10'} disabled:cursor-not-allowed`}
+                    >
+                      <span>{tpl.nome}</span>
+                      {jaAdicionado ? <span className="text-[9px] tracking-[0.14em]">Adicionado</span> : <Plus size={14} />}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </aside>
@@ -586,7 +636,7 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         <>
                           <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
+                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
                             <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
                             <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock || 6} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
                             <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
@@ -610,6 +660,35 @@ export default function StreamOverlayEditorPage() {
                                 </label>
                               ))}
                             </div>
+                          </div>
+
+                          <div className="border-t border-white/10 pt-3">
+                            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Destaque por coluna</div>
+                            <EditorSelect
+                              label="Coluna"
+                              value={selectedColumn}
+                              onChange={setSelectedColumn}
+                              options={Object.keys(tabelaGeralColumnLabels).map((key) => [key, tabelaGeralColumnLabels[key] || key])}
+                            />
+                            <div className="mt-3 grid grid-cols-2 gap-3">
+                              <EditorColor label="Fundo coluna" value={config.columnStyles?.[selectedColumn]?.background || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.background`, v)} />
+                              <EditorColor label="Texto coluna" value={config.columnStyles?.[selectedColumn]?.text || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.text`, v)} />
+                            </div>
+                            <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}`, {})} className="mt-3 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Limpar coluna
+                            </button>
+                          </div>
+
+                          <div className="border-t border-white/10 pt-3">
+                            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Destaque por linha</div>
+                            <EditorNumber label="Linha" value={selectedRow} onChange={(v) => setSelectedRow(Math.max(1, v))} />
+                            <div className="mt-3 grid grid-cols-2 gap-3">
+                              <EditorColor label="Fundo linha" value={config.rowStyles?.[String(selectedRow)]?.background || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.background`, v)} />
+                              <EditorColor label="Texto linha" value={config.rowStyles?.[String(selectedRow)]?.text || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.text`, v)} />
+                            </div>
+                            <button type="button" onClick={() => atualizarCampo(`rowStyles.${selectedRow}`, {})} className="mt-3 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Limpar linha
+                            </button>
                           </div>
                         </>
                       )}
@@ -741,7 +820,7 @@ function EditorColor({ label, value, onChange }: { label: string; value: string;
   return (
     <label className="block">
       <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</span>
-      <input value={value || '#ffffff'} onChange={(e) => onChange(e.target.value)} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none" />
+      <input value={value ?? ''} placeholder="#ffffff ou rgba(...)" onChange={(e) => onChange(e.target.value)} className="h-10 w-full border border-white/10 bg-[#0b1220] px-3 text-sm font-bold outline-none" />
     </label>
   )
 }
