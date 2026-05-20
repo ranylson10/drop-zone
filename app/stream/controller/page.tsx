@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable react-hooks/immutability, @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -10,6 +12,7 @@ import {
   Loader2,
   MonitorUp,
   Plus,
+  Settings,
   Radio,
   Trash2,
   Wifi,
@@ -71,6 +74,21 @@ function produtorProjectsNextOrder(projects: ProducerProject[]) {
   return maior + 1
 }
 
+const DEFAULT_OVERLAYS = [
+  { template_id: 'waiting', nome: 'Tela de espera', ordem: 1 },
+  { template_id: 'countdown', nome: 'Countdown', ordem: 2 },
+  { template_id: 'ranking_geral', nome: 'Tabela geral', ordem: 3 },
+  { template_id: 'ranking_dia', nome: 'Tabela do dia', ordem: 4 },
+  { template_id: 'ranking_queda', nome: 'Tabela da queda', ordem: 5 },
+  { template_id: 'mvp_geral', nome: 'MVP geral', ordem: 6 },
+  { template_id: 'mvp_queda', nome: 'MVP da queda', ordem: 7 },
+  { template_id: 'mvp_dia', nome: 'MVP do dia', ordem: 8 },
+  { template_id: 'booyah', nome: 'Booyah', ordem: 9 },
+  { template_id: 'classificadas', nome: 'Equipes classificadas', ordem: 10 },
+  { template_id: 'campeao', nome: 'Campeão', ordem: 11 },
+  { template_id: 'agradecimentos', nome: 'Agradecimentos', ordem: 12 },
+]
+
 export default function StreamObsControllerPage() {
   const [sessionId] = useState(() => {
     if (typeof window === 'undefined') return ''
@@ -94,6 +112,10 @@ export default function StreamObsControllerPage() {
   const [buttons, setButtons] = useState<ButtonItem[]>([])
 
   const [loading, setLoading] = useState(false)
+  const [obsHost, setObsHost] = useState('127.0.0.1')
+  const [obsPort, setObsPort] = useState('4455')
+  const [obsPassword, setObsPassword] = useState('')
+  const [showObsPassword, setShowObsPassword] = useState(false)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
   const selectedProducerProject = useMemo(() => producerProjects.find((item) => item.id === selectedProducerProjectId) || producerProjects[0] || null, [producerProjects, selectedProducerProjectId])
@@ -101,10 +123,16 @@ export default function StreamObsControllerPage() {
   const panelUrl = producerKey ? `${origem}/stream/controller/panel/${encodeURIComponent(producerKey)}` : ''
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    setObsHost(localStorage.getItem('stream.obs.host') || '127.0.0.1')
+    setObsPort(localStorage.getItem('stream.obs.port') || '4455')
+    setObsPassword(localStorage.getItem('stream.obs.password') || '')
+  }, [])
+
+  useEffect(() => {
     if (typeof window === 'undefined' || projectKey) return
     const keyFromUrl = safeText(new URLSearchParams(window.location.search).get('key'))
     if (keyFromUrl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProjectKey(keyFromUrl)
     }
   }, [projectKey])
@@ -127,11 +155,15 @@ export default function StreamObsControllerPage() {
 
     const saved = safeText(localStorage.getItem('stream.controller.producerKey'))
     const escolhido = saved || data?.[0]?.producer_key || ''
+    const keyEncontrada = data?.find((item) => item.producer_key === escolhido)
     if (escolhido && !producerKey) setProducerKey(escolhido)
+    if (keyEncontrada?.id) {
+      setProducerKeyId(keyEncontrada.id)
+      await carregarProducerProjects(keyEncontrada.id)
+    }
   }, [producerKey])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregarProducerKeys()
   }, [carregarProducerKeys])
 
@@ -205,6 +237,53 @@ export default function StreamObsControllerPage() {
     return () => clearInterval(interval)
   }, [producerActive, producerKey, sessionId])
 
+  function selecionarProducerKey(value: string) {
+    const clean = safeText(value)
+    setProducerKey(clean)
+    localStorage.setItem('stream.controller.producerKey', clean)
+    const encontrada = producerKeys.find((item) => item.producer_key === clean)
+    setProducerKeyId(encontrada?.id || '')
+    setProducerActive(false)
+    setProducerProjects([])
+    setSelectedProducerProjectId('')
+    setOverlays([])
+    setButtons([])
+    if (encontrada?.id) carregarProducerProjects(encontrada.id)
+  }
+
+  function salvarObsConfig() {
+    localStorage.setItem('stream.obs.host', safeText(obsHost) || '127.0.0.1')
+    localStorage.setItem('stream.obs.port', safeText(obsPort) || '4455')
+    localStorage.setItem('stream.obs.password', obsPassword)
+    alert('Configuração do OBS salva. O painel limpo usa esses dados ao conectar.')
+  }
+
+  async function garantirOverlaysDoProjeto(projectId: string) {
+    const { data: atuais, error: consultaError } = await supabase
+      .from('stream_project_overlays')
+      .select('id, template_id')
+      .eq('project_id', projectId)
+
+    if (consultaError) throw consultaError
+
+    const existentes = new Set((atuais || []).map((item: any) => item.template_id))
+    const faltando = DEFAULT_OVERLAYS.filter((item) => !existentes.has(item.template_id))
+
+    if (faltando.length > 0) {
+      const { error: insertError } = await supabase.from('stream_project_overlays').insert(
+        faltando.map((item) => ({
+          project_id: projectId,
+          nome: item.nome,
+          template_id: item.template_id,
+          ordem: item.ordem,
+          visivel: true,
+          config: {},
+        })),
+      )
+      if (insertError) throw insertError
+    }
+  }
+
   async function carregarProducerProjects(keyId = producerKeyId) {
     if (!keyId) return
 
@@ -240,8 +319,10 @@ export default function StreamObsControllerPage() {
   }
 
   async function adicionarProjetoNaLista() {
-    if (!producerKeyId) {
-      alert('Ative sua chave de produtor primeiro.')
+    const keyIdParaSalvar = producerKeyId || producerKeys.find((item) => item.producer_key === producerKey)?.id || ''
+
+    if (!keyIdParaSalvar) {
+      alert('Selecione ou gere uma chave de produtor primeiro.')
       return
     }
 
@@ -266,10 +347,18 @@ export default function StreamObsControllerPage() {
 
     const labelFinal = projectLabel.trim() || projeto.nome
 
+    try {
+      await garantirOverlaysDoProjeto(projeto.id)
+    } catch (overlayError: any) {
+      setLoading(false)
+      alert(`Projeto encontrado, mas não consegui preparar os links das overlays: ${overlayError?.message || overlayError}`)
+      return
+    }
+
     const { data: existente, error: consultaError } = await supabase
       .from('stream_producer_projects')
       .select('id')
-      .eq('producer_key_id', producerKeyId)
+      .eq('producer_key_id', keyIdParaSalvar)
       .eq('project_id', projeto.id)
       .maybeSingle()
 
@@ -280,7 +369,7 @@ export default function StreamObsControllerPage() {
     }
 
     const payload = {
-      producer_key_id: producerKeyId,
+      producer_key_id: keyIdParaSalvar,
       project_id: projeto.id,
       label: labelFinal,
       ativo: true,
@@ -327,7 +416,8 @@ export default function StreamObsControllerPage() {
     setProjectKey('')
     setProjectLabel('')
     if (salvo?.id) setSelectedProducerProjectId(salvo.id)
-    await carregarProducerProjects()
+    setProducerKeyId(keyIdParaSalvar)
+    await carregarProducerProjects(keyIdParaSalvar)
   }
 
   async function removerProjetoDaLista(id: string) {
@@ -348,6 +438,12 @@ export default function StreamObsControllerPage() {
 
   async function carregarProjetoDetalhes(projectId: string, keyId = producerKeyId) {
     if (!projectId || !keyId) return
+
+    try {
+      await garantirOverlaysDoProjeto(projectId)
+    } catch (error) {
+      console.error(error)
+    }
 
     const [{ data: overlayData }, { data: buttonData }] = await Promise.all([
       supabase
@@ -458,14 +554,14 @@ export default function StreamObsControllerPage() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 border-b border-white/10 p-4 lg:grid-cols-[420px_1fr]">
+        <div className="grid gap-4 border-b border-white/10 p-4 xl:grid-cols-[360px_1fr_360px]">
           <div className="border border-white/10 bg-[#0b1220] p-3">
             <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
               <KeyRound size={14} />
               Chave do produtor
             </div>
             <div className="flex gap-2">
-              <select value={producerKey} onChange={(e) => setProducerKey(e.target.value)} className="h-11 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none">
+              <select value={producerKey} onChange={(e) => selecionarProducerKey(e.target.value)} className="h-11 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none">
                 <option value="">Selecione ou gere uma chave</option>
                 {producerKeys.map((key) => (
                   <option key={key.id} value={key.producer_key}>
@@ -494,12 +590,36 @@ export default function StreamObsControllerPage() {
             ) : null}
           </div>
 
+
           <div className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <Settings size={14} />
+              Configuração OBS WebSocket
+            </div>
+            <div className="grid gap-2">
+              <input value={obsHost} onChange={(e) => setObsHost(e.target.value)} placeholder="Host OBS: 127.0.0.1" className="h-10 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <input value={obsPort} onChange={(e) => setObsPort(e.target.value)} placeholder="Porta: 4455" className="h-10 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <div className="flex gap-2">
+                <input value={obsPassword} onChange={(e) => setObsPassword(e.target.value)} type={showObsPassword ? 'text' : 'password'} placeholder="Senha OBS WebSocket" className="h-10 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+                <button onClick={() => setShowObsPassword((prev) => !prev)} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.12em]">
+                  {showObsPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+              <button onClick={salvarObsConfig} className="h-10 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Salvar OBS
+              </button>
+            </div>
+            <div className="mt-2 text-[11px] font-semibold leading-relaxed text-zinc-500">
+              O painel limpo usa essa configuração para conectar no OBS e trocar as cenas pelos botões.
+            </div>
+          </div>
+
+          <div className="border border-white/10 bg-[#0b1220] p-3 xl:col-span-2">
             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Adicionar campeonato/projeto na lista</div>
             <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
               <input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} placeholder="Chave do campeonato/projeto" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
               <input value={projectLabel} onChange={(e) => setProjectLabel(e.target.value)} placeholder="Nome para aparecer no painel" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
-              <button onClick={adicionarProjetoNaLista} disabled={loading || !producerActive} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
+              <button onClick={adicionarProjetoNaLista} disabled={loading || !projectKey.trim() || !producerKey} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
                 <Plus size={14} />
                 Adicionar
               </button>

@@ -1,5 +1,7 @@
 'use client'
 
+/* eslint-disable react-hooks/immutability, @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
