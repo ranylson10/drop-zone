@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
+import { getStreamOverlayDefinition } from '@/components/stream/overlays/registry'
 import {
   RankingRow,
   StreamOverlayBlock,
@@ -174,10 +175,18 @@ function normalizarTemplateNome(value: unknown) {
 }
 
 async function sincronizarTemplatesFixos() {
-  // Templates fixos são definidos no código e/ou pelo SQL de seed.
-  // O editor do usuário não deve gravar em stream_overlay_templates pelo client,
-  // porque essa tabela é catálogo do sistema e pode estar protegida por RLS.
-  return true
+  const { error } = await supabase
+    .from('stream_overlay_templates')
+    .upsert(fixedStreamOverlayTemplates.map((template) => ({
+      id: template.id,
+      nome: template.nome,
+      categoria: template.categoria,
+      descricao: template.descricao,
+      config_padrao: template.config_padrao,
+      ativo: true,
+    })), { onConflict: 'id' })
+
+  if (error) throw error
 }
 
 async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
@@ -284,6 +293,7 @@ export default function StreamOverlayEditorPage() {
   const configSalva = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
   const config = draftConfig || configSalva
   const fixedOverlayAtual = getFixedStreamOverlayTemplate(overlayAtual?.template_id)
+  const previewOverlayDefinition = getStreamOverlayDefinition(overlayAtual?.template_id)
   const renderUrl = overlayAtual
     ? fixedOverlayAtual && projeto?.stream_key
       ? `${origem}/stream/overlay/${projeto.stream_key}/${fixedOverlayAtual.slug}`
@@ -345,30 +355,8 @@ export default function StreamOverlayEditorPage() {
 
     let lista = (overlayRes.data || []) as Overlay[]
 
-    if (projRes.data) {
-      const missingTemplates = fixedStreamOverlayTemplates.filter((template) => !lista.some((overlay) => overlay.template_id === template.id))
-
-      if (missingTemplates.length > 0) {
-        await supabase
-          .from('stream_project_overlays')
-          .insert(missingTemplates.map((template, index) => ({
-            project_id: projectId,
-            template_id: template.id,
-            nome: template.nome,
-            config: template.config_padrao,
-            visivel: true,
-            ordem: lista.length + index + 1,
-          })))
-
-        const { data: refreshed } = await supabase
-          .from('stream_project_overlays')
-          .select('id, project_id, template_id, nome, config, visivel, ordem')
-          .eq('project_id', projectId)
-          .order('ordem')
-
-        lista = (refreshed || lista) as Overlay[]
-      }
-    }
+    // Nao cria overlays automaticamente ao abrir o editor.
+    // O projeto deve começar vazio e o dono adiciona apenas as overlays que quiser usar.
 
     setOverlays(lista)
     if (!overlayId && lista[0]) setOverlayId(lista[0].id)
@@ -401,6 +389,29 @@ export default function StreamOverlayEditorPage() {
     }
 
     setSalvando(true)
+    try {
+      if (fixedStreamOverlayTemplates.some((fixed) => fixed.id === template.id)) {
+        await sincronizarTemplatesFixos()
+      } else {
+        const { error: templateError } = await supabase
+          .from('stream_overlay_templates')
+          .upsert({
+            id: template.id,
+            nome: template.nome,
+            categoria: template.categoria,
+            descricao: template.descricao,
+            config_padrao: template.config_padrao,
+            ativo: true,
+          }, { onConflict: 'id' })
+
+        if (templateError) throw templateError
+      }
+    } catch (error: any) {
+      setSalvando(false)
+      alert(`Erro ao preparar template: ${error?.message || 'template nao sincronizado'}`)
+      return
+    }
+
     const { data, error } = await supabase
       .from('stream_project_overlays')
       .insert({
@@ -791,20 +802,36 @@ export default function StreamOverlayEditorPage() {
                 style={checkerboardStyle}
                 onMouseDown={() => setSelectedBlock('table')}
               >
-                <TabelaGeralOverlay
-                  config={config}
-                  rows={previewRows}
-                  previewScale={previewScale}
-                  editable
-                  selectedBlock={selectedBlock}
-                  selectedColumn={selectedColumn}
-                  onSelectBlock={setSelectedBlock}
-                  onSelectColumn={(column) => {
-                    setSelectedColumn(column)
-                    setActiveAction('table')
-                  }}
-                  onStartDrag={iniciarArrasto}
-                />
+                {overlayAtual?.template_id === 'countdown' && previewOverlayDefinition ? (
+                  <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left scale-50">
+                    <previewOverlayDefinition.Render
+                      config={config}
+                      rows={previewRows}
+                      templateId={overlayAtual.template_id}
+                      overlayName={overlayAtual.nome}
+                      context={{
+                        jogo: { nome: 'JOGO PRINCIPAL', nome_bloco: 'GRUPO A', quantidade_partidas: 4 },
+                        mapas: ['Bermuda', 'Purgatório', 'Alpine', 'Kalahari'],
+                        quantidadePartidas: 4,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <TabelaGeralOverlay
+                    config={config}
+                    rows={previewRows}
+                    previewScale={previewScale}
+                    editable
+                    selectedBlock={selectedBlock}
+                    selectedColumn={selectedColumn}
+                    onSelectBlock={setSelectedBlock}
+                    onSelectColumn={(column) => {
+                      setSelectedColumn(column)
+                      setActiveAction('table')
+                    }}
+                    onStartDrag={iniciarArrasto}
+                  />
+                )}
               </div>
             </div>
 
