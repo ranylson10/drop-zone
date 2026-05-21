@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
-import { getStreamOverlayDefinition } from '@/components/stream/overlays/registry'
+import { getStreamOverlayDefinition } from '@/app/components/stream/overlays/registry'
 import {
   RankingRow,
   StreamOverlayBlock,
