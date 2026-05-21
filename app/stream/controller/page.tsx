@@ -450,45 +450,6 @@ export default function StreamObsControllerPage() {
     }
   }
 
-  async function garantirOverlaysDoProjeto(projectId: string) {
-    const { error: templatesError } = await supabase.from('stream_overlay_templates').upsert(
-      fixedStreamOverlayTemplates.map((template) => ({
-        id: template.id,
-        nome: template.nome,
-        categoria: template.categoria,
-        descricao: template.descricao,
-        config_padrao: template.config_padrao,
-        ativo: true,
-      })),
-      { onConflict: 'id' },
-    )
-    if (templatesError) console.warn('Nao foi possivel sincronizar templates oficiais no controlador.', templatesError)
-
-    const { data: atuais, error: consultaError } = await supabase
-      .from('stream_project_overlays')
-      .select('id, template_id')
-      .eq('project_id', projectId)
-
-    if (consultaError) throw consultaError
-
-    const existentes = new Set((atuais || []).map((item: any) => item.template_id))
-    const faltando = DEFAULT_OVERLAYS.filter((item) => !existentes.has(item.template_id))
-
-    if (faltando.length > 0) {
-      const { error: insertError } = await supabase.from('stream_project_overlays').insert(
-        faltando.map((item) => ({
-          project_id: projectId,
-          nome: item.nome,
-          template_id: item.template_id,
-          ordem: item.ordem,
-          visivel: true,
-          config: item.config,
-        })),
-      )
-      if (insertError) throw insertError
-    }
-  }
-
   async function carregarProducerProjects(keyId = producerKeyId) {
     if (!keyId) return
 
@@ -639,12 +600,6 @@ export default function StreamObsControllerPage() {
 
   async function carregarProjetoDetalhes(projectId: string, keyId = producerKeyId) {
     if (!projectId || !keyId) return
-
-    try {
-      await garantirOverlaysDoProjeto(projectId)
-    } catch (error) {
-      console.error(error)
-    }
 
     const [{ data: overlayData }, { data: buttonData }] = await Promise.all([
       supabase

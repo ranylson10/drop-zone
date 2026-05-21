@@ -102,28 +102,6 @@ export default function StreamProjectsPage() {
         visivel: true,
       })
 
-    await supabase
-      .from('stream_overlay_templates')
-      .upsert(fixedStreamOverlayTemplates.map((template) => ({
-        id: template.id,
-        nome: template.nome,
-        categoria: template.categoria,
-        descricao: template.descricao,
-        config_padrao: template.config_padrao,
-        ativo: true,
-      })), { onConflict: 'id' })
-
-    await supabase
-      .from('stream_project_overlays')
-      .insert(fixedStreamOverlayTemplates.map((template, index) => ({
-        project_id: data.id,
-        template_id: template.id,
-        nome: template.nome,
-        config: template.config_padrao,
-        visivel: true,
-        ordem: index + 1,
-      })))
-
     setNomeProjeto('')
     setCampeonatoId('')
     await carregar()
