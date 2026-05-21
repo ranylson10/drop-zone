@@ -1,7 +1,5 @@
 'use client'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { useCallback, useEffect, useMemo, useState, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -175,6 +173,13 @@ function normalizarTemplateNome(value: unknown) {
     .toLowerCase()
 }
 
+async function sincronizarTemplatesFixos() {
+  // Templates fixos são definidos no código e/ou pelo SQL de seed.
+  // O editor do usuário não deve gravar em stream_overlay_templates pelo client,
+  // porque essa tabela é catálogo do sistema e pode estar protegida por RLS.
+  return true
+}
+
 async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
   const [{ data: equipes }, { data: grupos }, partidasRes, jogosRes] = await Promise.all([
     supabase
@@ -302,6 +307,12 @@ export default function StreamOverlayEditorPage() {
     if (!projectId) return
     setLoading(true)
 
+    try {
+      await sincronizarTemplatesFixos()
+    } catch (error) {
+      console.warn('Nao foi possivel sincronizar templates oficiais.', error)
+    }
+
     const [projRes, tplRes, overlayRes, authRes] = await Promise.all([
       supabase.from('stream_projects').select('id, nome, stream_key, campeonato_id').eq('id', projectId).maybeSingle(),
       supabase.from('stream_overlay_templates').select('id, nome, categoria, descricao, config_padrao').eq('ativo', true).order('nome'),
@@ -332,7 +343,32 @@ export default function StreamOverlayEditorPage() {
     })
     setTemplates(adminAtivo ? [...fixedTemplates, ...dbTemplates] : fixedTemplates)
 
-    const lista = (overlayRes.data || []) as Overlay[]
+    let lista = (overlayRes.data || []) as Overlay[]
+
+    if (projRes.data) {
+      const missingTemplates = fixedStreamOverlayTemplates.filter((template) => !lista.some((overlay) => overlay.template_id === template.id))
+
+      if (missingTemplates.length > 0) {
+        await supabase
+          .from('stream_project_overlays')
+          .insert(missingTemplates.map((template, index) => ({
+            project_id: projectId,
+            template_id: template.id,
+            nome: template.nome,
+            config: template.config_padrao,
+            visivel: true,
+            ordem: lista.length + index + 1,
+          })))
+
+        const { data: refreshed } = await supabase
+          .from('stream_project_overlays')
+          .select('id, project_id, template_id, nome, config, visivel, ordem')
+          .eq('project_id', projectId)
+          .order('ordem')
+
+        lista = (refreshed || lista) as Overlay[]
+      }
+    }
 
     setOverlays(lista)
     if (!overlayId && lista[0]) setOverlayId(lista[0].id)
@@ -340,6 +376,7 @@ export default function StreamOverlayEditorPage() {
   }, [projectId, overlayId])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar()
   }, [carregar])
 
@@ -364,43 +401,27 @@ export default function StreamOverlayEditorPage() {
     }
 
     setSalvando(true)
-
-    const { data: sessionData } = await supabase.auth.getSession()
-    const token = sessionData.session?.access_token
-
-    if (!token) {
-      setSalvando(false)
-      alert('Faça login novamente para adicionar overlays ao projeto.')
-      return
-    }
-
-    const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        templateId: template.id,
-      }),
-    })
-    const result = await response.json().catch(() => ({}))
+    const { data, error } = await supabase
+      .from('stream_project_overlays')
+      .insert({
+        project_id: projectId,
+        template_id: template.id,
+        nome: template.nome,
+        config: mergeOverlayConfig(defaultTabelaGeralConfig, template.config_padrao || {}),
+        visivel: true,
+        ordem: overlays.length + 1,
+      })
+      .select('id')
+      .single()
 
     setSalvando(false)
 
-    if (!response.ok || !result?.ok) {
-      alert(`Erro ao criar overlay: ${result?.error || 'nao foi possivel adicionar overlay'}`)
+    if (error) {
+      alert(`Erro ao criar overlay: ${error.message}`)
       return
     }
 
-    if (result.overlay?.id) {
-      setOverlayId(result.overlay.id)
-      setOverlays((prev) => {
-        if (prev.some((overlay) => overlay.id === result.overlay.id)) return prev
-        return [...prev, result.overlay as Overlay]
-      })
-    }
-
+    setOverlayId(data.id)
     await carregar()
   }
 
@@ -712,9 +733,9 @@ export default function StreamOverlayEditorPage() {
                   <button
                     type="button"
                     onClick={() => removerOverlay(overlay)}
-                    disabled={salvando}
+                    disabled={salvando || Boolean(getFixedStreamOverlayTemplate(overlay.template_id))}
                     className="flex w-10 items-center justify-center border-l border-white/10 text-white/80 hover:bg-black/20 disabled:opacity-50"
-                    title="Remover overlay"
+                    title={getFixedStreamOverlayTemplate(overlay.template_id) ? 'Overlay fixa' : 'Remover overlay'}
                   >
                     <Trash2 size={14} />
                   </button>
