@@ -8,6 +8,7 @@ import { fixedStreamOverlayTemplates } from '@/lib/streamOverlay'
 import {
   Eye,
   EyeOff,
+  KeyRound,
   Loader2,
   MonitorUp,
   Plus,
@@ -274,6 +275,15 @@ export default function StreamObsControllerPage() {
     }
 
     return await criarProducerKeySilenciosa()
+  }
+
+  async function gerarProducerKey() {
+    try {
+      const key = await garantirProducerKeyAtual()
+      alert(key.id ? 'Sua chave única do controlador está pronta. Agora clique em Ativar painel.' : 'Não consegui preparar a chave.')
+    } catch (error: any) {
+      alert(`Erro ao gerar painel: ${error?.message || error}`)
+    }
   }
 
   async function ativarProducerKey() {
@@ -758,251 +768,186 @@ export default function StreamObsControllerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7fb] p-4 text-[#111827] md:p-6">
-      <section className="mx-auto max-w-[1320px]">
-        <div className="mb-5 flex items-start justify-between gap-4">
+    <main className="min-h-screen bg-[#080d16] p-4 text-white">
+      <section className="mx-auto max-w-[1300px] border border-white/10 bg-[#111827]">
+        <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4">
           <div>
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#2563eb]">
-              <Radio size={14} />
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">
+              <Radio size={13} />
               Controlador OBS
             </div>
-            <h1 className="mt-2 text-2xl font-black uppercase tracking-[-0.03em] text-[#0f172a] md:text-3xl">
-              Configurar painel do produtor
-            </h1>
-            <p className="mt-1 text-sm font-medium text-[#64748b]">
-              Salve a chave recebida, conecte o OBS e copie os links fixos das overlays.
+            <h1 className="mt-2 text-2xl font-black uppercase">Configurar painel do produtor</h1>
+            <p className="mt-1 text-xs font-semibold text-zinc-400">
+              Lado do streamer: salve as chaves recebidas, copie os links fixos das overlays e controle as cenas no Dock do OBS.
             </p>
           </div>
 
           {panelUrl ? (
-            <a
-              href={panelUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#2563eb] px-5 text-xs font-extrabold uppercase tracking-[0.12em] text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#1d4ed8]"
-            >
-              Abrir painel
-            </a>
+            <div className="flex gap-2">
+              <button onClick={() => copiar(panelUrl)} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Copiar painel OBS
+              </button>
+              <a href={panelUrl} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center justify-center border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Abrir painel
+              </a>
+            </div>
           ) : null}
         </div>
 
-        <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-[1fr_280px]">
-            <div>
-              <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#475569]">
-                Link do painel para Dock OBS
+        <div className="grid gap-4 border-b border-white/10 p-4 xl:grid-cols-[360px_1fr_360px]">
+          <div className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <KeyRound size={14} />
+              Painel do streamer
+            </div>
+
+            <div className="border border-white/10 bg-[#080d16] p-3">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Status</div>
+              <div className="mt-1 text-sm font-black uppercase">
+                {producerActive ? 'Painel ativo' : producerKey ? 'Painel preparado' : 'Painel ainda não criado'}
               </div>
-              <div className="flex overflow-hidden rounded-xl border border-[#dbe3ef] bg-[#f8fafc]">
-                <div className="min-w-0 flex-1 truncate px-4 py-3 text-sm font-semibold text-[#0f172a]">
-                  {panelUrl || 'Ative sua chave para gerar o link do painel.'}
-                </div>
-                <button
-                  onClick={() => copiar(panelUrl)}
-                  disabled={!panelUrl}
-                  className="border-l border-[#dbe3ef] px-4 text-xs font-extrabold uppercase tracking-[0.12em] text-[#0f172a] transition hover:bg-white disabled:opacity-40"
-                >
-                  Copiar
-                </button>
+              <div className="mt-1 text-[11px] font-semibold leading-relaxed text-zinc-500">
+                A chave interna fica oculta. Use esta tela para configurar e depois copie apenas o link do painel limpo para o Dock do OBS.
               </div>
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={ativarProducerKey}
-                disabled={loading}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2563eb] px-4 text-xs font-extrabold uppercase tracking-[0.12em] text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#1d4ed8] disabled:opacity-60"
-              >
-                {loading ? <Loader2 size={15} className="animate-spin" /> : <Wifi size={15} />}
+            <div className="mt-2 grid gap-2">
+              <button onClick={ativarProducerKey} disabled={loading} className="inline-flex h-10 items-center justify-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-60">
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Wifi size={14} />}
                 {producerActive ? 'Painel ativo' : 'Ativar minha chave'}
               </button>
+              <button onClick={gerarProducerKey} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Preparar minha chave
+              </button>
+            </div>
+
+            {panelUrl ? (
+              <div className="mt-3 border border-white/10 bg-[#080d16] p-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Link do painel para Dock OBS</div>
+                <div className="mt-1 break-all text-xs font-semibold text-zinc-300">{panelUrl}</div>
+                <button onClick={() => copiar(panelUrl)} className="mt-2 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                  Copiar link do painel
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+
+          <div className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <Settings size={14} />
+              Configuração OBS WebSocket
+            </div>
+            <div className="grid gap-2">
+              <input value={obsHost} onChange={(e) => setObsHost(e.target.value)} placeholder="Host OBS: 127.0.0.1" className="h-10 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <input value={obsPort} onChange={(e) => setObsPort(e.target.value)} placeholder="Porta: 4455" className="h-10 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <div className="flex gap-2">
+                <input value={obsPassword} onChange={(e) => setObsPassword(e.target.value)} type={showObsPassword ? 'text' : 'password'} placeholder="Senha OBS WebSocket" className="h-10 flex-1 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+                <button onClick={() => setShowObsPassword((prev) => !prev)} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.12em]">
+                  {showObsPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+              <button onClick={salvarObsConfig} className="h-10 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                Salvar OBS
+              </button>
+              <button onClick={conectarObsEPuxarCenas} disabled={obsLoadingScenes} className="h-10 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-50">
+                {obsLoadingScenes ? 'Puxando cenas...' : 'Conectar e puxar cenas'}
+              </button>
+            </div>
+            <div className="mt-2 text-[11px] font-semibold leading-relaxed text-zinc-500">
+              O painel limpo usa essa configuração para conectar no OBS e trocar as cenas pelos botões.
+            </div>
+            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-500">{obsStatus}</div>
+            {obsScenes.length > 0 ? (
+              <div className="mt-3 border border-white/10 bg-[#080d16] p-3">
+                <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Cenas detectadas no OBS</div>
+                <div className="grid max-h-56 gap-2 overflow-y-auto pr-1">
+                  {obsScenes.map((scene) => {
+                    const jaExiste = buttons.some((button) => button.obs_scene_name === scene)
+                    return (
+                      <button
+                        key={scene}
+                        onClick={() => criarBotaoCena(scene)}
+                        disabled={!selectedProject || !producerKeyId || jaExiste}
+                        className="flex min-h-10 items-center justify-between gap-2 border border-white/10 bg-white/5 px-3 text-left text-[11px] font-black uppercase tracking-[0.08em] disabled:opacity-45"
+                      >
+                        <span className="truncate">{scene}</span>
+                        <span className="text-zinc-500">{jaExiste ? 'Adicionado' : '+ Botao'}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <aside className="border border-white/10 bg-[#0b1220] p-3">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+              <MonitorUp size={14} />
+              Links das overlays
+            </div>
+
+            <div className="mb-2 border border-red-600/30 bg-red-600/10 p-2 text-[10px] font-semibold leading-relaxed text-zinc-300">
+              Links fixos para cadastrar uma vez no OBS. Ao selecionar uma live, eles puxam os dados daquele campeonato.
+            </div>
+
+            <div className="grid max-h-[520px] gap-2 overflow-y-auto pr-1">
+              {DEFAULT_OVERLAYS.map((template) => {
+                const overlaySalva = overlays.find((overlay) => overlay.template_id === template.template_id)
+                const url = producerKey ? `${origem}/stream/overlay/${encodeURIComponent(producerKey)}/${template.slug}` : ''
+
+                return (
+                  <div key={template.template_id} className="flex min-h-11 items-center justify-between gap-2 border border-white/10 bg-[#080d16] px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-black uppercase">{template.nome}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {selectedProject ? (
+                        overlaySalva?.visivel !== false ? <Eye size={14} className="text-green-400" /> : <EyeOff size={14} className="text-zinc-500" />
+                      ) : (
+                        <MonitorUp size={14} className="text-zinc-500" />
+                      )}
+                      <button onClick={() => copiar(url)} disabled={!url} className="h-8 border border-white/10 bg-white/5 px-3 text-[9px] font-black uppercase tracking-[0.12em] disabled:opacity-40">
+                        Copiar link
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </aside>
+
+          <div className="border border-white/10 bg-[#0b1220] p-3 xl:col-span-2">
+            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Adicionar live por chave do campeonato</div>
+            <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+              <input value={projectKey} onChange={(e) => setProjectKey(e.target.value)} placeholder="Chave enviada pelo dono do campeonato" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <input value={projectLabel} onChange={(e) => setProjectLabel(e.target.value)} placeholder="Nome para aparecer no painel" className="h-11 border border-white/10 bg-[#080d16] px-3 text-xs font-bold outline-none" />
+              <button onClick={adicionarProjetoNaLista} disabled={loading || !projectKey.trim()} className="inline-flex h-11 items-center justify-center gap-2 border border-red-600 bg-red-600 px-4 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
+                <Plus size={14} />
+                Adicionar
+              </button>
+            </div>
+            <div className="mt-3 text-xs font-semibold text-zinc-500">
+              O streamer pode salvar várias lives e alternar entre campeonatos direto no painel limpo do OBS.
             </div>
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_390px]">
-          <div className="space-y-4">
-            <section className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.13em] text-[#334155]">
-                <Settings size={16} />
-                Configurações OBS WebSocket
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-[1fr_150px_1fr_62px]">
-                <label className="block">
-                  <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#64748b]">IP / Host</span>
-                  <input
-                    value={obsHost}
-                    onChange={(e) => setObsHost(e.target.value)}
-                    placeholder="127.0.0.1"
-                    className="h-11 w-full rounded-xl border border-[#dbe3ef] bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#2563eb] focus:ring-4 focus:ring-blue-500/10"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#64748b]">Porta</span>
-                  <input
-                    value={obsPort}
-                    onChange={(e) => setObsPort(e.target.value)}
-                    placeholder="4455"
-                    className="h-11 w-full rounded-xl border border-[#dbe3ef] bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#2563eb] focus:ring-4 focus:ring-blue-500/10"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#64748b]">Senha</span>
-                  <input
-                    value={obsPassword}
-                    onChange={(e) => setObsPassword(e.target.value)}
-                    type={showObsPassword ? 'text' : 'password'}
-                    placeholder="Senha OBS WebSocket"
-                    className="h-11 w-full rounded-xl border border-[#dbe3ef] bg-white px-3 text-sm font-semibold outline-none transition focus:border-[#2563eb] focus:ring-4 focus:ring-blue-500/10"
-                  />
-                </label>
-                <div className="flex items-end">
-                  <button
-                    onClick={() => setShowObsPassword((prev) => !prev)}
-                    className="h-11 w-full rounded-xl border border-[#dbe3ef] bg-[#f8fafc] text-xs font-extrabold uppercase tracking-[0.1em] text-[#0f172a] transition hover:bg-white"
-                  >
-                    {showObsPassword ? 'Ocultar' : 'Ver'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <button
-                  onClick={salvarObsConfig}
-                  className="h-11 rounded-xl bg-[#2563eb] px-4 text-xs font-extrabold uppercase tracking-[0.12em] text-white shadow-sm shadow-blue-500/20 transition hover:bg-[#1d4ed8]"
-                >
-                  Salvar OBS
-                </button>
-                <button
-                  onClick={conectarObsEPuxarCenas}
-                  disabled={obsLoadingScenes}
-                  className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-4 text-xs font-extrabold uppercase tracking-[0.12em] text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-50"
-                >
-                  {obsLoadingScenes ? 'Puxando cenas...' : 'Conectar e puxar cenas'}
-                </button>
-              </div>
-
-              <div className="mt-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.08em] text-[#64748b]">
-                <span className={`h-2 w-2 rounded-full ${obsStatus.toLowerCase().includes('online') || obsStatus.toLowerCase().includes('encontradas') ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                {obsStatus}
-              </div>
-
-              {obsScenes.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                  <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.13em] text-[#64748b]">Cenas detectadas no OBS</div>
-                  <div className="grid max-h-52 gap-2 overflow-y-auto pr-1 md:grid-cols-2">
-                    {obsScenes.map((scene) => {
-                      const jaExiste = buttons.some((button) => button.obs_scene_name === scene)
-                      return (
-                        <button
-                          key={scene}
-                          onClick={() => criarBotaoCena(scene)}
-                          disabled={!selectedProject || !producerKeyId || jaExiste}
-                          className="flex min-h-10 items-center justify-between gap-2 rounded-xl border border-[#dbe3ef] bg-white px-3 text-left text-xs font-extrabold uppercase tracking-[0.06em] text-[#0f172a] disabled:opacity-45"
-                        >
-                          <span className="truncate">{scene}</span>
-                          <span className="text-[#64748b]">{jaExiste ? 'Adicionado' : '+ Botão'}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-
-            <section className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.13em] text-[#334155]">
-                    <MonitorUp size={16} />
-                    Botões do painel OBS
-                  </div>
-                  <div className="mt-1 text-sm font-bold text-[#64748b]">{selectedProject?.nome || 'Selecione um campeonato'}</div>
-                </div>
-                <button
-                  onClick={adicionarBotao}
-                  disabled={!selectedProject || !producerActive}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-extrabold uppercase tracking-[0.1em] text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-40"
-                >
-                  <Plus size={15} />
-                  Botão
-                </button>
-              </div>
-
-              {buttons.length === 0 ? (
-                <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] text-center text-sm font-semibold text-[#64748b]">
-                  Crie botões vinculados às cenas do OBS.
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {buttons.map((button) => (
-                    <div key={button.id} className="rounded-xl border border-[#dbe3ef] bg-[#f8fafc] p-2">
-                      <div className="flex h-16 items-center justify-center rounded-lg bg-[#2563eb] px-3 text-center text-sm font-black uppercase tracking-[0.06em] text-white shadow-sm shadow-blue-500/20">
-                        {button.label}
-                      </div>
-                      <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#64748b]">
-                        <span className="truncate">{button.obs_scene_name || button.action_type}</span>
-                        <button onClick={() => removerBotao(button.id)} className="text-rose-500">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-
-          <aside className="rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-            <div className="mb-4 text-[12px] font-extrabold uppercase tracking-[0.13em] text-[#334155]">Campeonatos salvos</div>
-
-            <div className="mb-4 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-              <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#64748b]">Adicionar live por chave</div>
-              <div className="grid gap-2">
-                <input
-                  value={projectKey}
-                  onChange={(e) => setProjectKey(e.target.value)}
-                  placeholder="Chave enviada pelo dono"
-                  className="h-10 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-semibold outline-none transition focus:border-[#2563eb] focus:ring-4 focus:ring-blue-500/10"
-                />
-                <input
-                  value={projectLabel}
-                  onChange={(e) => setProjectLabel(e.target.value)}
-                  placeholder="Nome para aparecer no painel"
-                  className="h-10 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-semibold outline-none transition focus:border-[#2563eb] focus:ring-4 focus:ring-blue-500/10"
-                />
-                <button
-                  onClick={adicionarProjetoNaLista}
-                  disabled={loading || !projectKey.trim()}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2563eb] px-3 text-xs font-extrabold uppercase tracking-[0.1em] text-white shadow-sm shadow-blue-500/20 disabled:opacity-40"
-                >
-                  <Plus size={14} />
-                  Adicionar
-                </button>
-              </div>
-            </div>
+        <div className="grid gap-4 p-4 lg:grid-cols-[360px_1fr]">
+          <aside className="border border-white/10 bg-[#0b1220] p-4">
+            <div className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Campeonatos salvos</div>
 
             {producerProjects.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#cbd5e1] bg-[#f8fafc] p-4 text-sm font-semibold text-[#64748b]">
-                Nenhum campeonato salvo.
-              </div>
+              <div className="text-sm font-semibold text-zinc-500">Nenhum campeonato salvo.</div>
             ) : (
               <div className="space-y-2">
                 {producerProjects.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl border p-3 transition ${selectedProducerProjectId === item.id ? 'border-[#2563eb] bg-blue-50' : 'border-[#dbe3ef] bg-white hover:bg-[#f8fafc]'}`}
-                  >
+                  <div key={item.id} className={`border p-3 ${selectedProducerProjectId === item.id ? 'border-red-600 bg-red-600/15' : 'border-white/10 bg-[#080d16]'}`}>
                     <button onClick={() => selecionarProducerProject(item.id)} className="block w-full text-left">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-black uppercase text-[#0f172a]">{item.label}</div>
-                          <div className="truncate text-[11px] font-bold uppercase text-[#64748b]">{item.stream_projects?.nome}</div>
-                        </div>
-                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${selectedProducerProjectId === item.id ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      </div>
+                      <div className="text-sm font-black uppercase">{item.label}</div>
+                      <div className="text-[10px] font-bold uppercase text-zinc-500">{item.stream_projects?.nome}</div>
                     </button>
-                    <button onClick={() => removerProjetoDaLista(item.id)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.1em] text-rose-500">
+                    <button onClick={() => removerProjetoDaLista(item.id)} className="mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-400">
                       <Trash2 size={13} />
                       Remover
                     </button>
@@ -1011,64 +956,43 @@ export default function StreamObsControllerPage() {
               </div>
             )}
           </aside>
-        </div>
 
-        <section className="mt-4 rounded-2xl border border-[#e2e8f0] bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.13em] text-[#334155]">
-                <MonitorUp size={16} />
-                Links das overlays
+          <section className="border border-white/10 bg-[#0b1220] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Botões do painel OBS</div>
+                <div className="mt-1 text-xl font-black uppercase">{selectedProject?.nome || 'Selecione um campeonato'}</div>
               </div>
-              <p className="mt-1 text-sm font-medium text-[#64748b]">Links fixos para cadastrar uma vez no OBS.</p>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-[#e2e8f0]">
-            <div className="grid grid-cols-[1fr_150px_120px] bg-[#f8fafc] px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#64748b] max-sm:hidden">
-              <div>Overlay</div>
-              <div className="text-center">Status</div>
-              <div className="text-right">Ações</div>
+              <button onClick={adicionarBotao} disabled={!selectedProject || !producerActive} className="inline-flex h-10 items-center gap-2 border border-white/10 bg-white/5 px-3 text-[10px] font-black uppercase tracking-[0.14em] disabled:opacity-40">
+                <Plus size={14} />
+                Botão
+              </button>
             </div>
 
-            <div className="divide-y divide-[#e2e8f0]">
-              {DEFAULT_OVERLAYS.map((template) => {
-                const overlaySalva = overlays.find((overlay) => overlay.template_id === template.template_id)
-                const url = producerKey ? `${origem}/stream/overlay/${encodeURIComponent(producerKey)}/${template.slug}` : ''
-
-                return (
-                  <div key={template.template_id} className="grid min-h-14 items-center gap-3 px-4 py-2 md:grid-cols-[1fr_150px_120px]">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#2563eb]">
-                        <MonitorUp size={17} />
-                      </div>
-                      <div className="min-w-0 truncate text-sm font-black uppercase text-[#0f172a]">{template.nome}</div>
+            {buttons.length === 0 ? (
+              <div className="flex min-h-[280px] items-center justify-center border border-dashed border-white/10 text-center text-sm font-semibold text-zinc-400">
+                Crie botões vinculados às cenas do OBS. No painel limpo só eles aparecem.
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {buttons.map((button) => (
+                  <div key={button.id} className="border border-white/10 bg-[#080d16] p-3">
+                    <div className="h-20 border border-red-600 bg-red-600 px-4 text-center text-lg font-black uppercase tracking-[0.08em] flex items-center justify-center">
+                      {button.label}
                     </div>
-
-                    <div className="flex items-center justify-start gap-2 text-xs font-bold text-[#64748b] md:justify-center">
-                      {selectedProject ? (
-                        overlaySalva?.visivel !== false ? <Eye size={15} className="text-emerald-500" /> : <EyeOff size={15} className="text-slate-400" />
-                      ) : (
-                        <MonitorUp size={15} className="text-slate-400" />
-                      )}
-                      {overlaySalva?.visivel === false ? 'oculta' : 'visível'}
-                    </div>
-
-                    <div className="flex justify-start md:justify-end">
-                      <button
-                        onClick={() => copiar(url)}
-                        disabled={!url}
-                        className="h-9 rounded-xl border border-[#dbe3ef] bg-white px-3 text-[11px] font-extrabold uppercase tracking-[0.1em] text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-40"
-                      >
-                        Copiar link
+                    <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+                      <span>{button.obs_scene_name || button.action_type}</span>
+                      <button onClick={() => removerBotao(button.id)} className="text-red-400">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+
+        </div>
       </section>
     </main>
   )
