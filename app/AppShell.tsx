@@ -14,6 +14,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname() || ''
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+  const isCleanRoute = pathname.startsWith('/escala/') || pathname === '/stream' || pathname.startsWith('/stream/')
 
   if (isAuthRoute) {
     return (
@@ -23,6 +24,10 @@ export default function AppShell({
         </div>
       </PerfilProvider>
     )
+  }
+
+  if (isCleanRoute) {
+    return <PerfilProvider>{children}</PerfilProvider>
   }
 
   return (

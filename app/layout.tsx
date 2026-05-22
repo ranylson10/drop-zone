@@ -310,7 +310,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
   const isAuthRoute = ['/login', '/cadastro', '/recuperar', '/confirmar', '/redefinir-senha'].some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   )
-  const isCleanRoute = pathname === '/stream' || pathname.startsWith('/stream/')
+  const isCleanRoute = pathname === '/stream' || pathname.startsWith('/stream/') || pathname.startsWith('/escala/')
   const { user, perfisJogo } = usePerfil()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
