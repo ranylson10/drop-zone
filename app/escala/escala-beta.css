@@ -202,3 +202,51 @@ body:has(.escala-beta-auth) [data-nextjs-scroll-focus-boundary] {
     min-height: -webkit-fill-available !important;
   }
 }
+
+/* FIX DEFINITIVO: o auth do link precisa pintar o viewport inteiro no mobile.
+   O branco aparecia porque o wrapper global (.escala-beta-root/body/main) ainda
+   mantinha fundo claro quando a altura real do Chrome Android era maior que o section. */
+html:has(.auth-link-campeonato),
+body:has(.auth-link-campeonato),
+.escala-beta-root:has(.auth-link-campeonato),
+body:has(.auth-link-campeonato) main,
+body:has(.auth-link-campeonato) #__next,
+body:has(.auth-link-campeonato) [data-nextjs-scroll-focus-boundary] {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  min-height: 100lvh !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.22), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.16), transparent 34%),
+    linear-gradient(180deg, #17111d 0%, #090d17 54%, #070b14 100%) !important;
+  background-color: #070b14 !important;
+}
+
+body:has(.auth-link-campeonato) {
+  margin: 0 !important;
+  overflow-x: hidden !important;
+}
+
+.auth-link-campeonato {
+  width: 100% !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  min-height: 100lvh !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.24), transparent 30%),
+    radial-gradient(circle at 100% 100%, rgba(249, 115, 22, 0.16), transparent 36%),
+    linear-gradient(rgba(5, 8, 22, 0.86), rgba(5, 8, 22, 0.92)),
+    url('/images/grid-texture.png'),
+    linear-gradient(180deg, #17111d 0%, #090d17 54%, #070b14 100%) !important;
+  background-size: cover, cover, cover, cover, cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+@media (max-width: 768px) {
+  .auth-link-campeonato {
+    align-items: flex-start !important;
+    padding-top: max(1.75rem, env(safe-area-inset-top)) !important;
+    padding-bottom: max(8rem, env(safe-area-inset-bottom)) !important;
+  }
+}

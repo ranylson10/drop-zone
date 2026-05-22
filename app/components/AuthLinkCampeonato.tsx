@@ -30,7 +30,7 @@ type Props = {
 
 function AuthBackground({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`auth-link-campeonato relative flex min-h-screen min-h-[100dvh] items-center justify-center overflow-hidden bg-[#111827] px-4 py-8 text-white ${className}`}>
+    <section className={`auth-link-campeonato escala-beta-auth relative flex min-h-screen min-h-[100dvh] items-center justify-center overflow-hidden bg-[#111827] px-4 py-8 text-white ${className}`}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(249,115,22,0.28),transparent_30%),radial-gradient(circle_at_100%_100%,rgba(234,88,12,0.20),transparent_38%),linear-gradient(180deg,#17111d_0%,#090d17_54%,#070b14_100%)]" />
       <div className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:32px_32px]" />
       <div className="absolute inset-0 opacity-[0.22] [background-image:linear-gradient(30deg,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(150deg,rgba(249,115,22,0.13)_1px,transparent_1px)] [background-size:42px_42px]" />
