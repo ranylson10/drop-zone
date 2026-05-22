@@ -1830,52 +1830,39 @@ export default function EscalaCampeonatoPage() {
             : "Receba um codigo de 6 digitos para trocar sua senha.";
 
     return (
-      <main className="escala-beta-page escala-beta-auth relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#111827] px-4 py-8 text-white [color-scheme:dark]">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,#101827_0%,#1d2942_42%,#2563eb_100%)]" />
-        <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:32px_32px]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />
+      <main className="escala-beta-page escala-beta-auth relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-white px-5 py-8 text-slate-950 [color-scheme:light]">
 
-        <section className="auth-panel relative w-full max-w-[390px] overflow-hidden rounded-[36px] border border-white/20 bg-[linear-gradient(160deg,rgba(124,58,237,0.94)_0%,rgba(37,99,235,0.96)_58%,rgba(17,24,39,0.94)_100%)] p-6 text-white shadow-[0_28px_90px_rgba(2,6,23,0.58)] sm:p-7">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(125deg,rgba(255,255,255,0.16),transparent_36%,rgba(249,115,22,0.14))]" />
+        <section className="auth-panel relative w-full max-w-[390px]">
 
           <div className="relative mb-6 text-center">
-            <div className="auth-logo mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/25 bg-slate-950/28 p-3 shadow-[0_18px_50px_rgba(2,6,23,0.32)]">
+            <div className="auth-logo mx-auto flex h-24 w-24 items-center justify-center rounded-[26px] border border-blue-100 bg-blue-50 p-3">
               <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
             </div>
-            <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-200">Drop Zone</div>
-            <h1 className="mt-2 text-4xl font-black uppercase text-white">{tituloAuth}</h1>
-            <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-5 text-white/72">{textoAuth}</p>
+            <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-500">Drop Zone</div>
+            <h1 className="mt-2 text-4xl font-black uppercase text-slate-950">{tituloAuth}</h1>
+            <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-5 text-slate-500">{textoAuth}</p>
           </div>
 
-          {authModo === "cadastro" || authModo === "confirmar" ? (
-            <div className="relative mb-4 rounded-xl border border-white/20 bg-white/10 p-3">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                <ShieldCheck size={15} /> Codigo no e-mail
-              </div>
-              <p className="mt-1 text-xs font-semibold leading-5 text-white/70">
-                {authModo === "confirmar" ? "Confira o e-mail e digite o codigo recebido para liberar o acesso." : "Depois do cadastro voce recebe um codigo de 6 digitos para ativar a conta."}
-              </p>
-            </div>
-          ) : null}
-
-          <div className="relative space-y-4">
+          <div className="space-y-4">
             {authModo === "cadastro" ? (
-              <label className="block">
-                <span className="sr-only">Seu nick</span>
-                <div className="auth-field flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
-                  <div className="grid h-full w-11 place-items-center text-blue-600"><UserRound size={17} /></div>
-                  <input value={authNome} onChange={(event) => setAuthNome(event.target.value)} placeholder="Seu nick" autoComplete="username" className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
-                </div>
-              </label>
+              <input
+                value={authNome}
+                onChange={(event) => setAuthNome(event.target.value)}
+                placeholder="Seu nick"
+                autoComplete="username"
+                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
+              />
             ) : null}
 
-            <label className="block">
-              <span className="sr-only">E-mail</span>
-              <div className="auth-field flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
-                <div className="grid h-full w-11 place-items-center text-blue-600"><MailPlus size={17} /></div>
-                <input value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="seu@email.com" className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
-              </div>
-            </label>
+            <input
+              value={authEmail}
+              onChange={(event) => setAuthEmail(event.target.value)}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="seu@email.com"
+              className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
+            />
 
             {authModo === "confirmar" ? (
               <input
@@ -1885,32 +1872,37 @@ export default function EscalaCampeonatoPage() {
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="000000"
-                className="auth-code-field h-12 w-full rounded-xl border border-white/45 bg-white px-4 text-center text-xl font-black tracking-[0.35em] text-slate-950 outline-none placeholder:text-slate-400 shadow-[0_12px_30px_rgba(2,6,23,0.12)] focus:border-orange-300 focus:ring-4 focus:ring-white/20"
+                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-center text-xl font-black tracking-[0.35em] text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
               />
             ) : null}
 
             {authModo !== "recuperar" && authModo !== "confirmar" ? (
-              <label className="block">
-                <span className="sr-only">Senha</span>
-                <div className="auth-field flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
-                  <div className="grid h-full w-11 place-items-center text-blue-600"><Lock size={17} /></div>
-                  <input value={authSenha} onChange={(event) => setAuthSenha(event.target.value)} type="password" autoComplete={authModo === "login" ? "current-password" : "new-password"} placeholder="Senha" className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" onKeyDown={(event) => { if (event.key === "Enter") executarAuthLinkBeta(); }} />
-                </div>
-              </label>
+              <input
+                value={authSenha}
+                onChange={(event) => setAuthSenha(event.target.value)}
+                type="password"
+                autoComplete={authModo === "login" ? "current-password" : "new-password"}
+                placeholder="Senha"
+                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") executarAuthLinkBeta();
+                }}
+              />
             ) : null}
 
             {authModo === "cadastro" ? (
-              <label className="block">
-                <span className="sr-only">Confirmar senha</span>
-                <div className="auth-field flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
-                  <div className="grid h-full w-11 place-items-center text-blue-600"><Lock size={17} /></div>
-                  <input value={authConfirmarSenha} onChange={(event) => setAuthConfirmarSenha(event.target.value)} type="password" autoComplete="new-password" placeholder="Repita a senha" className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
-                </div>
-              </label>
+              <input
+                value={authConfirmarSenha}
+                onChange={(event) => setAuthConfirmarSenha(event.target.value)}
+                type="password"
+                autoComplete="new-password"
+                placeholder="Confirmar senha"
+                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
+              />
             ) : null}
 
             {authMensagem ? (
-              <div className="rounded-xl border border-white/25 bg-red-500/20 px-4 py-3 text-xs font-bold text-white">
+              <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-700">
                 {authMensagem}
               </div>
             ) : null}
@@ -1919,7 +1911,7 @@ export default function EscalaCampeonatoPage() {
               type="button"
               onClick={executarAuthLinkBeta}
               disabled={authProcessando}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-blue-700 shadow-[0_16px_36px_rgba(2,6,23,0.22)] transition hover:bg-orange-100 disabled:opacity-50"
+              className="auth-control flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-700 bg-blue-700 px-4 text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-blue-800 disabled:opacity-50"
             >
               {authProcessando ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
               {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : authModo === "confirmar" ? "Validar codigo" : "Enviar codigo"}
@@ -1930,7 +1922,7 @@ export default function EscalaCampeonatoPage() {
                 type="button"
                 onClick={reenviarCodigoNoLinkBeta}
                 disabled={authProcessando}
-                className="h-11 w-full rounded-xl border border-white/25 bg-white/10 text-[10px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white/20 disabled:opacity-50"
+                className="auth-control h-11 w-full rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700 disabled:opacity-50"
               >
                 Reenviar codigo
               </button>
@@ -1944,7 +1936,7 @@ export default function EscalaCampeonatoPage() {
                     setAuthModo("recuperar");
                     setAuthMensagem(null);
                   }}
-                  className="rounded-xl border border-white/25 bg-white/10 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20"
+                  className="auth-control rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 transition hover:bg-blue-100"
                 >
                   Esqueceu senha
                 </button>
@@ -1954,7 +1946,7 @@ export default function EscalaCampeonatoPage() {
                     setAuthModo("cadastro");
                     setAuthMensagem(null);
                   }}
-                  className="rounded-xl border border-orange-200/50 bg-orange-50/10 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-orange-100 transition hover:bg-orange-100/20"
+                  className="auth-control rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700 transition hover:bg-orange-100"
                 >
                   Cadastrar
                 </button>
@@ -1966,13 +1958,13 @@ export default function EscalaCampeonatoPage() {
                   setAuthModo("login");
                   setAuthMensagem(null);
                 }}
-                className="w-full rounded-xl border border-white/25 bg-white/10 px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-white/20"
+                className="auth-control w-full rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-100"
               >
                 Voltar para login
               </button>
             )}
 
-            <p className="text-center text-[10px] font-bold leading-4 text-white/65">
+            <p className="text-center text-[10px] font-bold leading-4 text-slate-400">
               Depois do login, voce continua neste link e vai direto para a escolha de perfil.
             </p>
           </div>
