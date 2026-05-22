@@ -125,3 +125,38 @@ body:has(.escala-beta-root) main {
   opacity: 1 !important;
   filter: none !important;
 }
+
+/* Auth do link de inscrição: usa o mesmo LEALT gamer das telas reais de login/cadastro. */
+body:has(.escala-beta-auth) main {
+  background: #111827 !important;
+}
+
+.escala-beta-auth,
+.escala-beta-auth * {
+  color-scheme: dark !important;
+}
+
+.escala-beta-page.escala-beta-auth {
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.escala-beta-page.escala-beta-auth .auth-panel,
+.escala-beta-page.escala-beta-auth .auth-panel div,
+.escala-beta-page.escala-beta-auth .auth-panel section {
+  color-scheme: dark !important;
+}
+
+.escala-beta-page.escala-beta-auth .auth-field,
+.escala-beta-page.escala-beta-auth .auth-code-field {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.escala-beta-page.escala-beta-auth .auth-field input,
+.escala-beta-page.escala-beta-auth .auth-code-field {
+  background: transparent !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
