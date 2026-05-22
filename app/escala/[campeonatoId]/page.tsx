@@ -351,6 +351,16 @@ function statusPendenteBeta(convite: ConviteEquipeBeta) {
   return !status || ["pendente", "enviado", "aguardando", "aberto", "solicitado"].includes(status);
 }
 
+
+function withTimeoutBeta<T>(promise: PromiseLike<T>, ms = 12000, mensagem = "Tempo esgotado ao carregar dados.") {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error(mensagem)), ms);
+    }),
+  ]);
+}
+
 async function rpcFallbackBeta(nameList: string[], payload: Record<string, unknown>) {
   let lastError: unknown = null;
 
@@ -669,27 +679,40 @@ export default function EscalaCampeonatoPage() {
   }
 
   async function buscarCampeonato() {
+    const paramLimpo = decodeURIComponent(campeonatoParam || "").trim();
     const ehUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        campeonatoParam,
+        paramLimpo,
       );
     const select =
       "id,nome,slug,logo_url,banner_url,status,tipo,tipo_campeonato,formato,plataforma,vagas,quantidade_equipes,valor_vaga,valor_premiacao,data_inicio,data_abertura_inscricoes,data_encerramento_inscricoes,jogadores_por_equipe,reservas_permitidos,troca_jogadores,checkin_obrigatorio";
 
+    if (!paramLimpo) return null;
+
     if (ehUuid) {
-      const { data } = await supabase
-        .from("campeonatos")
-        .select(select)
-        .eq("id", campeonatoParam)
-        .maybeSingle();
+      const { data, error } = await withTimeoutBeta<any>(
+        supabase
+          .from("campeonatos")
+          .select(select)
+          .eq("id", paramLimpo)
+          .maybeSingle(),
+        12000,
+        "Não foi possível conectar ao campeonato do link.",
+      );
+      if (error) throw error;
       if (data) return data as Campeonato;
     }
 
-    const { data } = await supabase
-      .from("campeonatos")
-      .select(select)
-      .eq("slug", campeonatoParam)
-      .maybeSingle();
+    const { data, error } = await withTimeoutBeta<any>(
+      supabase
+        .from("campeonatos")
+        .select(select)
+        .eq("slug", paramLimpo)
+        .maybeSingle(),
+      12000,
+      "Não foi possível conectar ao campeonato do link.",
+    );
+    if (error) throw error;
     return (data as Campeonato | null) || null;
   }
 
@@ -698,12 +721,18 @@ export default function EscalaCampeonatoPage() {
     setErro(null);
 
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const uid = authData.user?.id || null;
-      setUserId(uid);
-
       const camp = await buscarCampeonato();
       setCampeonato(camp);
+
+      const { data: sessionData } = await withTimeoutBeta<any>(
+        supabase.auth.getSession(),
+        8000,
+        "Sessão não respondeu. Mostrando login.",
+      ).catch(() => ({ data: { session: null } } as any));
+      const uid = sessionData?.session?.user?.id || null;
+      setUserId(uid);
+      setUsuarioLogado(sessionData?.session?.user || null);
+      setCheckingAuth(false);
 
       if (!camp || !uid) {
         setEquipes([]);
@@ -961,10 +990,16 @@ export default function EscalaCampeonatoPage() {
           setEquipeDoJogador(null);
         }
 
-        const { data: resultados } = await supabase
-          .from("resultados_mvp")
-          .select("perfil_jogo_id,abates,jogo_id")
-          .eq("campeonato_id", camp.id);
+        let resultados: any[] = [];
+        try {
+          const { data } = await supabase
+            .from("resultados_mvp")
+            .select("perfil_jogo_id,abates,jogo_id")
+            .eq("campeonato_id", camp.id);
+          resultados = data || [];
+        } catch {
+          resultados = [];
+        }
         const mapaKills = new Map<
           string,
           { kills: number; jogos: Set<string> }
@@ -1519,10 +1554,9 @@ export default function EscalaCampeonatoPage() {
       if (lineIds.length) {
         await supabase
           .from("equipes_lines_jogadores")
-          .update({ removido_em: new Date().toISOString() })
+          .delete()
           .in("line_id", lineIds)
-          .eq("perfil_jogo_id", perfil.id)
-          .is("removido_em", null);
+          .eq("perfil_jogo_id", perfil.id);
       }
 
       const vagasEquipe = inscricoesEquipe
@@ -2064,6 +2098,24 @@ export default function EscalaCampeonatoPage() {
         <div className="border border-slate-200 bg-white px-5 py-4 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
           <Loader2 className="mr-2 inline animate-spin" size={16} /> Carregando
           link
+        </div>
+      </main>
+    );
+  }
+
+  if (erro && !campeonato) {
+    return (
+      <main className="escala-beta-page grid min-h-screen place-items-center bg-[#080b14] px-4 text-white [color-scheme:dark]">
+        <div className="w-full max-w-sm border border-red-500/30 bg-red-950/20 p-6 text-center">
+          <h1 className="text-lg font-black uppercase tracking-[-0.03em]">Erro ao abrir link</h1>
+          <p className="mt-3 text-sm font-bold text-red-100">{erro}</p>
+          <button
+            type="button"
+            onClick={() => carregar()}
+            className="mt-5 inline-flex h-11 items-center justify-center border border-blue-500 bg-blue-600 px-5 text-xs font-black uppercase text-white"
+          >
+            Tentar novamente
+          </button>
         </div>
       </main>
     );
