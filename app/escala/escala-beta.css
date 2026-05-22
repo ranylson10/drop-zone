@@ -160,3 +160,45 @@ body:has(.escala-beta-auth) main {
   color: #0f172a !important;
   -webkit-text-fill-color: #0f172a !important;
 }
+
+
+/* FULLSCREEN MOBILE FIX */
+html:has(.escala-beta-auth),
+body:has(.escala-beta-auth) {
+  min-height: 100dvh !important;
+  background:
+    radial-gradient(circle at top left, rgba(255,115,0,.22), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255,115,0,.16), transparent 28%),
+    #050816 !important;
+  overflow-x: hidden !important;
+}
+
+body:has(.escala-beta-auth) main,
+body:has(.escala-beta-auth) #__next,
+body:has(.escala-beta-auth) [data-nextjs-scroll-focus-boundary] {
+  min-height: 100dvh !important;
+  background: transparent !important;
+}
+
+.escala-beta-page.escala-beta-auth,
+.escala-beta-auth {
+  min-height: 100dvh !important;
+  background:
+    linear-gradient(rgba(5,8,22,.88), rgba(5,8,22,.92)),
+    url('/images/grid-texture.png'),
+    radial-gradient(circle at top left, rgba(255,115,0,.22), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(255,115,0,.16), transparent 28%),
+    #050816 !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .escala-beta-page.escala-beta-auth,
+  .escala-beta-auth,
+  body:has(.escala-beta-auth),
+  body:has(.escala-beta-auth) main {
+    min-height: -webkit-fill-available !important;
+  }
+}
