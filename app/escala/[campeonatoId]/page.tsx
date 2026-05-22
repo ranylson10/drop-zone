@@ -817,8 +817,8 @@ export default function EscalaCampeonatoPage() {
         setElencoPorEquipe(elencoAgrupado);
 
         const { data: linesData } = await supabase
-          .from("lines")
-          .select("id,nome,tipo,equipe_id,ativa,simbolo")
+          .from("equipes_lines")
+          .select("id,nome,tipo,equipe_id,ativa")
           .in("equipe_id", equipeIds)
           .eq("ativa", true)
           .order("nome", { ascending: true });
@@ -1383,7 +1383,7 @@ export default function EscalaCampeonatoPage() {
       if (ativarError) throw ativarError;
 
       const { data: existenteLine } = await supabase
-        .from("lines_jogadores")
+        .from("equipes_lines_jogadores")
         .select("id")
         .eq("line_id", line.id)
         .eq("perfil_jogo_id", perfil.id)
@@ -1391,7 +1391,7 @@ export default function EscalaCampeonatoPage() {
 
       if (!existenteLine?.id) {
         const { data: ordemData } = await supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .select("ordem")
           .eq("line_id", line.id)
           .order("ordem", { ascending: false })
@@ -1400,7 +1400,7 @@ export default function EscalaCampeonatoPage() {
         const ordem = Math.max(0, Number((ordemData || [])[0]?.ordem ?? -1) + 1);
 
         const { error: lineError } = await supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .insert({
             line_id: line.id,
             perfil_jogo_id: perfil.id,
@@ -1518,7 +1518,7 @@ export default function EscalaCampeonatoPage() {
       const lineIds = (linesPorEquipe[equipe.id] || []).map((line) => line.id);
       if (lineIds.length) {
         await supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .update({ removido_em: new Date().toISOString() })
           .in("line_id", lineIds)
           .eq("perfil_jogo_id", perfil.id)
@@ -2185,7 +2185,7 @@ export default function EscalaCampeonatoPage() {
         ) : null}
 
         {!userId ? (
-          <div className="mt-3 overflow-hidden rounded-[36px]">
+          <div className="mt-3 overflow-hidden">
             <AuthLinkCampeonato
               modo={authModoBeta}
               setModo={setAuthModoBeta}
@@ -2212,7 +2212,7 @@ export default function EscalaCampeonatoPage() {
               }
               onReenviarCodigo={reenviarCodigoCadastroBeta}
               onVoltarInicio={() => window.location.href = "/"}
-              className="min-h-0 rounded-[36px] px-0 py-0"
+              className="min-h-0 px-0 py-0"
             />
           </div>
         ) : (
@@ -3736,7 +3736,7 @@ function EscalacaoCards({
 
       if (vagaPrincipal?.line_id) {
         let query = supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .delete()
           .eq("line_id", vagaPrincipal.line_id);
 
@@ -3818,7 +3818,7 @@ function EscalacaoCards({
       if (ativarError) throw ativarError;
 
       const { data: existenteLine } = await supabase
-        .from("lines_jogadores")
+        .from("equipes_lines_jogadores")
         .select("id")
         .eq("line_id", vagaPrincipal.line_id)
         .eq("perfil_jogo_id", perfil.id)
@@ -3826,7 +3826,7 @@ function EscalacaoCards({
 
       if (!existenteLine?.id) {
         const { data: ordemData } = await supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .select("ordem")
           .eq("line_id", vagaPrincipal.line_id)
           .order("ordem", { ascending: false })
@@ -3837,7 +3837,7 @@ function EscalacaoCards({
         );
 
         const { error: lineError } = await supabase
-          .from("lines_jogadores")
+          .from("equipes_lines_jogadores")
           .insert({
             line_id: vagaPrincipal.line_id,
             perfil_jogo_id: perfil.id,
