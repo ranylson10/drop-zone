@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase";
 import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 import PlayerCard from "@/app/components/PlayerCard";
 import FormCriarEquipe from "@/app/components/FormCriarEquipe";
+import AuthLinkCampeonato from "@/app/components/AuthLinkCampeonato";
 
 type Campeonato = {
   id: string;
@@ -1811,165 +1812,31 @@ export default function EscalaCampeonatoPage() {
   }
 
   if (!usuarioLogado) {
-    const tituloAuth =
-      authModo === "login"
-        ? "Entrar"
-        : authModo === "cadastro"
-          ? "Nova conta"
-          : authModo === "confirmar"
-            ? authOtpTipo === "recovery" ? "Codigo de senha" : "Confirmar e-mail"
-            : "Recuperar senha";
-
-    const textoAuth =
-      authModo === "login"
-        ? "Acesse sua conta para continuar neste campeonato."
-        : authModo === "cadastro"
-          ? "Crie seu acesso com confirmacao por codigo no e-mail."
-          : authModo === "confirmar"
-            ? "Digite o codigo de 6 digitos recebido no e-mail."
-            : "Receba um codigo de 6 digitos para trocar sua senha.";
-
     return (
-      <main className="escala-beta-page escala-beta-auth relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-white px-5 py-8 text-slate-950 [color-scheme:light]">
-
-        <section className="auth-panel relative w-full max-w-[390px]">
-
-          <div className="relative mb-6 text-center">
-            <div className="auth-logo mx-auto flex h-24 w-24 items-center justify-center rounded-[26px] border border-blue-100 bg-blue-50 p-3">
-              <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
-            </div>
-            <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-500">Drop Zone</div>
-            <h1 className="mt-2 text-4xl font-black uppercase text-slate-950">{tituloAuth}</h1>
-            <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-5 text-slate-500">{textoAuth}</p>
-          </div>
-
-          <div className="space-y-4">
-            {authModo === "cadastro" ? (
-              <input
-                value={authNome}
-                onChange={(event) => setAuthNome(event.target.value)}
-                placeholder="Seu nick"
-                autoComplete="username"
-                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
-              />
-            ) : null}
-
-            <input
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="seu@email.com"
-              className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
-            />
-
-            {authModo === "confirmar" ? (
-              <input
-                value={authCodigo}
-                onChange={(event) => setAuthCodigo(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-center text-xl font-black tracking-[0.35em] text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
-              />
-            ) : null}
-
-            {authModo !== "recuperar" && authModo !== "confirmar" ? (
-              <input
-                value={authSenha}
-                onChange={(event) => setAuthSenha(event.target.value)}
-                type="password"
-                autoComplete={authModo === "login" ? "current-password" : "new-password"}
-                placeholder="Senha"
-                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") executarAuthLinkBeta();
-                }}
-              />
-            ) : null}
-
-            {authModo === "cadastro" ? (
-              <input
-                value={authConfirmarSenha}
-                onChange={(event) => setAuthConfirmarSenha(event.target.value)}
-                type="password"
-                autoComplete="new-password"
-                placeholder="Confirmar senha"
-                className="auth-control h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-600"
-              />
-            ) : null}
-
-            {authMensagem ? (
-              <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-xs font-bold text-orange-700">
-                {authMensagem}
-              </div>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={executarAuthLinkBeta}
-              disabled={authProcessando}
-              className="auth-control flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-700 bg-blue-700 px-4 text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-blue-800 disabled:opacity-50"
-            >
-              {authProcessando ? <Loader2 size={18} className="animate-spin" /> : <Lock size={18} />}
-              {authModo === "login" ? "Entrar" : authModo === "cadastro" ? "Criar conta" : authModo === "confirmar" ? "Validar codigo" : "Enviar codigo"}
-            </button>
-
-            {authModo === "confirmar" ? (
-              <button
-                type="button"
-                onClick={reenviarCodigoNoLinkBeta}
-                disabled={authProcessando}
-                className="auth-control h-11 w-full rounded-xl border border-blue-200 bg-blue-50 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700 disabled:opacity-50"
-              >
-                Reenviar codigo
-              </button>
-            ) : null}
-
-            {authModo === "login" ? (
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthModo("recuperar");
-                    setAuthMensagem(null);
-                  }}
-                  className="auth-control rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 transition hover:bg-blue-100"
-                >
-                  Esqueceu senha
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthModo("cadastro");
-                    setAuthMensagem(null);
-                  }}
-                  className="auth-control rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700 transition hover:bg-orange-100"
-                >
-                  Cadastrar
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthModo("login");
-                  setAuthMensagem(null);
-                }}
-                className="auth-control w-full rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700 transition hover:bg-blue-100"
-              >
-                Voltar para login
-              </button>
-            )}
-
-            <p className="text-center text-[10px] font-bold leading-4 text-slate-400">
-              Depois do login, voce continua neste link e vai direto para a escolha de perfil.
-            </p>
-          </div>
-        </section>
-      </main>
+      <AuthLinkCampeonato
+        modo={authModo}
+        setModo={(modo) => {
+          setAuthModo(modo);
+          setAuthMensagem(null);
+        }}
+        email={authEmail}
+        setEmail={setAuthEmail}
+        senha={authSenha}
+        setSenha={setAuthSenha}
+        confirmarSenha={authConfirmarSenha}
+        setConfirmarSenha={setAuthConfirmarSenha}
+        codigo={authCodigo}
+        setCodigo={setAuthCodigo}
+        nome={authNome}
+        setNome={setAuthNome}
+        mensagem={authMensagem}
+        loading={authProcessando}
+        otpTipo={authOtpTipo}
+        campeonatoNome={campeonato?.nome}
+        onSubmit={executarAuthLinkBeta}
+        onReenviarCodigo={reenviarCodigoNoLinkBeta}
+        onVoltarInicio={() => window.location.href = "/"}
+      />
     );
   }
 
@@ -2318,202 +2185,36 @@ export default function EscalaCampeonatoPage() {
         ) : null}
 
         {!userId ? (
-          <section className="mt-3 overflow-hidden border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-black">
-            <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
-              <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
-              <div className="relative flex items-start gap-3">
-                <div className="grid h-12 w-12 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
-                  <Lock size={19} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
-                    Acesso seguro
-                  </p>
-                  <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
-                    {authModoBeta === "login"
-                      ? "Entre para continuar"
-                      : authModoBeta === "cadastro"
-                        ? "Criar conta"
-                        : authModoBeta === "confirmar"
-                          ? "Confirmar e-mail"
-                          : "Recuperar senha"}
-                  </h2>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-300">
-                    {authModoBeta === "login"
-                      ? "Entre na sua conta para acessar as ferramentas do campeonato."
-                      : authModoBeta === "cadastro"
-                        ? "Crie sua conta sem sair do link do campeonato."
-                        : authModoBeta === "confirmar"
-                          ? "Digite o código recebido no e-mail para liberar sua conta."
-                          : "Informe seu e-mail para receber o link de recuperação."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-2 p-3">
-              <div className="grid grid-cols-4 gap-1">
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("login")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "login"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("cadastro")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "cadastro"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Cadastro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("confirmar")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "confirmar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Código
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("confirmar")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "confirmar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Código
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("recuperar")}
-                  className={`h-9 border text-[8px] font-black uppercase ${
-                    authModoBeta === "recuperar"
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-slate-200 bg-white text-slate-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-slate-200"
-                  }`}
-                >
-                  Senha
-                </button>
-              </div>
-
-              {authModoBeta === "cadastro" ? (
-                <input
-                  value={authNomeBeta}
-                  onChange={(event) => setAuthNomeBeta(event.target.value)}
-                  placeholder="Nome"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              <input
-                value={authEmailBeta}
-                onChange={(event) => setAuthEmailBeta(event.target.value)}
-                placeholder="E-mail"
-                type="email"
-                className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-              />
-
-              {authModoBeta === "confirmar" ? (
-                <input
-                  value={authCodigoBeta}
-                  onChange={(event) =>
-                    setAuthCodigoBeta(event.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="Código de verificação"
-                  inputMode="numeric"
-                  className="h-11 border border-slate-200 bg-white px-3 text-center text-lg font-black tracking-[0.35em] text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              {authModoBeta !== "recuperar" && authModoBeta !== "confirmar" ? (
-                <input
-                  value={authSenhaBeta}
-                  onChange={(event) => setAuthSenhaBeta(event.target.value)}
-                  placeholder="Senha"
-                  type="password"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              {authModoBeta === "cadastro" ? (
-                <input
-                  value={authConfirmarSenhaBeta}
-                  onChange={(event) => setAuthConfirmarSenhaBeta(event.target.value)}
-                  placeholder="Confirmar senha"
-                  type="password"
-                  className="h-11 border border-slate-200 bg-white px-3 text-xs font-bold text-slate-950 outline-none dark:border-zinc-700 dark:bg-black dark:text-white dark:placeholder:text-slate-500"
-                />
-              ) : null}
-
-              <button
-                type="button"
-                disabled={authLoadingBeta}
-                onClick={
-                  authModoBeta === "login"
-                    ? entrarContaBeta
-                    : authModoBeta === "cadastro"
-                      ? criarContaBeta
-                      : authModoBeta === "confirmar"
-                        ? confirmarCodigoCadastroBeta
-                        : recuperarSenhaBeta
-                }
-                className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
-              >
-                {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
-                {authModoBeta === "login"
-                  ? "Entrar"
+          <div className="mt-3 overflow-hidden rounded-[36px]">
+            <AuthLinkCampeonato
+              modo={authModoBeta}
+              setModo={setAuthModoBeta}
+              email={authEmailBeta}
+              setEmail={setAuthEmailBeta}
+              senha={authSenhaBeta}
+              setSenha={setAuthSenhaBeta}
+              confirmarSenha={authConfirmarSenhaBeta}
+              setConfirmarSenha={setAuthConfirmarSenhaBeta}
+              codigo={authCodigoBeta}
+              setCodigo={setAuthCodigoBeta}
+              nome={authNomeBeta}
+              setNome={setAuthNomeBeta}
+              loading={authLoadingBeta}
+              campeonatoNome={campeonato.nome}
+              onSubmit={
+                authModoBeta === "login"
+                  ? entrarContaBeta
                   : authModoBeta === "cadastro"
-                    ? "Criar conta"
+                    ? criarContaBeta
                     : authModoBeta === "confirmar"
-                      ? "Confirmar código"
-                      : "Enviar recuperação"}
-              </button>
-
-              {authModoBeta === "recuperar" ? (
-                <button
-                  type="button"
-                  onClick={() => setAuthModoBeta("login")}
-                  className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500"
-                >
-                  Voltar para login
-                </button>
-              ) : null}
-
-              {authModoBeta === "confirmar" ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={reenviarCodigoCadastroBeta}
-                    disabled={authLoadingBeta}
-                    className="h-10 border border-slate-200 bg-slate-50 text-[10px] font-black uppercase text-slate-500 disabled:opacity-60"
-                  >
-                    Reenviar código
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthModoBeta("login")}
-                    className="h-10 border border-slate-200 bg-white text-[10px] font-black uppercase text-slate-500"
-                  >
-                    Já confirmei
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </section>
+                      ? confirmarCodigoCadastroBeta
+                      : recuperarSenhaBeta
+              }
+              onReenviarCodigo={reenviarCodigoCadastroBeta}
+              onVoltarInicio={() => window.location.href = "/"}
+              className="min-h-0 rounded-[36px] px-0 py-0"
+            />
+          </div>
         ) : (
           <>
             <div className="mt-2">
