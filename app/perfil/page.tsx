@@ -169,7 +169,7 @@ async function carregarSelosFallback(userId: string): Promise<SeloAtuacao[]> {
 
  if (perfilIds.length > 0) {
   const { data: slots } = await supabase
-   .from('equipes_lines_jogadores')
+   .from('lines_jogadores')
    .select('id, tipo_slot, perfil_jogo_id')
    .in('perfil_jogo_id', perfilIds)
 

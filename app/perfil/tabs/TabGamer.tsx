@@ -392,7 +392,7 @@ export default function TabGamer() {
 
     try {
       const { data: vinculosRaw, error: vinculosError } = await supabase
-        .from('equipes_lines_jogadores')
+        .from('lines_jogadores')
         .select('id, line_id, perfil_jogo_id, tipo_slot, ordem')
         .in('perfil_jogo_id', perfilIds)
         .order('created_at', { ascending: false })

@@ -373,7 +373,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
         }
 
         const { data } = await supabase
-          .from('equipes_lines_jogadores')
+          .from('lines_jogadores')
           .select('id')
           .in('perfil_jogo_id', perfilIds)
           .limit(1)

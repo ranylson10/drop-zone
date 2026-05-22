@@ -296,7 +296,7 @@ export default function ManagerPage() {
       const [jogadoresLineRes, jogosRes] = await Promise.all([
         lineIds.length
           ? supabase
-              .from('equipes_lines_jogadores')
+              .from('lines_jogadores')
               .select('id, line_id, perfil_jogo_id, jogador_avulso_id, tipo_slot, ordem')
               .in('line_id', lineIds)
           : Promise.resolve({ data: [], error: null }),

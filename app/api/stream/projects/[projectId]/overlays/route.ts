@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fixedStreamOverlayTemplates, mergeOverlayConfig, defaultTabelaGeralConfig } from '@/lib/streamOverlay'
-import { getUserFromBearerToken, supabaseAdmin } from '@/lib/supabaseAdmin'
+import { getServerSupabaseClient, getUserFromBearerToken } from '@/lib/supabaseAdmin'
 
 type RouteContext = {
   params: Promise<{ projectId: string }>
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
-  const user = await getUserFromBearerToken(request.headers.get('authorization'))
+  const authHeader = request.headers.get('authorization')
+  const user = await getUserFromBearerToken(authHeader)
   if (!user) {
     return NextResponse.json({ error: 'Nao autenticado.' }, { status: 401 })
   }
+
+  const supabase = getServerSupabaseClient(authHeader)
 
   const { projectId } = await context.params
   const body = await request.json().catch(() => ({}))
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     : null
 
   if (!template) {
-    const { data: dbTemplate, error: templateError } = await supabaseAdmin
+    const { data: dbTemplate, error: templateError } = await supabase
       .from('stream_overlay_templates')
       .select('id, nome, categoria, descricao, config_padrao')
       .eq('id', templateId)
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     template = dbTemplate
   }
 
-  const { data: existing } = await supabaseAdmin
+  const { data: existing } = await supabase
     .from('stream_project_overlays')
     .select('id, project_id, template_id, nome, config, visivel, ordem')
     .eq('project_id', projectId)
@@ -60,27 +63,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ ok: true, overlay: existing })
   }
 
-  const { error: templateUpsertError } = await supabaseAdmin
-    .from('stream_overlay_templates')
-    .upsert({
-      id: template.id,
-      nome: template.nome,
-      categoria: template.categoria,
-      descricao: template.descricao,
-      config_padrao: template.config_padrao,
-      ativo: true,
-    }, { onConflict: 'id' })
-
-  if (templateUpsertError) {
-    return NextResponse.json({ error: templateUpsertError.message }, { status: 500 })
-  }
-
-  const { count } = await supabaseAdmin
+  const { count } = await supabase
     .from('stream_project_overlays')
     .select('id', { count: 'exact', head: true })
     .eq('project_id', projectId)
 
-  const { data: overlay, error: overlayError } = await supabaseAdmin
+  const { data: overlay, error: overlayError } = await supabase
     .from('stream_project_overlays')
     .insert({
       project_id: projectId,
