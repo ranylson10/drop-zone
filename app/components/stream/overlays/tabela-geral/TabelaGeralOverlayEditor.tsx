@@ -138,10 +138,6 @@ export default function TabelaGeralOverlayEditor({ config, onChange, onChangeCon
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500">
-        <span>Linhas: {config.layout?.maxRows || 12}</span>
-        <span>Blocos: {config.layout?.blockCount || 1}</span>
-      </div>
     </div>
   )
 }

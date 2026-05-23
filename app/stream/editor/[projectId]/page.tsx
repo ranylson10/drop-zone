@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -347,10 +347,12 @@ export default function StreamOverlayEditorPage() {
   const [selectedCountdownBlock, setSelectedCountdownBlock] = useState<CountdownBlock>('timer')
   const [selectedBooyahBlock, setSelectedBooyahBlock] = useState<BooyahBlock>('texto')
   const [selectedColumn, setSelectedColumn] = useState('nome')
-  const [draggingColumn, setDraggingColumn] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState(1)
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [draftConfig, setDraftConfig] = useState<any | null>(null)
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ultimoOverlayHidratadoRef = useRef<string | null>(null)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -381,23 +383,37 @@ export default function StreamOverlayEditorPage() {
     const savedOrder = ((config.columnsOrder || []) as string[]).filter((key) => tabelaGeralColumnKeys.includes(key))
     return [...savedOrder, ...tabelaGeralColumnKeys.filter((key) => !savedOrder.includes(key))]
   }, [config.columnsOrder])
+  const selectedColumnIndex = Math.max(0, orderedColumnKeys.indexOf(selectedColumn))
   const selectedColumnWidth = Number(config.columnWidths?.[selectedColumn] ?? defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)
   const previewCanvasScale = 0.5
 
   useEffect(() => {
-    setDraftConfig(configSalva)
-    setTemAlteracoesPendentes(false)
-  }, [overlayAtual?.id])
+    const overlaySelecionadaMudou = ultimoOverlayHidratadoRef.current !== (overlayAtual?.id || null)
+    ultimoOverlayHidratadoRef.current = overlayAtual?.id || null
+
+    if (overlaySelecionadaMudou || !temAlteracoesPendentes) {
+      setDraftConfig(configSalva)
+      setTemAlteracoesPendentes(false)
+    }
+  }, [overlayAtual?.id, configSalva, temAlteracoesPendentes])
 
   useEffect(() => {
-    if (!overlayAtual || !temAlteracoesPendentes || salvando) return
+    if (!temAlteracoesPendentes || !draftConfig || !overlayAtual) return
 
-    const timer = window.setTimeout(() => {
-      void salvarConfig(config)
-    }, 850)
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
 
-    return () => window.clearTimeout(timer)
-  }, [config, overlayAtual?.id, salvando, temAlteracoesPendentes])
+    autoSaveTimerRef.current = setTimeout(() => {
+      void salvarConfig(draftConfig)
+    }, 900)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [draftConfig, overlayAtual?.id, temAlteracoesPendentes])
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -675,6 +691,72 @@ export default function StreamOverlayEditorPage() {
     setTemAlteracoesPendentes(true)
   }
 
+  function atualizarLimiteLinhasTabela(valor: number) {
+    atualizarConfigLocal((novo) => {
+      novo.layout = novo.layout || {}
+      const maxRows = Math.max(1, Math.round(Number(valor) || 1))
+      const blockCount = Math.max(1, Math.round(Number(novo.layout.blockCount) || 1))
+      novo.layout.maxRows = maxRows
+      novo.layout.rowsPerBlock = Math.ceil(maxRows / blockCount)
+      return novo
+    })
+  }
+
+  function atualizarQuantidadeBlocosTabela(valor: number) {
+    atualizarConfigLocal((novo) => {
+      novo.layout = novo.layout || {}
+      const blockCount = Math.max(1, Math.round(Number(valor) || 1))
+      const maxRows = Math.max(1, Math.round(Number(novo.layout.maxRows) || 12))
+      novo.layout.blockCount = blockCount
+      novo.layout.rowsPerBlock = Math.ceil(maxRows / blockCount)
+      return novo
+    })
+  }
+
+  function aplicarPresetTabela(tipo: 'duplo-12' | 'simples' | 'mvp-duplo') {
+    atualizarConfigLocal((novo) => {
+      novo.layout = novo.layout || {}
+
+      if (tipo === 'duplo-12') {
+        novo.layout.maxRows = 12
+        novo.layout.blockCount = 2
+        novo.layout.rowsPerBlock = 6
+        novo.layout.blockDirection = 'horizontal'
+        novo.layout.blockGap = 36
+        novo.layout.w = novo.layout.w || 1560
+      }
+
+      if (tipo === 'simples') {
+        novo.layout.blockCount = 1
+        novo.layout.rowsPerBlock = novo.layout.maxRows || 12
+        novo.layout.blockDirection = 'horizontal'
+      }
+
+      if (tipo === 'mvp-duplo') {
+        novo.layout.maxRows = 10
+        novo.layout.blockCount = 2
+        novo.layout.rowsPerBlock = 5
+        novo.layout.blockDirection = 'horizontal'
+        novo.layout.blockGap = 36
+        novo.columns = {
+          ...(novo.columns || {}),
+          rank: true,
+          logo: true,
+          nome: true,
+          tag: true,
+          grupo: false,
+          quedas: true,
+          booyahs: false,
+          kills: true,
+          pontos: false,
+        }
+        novo.columnsOrder = ['rank', 'logo', 'nome', 'tag', 'quedas', 'kills', 'grupo', 'booyahs', 'pontos']
+      }
+
+      return novo
+    })
+  }
+
   function usarLogoDoCampeonato() {
     if (!campeonatoInfo?.logo_url) {
       alert('Este campeonato ainda nao tem logo cadastrada.')
@@ -694,31 +776,36 @@ export default function StreamOverlayEditorPage() {
   }
 
 
-  function reordenarColuna(origem: string, destino: string) {
-    if (!origem || !destino || origem === destino) return
+  async function moverColuna(direcao: -1 | 1) {
+    if (!overlayAtual) return
+
+    const atual = orderedColumnKeys.indexOf(selectedColumn)
+    const destino = atual + direcao
+    if (atual < 0 || destino < 0 || destino >= orderedColumnKeys.length) return
+
+    const novaOrdem = [...orderedColumnKeys]
+    const [coluna] = novaOrdem.splice(atual, 1)
+    novaOrdem.splice(destino, 0, coluna)
+    await atualizarCampo('columnsOrder', novaOrdem)
+  }
+
+  async function soltarColunaNoDestino(event: DragEvent, destino: string) {
+    event.preventDefault()
+    const origem = draggedColumn || event.dataTransfer.getData('text/plain')
+    setDraggedColumn(null)
+
+    if (!origem || origem === destino) return
 
     const novaOrdem = [...orderedColumnKeys]
     const origemIndex = novaOrdem.indexOf(origem)
     const destinoIndex = novaOrdem.indexOf(destino)
+
     if (origemIndex < 0 || destinoIndex < 0) return
 
     const [coluna] = novaOrdem.splice(origemIndex, 1)
     novaOrdem.splice(destinoIndex, 0, coluna)
-    atualizarCampo('columnsOrder', novaOrdem)
-    setSelectedColumn(origem)
-  }
-
-  function iniciarArrastoColuna(key: string, event: DragEvent<HTMLButtonElement>) {
-    setDraggingColumn(key)
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', key)
-  }
-
-  function soltarColuna(destino: string, event: DragEvent<HTMLButtonElement>) {
-    event.preventDefault()
-    const origem = event.dataTransfer.getData('text/plain') || draggingColumn
-    if (origem) reordenarColuna(origem, destino)
-    setDraggingColumn(null)
+    setSelectedColumn(coluna)
+    await atualizarCampo('columnsOrder', novaOrdem)
   }
 
   async function alternarVisivel() {
@@ -1555,8 +1642,8 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         <>
                           <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
-                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
+                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={atualizarLimiteLinhasTabela} />
+                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={atualizarQuantidadeBlocosTabela} />
                             <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                             <EditorNumber label="Altura linha" value={config.layout.rowHeight || 62} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                             <EditorNumber label="Altura topo" value={config.layout.headerHeight || 72} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
@@ -1567,29 +1654,32 @@ export default function StreamOverlayEditorPage() {
 
                           <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
 
+
                           <div>
                             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
                             <div className="grid grid-cols-2 gap-2">
                               {orderedColumnKeys.map((key) => (
-                                <div key={key} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : draggingColumn === key ? 'border-red-500 bg-red-500/10 text-red-100' : 'border-white/10 bg-[#111827]'}`}>
+                                <label
+                                  key={key}
+                                  draggable
+                                  onDragStart={(event) => {
+                                    setDraggedColumn(key)
+                                    event.dataTransfer.setData('text/plain', key)
+                                    event.dataTransfer.effectAllowed = 'move'
+                                  }}
+                                  onDragOver={(event) => event.preventDefault()}
+                                  onDrop={(event) => soltarColunaNoDestino(event, key)}
+                                  onDragEnd={() => setDraggedColumn(null)}
+                                  className={`flex cursor-grab items-center gap-2 border px-3 py-2 text-xs font-bold uppercase active:cursor-grabbing ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#111827]'} ${draggedColumn === key ? 'opacity-50' : ''}`}
+                                  title="Arraste para trocar a ordem da coluna"
+                                >
                                   <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
-                                  <button
-                                    type="button"
-                                    draggable
-                                    onClick={() => setSelectedColumn(key)}
-                                    onDragStart={(event) => iniciarArrastoColuna(key, event)}
-                                    onDragOver={(event) => event.preventDefault()}
-                                    onDrop={(event) => soltarColuna(key, event)}
-                                    onDragEnd={() => setDraggingColumn(null)}
-                                    className="min-w-0 flex-1 cursor-grab text-left uppercase active:cursor-grabbing"
-                                    title="Clique e arraste para mudar a posicao da coluna"
-                                  >
+                                  <button type="button" onClick={() => setSelectedColumn(key)} className="min-w-0 flex-1 text-left uppercase">
                                     {tabelaGeralColumnLabels[key] || key}
                                   </button>
-                                </div>
+                                </label>
                               ))}
                             </div>
-                            <p className="mt-2 text-[10px] font-semibold leading-4 text-zinc-500">Clique e arraste o nome da coluna para trocar a ordem na overlay.</p>
                           </div>
 
                           <div className="border-t border-white/10 pt-3">
@@ -1600,6 +1690,24 @@ export default function StreamOverlayEditorPage() {
                               onChange={setSelectedColumn}
                               options={orderedColumnKeys.map((key) => [key, tabelaGeralColumnLabels[key] || key])}
                             />
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => moverColuna(-1)}
+                                disabled={selectedColumnIndex <= 0}
+                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Mover esquerda
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moverColuna(1)}
+                                disabled={selectedColumnIndex >= orderedColumnKeys.length - 1}
+                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Mover direita
+                              </button>
+                            </div>
                             <div className="mt-3 grid grid-cols-[1fr_88px] items-end gap-3">
                               <label className="block">
                                 <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Largura</span>
@@ -1703,12 +1811,14 @@ export default function StreamOverlayEditorPage() {
                   <EditorNumber label="Escala tabela" value={config.layout.scale} onChange={(v) => atualizarCampo('layout.scale', v)} />
                   <EditorNumber label="Linhas" value={config.layout.maxRows} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
                   <EditorNumber label="Blocos" value={config.layout.blockCount} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
+                  <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
                   <EditorNumber label="Espaco blocos" value={config.layout.blockGap} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                   <EditorNumber label="Altura linha" value={config.layout.rowHeight} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                   <EditorNumber label="Altura topo" value={config.layout.headerHeight} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                   <EditorNumber label="Fonte" value={config.layout.fontSize} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                   <EditorNumber label="Logo" value={config.layout.logoSize} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
                   <EditorNumber label="Espaco" value={config.layout.rowGap} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
+                  <EditorNumber label="Raio" value={config.layout.radius} onChange={(v) => atualizarCampo('layout.radius', v)} />
                   <EditorNumber label="Opacidade" value={config.layout.opacity} onChange={(v) => atualizarCampo('layout.opacity', v)} />
                 </div>
 
