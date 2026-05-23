@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromBearerToken, supabaseAdmin } from '@/lib/supabaseAdmin'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 type RouteContext = {
   params: Promise<{ projectId: string; overlayId: string }>
@@ -9,55 +9,18 @@ function cleanId(value: unknown) {
   return String(value || '').trim()
 }
 
-async function canEditProject(projectId: string, userId: string) {
-  const { data: project, error } = await supabaseAdmin
-    .from('stream_projects')
-    .select('id, created_by, campeonato_id')
-    .eq('id', projectId)
-    .maybeSingle()
-
-  if (error) throw error
-  if (!project?.id) return false
-  if (project.created_by === userId) return true
-
-  if (project.campeonato_id) {
-    const { data: isAdmin, error: adminError } = await supabaseAdmin.rpc('fn_usuario_admin_do_campeonato', {
-      p_campeonato_id: project.campeonato_id,
-    })
-
-    if (!adminError && isAdmin === true) return true
-  }
-
-  const { data: siteAdmin } = await supabaseAdmin
-    .from('site_administradores')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('ativo', true)
-    .limit(1)
-
-  return Boolean(siteAdmin?.length)
+function badRequest(message: string, status = 400) {
+  return NextResponse.json({ ok: false, error: message }, { status })
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    const authHeader = request.headers.get('authorization')
-    const user = await getUserFromBearerToken(authHeader)
-
-    if (!user?.id) {
-      return NextResponse.json({ ok: false, error: 'Nao autenticado.' }, { status: 401 })
-    }
-
     const { projectId, overlayId } = await context.params
     const safeProjectId = cleanId(projectId)
     const safeOverlayId = cleanId(overlayId)
 
     if (!safeProjectId || !safeOverlayId) {
-      return NextResponse.json({ ok: false, error: 'Projeto ou overlay ausente.' }, { status: 400 })
-    }
-
-    const allowed = await canEditProject(safeProjectId, user.id)
-    if (!allowed) {
-      return NextResponse.json({ ok: false, error: 'Voce nao tem permissao para editar essa overlay.' }, { status: 403 })
+      return badRequest('Projeto ou overlay ausente.')
     }
 
     const body = await request.json().catch(() => ({}))
@@ -65,9 +28,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updated_at: new Date().toISOString(),
     }
 
-    if (Object.prototype.hasOwnProperty.call(body, 'config')) updatePayload.config = body.config || {}
-    if (Object.prototype.hasOwnProperty.call(body, 'visivel')) updatePayload.visivel = Boolean(body.visivel)
-    if (Object.prototype.hasOwnProperty.call(body, 'ordem')) updatePayload.ordem = Number(body.ordem || 1)
+    if (Object.prototype.hasOwnProperty.call(body, 'config')) {
+      updatePayload.config = body.config && typeof body.config === 'object' ? body.config : {}
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'visivel')) {
+      updatePayload.visivel = Boolean(body.visivel)
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'ordem')) {
+      updatePayload.ordem = Number(body.ordem || 1)
+    }
+
+    if (Object.keys(updatePayload).length <= 1) {
+      return badRequest('Nada para atualizar.')
+    }
 
     const { data: overlay, error } = await supabaseAdmin
       .from('stream_project_overlays')

@@ -592,19 +592,10 @@ export default function StreamOverlayEditorPage() {
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
-      const { data: sessionData } = await supabase.auth.getSession()
-      const token = sessionData.session?.access_token
-
-      if (!token) {
-        alert('Erro ao salvar: usuario nao autenticado. Entre novamente no site e tente salvar de novo.')
-        return
-      }
-
       const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays/${encodeURIComponent(overlayAtual.id)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ config: configLeve }),
       })
@@ -621,7 +612,7 @@ export default function StreamOverlayEditorPage() {
       setDraftConfig(configConfirmada)
       setTemAlteracoesPendentes(false)
     } catch (error) {
-      alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao enviar imagem'}`)
+      alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao salvar no banco'}`)
     } finally {
       setSalvando(false)
     }
@@ -757,19 +748,11 @@ export default function StreamOverlayEditorPage() {
     if (!overlayAtual || !projectId) return
 
     const novo = !overlayAtual.visivel
-    const { data: sessionData } = await supabase.auth.getSession()
-    const token = sessionData.session?.access_token
-
-    if (!token) {
-      alert('Erro: usuario nao autenticado. Entre novamente no site.')
-      return
-    }
 
     const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays/${encodeURIComponent(overlayAtual.id)}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ visivel: novo }),
     })
@@ -777,7 +760,7 @@ export default function StreamOverlayEditorPage() {
     const result = await response.json().catch(() => ({}))
 
     if (!response.ok || !result?.overlay?.id) {
-      alert(`Erro: ${result?.error || 'o banco nao confirmou a atualizacao da overlay.'}`)
+      alert(`Erro: ${result?.error || 'nao foi possivel atualizar a overlay'}`)
       return
     }
 
