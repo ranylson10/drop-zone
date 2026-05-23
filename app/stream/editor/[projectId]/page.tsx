@@ -353,6 +353,8 @@ export default function StreamOverlayEditorPage() {
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const ultimoOverlayHidratadoRef = useRef<string | null>(null)
+  const overlayAtualRef = useRef<Overlay | null>(null)
+  const draftConfigRef = useRef<any | null>(null)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -388,6 +390,14 @@ export default function StreamOverlayEditorPage() {
   const previewCanvasScale = 0.5
 
   useEffect(() => {
+    overlayAtualRef.current = overlayAtual
+  }, [overlayAtual])
+
+  useEffect(() => {
+    draftConfigRef.current = draftConfig
+  }, [draftConfig])
+
+  useEffect(() => {
     const overlaySelecionadaMudou = ultimoOverlayHidratadoRef.current !== (overlayAtual?.id || null)
     ultimoOverlayHidratadoRef.current = overlayAtual?.id || null
 
@@ -398,15 +408,18 @@ export default function StreamOverlayEditorPage() {
   }, [overlayAtual?.id, configSalva, temAlteracoesPendentes])
 
   useEffect(() => {
-    if (!temAlteracoesPendentes || !draftConfig || !overlayAtual) return
+    if (!temAlteracoesPendentes || !draftConfig || !overlayAtual?.id) return
 
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current)
     }
 
+    const overlayIdAlvo = overlayAtual.id
+    const configAlvo = draftConfig
+
     autoSaveTimerRef.current = setTimeout(() => {
-      void salvarConfig(draftConfig)
-    }, 900)
+      void salvarConfig(configAlvo, overlayIdAlvo)
+    }, 450)
 
     return () => {
       if (autoSaveTimerRef.current) {
@@ -612,27 +625,42 @@ export default function StreamOverlayEditorPage() {
     return valor
   }
 
-  async function salvarConfig(novoConfig: any) {
-    if (!overlayAtual) return
+  async function salvarConfig(novoConfig: any, overlayIdAlvo?: string) {
+    const overlayParaSalvar = overlayIdAlvo || overlayAtualRef.current?.id || overlayAtual?.id
+    if (!overlayParaSalvar) return
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
 
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('stream_project_overlays')
         .update({
           config: configLeve,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', overlayAtual.id)
+        .eq('id', overlayParaSalvar)
+        .select('id, config, updated_at')
+        .maybeSingle()
 
       if (error) {
         alert(`Erro ao salvar: ${error.message}`)
         return
       }
 
-      setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, config: configLeve } : item))
-      setDraftConfig(configLeve)
+      if (!data?.id) {
+        alert('Erro ao salvar: o banco não confirmou a atualização da overlay.')
+        return
+      }
+
+      const configConfirmada = data.config || configLeve
+      setOverlays((prev) => prev.map((item) => item.id === overlayParaSalvar ? { ...item, config: configConfirmada } : item))
+      setDraftConfig(configConfirmada)
+      draftConfigRef.current = configConfirmada
       setTemAlteracoesPendentes(false)
     } catch (error) {
       alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao enviar imagem'}`)
@@ -660,7 +688,11 @@ export default function StreamOverlayEditorPage() {
     try {
       setSalvando(true)
       const publicUrl = await uploadStreamAsset(file, pasta)
-      await atualizarCampo(path, formatarUrl(publicUrl))
+      const novoConfig = aplicarCampoEmConfig(draftConfigRef.current || configSalva || {}, path, formatarUrl(publicUrl))
+      setDraftConfig(novoConfig)
+      draftConfigRef.current = novoConfig
+      setTemAlteracoesPendentes(true)
+      await salvarConfig(novoConfig, overlayAtualRef.current?.id || overlayAtual?.id)
     } catch (error) {
       alert(`Erro ao enviar imagem: ${error instanceof Error ? error.message : 'tente novamente'}`)
     } finally {
@@ -668,10 +700,9 @@ export default function StreamOverlayEditorPage() {
     }
   }
 
-  function atualizarCampo(path: string, valor: any) {
+  function aplicarCampoEmConfig(baseConfig: any, path: string, valor: any) {
     const partes = path.split('.')
-    const base = draftConfig || configSalva || {}
-    const novo = JSON.parse(JSON.stringify(base))
+    const novo = JSON.parse(JSON.stringify(baseConfig || {}))
     let alvo = novo
 
     for (let i = 0; i < partes.length - 1; i += 1) {
@@ -680,14 +711,21 @@ export default function StreamOverlayEditorPage() {
     }
 
     alvo[partes[partes.length - 1]] = valor
+    return novo
+  }
+
+  function atualizarCampo(path: string, valor: any) {
+    const novo = aplicarCampoEmConfig(draftConfigRef.current || configSalva || {}, path, valor)
     setDraftConfig(novo)
+    draftConfigRef.current = novo
     setTemAlteracoesPendentes(true)
   }
 
   function atualizarConfigLocal(mutator: (configAtual: any) => any) {
-    const base = draftConfig || configSalva || {}
+    const base = draftConfigRef.current || configSalva || {}
     const novo = mutator(JSON.parse(JSON.stringify(base)))
     setDraftConfig(novo)
+    draftConfigRef.current = novo
     setTemAlteracoesPendentes(true)
   }
 
