@@ -1,7 +1,7 @@
 import { Users } from 'lucide-react'
 import type { CSSProperties, PointerEvent } from 'react'
 
-export type StreamOverlayBlock = 'image' | 'text' | 'table'
+export type StreamOverlayBlock = 'image' | 'text' | 'table' | 'infoImage'
 
 export type StreamOverlayConfig = {
   title?: string
@@ -557,20 +557,24 @@ export function TabelaGeralOverlay({
 
       {infoImage?.enabled !== false && infoImage?.url ? (
         <div
-          className="absolute overflow-hidden"
+          className="absolute overflow-hidden uppercase"
+          onPointerDown={selectBlock('infoImage')}
           style={{
             left: Number(infoImage.x ?? 0),
             top: Number(infoImage.y ?? 0),
             width: Number(infoImage.w ?? 1920),
             height: Number(infoImage.h ?? 260),
             opacity: infoImageOpacity,
+            ...selectedStyle('infoImage'),
           }}
         >
+          {blockLabel('IMAGEM')}
           <img
             src={infoImage.url}
             alt=""
             className="h-full w-full"
             style={{ objectFit: infoImage.fit || 'contain' }}
+            draggable={false}
           />
         </div>
       ) : null}
