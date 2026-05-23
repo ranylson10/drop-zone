@@ -1,15 +1,17 @@
 'use client'
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   RankingRow,
   defaultTabelaGeralConfig,
-  getFixedStreamOverlayTemplate,
   mergeOverlayConfig,
   sampleRankingRows,
 } from '@/lib/streamOverlay'
+import { getStreamOverlayTemplate } from '@/app/components/stream/overlays/catalog'
 import { getStreamOverlayDefinition } from '@/app/components/stream/overlays/registry'
 import type { StreamOverlayContext } from '@/app/components/stream/overlays/types'
 
@@ -135,6 +137,16 @@ function grupoConfigurado(config?: Record<string, any> | null) {
   return textoSeguro(config?.data?.grupo_id || config?.grupo_id || config?.grupoId)
 }
 
+function booleanConfigurado(config: Record<string, any> | null | undefined, path: string, fallback = false) {
+  const partes = path.split('.')
+  let atual: any = config
+  for (const parte of partes) {
+    atual = atual?.[parte]
+  }
+  if (typeof atual === 'boolean') return atual
+  return fallback
+}
+
 async function carregarBaseCampeonato(campeonatoId: string) {
   const [{ data: equipes }, { data: grupos }, { data: jogos }] = await Promise.all([
     supabase
@@ -194,7 +206,7 @@ async function carregarPartidaSelecionada(jogoId: string, config?: Record<string
   const partidaWanted = partidaIdConfigurada(config)
   const mapaWanted = mapaConfigurado(config)
 
-  let query = supabase
+  const query = supabase
     .from('partidas')
     .select('id, jogo_id, numero, mapa')
     .eq('jogo_id', jogoId)
@@ -283,7 +295,11 @@ function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[], grup
   })
 
   return Array.from(acumulado.values())
-    .map(({ partidasSet, ...row }) => row)
+    .map((item) => {
+      const { partidasSet: _partidasSet, ...row } = item
+      void _partidasSet
+      return row
+    })
     .sort((a, b) => b.kills - a.kills || b.quedas - a.quedas || a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
@@ -329,9 +345,30 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
       if (mapaAlvo && textoSeguro(row.mapa).toLowerCase() !== mapaAlvo.toLowerCase()) return false
       return true
     })
-    return montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, rowsDaQueda)
-      .filter((row) => row.booyahs > 0)
-      .slice(0, 1)
+    const rankingDaQueda = montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, rowsDaQueda)
+    const vencedorDaQueda = rankingDaQueda.find((row) => row.booyahs > 0)
+    if (vencedorDaQueda) return [vencedorDaQueda]
+
+    const rankingGeral = montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, resultados)
+    const vencedorGeral = rankingGeral.find((row) => row.booyahs > 0) || rankingGeral[0]
+    if (vencedorGeral) return [vencedorGeral]
+
+    const primeiraEquipe = equipesLista[0]
+    if (primeiraEquipe) {
+      return [{
+        id: primeiraEquipe.id,
+        nome: getEquipeNome(primeiraEquipe),
+        tag: getEquipeTag(primeiraEquipe),
+        logo: getEquipeLogo(primeiraEquipe),
+        grupo: primeiraEquipe.grupo_id ? gruposMap.get(textoSeguro(primeiraEquipe.grupo_id)) || '-' : '-',
+        quedas: 0,
+        booyahs: 0,
+        kills: 0,
+        pontos: 0,
+      }]
+    }
+
+    return []
   }
 
   if (templateId === 'tabela-da-queda') {
@@ -384,9 +421,10 @@ async function carregarCountdownContext(campeonatoId: string, config?: Record<st
     idsDoJogo = new Set(((jogoEquipes || []) as Array<{ campeonato_equipe_id?: string | null }>).map((item) => textoSeguro(item.campeonato_equipe_id)).filter(Boolean))
   }
 
-  const grupoAlvo = grupoConfigurado(config) || textoSeguro(jogo?.grupo_id)
+  const filtrarPorJogo = booleanConfigurado(config, 'countdown.filtrarPorJogo', false)
+  const grupoAlvo = grupoConfigurado(config) || (filtrarPorJogo ? textoSeguro(jogo?.grupo_id) : '')
   const equipesDoJogo = equipesLista.filter((equipe) => {
-    if (idsDoJogo.size > 0) return idsDoJogo.has(equipe.id)
+    if (filtrarPorJogo && idsDoJogo.size > 0) return idsDoJogo.has(equipe.id)
     if (grupoAlvo) return textoSeguro(equipe.grupo_id) === grupoAlvo
     return true
   })
@@ -426,7 +464,7 @@ export default function FixedOverlayRenderPage() {
   const params = useParams<{ key: string; overlayType: string }>()
   const streamKey = params?.key
   const overlayType = params?.overlayType
-  const fixedTemplate = getFixedStreamOverlayTemplate(overlayType)
+  const fixedTemplate = getStreamOverlayTemplate(overlayType)
   const overlayDefinition = getStreamOverlayDefinition(fixedTemplate?.id || overlayType)
 
   const [project, setProject] = useState<Projeto | null>(null)
@@ -435,6 +473,7 @@ export default function FixedOverlayRenderPage() {
   const [overlayContext, setOverlayContext] = useState<StreamOverlayContext>({})
   const [loaded, setLoaded] = useState(false)
   const [genericOnly, setGenericOnly] = useState(false)
+  const [viewport, setViewport] = useState({ width: 1920, height: 1080 })
 
   const config = useMemo(() => {
     const fallbackConfig = fixedTemplate?.config_padrao || mergeOverlayConfig(defaultTabelaGeralConfig, { title: String(overlayType || 'OVERLAY').toUpperCase() })
@@ -507,6 +546,19 @@ export default function FixedOverlayRenderPage() {
   }, [carregar])
 
   useEffect(() => {
+    const atualizarViewport = () => {
+      setViewport({
+        width: window.innerWidth || 1920,
+        height: window.innerHeight || 1080,
+      })
+    }
+
+    atualizarViewport()
+    window.addEventListener('resize', atualizarViewport)
+    return () => window.removeEventListener('resize', atualizarViewport)
+  }, [])
+
+  useEffect(() => {
     if (!streamKey) return
 
     const onStorage = (event: StorageEvent) => {
@@ -567,7 +619,7 @@ export default function FixedOverlayRenderPage() {
     return (
       <>
         <ObsTransparentPageStyle />
-        <main className="flex h-[1080px] w-[1920px] items-center justify-center overflow-hidden bg-transparent">
+        <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent">
           <div className="border border-white/20 bg-black/35 px-16 py-10 text-center text-6xl font-black uppercase tracking-[0.08em] text-white">
             {fixedTemplate?.nome || String(overlayType || 'Overlay')}
           </div>
@@ -579,16 +631,23 @@ export default function FixedOverlayRenderPage() {
   return (
     <>
       <ObsTransparentPageStyle />
-      <main className="relative h-[1080px] w-[1920px] overflow-hidden bg-transparent">
-        {overlayDefinition ? (
-          <overlayDefinition.Render
-            config={config}
-            rows={rows.length > 0 ? rows : sampleRankingRows(Number(config.layout?.maxRows || 8))}
-            templateId={fixedTemplate?.id || String(overlayType || '')}
-            overlayName={fixedTemplate?.nome || String(overlayType || 'Overlay')}
-            context={overlayContext}
-          />
-        ) : null}
+      <main className="relative h-screen w-screen overflow-hidden bg-transparent">
+        <div
+          className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left overflow-hidden bg-transparent"
+          style={{
+            transform: `scale(${viewport.width / 1920}, ${viewport.height / 1080})`,
+          }}
+        >
+          {overlayDefinition ? (
+            <overlayDefinition.Render
+              config={config}
+              rows={fixedTemplate?.id === 'countdown' || fixedTemplate?.id === 'booyah' ? rows : rows.length > 0 ? rows : sampleRankingRows(Number(config.layout?.maxRows || 8))}
+              templateId={fixedTemplate?.id || String(overlayType || '')}
+              overlayName={fixedTemplate?.nome || String(overlayType || 'Overlay')}
+              context={overlayContext}
+            />
+          ) : null}
+        </div>
       </main>
     </>
   )
@@ -599,8 +658,8 @@ function ObsTransparentPageStyle() {
     <style jsx global>{`
       html,
       body {
-        width: 1920px !important;
-        height: 1080px !important;
+        width: 100% !important;
+        height: 100% !important;
         margin: 0 !important;
         overflow: hidden !important;
         background: transparent !important;

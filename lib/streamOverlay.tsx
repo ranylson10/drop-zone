@@ -5,6 +5,21 @@ export type StreamOverlayBlock = 'image' | 'text' | 'table'
 
 export type StreamOverlayConfig = {
   title?: string
+  tabelaGeral?: {
+    mode?: 'lateral' | 'duplo-inferior'
+    backgroundImage?: string
+    backgroundOpacity?: number
+    infoImage?: {
+      enabled?: boolean
+      url?: string
+      x?: number
+      y?: number
+      w?: number
+      h?: number
+      opacity?: number
+      fit?: 'contain' | 'cover'
+    }
+  }
   brand?: {
     enabled?: boolean
     imageEnabled?: boolean
@@ -19,6 +34,7 @@ export type StreamOverlayConfig = {
     scale?: number
     opacity?: number
     objectFit?: 'contain' | 'cover'
+    objectPosition?: string
     align?: 'left' | 'center' | 'right'
     nameSize?: number
     titleSize?: number
@@ -42,6 +58,8 @@ export type StreamOverlayConfig = {
     headerText?: string
     accent?: string
     border?: string
+    borderColor?: string
+    borderWidth?: number
     shadow?: string
   }
   columnStyles?: Record<string, { background?: string; text?: string }>
@@ -54,6 +72,7 @@ export type StreamOverlayConfig = {
     w?: number
     rowHeight?: number
     rowGap?: number
+    columnGap?: number
     maxRows?: number
     radius?: number
     fontSize?: number
@@ -124,6 +143,7 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     scale: 100,
     opacity: 100,
     objectFit: 'contain',
+    objectPosition: 'center center',
     align: 'left',
     nameSize: 54,
     titleSize: 24,
@@ -141,12 +161,14 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     primary: '#e60012',
     secondary: '#f6c453',
     background: 'rgba(5, 8, 18, 0.78)',
-    rowBackground: 'rgba(248, 250, 252, 0.94)',
-    rowAltBackground: 'rgba(226, 232, 240, 0.92)',
-    text: '#09111f',
-    headerText: '#ffffff',
+    rowBackground: 'linear-gradient(90deg, #d8ab4f 0%, #d8ab4f 18%, #8010c8 18%, #8010c8 100%)',
+    rowAltBackground: 'linear-gradient(90deg, #d8ab4f 0%, #d8ab4f 18%, #8010c8 18%, #8010c8 100%)',
+    text: '#ffffff',
+    headerText: '#101827',
     accent: '#f6c453',
     border: 'rgba(255, 255, 255, 0.18)',
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 0,
     shadow: 'transparent',
   },
   columnStyles: {},
@@ -158,18 +180,19 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     y: 140,
     w: 1560,
     rowHeight: 62,
-    rowGap: 5,
+    rowGap: 12,
+    columnGap: 0,
     maxRows: 12,
-    radius: 4,
+    radius: 0,
     fontSize: 24,
     headerHeight: 72,
     logoSize: 44,
     paddingX: 18,
     opacity: 100,
     scale: 100,
-    blockCount: 1,
+    blockCount: 2,
     rowsPerBlock: 6,
-    blockGap: 36,
+    blockGap: 70,
     blockDirection: 'horizontal',
   },
   columns: {
@@ -191,20 +214,20 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
 
 export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
   {
-    id: 'tela-de-espera',
-    slug: 'tela-de-espera',
-    nome: 'Tela de espera',
-    categoria: 'transmissao',
-    descricao: 'Tela de espera antes da transmissao.',
-    config_padrao: fixedTemplateConfig('TELA DE ESPERA', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 110, rowHeight: 90 } }),
-  },
-  {
     id: 'booyah',
     slug: 'booyah',
     nome: 'Booyah',
     categoria: 'transmissao',
     descricao: 'Chamada de Booyah da queda.',
-    config_padrao: fixedTemplateConfig('BOOYAH', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 96, rowHeight: 90 } }),
+    config_padrao: fixedTemplateConfig('BOOYAH', {
+      layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 96, rowHeight: 90 },
+      booyah: {
+        texto: 'BOOYAH',
+        textoBlock: { x: 630, y: 330, w: 880, h: 190, scale: 100, opacity: 100, fontSize: 132, color: '#f6c453', shadowColor: 'rgba(0,0,0,0.35)' },
+        logoBlock: { x: 300, y: 360, w: 230, h: 230, scale: 100, opacity: 100, delay: 2000 },
+        equipeBlock: { x: 620, y: 530, w: 760, h: 80, scale: 100, opacity: 100, fontSize: 42, color: '#ffffff' },
+      },
+    } as StreamOverlayConfig),
   },
   {
     id: 'countdown',
@@ -223,8 +246,8 @@ export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
         imagemUrl: '',
         maxEquipes: 18,
         timerBlock: { x: 585, y: 110, w: 750, scale: 100, opacity: 100 },
-        equipesBlock: { x: 95, y: 380, w: 760, scale: 100, opacity: 100 },
-        mapasBlock: { x: 1120, y: 405, w: 620, scale: 100, opacity: 100 },
+        equipesBlock: { x: 95, y: 380, w: 760, h: 390, scale: 100, opacity: 100, columns: 3, columnGap: 20, rowGap: 20, cardWidth: 190, cardHeight: 150, logoBackground: 'transparent' },
+        mapasBlock: { x: 1120, y: 405, w: 620, h: 380, scale: 100, opacity: 100, rowHeight: 62, rowGap: 12 },
         imagemBlock: { x: 80, y: 60, w: 260, h: 180, scale: 100, opacity: 100 },
         textoBlock: { x: 500, y: 925, w: 920, scale: 100, opacity: 100 },
       },
@@ -332,6 +355,14 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
     animation: { ...(base?.animation || {}), ...(override?.animation || {}) },
+    tabelaGeral: {
+      ...(base?.tabelaGeral || {}),
+      ...(override?.tabelaGeral || {}),
+      infoImage: {
+        ...(base?.tabelaGeral?.infoImage || {}),
+        ...(override?.tabelaGeral?.infoImage || {}),
+      },
+    },
   }
 }
 
@@ -341,6 +372,12 @@ export function getVisibleTabelaColumns(config: StreamOverlayConfig) {
   const savedOrder = (config.columnsOrder || []).filter((key) => defaultOrder.includes(key))
   const orderedColumns = [...savedOrder, ...defaultOrder.filter((key) => !savedOrder.includes(key))]
   return orderedColumns.filter((key) => columns[key] !== false)
+}
+
+export function getTabelaBorder(config: StreamOverlayConfig) {
+  const width = Math.max(0, Number(config.theme?.borderWidth ?? 0))
+  const color = config.theme?.borderColor || config.theme?.border || 'transparent'
+  return width > 0 ? `${width}px solid ${color}` : '0 solid transparent'
 }
 
 export function buildTabelaGrid(columns: string[], config?: StreamOverlayConfig) {
@@ -465,6 +502,12 @@ export function TabelaGeralOverlay({
   const blocks = blockCount > 1 ? chunkRows(lista, rowsPerBlock, blockCount) : [lista]
   const blockDirection = merged.layout?.blockDirection || 'horizontal'
   const blockGap = Number(merged.layout?.blockGap || 36)
+  const columnGap = Number(merged.layout?.columnGap || 0)
+  const cellPaddingX = Number(merged.layout?.paddingX || 18)
+  const tableBorder = getTabelaBorder(merged)
+  const backgroundOpacity = Math.max(0, Math.min(100, Number(merged.tabelaGeral?.backgroundOpacity ?? 100))) / 100
+  const infoImage = merged.tabelaGeral?.infoImage
+  const infoImageOpacity = Math.max(0, Math.min(100, Number(infoImage?.opacity ?? 100))) / 100
   const blockWidth = blockDirection === 'horizontal'
     ? (Number(merged.layout?.w || 1560) - blockGap * (blocks.length - 1)) / Math.max(1, blocks.length)
     : Number(merged.layout?.w || 1560)
@@ -475,6 +518,11 @@ export function TabelaGeralOverlay({
         outlineOffset: 4,
       }
     : {}
+  const blockLabel = (label: string) => editable ? (
+    <span className="absolute left-0 top-0 z-10 bg-red-600 px-2 py-1 text-[18px] font-black leading-none tracking-[0.08em] text-white">
+      {label}
+    </span>
+  ) : null
   const selectBlock = (block: StreamOverlayBlock) => (event: PointerEvent) => {
     if (!editable) return
     event.preventDefault()
@@ -498,6 +546,35 @@ export function TabelaGeralOverlay({
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
+      {merged.tabelaGeral?.backgroundImage ? (
+        <img
+          src={merged.tabelaGeral.backgroundImage}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ opacity: backgroundOpacity }}
+        />
+      ) : null}
+
+      {infoImage?.enabled !== false && infoImage?.url ? (
+        <div
+          className="absolute overflow-hidden"
+          style={{
+            left: Number(infoImage.x ?? 0),
+            top: Number(infoImage.y ?? 0),
+            width: Number(infoImage.w ?? 1920),
+            height: Number(infoImage.h ?? 260),
+            opacity: infoImageOpacity,
+          }}
+        >
+          <img
+            src={infoImage.url}
+            alt=""
+            className="h-full w-full"
+            style={{ objectFit: infoImage.fit || 'contain' }}
+          />
+        </div>
+      ) : null}
+
       {merged.brand?.enabled ? (
         <>
           {merged.brand?.imageEnabled !== false ? (
@@ -515,12 +592,13 @@ export function TabelaGeralOverlay({
                 ...selectedStyle('image'),
               }}
             >
+              {blockLabel('LOGO')}
               {merged.brand?.logoDataUrl ? (
               <img
                 src={merged.brand.logoDataUrl}
                 alt={merged.brand.name || 'Logo do campeonato'}
                 className="absolute inset-0 h-full w-full"
-                style={{ objectFit: merged.brand.objectFit || 'contain' }}
+                style={{ objectFit: merged.brand.objectFit || 'contain', objectPosition: merged.brand.objectPosition || 'center center' }}
               />
               ) : editable ? (
                 <div className="flex h-full w-full items-center justify-center border border-white/20 bg-black/10 text-[24px] font-black tracking-[0.14em] text-white/70">
@@ -552,6 +630,7 @@ export function TabelaGeralOverlay({
                 ...selectedStyle('text'),
               }}
             >
+              {blockLabel('TEXTO')}
               <div style={{ fontSize: Number(merged.brand?.nameSize || 54), lineHeight: 1 }}>{merged.brand?.name || ''}</div>
               <div className="mt-2 tracking-[0.28em]" style={{ fontSize: Number(merged.brand?.titleSize || 24), color: merged.theme?.accent || '#f6c453' }}>
                 {merged.brand?.title || merged.title || 'TABELA GERAL'}
@@ -568,7 +647,7 @@ export function TabelaGeralOverlay({
           left: Number(merged.layout?.x || 180),
           top: Number(merged.layout?.y || 140),
           width: Number(merged.layout?.w || 1560),
-          color: merged.theme?.text || '#09111f',
+          color: merged.theme?.text || '#ffffff',
           fontSize: Number(merged.layout?.fontSize || 24),
           opacity,
           transform: `scale(${tableScale})`,
@@ -577,6 +656,7 @@ export function TabelaGeralOverlay({
           ...selectedStyle('table'),
         }}
       >
+        {blockLabel('TABELA')}
         <div
           style={{
             display: 'grid',
@@ -592,11 +672,10 @@ export function TabelaGeralOverlay({
             minHeight: Number(merged.layout?.headerHeight || 72),
             gridTemplateColumns,
             background: merged.theme?.primary || '#e60012',
-            color: merged.theme?.headerText || '#ffffff',
-            borderRadius: Number(merged.layout?.radius || 4),
-            border: `1px solid ${merged.theme?.border || 'rgba(255,255,255,0.18)'}`,
-            paddingLeft: Number(merged.layout?.paddingX || 18),
-            paddingRight: Number(merged.layout?.paddingX || 18),
+            color: merged.theme?.headerText || '#101827',
+            borderRadius: Number(merged.layout?.radius ?? 0),
+            border: tableBorder,
+            columnGap,
           }}
         >
           {visibleColumns.map((column) => (
@@ -611,6 +690,8 @@ export function TabelaGeralOverlay({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: column === 'nome' ? 'flex-start' : 'center',
+                paddingLeft: cellPaddingX,
+                paddingRight: cellPaddingX,
                 ...selectedColumnStyle(column),
               }}
             >
@@ -637,10 +718,9 @@ export function TabelaGeralOverlay({
                   backgroundSize: '100% 100%',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
-                  borderRadius: Number(merged.layout?.radius || 4),
-                  border: `1px solid ${merged.theme?.border || 'rgba(255,255,255,0.18)'}`,
-                  paddingLeft: Number(merged.layout?.paddingX || 18),
-                  paddingRight: Number(merged.layout?.paddingX || 18),
+                  borderRadius: Number(merged.layout?.radius ?? 0),
+                  border: tableBorder,
+                  columnGap,
                 }}
               >
                 {visibleColumns.map((column) => {
@@ -653,6 +733,8 @@ export function TabelaGeralOverlay({
                           style={{
                             background: merged.columnStyles?.[column]?.background || undefined,
                             height: '100%',
+                            paddingLeft: cellPaddingX,
+                            paddingRight: cellPaddingX,
                             ...selectedColumnStyle(column),
                           }}
                         />
@@ -668,6 +750,8 @@ export function TabelaGeralOverlay({
                           background: merged.columnStyles?.[column]?.background || undefined,
                           color: merged.columnStyles?.[column]?.text || rowText || undefined,
                           height: '100%',
+                          paddingLeft: cellPaddingX,
+                          paddingRight: cellPaddingX,
                           ...selectedColumnStyle(column),
                         }}
                       >
@@ -676,7 +760,7 @@ export function TabelaGeralOverlay({
                           style={{
                             width: Number(merged.layout?.logoSize || 44),
                             height: Number(merged.layout?.logoSize || 44),
-                            borderRadius: Math.max(2, Number(merged.layout?.radius || 4)),
+                            borderRadius: Math.max(0, Number(merged.layout?.radius ?? 0)),
                           }}
                         >
                           {row.logo ? (
@@ -701,6 +785,8 @@ export function TabelaGeralOverlay({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: column === 'nome' ? 'flex-start' : 'center',
+                        paddingLeft: cellPaddingX,
+                        paddingRight: cellPaddingX,
                         minWidth: 0,
                         ...selectedColumnStyle(column),
                       }}

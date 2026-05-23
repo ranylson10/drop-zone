@@ -26,10 +26,19 @@ export type StreamOverlayRenderProps = {
   context?: StreamOverlayContext
 }
 
+export type StreamOverlayEditorProps = {
+  config: StreamOverlayConfig
+  onChange: (path: string, value: unknown) => void
+  onChangeConfig?: (mutator: (config: StreamOverlayConfig) => StreamOverlayConfig) => void
+}
+
 export type StreamOverlayDefinition = {
   id: string
   slug: string
   nome: string
   categoria: string
+  descricao?: string
+  config_padrao?: StreamOverlayConfig
   Render: (props: StreamOverlayRenderProps) => ReactElement
+  Editor?: (props: StreamOverlayEditorProps) => ReactElement
 }

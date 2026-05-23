@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fixedStreamOverlayTemplates, mergeOverlayConfig, defaultTabelaGeralConfig } from '@/lib/streamOverlay'
+import { mergeOverlayConfig, defaultTabelaGeralConfig } from '@/lib/streamOverlay'
+import { streamOverlayTemplateCatalog } from '@/app/components/stream/overlays/catalog'
 import { getServerSupabaseClient, getUserFromBearerToken } from '@/lib/supabaseAdmin'
 
 type RouteContext = {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Projeto ou template ausente.' }, { status: 400 })
   }
 
-  const fixedTemplate = fixedStreamOverlayTemplates.find((template) => template.id === templateId || template.slug === templateId)
+  const fixedTemplate = streamOverlayTemplateCatalog.find((template) => template.id === templateId || template.slug === templateId)
   let template = fixedTemplate
     ? {
         id: fixedTemplate.id,

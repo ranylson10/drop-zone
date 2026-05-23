@@ -1418,7 +1418,7 @@ export default function EscalaCampeonatoPage() {
       if (ativarError) throw ativarError;
 
       const { data: existenteLine } = await supabase
-        .from("equipes_lines_jogadores")
+        .from("lines_jogadores")
         .select("id")
         .eq("line_id", line.id)
         .eq("perfil_jogo_id", perfil.id)
@@ -1426,7 +1426,7 @@ export default function EscalaCampeonatoPage() {
 
       if (!existenteLine?.id) {
         const { data: ordemData } = await supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .select("ordem")
           .eq("line_id", line.id)
           .order("ordem", { ascending: false })
@@ -1435,7 +1435,7 @@ export default function EscalaCampeonatoPage() {
         const ordem = Math.max(0, Number((ordemData || [])[0]?.ordem ?? -1) + 1);
 
         const { error: lineError } = await supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .insert({
             line_id: line.id,
             perfil_jogo_id: perfil.id,
@@ -1553,7 +1553,7 @@ export default function EscalaCampeonatoPage() {
       const lineIds = (linesPorEquipe[equipe.id] || []).map((line) => line.id);
       if (lineIds.length) {
         await supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .delete()
           .in("line_id", lineIds)
           .eq("perfil_jogo_id", perfil.id);
@@ -3603,24 +3603,6 @@ function EscalacaoCards({
   elenco: PerfilJogo[];
 }) {
   const vagaPrincipal = inscricoes[0];
-  const jogadoresUnicosMap = new Map<string, JogadorEquipe>();
-
-  inscricoes.forEach((inscricao) => {
-    (jogadoresPorEquipeLocal[inscricao.id] || []).forEach((jogador) => {
-      jogadoresUnicosMap.set(jogador.id, jogador);
-    });
-  });
-
-  const jogadores = Array.from(jogadoresUnicosMap.values()).filter(
-    (jogador) => jogador.status === "ativo",
-  );
-
-  const totalSlots = Math.max(limiteJogadores || 8, 1);
-  const slots = Array.from({ length: totalSlots }).map(
-    (_, index) => jogadores[index] || null,
-  );
-  const jogadoresExcedentes = jogadores.slice(totalSlots);
-
   const [menuAberto, setMenuAberto] = useState<string | null>(null);
   const [infoAberta, setInfoAberta] = useState<JogadorEquipe | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
@@ -3641,6 +3623,23 @@ function EscalacaoCards({
     setJogadoresPorEquipeLocal(jogadoresPorEquipe);
   }, [jogadoresPorEquipe]);
 
+  const jogadoresUnicosMap = new Map<string, JogadorEquipe>();
+
+  inscricoes.forEach((inscricao) => {
+    (jogadoresPorEquipeLocal[inscricao.id] || []).forEach((jogador) => {
+      jogadoresUnicosMap.set(jogador.id, jogador);
+    });
+  });
+
+  const jogadores = Array.from(jogadoresUnicosMap.values()).filter(
+    (jogador) => jogador.status === "ativo",
+  );
+
+  const totalSlots = Math.max(limiteJogadores || 8, 1);
+  const slots = Array.from({ length: totalSlots }).map(
+    (_, index) => jogadores[index] || null,
+  );
+  const jogadoresExcedentes = jogadores.slice(totalSlots);
 
   const idsEscaladosKey = jogadores
     .map((j) => j.perfil_jogo_id)
@@ -3788,7 +3787,7 @@ function EscalacaoCards({
 
       if (vagaPrincipal?.line_id) {
         let query = supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .delete()
           .eq("line_id", vagaPrincipal.line_id);
 
@@ -3870,7 +3869,7 @@ function EscalacaoCards({
       if (ativarError) throw ativarError;
 
       const { data: existenteLine } = await supabase
-        .from("equipes_lines_jogadores")
+        .from("lines_jogadores")
         .select("id")
         .eq("line_id", vagaPrincipal.line_id)
         .eq("perfil_jogo_id", perfil.id)
@@ -3878,7 +3877,7 @@ function EscalacaoCards({
 
       if (!existenteLine?.id) {
         const { data: ordemData } = await supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .select("ordem")
           .eq("line_id", vagaPrincipal.line_id)
           .order("ordem", { ascending: false })
@@ -3889,7 +3888,7 @@ function EscalacaoCards({
         );
 
         const { error: lineError } = await supabase
-          .from("equipes_lines_jogadores")
+          .from("lines_jogadores")
           .insert({
             line_id: vagaPrincipal.line_id,
             perfil_jogo_id: perfil.id,

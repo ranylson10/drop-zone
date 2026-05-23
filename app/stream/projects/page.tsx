@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { fixedStreamOverlayTemplates } from '@/lib/streamOverlay'
+import { streamOverlayTemplateCatalog } from '@/app/components/stream/overlays/catalog'
 import { Copy, Loader2, Plus, Radio, SlidersHorizontal } from 'lucide-react'
 
 type Campeonato = {
@@ -154,7 +154,7 @@ export default function StreamProjectsPage() {
                 {(() => {
                   const overlaysDoProjeto = overlays.filter((overlay) => overlay.project_id === projeto.id)
                   const overlaysCriadas = overlaysDoProjeto.length
-                  const totalTemplates = fixedStreamOverlayTemplates.length
+                  const totalTemplates = streamOverlayTemplateCatalog.length
 
                   return (
                     <>

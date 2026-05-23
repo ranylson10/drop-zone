@@ -9,22 +9,19 @@ import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedire
 
 function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8 text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(37,99,235,0.30),transparent_34%),radial-gradient(circle_at_15%_25%,rgba(249,115,22,0.16),transparent_28%),linear-gradient(135deg,#020617_0%,#07111f_46%,#020617_100%)]" />
-      <div className="absolute inset-0 opacity-[0.22] [background-image:linear-gradient(rgba(59,130,246,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.18)_1px,transparent_1px)] [background-size:28px_28px]" />
-      <div className="absolute -left-24 top-20 h-72 w-72 animate-pulse rounded-full bg-blue-600/20 blur-3xl" />
-      <div className="absolute -right-24 bottom-20 h-80 w-80 animate-pulse rounded-full bg-orange-500/10 blur-3xl" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400/70 to-transparent" />
-      <div className="relative w-full max-w-[430px]">{children}</div>
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#111827] px-4 py-8 text-white">
+      <div className="absolute inset-0 bg-[linear-gradient(145deg,#101827_0%,#1d2942_42%,#2563eb_100%)]" />
+      <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:32px_32px]" />
+      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />
+      <div className="relative w-full max-w-[380px]">{children}</div>
     </section>
   )
 }
 
 function AuthCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative overflow-hidden rounded-[30px] border border-blue-400/25 bg-slate-950/78 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.75)] backdrop-blur-xl sm:p-6">
-      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-300 to-transparent" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent,rgba(255,255,255,0.045),transparent)]" />
+    <div className="relative overflow-hidden rounded-[36px] border border-white/20 bg-[linear-gradient(160deg,rgba(124,58,237,0.94)_0%,rgba(37,99,235,0.96)_58%,rgba(17,24,39,0.94)_100%)] p-6 shadow-[0_28px_90px_rgba(2,6,23,0.58)] sm:p-7">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(125deg,rgba(255,255,255,0.16),transparent_36%,rgba(249,115,22,0.14))]" />
       {children}
     </div>
   )
@@ -33,10 +30,10 @@ function AuthCard({ children }: { children: React.ReactNode }) {
 function Field({ icon: Icon, label, ...props }: any) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-blue-200/80">{label}</span>
-      <div className="flex h-[52px] items-center rounded-2xl border border-white/10 bg-white/[0.055] text-slate-100 transition focus-within:border-blue-400 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_35px_rgba(37,99,235,0.20)]">
-        <div className="grid h-full w-12 place-items-center border-r border-white/10 text-blue-300"><Icon size={17} /></div>
-        <input {...props} className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm font-bold text-white outline-none placeholder:text-slate-500" />
+      <span className="sr-only">{label}</span>
+      <div className="flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
+        <div className="grid h-full w-11 place-items-center text-blue-600"><Icon size={17} /></div>
+        <input {...props} className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
       </div>
     </label>
   )
@@ -103,20 +100,20 @@ export default function Cadastro() {
   return (
     <AuthBackground>
       <AuthCard>
-        <Link href="/" className="mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 hover:text-blue-200"><ArrowLeft size={14} /> Início</Link>
+        <Link href="/" className="relative mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/65 hover:text-white"><ArrowLeft size={14} /> Inicio</Link>
 
-        <div className="mb-7 text-center">
-          <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-[30px] border border-blue-300/30 bg-[#071225]/80 p-3 shadow-[0_0_55px_rgba(37,99,235,0.28)]">
-            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_18px_rgba(56,189,248,0.28)]" />
+        <div className="relative mb-6 text-center">
+          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/25 bg-slate-950/28 p-3 shadow-[0_18px_50px_rgba(2,6,23,0.32)]">
+            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
           </div>
-          <div className="mt-4 text-[10px] font-black uppercase tracking-[0.34em] text-orange-300">Drop Zone</div>
-          <h1 className="mt-2 text-4xl font-black uppercase tracking-[-0.08em] text-white">Nova conta</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-400">Crie seu acesso competitivo com verificação por código.</p>
+          <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-200">Drop Zone</div>
+          <h1 className="mt-2 text-4xl font-black uppercase text-white">Nova conta</h1>
+          <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-5 text-white/72">Crie seu acesso competitivo com verificacao por codigo.</p>
         </div>
 
-        <div className="mb-5 rounded-2xl border border-blue-300/20 bg-blue-500/10 p-4">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-200"><ShieldCheck size={15} /> Código no e-mail</div>
-          <p className="mt-2 text-xs font-semibold leading-5 text-slate-400">Depois do cadastro você recebe um código de 6 dígitos para ativar a conta no site.</p>
+        <div className="relative mb-4 rounded-xl border border-white/20 bg-white/10 p-3">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><ShieldCheck size={15} /> Codigo no e-mail</div>
+          <p className="mt-1 text-xs font-semibold leading-5 text-white/70">Depois do cadastro voce recebe um codigo de 6 digitos para ativar a conta.</p>
         </div>
 
         <form onSubmit={handleCadastro} className="space-y-4">
@@ -125,15 +122,15 @@ export default function Cadastro() {
           <Field icon={Lock} label="Senha" value={password} type="password" placeholder="Mínimo 6 caracteres" onChange={(e: any) => setPassword(e.target.value)} autoComplete="new-password" required />
           <Field icon={Lock} label="Confirmar senha" value={confirmPassword} type="password" placeholder="Repita a senha" onChange={(e: any) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
 
-          {error ? <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-200">{error}</div> : null}
-          {message ? <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-xs font-bold text-emerald-200">{message}</div> : null}
+          {error ? <div className="rounded-xl border border-white/25 bg-red-500/20 px-4 py-3 text-xs font-bold text-white">{error}</div> : null}
+          {message ? <div className="rounded-xl border border-white/25 bg-emerald-500/20 px-4 py-3 text-xs font-bold text-white">{message}</div> : null}
 
-          <button disabled={loading} className="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_18px_45px_rgba(37,99,235,0.34)] transition hover:bg-blue-500 disabled:opacity-50">
+          <button disabled={loading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-blue-700 shadow-[0_16px_36px_rgba(2,6,23,0.22)] transition hover:bg-orange-100 disabled:opacity-50">
             {loading ? <Loader2 className="animate-spin" size={18} /> : <><UserPlus size={18} /><span>Criar conta</span><ChevronRight size={18} /></>}
           </button>
         </form>
 
-        <div className="mt-5 text-center text-xs font-semibold text-slate-400">Já tem conta? <Link href={withRedirectParam('/login', redirectTo)} className="font-black uppercase tracking-[0.12em] text-blue-200 hover:text-white">Entrar</Link></div>
+        <div className="relative mt-5 text-center text-xs font-semibold text-white/68">Ja tem conta? <Link href={withRedirectParam('/login', redirectTo)} className="font-black uppercase tracking-[0.12em] text-white hover:text-orange-100">Entrar</Link></div>
       </AuthCard>
     </AuthBackground>
   )

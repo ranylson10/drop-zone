@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { fixedStreamOverlayTemplates } from '@/lib/streamOverlay'
+import { streamOverlayTemplateCatalog } from '@/app/components/stream/overlays/catalog'
 import {
   Eye,
   EyeOff,
@@ -94,7 +94,7 @@ function produtorProjectsNextOrder(projects: ProducerProject[]) {
   return maior + 1
 }
 
-const DEFAULT_OVERLAYS = fixedStreamOverlayTemplates.map((template, index) => ({
+const DEFAULT_OVERLAYS = streamOverlayTemplateCatalog.map((template, index) => ({
   template_id: template.id,
   slug: template.slug,
   nome: template.nome,
