@@ -366,6 +366,104 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
   }
 }
 
+
+export function normalizeTabelaGeralConfig(config?: StreamOverlayConfig | null): StreamOverlayConfig {
+  const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config || {})
+  const mode = merged.tabelaGeral?.mode || 'duplo-inferior'
+  const layout = { ...(merged.layout || {}) }
+  const infoImage = { ...(merged.tabelaGeral?.infoImage || {}) }
+
+  if (mode === 'duplo-inferior') {
+    const precisaCorrigir =
+      Number(layout.blockCount || 0) !== 2 ||
+      Number(layout.rowsPerBlock || 0) !== 6 ||
+      Number(layout.y || 0) < 330 ||
+      Number(infoImage.h || 0) < 300 ||
+      Number(infoImage.w || 0) < 1600
+
+    if (precisaCorrigir) {
+      Object.assign(layout, {
+        x: 185,
+        y: 455,
+        w: 1550,
+        maxRows: 12,
+        blockCount: 2,
+        rowsPerBlock: 6,
+        blockDirection: 'horizontal',
+        blockGap: 72,
+        headerHeight: 45,
+        rowHeight: 63,
+        rowGap: 14,
+        fontSize: 24,
+        logoSize: 44,
+        paddingX: 14,
+        radius: 0,
+        scale: 100,
+        opacity: 100,
+      })
+      Object.assign(infoImage, {
+        enabled: true,
+        url: infoImage.url || '/stream-overlays/tabela-geral/lgd-tb-geral.png',
+        x: 0,
+        y: 8,
+        w: 1920,
+        h: 330,
+        opacity: 100,
+        fit: 'contain',
+      })
+    }
+  }
+
+  if (mode === 'lateral') {
+    const precisaCorrigir =
+      Number(layout.blockCount || 0) !== 1 ||
+      Number(layout.x || 0) < 850 ||
+      Number(infoImage.y || 0) < 250
+
+    if (precisaCorrigir) {
+      Object.assign(layout, {
+        x: 970,
+        y: 150,
+        w: 820,
+        maxRows: 12,
+        blockCount: 1,
+        rowsPerBlock: 12,
+        blockDirection: 'horizontal',
+        blockGap: 0,
+        headerHeight: 42,
+        rowHeight: 58,
+        rowGap: 8,
+        fontSize: 23,
+        logoSize: 42,
+        paddingX: 12,
+        radius: 0,
+        scale: 100,
+        opacity: 100,
+      })
+      Object.assign(infoImage, {
+        enabled: true,
+        url: infoImage.url || '/stream-overlays/tabela-geral/lgd-tb-geral.png',
+        x: 0,
+        y: 420,
+        w: 920,
+        h: 360,
+        opacity: 100,
+        fit: 'contain',
+      })
+    }
+  }
+
+  return {
+    ...merged,
+    layout,
+    tabelaGeral: {
+      ...(merged.tabelaGeral || {}),
+      mode,
+      infoImage,
+    },
+  }
+}
+
 export function getVisibleTabelaColumns(config: StreamOverlayConfig) {
   const columns = config.columns || defaultTabelaGeralConfig.columns || {}
   const defaultOrder = Object.keys(tabelaGeralColumnLabels)
@@ -486,7 +584,7 @@ export function TabelaGeralOverlay({
   onSelectColumn?: (column: string) => void
   onStartDrag?: (block: StreamOverlayBlock, event: PointerEvent) => void
 }) {
-  const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
+  const merged = normalizeTabelaGeralConfig(config)
   const maxRows = Number(merged.layout?.maxRows || 12)
   const visibleColumns = getVisibleTabelaColumns(merged)
   const gridTemplateColumns = buildTabelaGrid(visibleColumns, merged)

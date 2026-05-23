@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -15,6 +15,7 @@ import {
   defaultTabelaGeralColumnWidths,
   defaultTabelaGeralConfig,
   mergeOverlayConfig,
+  normalizeTabelaGeralConfig,
   sampleRankingRows,
   tabelaGeralColumnLabels,
 } from '@/lib/streamOverlay'
@@ -351,12 +352,17 @@ export default function StreamOverlayEditorPage() {
   const [selectedRow, setSelectedRow] = useState(1)
   const [draftConfig, setDraftConfig] = useState<any | null>(null)
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
+  const ultimoOverlayCarregadoRef = useRef<string | null>(null)
+  const salvarAutomaticoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
   const overlayAtual = useMemo(() => overlays.find((item) => item.id === overlayId) || overlays[0] || null, [overlays, overlayId])
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
-  const configSalva = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
+  const configSalva = useMemo(() => {
+    const merged = mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {}))
+    return overlayAtual?.template_id === 'tabela-geral' ? normalizeTabelaGeralConfig(merged) : merged
+  }, [templateAtual, overlayAtual])
   const config = draftConfig || configSalva
   const previewOverlayDefinition = getStreamOverlayDefinition(overlayAtual?.template_id)
   const PreviewOverlay = previewOverlayDefinition?.Render
@@ -386,8 +392,21 @@ export default function StreamOverlayEditorPage() {
   const previewCanvasScale = 0.5
 
   useEffect(() => {
-    setDraftConfig(configSalva)
-    setTemAlteracoesPendentes(false)
+    if (!overlayAtual?.id) {
+      ultimoOverlayCarregadoRef.current = null
+      setDraftConfig(null)
+      setTemAlteracoesPendentes(false)
+      return
+    }
+
+    // Nao reinicia o rascunho toda vez que o preview local muda.
+    // Antes, qualquer atualizacao em `overlays` recalculava `configSalva` e apagava
+    // a configuracao que o usuario tinha acabado de fazer ao dar F5 ou trocar controles.
+    if (ultimoOverlayCarregadoRef.current !== overlayAtual.id) {
+      ultimoOverlayCarregadoRef.current = overlayAtual.id
+      setDraftConfig(configSalva)
+      setTemAlteracoesPendentes(false)
+    }
   }, [overlayAtual?.id, configSalva])
 
   const carregar = useCallback(async () => {
@@ -590,6 +609,11 @@ export default function StreamOverlayEditorPage() {
   async function salvarConfig(novoConfig: any) {
     if (!overlayAtual) return
 
+    if (salvarAutomaticoTimerRef.current) {
+      clearTimeout(salvarAutomaticoTimerRef.current)
+      salvarAutomaticoTimerRef.current = null
+    }
+
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
@@ -615,6 +639,29 @@ export default function StreamOverlayEditorPage() {
       setSalvando(false)
     }
   }
+
+
+  useEffect(() => {
+    if (!overlayAtual?.id || !draftConfig || !temAlteracoesPendentes) return
+
+    if (salvarAutomaticoTimerRef.current) {
+      clearTimeout(salvarAutomaticoTimerRef.current)
+    }
+
+    const configParaSalvar = draftConfig
+    salvarAutomaticoTimerRef.current = setTimeout(() => {
+      void salvarConfig(configParaSalvar)
+    }, 350)
+
+    return () => {
+      if (salvarAutomaticoTimerRef.current) {
+        clearTimeout(salvarAutomaticoTimerRef.current)
+        salvarAutomaticoTimerRef.current = null
+      }
+    }
+  // salvarConfig usa sempre a overlay atual do render vigente; incluir a funcao aqui recriaria o timer sem necessidade.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayAtual?.id, draftConfig, temAlteracoesPendentes])
 
   async function validarDimensoesImagem(file: File) {
     const objectUrl = URL.createObjectURL(file)

@@ -1,6 +1,6 @@
 'use client'
 
-import { Columns3, PanelRight } from 'lucide-react'
+import { Columns3, ImageIcon, PanelRight } from 'lucide-react'
 import type { StreamOverlayEditorProps } from '../types'
 import type { StreamOverlayConfig } from '@/lib/streamOverlay'
 
@@ -138,6 +138,23 @@ export default function TabelaGeralOverlayEditor({ config, onChange, onChangeCon
         </button>
       </div>
 
+      <div className="border border-white/10 bg-[#111827] p-3">
+        <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+          <ImageIcon size={14} />
+          Imagem da informacao
+        </div>
+        <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-300">
+          <input
+            type="checkbox"
+            checked={config.tabelaGeral?.infoImage?.enabled !== false}
+            onChange={(event) => onChange('tabelaGeral.infoImage.enabled', event.target.checked)}
+          />
+          Mostrar imagem
+        </label>
+        <p className="mt-2 text-[11px] font-semibold text-zinc-500">
+          A imagem padrao ja esta pronta. Depois podemos liberar troca de fundo/arte, mas por enquanto fica rapido para o usuario.
+        </p>
+      </div>
 
       <div className="grid grid-cols-2 gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500">
         <span>Linhas: {config.layout?.maxRows || 12}</span>
