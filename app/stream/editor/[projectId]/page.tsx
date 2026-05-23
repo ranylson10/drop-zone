@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -348,13 +348,8 @@ export default function StreamOverlayEditorPage() {
   const [selectedBooyahBlock, setSelectedBooyahBlock] = useState<BooyahBlock>('texto')
   const [selectedColumn, setSelectedColumn] = useState('nome')
   const [selectedRow, setSelectedRow] = useState(1)
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
   const [draftConfig, setDraftConfig] = useState<any | null>(null)
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const ultimoOverlayHidratadoRef = useRef<string | null>(null)
-  const overlayAtualRef = useRef<Overlay | null>(null)
-  const draftConfigRef = useRef<any | null>(null)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -390,43 +385,9 @@ export default function StreamOverlayEditorPage() {
   const previewCanvasScale = 0.5
 
   useEffect(() => {
-    overlayAtualRef.current = overlayAtual
-  }, [overlayAtual])
-
-  useEffect(() => {
-    draftConfigRef.current = draftConfig
-  }, [draftConfig])
-
-  useEffect(() => {
-    const overlaySelecionadaMudou = ultimoOverlayHidratadoRef.current !== (overlayAtual?.id || null)
-    ultimoOverlayHidratadoRef.current = overlayAtual?.id || null
-
-    if (overlaySelecionadaMudou || !temAlteracoesPendentes) {
-      setDraftConfig(configSalva)
-      setTemAlteracoesPendentes(false)
-    }
-  }, [overlayAtual?.id, configSalva, temAlteracoesPendentes])
-
-  useEffect(() => {
-    if (!temAlteracoesPendentes || !draftConfig || !overlayAtual?.id) return
-
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-    }
-
-    const overlayIdAlvo = overlayAtual.id
-    const configAlvo = draftConfig
-
-    autoSaveTimerRef.current = setTimeout(() => {
-      void salvarConfig(configAlvo, overlayIdAlvo)
-    }, 450)
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current)
-      }
-    }
-  }, [draftConfig, overlayAtual?.id, temAlteracoesPendentes])
+    setDraftConfig(configSalva)
+    setTemAlteracoesPendentes(false)
+  }, [overlayAtual?.id, configSalva])
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -625,42 +586,39 @@ export default function StreamOverlayEditorPage() {
     return valor
   }
 
-  async function salvarConfig(novoConfig: any, overlayIdAlvo?: string) {
-    const overlayParaSalvar = overlayIdAlvo || overlayAtualRef.current?.id || overlayAtual?.id
-    if (!overlayParaSalvar) return
-
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
+  async function salvarConfig(novoConfig: any) {
+    if (!overlayAtual || !projectId) return
 
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
-      const { data, error } = await supabase
-        .from('stream_project_overlays')
-        .update({
-          config: configLeve,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', overlayParaSalvar)
-        .select('id, config, updated_at')
-        .maybeSingle()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
 
-      if (error) {
-        alert(`Erro ao salvar: ${error.message}`)
+      if (!token) {
+        alert('Erro ao salvar: usuario nao autenticado. Entre novamente no site e tente salvar de novo.')
         return
       }
 
-      if (!data?.id) {
-        alert('Erro ao salvar: o banco não confirmou a atualização da overlay.')
+      const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays/${encodeURIComponent(overlayAtual.id)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ config: configLeve }),
+      })
+
+      const result = await response.json().catch(() => ({}))
+
+      if (!response.ok || !result?.overlay?.id) {
+        alert(`Erro ao salvar: ${result?.error || 'o banco nao confirmou a atualizacao da overlay.'}`)
         return
       }
 
-      const configConfirmada = data.config || configLeve
-      setOverlays((prev) => prev.map((item) => item.id === overlayParaSalvar ? { ...item, config: configConfirmada } : item))
+      const configConfirmada = result.overlay.config || configLeve
+      setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, ...result.overlay, config: configConfirmada } : item))
       setDraftConfig(configConfirmada)
-      draftConfigRef.current = configConfirmada
       setTemAlteracoesPendentes(false)
     } catch (error) {
       alert(`Erro ao salvar: ${error instanceof Error ? error.message : 'falha ao enviar imagem'}`)
@@ -688,11 +646,7 @@ export default function StreamOverlayEditorPage() {
     try {
       setSalvando(true)
       const publicUrl = await uploadStreamAsset(file, pasta)
-      const novoConfig = aplicarCampoEmConfig(draftConfigRef.current || configSalva || {}, path, formatarUrl(publicUrl))
-      setDraftConfig(novoConfig)
-      draftConfigRef.current = novoConfig
-      setTemAlteracoesPendentes(true)
-      await salvarConfig(novoConfig, overlayAtualRef.current?.id || overlayAtual?.id)
+      await atualizarCampo(path, formatarUrl(publicUrl))
     } catch (error) {
       alert(`Erro ao enviar imagem: ${error instanceof Error ? error.message : 'tente novamente'}`)
     } finally {
@@ -700,9 +654,10 @@ export default function StreamOverlayEditorPage() {
     }
   }
 
-  function aplicarCampoEmConfig(baseConfig: any, path: string, valor: any) {
+  function atualizarCampo(path: string, valor: any) {
     const partes = path.split('.')
-    const novo = JSON.parse(JSON.stringify(baseConfig || {}))
+    const base = draftConfig || configSalva || {}
+    const novo = JSON.parse(JSON.stringify(base))
     let alvo = novo
 
     for (let i = 0; i < partes.length - 1; i += 1) {
@@ -711,44 +666,15 @@ export default function StreamOverlayEditorPage() {
     }
 
     alvo[partes[partes.length - 1]] = valor
-    return novo
-  }
-
-  function atualizarCampo(path: string, valor: any) {
-    const novo = aplicarCampoEmConfig(draftConfigRef.current || configSalva || {}, path, valor)
     setDraftConfig(novo)
-    draftConfigRef.current = novo
     setTemAlteracoesPendentes(true)
   }
 
   function atualizarConfigLocal(mutator: (configAtual: any) => any) {
-    const base = draftConfigRef.current || configSalva || {}
+    const base = draftConfig || configSalva || {}
     const novo = mutator(JSON.parse(JSON.stringify(base)))
     setDraftConfig(novo)
-    draftConfigRef.current = novo
     setTemAlteracoesPendentes(true)
-  }
-
-  function atualizarLimiteLinhasTabela(valor: number) {
-    atualizarConfigLocal((novo) => {
-      novo.layout = novo.layout || {}
-      const maxRows = Math.max(1, Math.round(Number(valor) || 1))
-      const blockCount = Math.max(1, Math.round(Number(novo.layout.blockCount) || 1))
-      novo.layout.maxRows = maxRows
-      novo.layout.rowsPerBlock = Math.ceil(maxRows / blockCount)
-      return novo
-    })
-  }
-
-  function atualizarQuantidadeBlocosTabela(valor: number) {
-    atualizarConfigLocal((novo) => {
-      novo.layout = novo.layout || {}
-      const blockCount = Math.max(1, Math.round(Number(valor) || 1))
-      const maxRows = Math.max(1, Math.round(Number(novo.layout.maxRows) || 12))
-      novo.layout.blockCount = blockCount
-      novo.layout.rowsPerBlock = Math.ceil(maxRows / blockCount)
-      return novo
-    })
   }
 
   function aplicarPresetTabela(tipo: 'duplo-12' | 'simples' | 'mvp-duplo') {
@@ -827,41 +753,35 @@ export default function StreamOverlayEditorPage() {
     await atualizarCampo('columnsOrder', novaOrdem)
   }
 
-  async function soltarColunaNoDestino(event: DragEvent, destino: string) {
-    event.preventDefault()
-    const origem = draggedColumn || event.dataTransfer.getData('text/plain')
-    setDraggedColumn(null)
-
-    if (!origem || origem === destino) return
-
-    const novaOrdem = [...orderedColumnKeys]
-    const origemIndex = novaOrdem.indexOf(origem)
-    const destinoIndex = novaOrdem.indexOf(destino)
-
-    if (origemIndex < 0 || destinoIndex < 0) return
-
-    const [coluna] = novaOrdem.splice(origemIndex, 1)
-    novaOrdem.splice(destinoIndex, 0, coluna)
-    setSelectedColumn(coluna)
-    await atualizarCampo('columnsOrder', novaOrdem)
-  }
-
   async function alternarVisivel() {
-    if (!overlayAtual) return
+    if (!overlayAtual || !projectId) return
 
     const novo = !overlayAtual.visivel
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
 
-    const { error } = await supabase
-      .from('stream_project_overlays')
-      .update({ visivel: novo, updated_at: new Date().toISOString() })
-      .eq('id', overlayAtual.id)
-
-    if (error) {
-      alert(`Erro: ${error.message}`)
+    if (!token) {
+      alert('Erro: usuario nao autenticado. Entre novamente no site.')
       return
     }
 
-    setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, visivel: novo } : item))
+    const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays/${encodeURIComponent(overlayAtual.id)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ visivel: novo }),
+    })
+
+    const result = await response.json().catch(() => ({}))
+
+    if (!response.ok || !result?.overlay?.id) {
+      alert(`Erro: ${result?.error || 'o banco nao confirmou a atualizacao da overlay.'}`)
+      return
+    }
+
+    setOverlays((prev) => prev.map((item) => item.id === overlayAtual.id ? { ...item, ...result.overlay } : item))
   }
 
   async function copiar(texto: string) {
@@ -1680,37 +1600,40 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         <>
                           <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={atualizarLimiteLinhasTabela} />
-                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={atualizarQuantidadeBlocosTabela} />
+                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
+                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
+                            <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock || 6} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
                             <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                             <EditorNumber label="Altura linha" value={config.layout.rowHeight || 62} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                             <EditorNumber label="Altura topo" value={config.layout.headerHeight || 72} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                             <EditorNumber label="Fonte" value={config.layout.fontSize || 24} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                             <EditorNumber label="Logo" value={config.layout.logoSize || 44} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
-                            <EditorNumber label="Espaco linhas" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
+                            <EditorNumber label="Espaco" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
+                            <EditorNumber label="Raio" value={config.layout.radius || 4} onChange={(v) => atualizarCampo('layout.radius', v)} />
                           </div>
 
                           <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
 
+                          <div className="border border-white/10 bg-[#111827] p-3">
+                            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Presets de blocos</div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button type="button" onClick={() => aplicarPresetTabela('duplo-12')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
+                                12 / 2 blocos
+                              </button>
+                              <button type="button" onClick={() => aplicarPresetTabela('mvp-duplo')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
+                                MVP duplo
+                              </button>
+                              <button type="button" onClick={() => aplicarPresetTabela('simples')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
+                                1 bloco
+                              </button>
+                            </div>
+                          </div>
 
                           <div>
                             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
                             <div className="grid grid-cols-2 gap-2">
                               {orderedColumnKeys.map((key) => (
-                                <label
-                                  key={key}
-                                  draggable
-                                  onDragStart={(event) => {
-                                    setDraggedColumn(key)
-                                    event.dataTransfer.setData('text/plain', key)
-                                    event.dataTransfer.effectAllowed = 'move'
-                                  }}
-                                  onDragOver={(event) => event.preventDefault()}
-                                  onDrop={(event) => soltarColunaNoDestino(event, key)}
-                                  onDragEnd={() => setDraggedColumn(null)}
-                                  className={`flex cursor-grab items-center gap-2 border px-3 py-2 text-xs font-bold uppercase active:cursor-grabbing ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#111827]'} ${draggedColumn === key ? 'opacity-50' : ''}`}
-                                  title="Arraste para trocar a ordem da coluna"
-                                >
+                                <label key={key} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#111827]'}`}>
                                   <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
                                   <button type="button" onClick={() => setSelectedColumn(key)} className="min-w-0 flex-1 text-left uppercase">
                                     {tabelaGeralColumnLabels[key] || key}

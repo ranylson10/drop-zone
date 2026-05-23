@@ -1,90 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { mergeOverlayConfig, defaultTabelaGeralConfig } from '@/lib/streamOverlay'
-import { streamOverlayTemplateCatalog } from '@/app/components/stream/overlays/catalog'
-import { getServerSupabaseClient, getUserFromBearerToken } from '@/lib/supabaseAdmin'
+import { getUserFromBearerToken, supabaseAdmin } from '@/lib/supabaseAdmin'
 
 type RouteContext = {
-  params: Promise<{ projectId: string }>
+  params: Promise<{ projectId: string; overlayId: string }>
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
-  const authHeader = request.headers.get('authorization')
-  const user = await getUserFromBearerToken(authHeader)
-  if (!user) {
-    return NextResponse.json({ error: 'Nao autenticado.' }, { status: 401 })
-  }
+function cleanId(value: unknown) {
+  return String(value || '').trim()
+}
 
-  const supabase = getServerSupabaseClient(authHeader)
-
-  const { projectId } = await context.params
-  const body = await request.json().catch(() => ({}))
-  const templateId = String(body?.templateId || '').trim()
-
-  if (!projectId || !templateId) {
-    return NextResponse.json({ error: 'Projeto ou template ausente.' }, { status: 400 })
-  }
-
-  const fixedTemplate = streamOverlayTemplateCatalog.find((template) => template.id === templateId || template.slug === templateId)
-  let template = fixedTemplate
-    ? {
-        id: fixedTemplate.id,
-        nome: fixedTemplate.nome,
-        categoria: fixedTemplate.categoria,
-        descricao: fixedTemplate.descricao,
-        config_padrao: fixedTemplate.config_padrao,
-      }
-    : null
-
-  if (!template) {
-    const { data: dbTemplate, error: templateError } = await supabase
-      .from('stream_overlay_templates')
-      .select('id, nome, categoria, descricao, config_padrao')
-      .eq('id', templateId)
-      .maybeSingle()
-
-    if (templateError) {
-      return NextResponse.json({ error: templateError.message }, { status: 500 })
-    }
-
-    if (!dbTemplate) {
-      return NextResponse.json({ error: 'Template nao encontrado.' }, { status: 404 })
-    }
-
-    template = dbTemplate
-  }
-
-  const { data: existing } = await supabase
-    .from('stream_project_overlays')
-    .select('id, project_id, template_id, nome, config, visivel, ordem')
-    .eq('project_id', projectId)
-    .eq('template_id', template.id)
+async function canEditProject(projectId: string, userId: string) {
+  const { data: project, error } = await supabaseAdmin
+    .from('stream_projects')
+    .select('id, created_by, campeonato_id')
+    .eq('id', projectId)
     .maybeSingle()
 
-  if (existing) {
-    return NextResponse.json({ ok: true, overlay: existing })
-  }
+  if (error) throw error
+  if (!project?.id) return false
+  if (project.created_by === userId) return true
 
-  const { count } = await supabase
-    .from('stream_project_overlays')
-    .select('id', { count: 'exact', head: true })
-    .eq('project_id', projectId)
-
-  const { data: overlay, error: overlayError } = await supabase
-    .from('stream_project_overlays')
-    .insert({
-      project_id: projectId,
-      template_id: template.id,
-      nome: template.nome,
-      config: mergeOverlayConfig(defaultTabelaGeralConfig, template.config_padrao || {}),
-      visivel: true,
-      ordem: Number(count || 0) + 1,
+  if (project.campeonato_id) {
+    const { data: isAdmin, error: adminError } = await supabaseAdmin.rpc('fn_usuario_admin_do_campeonato', {
+      p_campeonato_id: project.campeonato_id,
     })
-    .select('id, project_id, template_id, nome, config, visivel, ordem')
-    .single()
 
-  if (overlayError) {
-    return NextResponse.json({ error: overlayError.message }, { status: 500 })
+    if (!adminError && isAdmin === true) return true
   }
 
-  return NextResponse.json({ ok: true, overlay })
+  const { data: siteAdmin } = await supabaseAdmin
+    .from('site_administradores')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('ativo', true)
+    .limit(1)
+
+  return Boolean(siteAdmin?.length)
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    const user = await getUserFromBearerToken(authHeader)
+
+    if (!user?.id) {
+      return NextResponse.json({ ok: false, error: 'Nao autenticado.' }, { status: 401 })
+    }
+
+    const { projectId, overlayId } = await context.params
+    const safeProjectId = cleanId(projectId)
+    const safeOverlayId = cleanId(overlayId)
+
+    if (!safeProjectId || !safeOverlayId) {
+      return NextResponse.json({ ok: false, error: 'Projeto ou overlay ausente.' }, { status: 400 })
+    }
+
+    const allowed = await canEditProject(safeProjectId, user.id)
+    if (!allowed) {
+      return NextResponse.json({ ok: false, error: 'Voce nao tem permissao para editar essa overlay.' }, { status: 403 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'config')) updatePayload.config = body.config || {}
+    if (Object.prototype.hasOwnProperty.call(body, 'visivel')) updatePayload.visivel = Boolean(body.visivel)
+    if (Object.prototype.hasOwnProperty.call(body, 'ordem')) updatePayload.ordem = Number(body.ordem || 1)
+
+    const { data: overlay, error } = await supabaseAdmin
+      .from('stream_project_overlays')
+      .update(updatePayload)
+      .eq('id', safeOverlayId)
+      .eq('project_id', safeProjectId)
+      .select('id, project_id, template_id, nome, config, visivel, ordem')
+      .maybeSingle()
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+    }
+
+    if (!overlay?.id) {
+      return NextResponse.json({ ok: false, error: 'O banco nao confirmou a atualizacao da overlay.' }, { status: 409 })
+    }
+
+    return NextResponse.json({ ok: true, overlay })
+  } catch (error: any) {
+    return NextResponse.json({ ok: false, error: error?.message || 'Erro ao salvar overlay.' }, { status: 500 })
+  }
 }
