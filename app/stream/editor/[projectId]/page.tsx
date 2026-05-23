@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type PointerEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -15,7 +15,6 @@ import {
   defaultTabelaGeralColumnWidths,
   defaultTabelaGeralConfig,
   mergeOverlayConfig,
-  normalizeTabelaGeralConfig,
   sampleRankingRows,
   tabelaGeralColumnLabels,
 } from '@/lib/streamOverlay'
@@ -61,7 +60,6 @@ const blockLabels: Record<StreamOverlayBlock, string> = {
   image: 'Imagem',
   text: 'Texto',
   table: 'Overlay',
-  infoImage: 'Imagem titulo',
 }
 
 const countdownBlockLabels: Record<CountdownBlock, string> = {
@@ -349,20 +347,16 @@ export default function StreamOverlayEditorPage() {
   const [selectedCountdownBlock, setSelectedCountdownBlock] = useState<CountdownBlock>('timer')
   const [selectedBooyahBlock, setSelectedBooyahBlock] = useState<BooyahBlock>('texto')
   const [selectedColumn, setSelectedColumn] = useState('nome')
+  const [draggingColumn, setDraggingColumn] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState(1)
   const [draftConfig, setDraftConfig] = useState<any | null>(null)
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
-  const ultimoOverlayCarregadoRef = useRef<string | null>(null)
-  const salvarAutomaticoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
   const overlayAtual = useMemo(() => overlays.find((item) => item.id === overlayId) || overlays[0] || null, [overlays, overlayId])
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
-  const configSalva = useMemo(() => {
-    const merged = mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {}))
-    return overlayAtual?.template_id === 'tabela-geral' ? normalizeTabelaGeralConfig(merged) : merged
-  }, [templateAtual, overlayAtual])
+  const configSalva = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
   const config = draftConfig || configSalva
   const previewOverlayDefinition = getStreamOverlayDefinition(overlayAtual?.template_id)
   const PreviewOverlay = previewOverlayDefinition?.Render
@@ -387,27 +381,23 @@ export default function StreamOverlayEditorPage() {
     const savedOrder = ((config.columnsOrder || []) as string[]).filter((key) => tabelaGeralColumnKeys.includes(key))
     return [...savedOrder, ...tabelaGeralColumnKeys.filter((key) => !savedOrder.includes(key))]
   }, [config.columnsOrder])
-  const selectedColumnIndex = Math.max(0, orderedColumnKeys.indexOf(selectedColumn))
   const selectedColumnWidth = Number(config.columnWidths?.[selectedColumn] ?? defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)
   const previewCanvasScale = 0.5
 
   useEffect(() => {
-    if (!overlayAtual?.id) {
-      ultimoOverlayCarregadoRef.current = null
-      setDraftConfig(null)
-      setTemAlteracoesPendentes(false)
-      return
-    }
+    setDraftConfig(configSalva)
+    setTemAlteracoesPendentes(false)
+  }, [overlayAtual?.id])
 
-    // Nao reinicia o rascunho toda vez que o preview local muda.
-    // Antes, qualquer atualizacao em `overlays` recalculava `configSalva` e apagava
-    // a configuracao que o usuario tinha acabado de fazer ao dar F5 ou trocar controles.
-    if (ultimoOverlayCarregadoRef.current !== overlayAtual.id) {
-      ultimoOverlayCarregadoRef.current = overlayAtual.id
-      setDraftConfig(configSalva)
-      setTemAlteracoesPendentes(false)
-    }
-  }, [overlayAtual?.id, configSalva])
+  useEffect(() => {
+    if (!overlayAtual || !temAlteracoesPendentes || salvando) return
+
+    const timer = window.setTimeout(() => {
+      void salvarConfig(config)
+    }, 850)
+
+    return () => window.clearTimeout(timer)
+  }, [config, overlayAtual?.id, salvando, temAlteracoesPendentes])
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -609,11 +599,6 @@ export default function StreamOverlayEditorPage() {
   async function salvarConfig(novoConfig: any) {
     if (!overlayAtual) return
 
-    if (salvarAutomaticoTimerRef.current) {
-      clearTimeout(salvarAutomaticoTimerRef.current)
-      salvarAutomaticoTimerRef.current = null
-    }
-
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
@@ -639,29 +624,6 @@ export default function StreamOverlayEditorPage() {
       setSalvando(false)
     }
   }
-
-
-  useEffect(() => {
-    if (!overlayAtual?.id || !draftConfig || !temAlteracoesPendentes) return
-
-    if (salvarAutomaticoTimerRef.current) {
-      clearTimeout(salvarAutomaticoTimerRef.current)
-    }
-
-    const configParaSalvar = draftConfig
-    salvarAutomaticoTimerRef.current = setTimeout(() => {
-      void salvarConfig(configParaSalvar)
-    }, 350)
-
-    return () => {
-      if (salvarAutomaticoTimerRef.current) {
-        clearTimeout(salvarAutomaticoTimerRef.current)
-        salvarAutomaticoTimerRef.current = null
-      }
-    }
-  // salvarConfig usa sempre a overlay atual do render vigente; incluir a funcao aqui recriaria o timer sem necessidade.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [overlayAtual?.id, draftConfig, temAlteracoesPendentes])
 
   async function validarDimensoesImagem(file: File) {
     const objectUrl = URL.createObjectURL(file)
@@ -713,50 +675,6 @@ export default function StreamOverlayEditorPage() {
     setTemAlteracoesPendentes(true)
   }
 
-  function aplicarPresetTabela(tipo: 'duplo-12' | 'simples' | 'mvp-duplo') {
-    atualizarConfigLocal((novo) => {
-      novo.layout = novo.layout || {}
-
-      if (tipo === 'duplo-12') {
-        novo.layout.maxRows = 12
-        novo.layout.blockCount = 2
-        novo.layout.rowsPerBlock = 6
-        novo.layout.blockDirection = 'horizontal'
-        novo.layout.blockGap = 36
-        novo.layout.w = novo.layout.w || 1560
-      }
-
-      if (tipo === 'simples') {
-        novo.layout.blockCount = 1
-        novo.layout.rowsPerBlock = novo.layout.maxRows || 12
-        novo.layout.blockDirection = 'horizontal'
-      }
-
-      if (tipo === 'mvp-duplo') {
-        novo.layout.maxRows = 10
-        novo.layout.blockCount = 2
-        novo.layout.rowsPerBlock = 5
-        novo.layout.blockDirection = 'horizontal'
-        novo.layout.blockGap = 36
-        novo.columns = {
-          ...(novo.columns || {}),
-          rank: true,
-          logo: true,
-          nome: true,
-          tag: true,
-          grupo: false,
-          quedas: true,
-          booyahs: false,
-          kills: true,
-          pontos: false,
-        }
-        novo.columnsOrder = ['rank', 'logo', 'nome', 'tag', 'quedas', 'kills', 'grupo', 'booyahs', 'pontos']
-      }
-
-      return novo
-    })
-  }
-
   function usarLogoDoCampeonato() {
     if (!campeonatoInfo?.logo_url) {
       alert('Este campeonato ainda nao tem logo cadastrada.')
@@ -776,17 +694,31 @@ export default function StreamOverlayEditorPage() {
   }
 
 
-  async function moverColuna(direcao: -1 | 1) {
-    if (!overlayAtual) return
-
-    const atual = orderedColumnKeys.indexOf(selectedColumn)
-    const destino = atual + direcao
-    if (atual < 0 || destino < 0 || destino >= orderedColumnKeys.length) return
+  function reordenarColuna(origem: string, destino: string) {
+    if (!origem || !destino || origem === destino) return
 
     const novaOrdem = [...orderedColumnKeys]
-    const [coluna] = novaOrdem.splice(atual, 1)
-    novaOrdem.splice(destino, 0, coluna)
-    await atualizarCampo('columnsOrder', novaOrdem)
+    const origemIndex = novaOrdem.indexOf(origem)
+    const destinoIndex = novaOrdem.indexOf(destino)
+    if (origemIndex < 0 || destinoIndex < 0) return
+
+    const [coluna] = novaOrdem.splice(origemIndex, 1)
+    novaOrdem.splice(destinoIndex, 0, coluna)
+    atualizarCampo('columnsOrder', novaOrdem)
+    setSelectedColumn(origem)
+  }
+
+  function iniciarArrastoColuna(key: string, event: DragEvent<HTMLButtonElement>) {
+    setDraggingColumn(key)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', key)
+  }
+
+  function soltarColuna(destino: string, event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    const origem = event.dataTransfer.getData('text/plain') || draggingColumn
+    if (origem) reordenarColuna(origem, destino)
+    setDraggingColumn(null)
   }
 
   async function alternarVisivel() {
@@ -840,12 +772,7 @@ export default function StreamOverlayEditorPage() {
     novo.brand = novo.brand || {}
     novo.layout = novo.layout || {}
 
-    if (block === 'infoImage') {
-      novo.tabelaGeral = novo.tabelaGeral || {}
-      novo.tabelaGeral.infoImage = novo.tabelaGeral.infoImage || {}
-      novo.tabelaGeral.infoImage.x = Math.round(x)
-      novo.tabelaGeral.infoImage.y = Math.round(y)
-    } else if (block === 'image') {
+    if (block === 'image') {
       novo.brand.x = Math.round(x)
       novo.brand.y = Math.round(y)
     } else if (block === 'text') {
@@ -860,7 +787,6 @@ export default function StreamOverlayEditorPage() {
   }
 
   function lerPosicaoBloco(block: StreamOverlayBlock) {
-    if (block === 'infoImage') return { x: Number(config.tabelaGeral?.infoImage?.x || 0), y: Number(config.tabelaGeral?.infoImage?.y || 0) }
     if (block === 'image') return { x: Number(config.brand?.x || 0), y: Number(config.brand?.y || 0) }
     if (block === 'text') return { x: Number(config.brand?.textX || 0), y: Number(config.brand?.textY || 0) }
     return { x: Number(config.layout?.x || 0), y: Number(config.layout?.y || 0) }
@@ -1256,16 +1182,14 @@ export default function StreamOverlayEditorPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className={`grid gap-2 ${isTabelaOverlay ? 'grid-cols-2' : 'grid-cols-3'}`}>
-                    {(isTabelaOverlay ? (['infoImage', 'table'] as StreamOverlayBlock[]) : (['image', 'text', 'table'] as StreamOverlayBlock[])).map((block) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['image', 'text', 'table'] as StreamOverlayBlock[]).map((block) => (
                       <button
                         key={block}
                         type="button"
                         onClick={() => {
                           setSelectedBlock(block)
-                          if (block === 'infoImage') {
-                            atualizarCampo('tabelaGeral.infoImage.enabled', true)
-                          } else if (block === 'image') {
+                          if (block === 'image') {
                             atualizarCampo('brand.imageEnabled', true)
                           } else if (block === 'text') {
                             atualizarCampo('brand.textEnabled', true)
@@ -1273,8 +1197,8 @@ export default function StreamOverlayEditorPage() {
                         }}
                         className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
                       >
-                        {block === 'image' || block === 'infoImage' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
-                        {block === 'infoImage' ? 'Logo / arte' : block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela'}
+                        {block === 'image' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
+                        {block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela'}
                       </button>
                     ))}
                   </div>
@@ -1322,14 +1246,6 @@ export default function StreamOverlayEditorPage() {
                           <EditorNumber label="Altura" value={selectedBooyahConfig.h ?? selectedBooyahFallback.h} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.h`, v)} />
                           <EditorNumber label="Escala" value={selectedBooyahConfig.scale ?? selectedBooyahFallback.scale} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.scale`, v)} />
                           <EditorNumber label="Opacidade" value={selectedBooyahConfig.opacity ?? selectedBooyahFallback.opacity} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.opacity`, v)} />
-                        </>
-                      ) : selectedBlock === 'infoImage' ? (
-                        <>
-                          <EditorNumber label="X" value={config.tabelaGeral?.infoImage?.x || 0} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.x', v)} />
-                          <EditorNumber label="Y" value={config.tabelaGeral?.infoImage?.y || 0} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.y', v)} />
-                          <EditorNumber label="Largura" value={config.tabelaGeral?.infoImage?.w || 1920} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.w', v)} />
-                          <EditorNumber label="Altura" value={config.tabelaGeral?.infoImage?.h || 260} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.h', v)} />
-                          <EditorNumber label="Opacidade" value={config.tabelaGeral?.infoImage?.opacity || 100} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.opacity', v)} />
                         </>
                       ) : selectedBlock === 'image' ? (
                         <>
@@ -1418,26 +1334,6 @@ export default function StreamOverlayEditorPage() {
                               <EditorSelect label="Alinhamento" value={selectedBooyahConfig.align || 'left'} onChange={(v) => atualizarCampo('booyah.equipeBlock.align', v)} options={horizontalAlignOptions} />
                             </>
                           ) : null}
-                        </>
-                      ) : selectedBlock === 'infoImage' ? (
-                        <>
-                          <label className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
-                            <input type="checkbox" checked={config.tabelaGeral?.infoImage?.enabled !== false} onChange={(e) => atualizarCampo('tabelaGeral.infoImage.enabled', e.target.checked)} />
-                            Mostrar logo / arte da tabela
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem logo/titulo</span>
-                            <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('tabelaGeral.infoImage.url', e.target.files?.[0] || null, 'info-image')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
-                          </label>
-                          <EditorSelect label="Ajuste imagem" value={config.tabelaGeral?.infoImage?.fit || 'contain'} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.fit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
-                          <div className="grid grid-cols-2 gap-2">
-                            <button type="button" onClick={() => atualizarCampo('tabelaGeral.infoImage.enabled', false)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                              Ocultar imagem
-                            </button>
-                            <button type="button" onClick={() => atualizarCampo('tabelaGeral.infoImage.url', '')} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                              Limpar arquivo
-                            </button>
-                          </div>
                         </>
                       ) : selectedBlock === 'image' ? (
                         <>
@@ -1661,45 +1557,39 @@ export default function StreamOverlayEditorPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
                             <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
-                            <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock || 6} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
                             <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                             <EditorNumber label="Altura linha" value={config.layout.rowHeight || 62} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                             <EditorNumber label="Altura topo" value={config.layout.headerHeight || 72} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                             <EditorNumber label="Fonte" value={config.layout.fontSize || 24} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                             <EditorNumber label="Logo" value={config.layout.logoSize || 44} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
-                            <EditorNumber label="Espaco" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
-                            <EditorNumber label="Raio" value={config.layout.radius || 4} onChange={(v) => atualizarCampo('layout.radius', v)} />
+                            <EditorNumber label="Espaco linhas" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
                           </div>
 
                           <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
-
-                          <div className="border border-white/10 bg-[#111827] p-3">
-                            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Presets de blocos</div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <button type="button" onClick={() => aplicarPresetTabela('duplo-12')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                12 / 2 blocos
-                              </button>
-                              <button type="button" onClick={() => aplicarPresetTabela('mvp-duplo')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                MVP duplo
-                              </button>
-                              <button type="button" onClick={() => aplicarPresetTabela('simples')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                1 bloco
-                              </button>
-                            </div>
-                          </div>
 
                           <div>
                             <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Colunas</div>
                             <div className="grid grid-cols-2 gap-2">
                               {orderedColumnKeys.map((key) => (
-                                <label key={key} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : 'border-white/10 bg-[#111827]'}`}>
+                                <div key={key} className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase ${selectedColumn === key ? 'border-yellow-400 bg-yellow-400/10 text-yellow-100' : draggingColumn === key ? 'border-red-500 bg-red-500/10 text-red-100' : 'border-white/10 bg-[#111827]'}`}>
                                   <input type="checkbox" checked={Boolean(config.columns[key])} onChange={(e) => atualizarCampo(`columns.${key}`, e.target.checked)} />
-                                  <button type="button" onClick={() => setSelectedColumn(key)} className="min-w-0 flex-1 text-left uppercase">
+                                  <button
+                                    type="button"
+                                    draggable
+                                    onClick={() => setSelectedColumn(key)}
+                                    onDragStart={(event) => iniciarArrastoColuna(key, event)}
+                                    onDragOver={(event) => event.preventDefault()}
+                                    onDrop={(event) => soltarColuna(key, event)}
+                                    onDragEnd={() => setDraggingColumn(null)}
+                                    className="min-w-0 flex-1 cursor-grab text-left uppercase active:cursor-grabbing"
+                                    title="Clique e arraste para mudar a posicao da coluna"
+                                  >
                                     {tabelaGeralColumnLabels[key] || key}
                                   </button>
-                                </label>
+                                </div>
                               ))}
                             </div>
+                            <p className="mt-2 text-[10px] font-semibold leading-4 text-zinc-500">Clique e arraste o nome da coluna para trocar a ordem na overlay.</p>
                           </div>
 
                           <div className="border-t border-white/10 pt-3">
@@ -1710,24 +1600,6 @@ export default function StreamOverlayEditorPage() {
                               onChange={setSelectedColumn}
                               options={orderedColumnKeys.map((key) => [key, tabelaGeralColumnLabels[key] || key])}
                             />
-                            <div className="mt-3 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => moverColuna(-1)}
-                                disabled={selectedColumnIndex <= 0}
-                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                Mover esquerda
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moverColuna(1)}
-                                disabled={selectedColumnIndex >= orderedColumnKeys.length - 1}
-                                className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em] disabled:cursor-not-allowed disabled:opacity-40"
-                              >
-                                Mover direita
-                              </button>
-                            </div>
                             <div className="mt-3 grid grid-cols-[1fr_88px] items-end gap-3">
                               <label className="block">
                                 <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Largura</span>
@@ -1831,14 +1703,12 @@ export default function StreamOverlayEditorPage() {
                   <EditorNumber label="Escala tabela" value={config.layout.scale} onChange={(v) => atualizarCampo('layout.scale', v)} />
                   <EditorNumber label="Linhas" value={config.layout.maxRows} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
                   <EditorNumber label="Blocos" value={config.layout.blockCount} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
-                  <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
                   <EditorNumber label="Espaco blocos" value={config.layout.blockGap} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                   <EditorNumber label="Altura linha" value={config.layout.rowHeight} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                   <EditorNumber label="Altura topo" value={config.layout.headerHeight} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                   <EditorNumber label="Fonte" value={config.layout.fontSize} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                   <EditorNumber label="Logo" value={config.layout.logoSize} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
                   <EditorNumber label="Espaco" value={config.layout.rowGap} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
-                  <EditorNumber label="Raio" value={config.layout.radius} onChange={(v) => atualizarCampo('layout.radius', v)} />
                   <EditorNumber label="Opacidade" value={config.layout.opacity} onChange={(v) => atualizarCampo('layout.opacity', v)} />
                 </div>
 
