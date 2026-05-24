@@ -24,44 +24,55 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const updatePayload: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    }
 
-    if (Object.prototype.hasOwnProperty.call(body, 'config')) {
-      updatePayload.config = body.config && typeof body.config === 'object' ? body.config : {}
-    }
+    const hasConfig = Object.prototype.hasOwnProperty.call(body, 'config')
+    const hasVisivel = Object.prototype.hasOwnProperty.call(body, 'visivel')
+    const hasOrdem = Object.prototype.hasOwnProperty.call(body, 'ordem')
 
-    if (Object.prototype.hasOwnProperty.call(body, 'visivel')) {
-      updatePayload.visivel = Boolean(body.visivel)
-    }
-
-    if (Object.prototype.hasOwnProperty.call(body, 'ordem')) {
-      updatePayload.ordem = Number(body.ordem || 1)
-    }
-
-    if (Object.keys(updatePayload).length <= 1) {
+    if (!hasConfig && !hasVisivel && !hasOrdem) {
       return badRequest('Nada para atualizar.')
     }
 
-    const { data: overlay, error } = await supabaseAdmin
-      .from('stream_project_overlays')
-      .update(updatePayload)
-      .eq('id', safeOverlayId)
-      .eq('project_id', safeProjectId)
-      .select('id, project_id, template_id, nome, config, visivel, ordem')
-      .maybeSingle()
+    const config = hasConfig && body.config && typeof body.config === 'object' ? body.config : null
+    const visivel = hasVisivel ? Boolean(body.visivel) : null
+    const ordem = hasOrdem ? Number(body.ordem || 1) : null
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+    const { data: rpcOverlay, error: rpcError } = await supabaseAdmin.rpc(
+      'stream_salvar_project_overlay',
+      {
+        p_project_id: safeProjectId,
+        p_overlay_id: safeOverlayId,
+        p_config: config,
+        p_visivel: visivel,
+        p_ordem: ordem,
+      }
+    )
+
+    if (rpcError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: rpcError.message,
+          hint: 'Confira se a função SQL stream_salvar_project_overlay foi criada no Supabase.',
+        },
+        { status: 500 }
+      )
     }
 
+    const overlay = Array.isArray(rpcOverlay) ? rpcOverlay[0] : rpcOverlay
+
     if (!overlay?.id) {
-      return NextResponse.json({ ok: false, error: 'O banco nao confirmou a atualizacao da overlay.' }, { status: 409 })
+      return NextResponse.json(
+        { ok: false, error: 'O banco nao confirmou a atualizacao da overlay.' },
+        { status: 409 }
+      )
     }
 
     return NextResponse.json({ ok: true, overlay })
   } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || 'Erro ao salvar overlay.' }, { status: 500 })
+    return NextResponse.json(
+      { ok: false, error: error?.message || 'Erro ao salvar overlay.' },
+      { status: 500 }
+    )
   }
 }
