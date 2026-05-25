@@ -36,6 +36,13 @@ type Mensagem = {
   created_at: string
 }
 
+type Remetente = {
+  id: string
+  username: string | null
+  nome_exibicao: string | null
+  foto_url: string | null
+}
+
 function horaCurta(data?: string | null) {
   if (!data) return ''
   return new Date(data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -68,6 +75,7 @@ function ChatShellInner() {
   const [conversas, setConversas] = useState<Conversa[]>([])
   const [conversaAtiva, setConversaAtiva] = useState<Conversa | null>(null)
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
+  const [remetentes, setRemetentes] = useState<Record<string, Remetente>>({})
   const [texto, setTexto] = useState('')
   const [busca, setBusca] = useState('')
   const [erro, setErro] = useState<string | null>(null)
@@ -84,6 +92,29 @@ function ChatShellInner() {
     if (!termo) return conversas
     return conversas.filter((c) => c.titulo.toLowerCase().includes(termo))
   }, [busca, conversas])
+
+  const carregarRemetentes = useCallback(async (ids: string[]) => {
+    const unicos = Array.from(new Set(ids.filter(Boolean)))
+    if (!unicos.length) return
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, nome_exibicao, foto_url')
+      .in('id', unicos)
+
+    if (error) {
+      console.error('Erro ao carregar remetentes do chat:', error)
+      return
+    }
+
+    setRemetentes((atual) => {
+      const proximo = { ...atual }
+      ;((data || []) as Remetente[]).forEach((perfil) => {
+        proximo[perfil.id] = perfil
+      })
+      return proximo
+    })
+  }, [])
 
   const carregarConversas = useCallback(async () => {
     if (!user?.id) return
@@ -129,7 +160,7 @@ function ChatShellInner() {
     setConversas(lista)
     setConversaAtiva((atual) => atual || lista[0] || null)
     setLoading(false)
-  }, [user?.id])
+  }, [user])
 
   const carregarMensagens = useCallback(async (conversaId: string) => {
     const { data, error } = await supabase
@@ -144,8 +175,10 @@ function ChatShellInner() {
       return
     }
 
-    setMensagens(((data || []) as Mensagem[]).reverse())
-  }, [])
+    const lista = ((data || []) as Mensagem[]).reverse()
+    setMensagens(lista)
+    await carregarRemetentes(lista.map((mensagem) => mensagem.remetente_user_id))
+  }, [carregarRemetentes])
 
   useEffect(() => {
     carregarConversas()
@@ -192,8 +225,24 @@ function ChatShellInner() {
       return
     }
 
-    const conversa = Array.isArray(data) ? data[0] : data
-    if (conversa?.id) {
+    const conversaId = String(Array.isArray(data) ? data[0] || '' : data || '')
+    if (conversaId) {
+      await supabase.rpc('chat_sincronizar_participantes_contexto', {
+        p_conversa_id: conversaId,
+      })
+
+      const { data: conversa, error: conversaBuscaError } = await supabase
+        .from('chat_conversas')
+        .select('id, tipo, titulo, avatar_url, ultimo_texto, ultima_mensagem_em, created_at, referencia_tipo, referencia_id')
+        .eq('id', conversaId)
+        .single()
+
+      if (conversaBuscaError) {
+        setErro(conversaBuscaError.message)
+        setLoading(false)
+        return
+      }
+
       setConversas((prev) => {
         const semDuplicar = prev.filter((c) => c.id !== conversa.id)
         return [conversa as Conversa, ...semDuplicar]
@@ -229,6 +278,7 @@ function ChatShellInner() {
         },
         (payload) => {
           const nova = payload.new as Mensagem
+          carregarRemetentes([nova.remetente_user_id])
           setMensagens((prev) => {
             if (prev.some((m) => m.id === nova.id)) return prev
             return [...prev, nova]
@@ -247,7 +297,7 @@ function ChatShellInner() {
     return () => {
       supabase.removeChannel(canal)
     }
-  }, [carregarMensagens, conversaAtiva?.id])
+  }, [carregarMensagens, carregarRemetentes, conversaAtiva?.id])
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -256,6 +306,35 @@ function ChatShellInner() {
   async function criarChatGeral() {
     if (!user?.id) return
     setErro(null)
+
+    const { data: existente, error: buscaError } = await supabase
+      .from('chat_conversas')
+      .select('id, tipo, titulo, avatar_url, ultimo_texto, ultima_mensagem_em, created_at, referencia_tipo, referencia_id')
+      .eq('tipo', 'geral')
+      .eq('titulo', 'Chat Geral')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (buscaError) {
+      setErro(buscaError.message)
+      return
+    }
+
+    if (existente?.id) {
+      const { error: participanteExistenteError } = await supabase
+        .from('chat_participantes')
+        .upsert({ conversa_id: existente.id, user_id: user.id, papel: 'membro' }, { onConflict: 'conversa_id,user_id' })
+
+      if (participanteExistenteError) {
+        setErro(participanteExistenteError.message)
+        return
+      }
+
+      setConversas((prev) => [existente as Conversa, ...prev.filter((conversa) => conversa.id !== existente.id)])
+      setConversaAtiva(existente as Conversa)
+      return
+    }
 
     const { data: conversa, error: conversaError } = await supabase
       .from('chat_conversas')
@@ -430,7 +509,11 @@ function ChatShellInner() {
                   {mensagens.map((msg) => {
                     const minha = msg.remetente_user_id === user.id
                     return (
-                      <div key={msg.id} className={`flex ${minha ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        key={msg.id}
+                        title={!minha ? remetentes[msg.remetente_user_id]?.nome_exibicao || remetentes[msg.remetente_user_id]?.username || 'Usuario' : undefined}
+                        className={`flex ${minha ? 'justify-end' : 'justify-start'}`}
+                      >
                         <div
                           className={[
                             'max-w-[78%] px-3 py-2 text-[13px] leading-relaxed max-md:max-w-[86%]',
