@@ -488,6 +488,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const [podeGerenciarCampeonato, setPodeGerenciarCampeonato] = useState(false)
   const [saldoCarteira, setSaldoCarteira] = useState<number>(0)
   const [minhasEquipesCompra, setMinhasEquipesCompra] = useState<CompraEquipeOption[]>([])
+  const [minhasEquipesCriadasCompra, setMinhasEquipesCriadasCompra] = useState(0)
   const [equipeCompraId, setEquipeCompraId] = useState('')
   const [comprandoVaga, setComprandoVaga] = useState(false)
   const [mensagemCompraVaga, setMensagemCompraVaga] = useState('')
@@ -536,6 +537,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
   const linkCriarEquipeCompra = `/equipe/nova?redirect=${encodeURIComponent(redirectCompraAtual)}`
   const linkGerenciarEquipesCompra = `/equipe?redirect=${encodeURIComponent(redirectCompraAtual)}`
+  const podeCriarEquipeCompra = Boolean(usuarioAtual?.id && minhasEquipesCriadasCompra < 2)
   const linkCriarLineCompra = equipeCompraId
     ? `/equipe/${equipeCompraId}?aba=lines&redirect=${encodeURIComponent(redirectCompraAtual)}`
     : linkGerenciarEquipesCompra
@@ -563,6 +565,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
         setSaldoCarteira(0)
         setMinhasEquipesCompra([])
+        setMinhasEquipesCriadasCompra(0)
         setEquipeCompraId('')
         return
       }
@@ -605,8 +608,44 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         logErroSupabase('Erro ao buscar equipes criadas pelo usuário', equipesCriadasError)
       }
 
+      setMinhasEquipesCriadasCompra((equipesCriadas || []).length)
+
       ;((equipesCriadas || []) as any[]).forEach((equipe) => {
         if (!equipe?.id) return
+        mapaEquipes.set(equipe.id, {
+          id: equipe.id,
+          nome: equipe.nome || 'Equipe sem nome',
+          tag: equipe.tag || null,
+          logo_url: equipe.logo_url || null,
+        })
+      })
+
+      const { data: membrosUsuarioData, error: membrosUsuarioError } = await supabase
+        .from('membros_equipe')
+        .select(
+          `
+          equipe_id,
+          tipo,
+          ativo,
+          equipes (
+            id,
+            nome,
+            tag,
+            logo_url
+          )
+        `
+        )
+        .eq('ativo', true)
+        .eq('user_id', user.id)
+
+      if (membrosUsuarioError) {
+        logErroSupabase('Erro ao buscar equipes vinculadas ao perfil do usuÃ¡rio', membrosUsuarioError)
+      }
+
+      ;((membrosUsuarioData || []) as any[]).forEach((membro) => {
+        const equipe = normalizarEquipeRelacionada(membro?.equipes)
+        if (!equipe?.id) return
+
         mapaEquipes.set(equipe.id, {
           id: equipe.id,
           nome: equipe.nome || 'Equipe sem nome',
@@ -1471,9 +1510,11 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                       Para finalizar a vaga, crie ou vincule uma equipe/line. Depois volte para esta mesma página e clique em comprar vaga novamente.
                     </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <a href={linkCriarEquipeCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase tracking-wide text-white hover:bg-blue-500">
-                        <PlusCircle size={14} /> Criar equipe
-                      </a>
+                      {podeCriarEquipeCompra ? (
+                        <a href={linkCriarEquipeCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-blue-600 bg-blue-600 px-3 text-[10px] font-black uppercase tracking-wide text-white hover:bg-blue-500">
+                          <PlusCircle size={14} /> Criar equipe
+                        </a>
+                      ) : null}
                       <a href={linkGerenciarEquipesCompra} className="inline-flex h-10 items-center justify-center gap-2 border border-zinc-200 bg-white px-3 text-[10px] font-black uppercase tracking-wide text-[#142340] hover:bg-zinc-50">
                         <Users size={14} /> Minhas equipes
                       </a>

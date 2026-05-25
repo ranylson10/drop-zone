@@ -86,6 +86,30 @@ export type StreamOverlayConfig = {
     blockGap?: number
     blockDirection?: 'horizontal' | 'vertical'
   }
+  mvpGeral?: {
+    enabled?: boolean
+    title?: string
+    photoUrl?: string
+    photoX?: number
+    photoY?: number
+    photoW?: number
+    photoH?: number
+    photoFit?: 'contain' | 'cover'
+    infoX?: number
+    infoY?: number
+    infoW?: number
+    infoH?: number
+    tableTitle?: string
+    tableX?: number
+    tableY?: number
+    tableW?: number
+    tableRowHeight?: number
+    tableGap?: number
+    fontFamily?: string
+    cardBackground?: string
+    tableBackground?: string
+    lineColor?: string
+  }
   booyahsDia?: {
     mode?: 'cards' | 'vertical-list'
     title?: string
@@ -134,14 +158,6 @@ export type StreamOverlayConfig = {
     listH?: number
     listRowHeight?: number
     listLogoSize?: number
-  }
-  mvpGeral?: {
-    enabled?: boolean
-    backgroundImage?: string
-    backgroundOpacity?: number
-    photoFit?: 'contain' | 'cover'
-    tableTitle?: string
-    tableMaxRows?: number
   }
   columns?: Record<string, boolean>
   animation?: {
@@ -288,33 +304,6 @@ export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
     descricao: 'Classificacao geral acumulada.',
     config_padrao: defaultTabelaGeralConfig,
   },
-  {
-    id: 'mvp-geral',
-    slug: 'mvp-geral',
-    nome: 'MVP geral',
-    categoria: 'estatisticas',
-    descricao: 'Ranking geral de MVP/lideres de abates com foto do top 1 e tabela do top 2 ao 8.',
-    config_padrao: mergeOverlayConfig(defaultTabelaGeralConfig, {
-      title: 'LÍDERES DE ABATES',
-      mvpGeral: {
-        enabled: true,
-        backgroundImage: '',
-        backgroundOpacity: 100,
-        photoFit: 'cover',
-        tableTitle: 'LÍDERES DE ABATES',
-        tableMaxRows: 8,
-      },
-      tabelaGeral: {
-        mode: 'lateral',
-        backgroundImage: '',
-        backgroundOpacity: 100,
-        infoImage: { enabled: true, url: '', x: 210, y: 86, w: 590, h: 650, opacity: 100, fit: 'cover' },
-      },
-      brand: { enabled: true, imageEnabled: false, textEnabled: true, textX: 210, textY: 734, textW: 590, textH: 190 },
-      theme: { primary: '#ff5b00', rowBackground: '#82a51d', rowAltBackground: '#82a51d', text: '#ffffff', headerText: '#2a2a2a' },
-      layout: { x: 900, y: 130, w: 800, maxRows: 8, blockCount: 1, rowsPerBlock: 7, rowHeight: 74, rowGap: 12, fontSize: 27, logoSize: 58 },
-    }),
-  },
 ]
 
 export const fixedStreamOverlaySlugs = fixedStreamOverlayTemplates.map((template) => template.slug)
@@ -363,7 +352,6 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
     animation: { ...(base?.animation || {}), ...(override?.animation || {}) },
-    mvpGeral: { ...(base?.mvpGeral || {}), ...(override?.mvpGeral || {}) },
     tabelaGeral: {
       ...(base?.tabelaGeral || {}),
       ...(override?.tabelaGeral || {}),
@@ -372,6 +360,7 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
         ...(override?.tabelaGeral?.infoImage || {}),
       },
     },
+    mvpGeral: { ...(base?.mvpGeral || {}), ...(override?.mvpGeral || {}) },
   }
 }
 
@@ -496,28 +485,51 @@ function chunkRows(rows: RankingRow[], rowsPerBlock: number, blockCount: number)
 }
 
 
-function formatKd(kills: number, quedas: number) {
+function formatMvpKd(kills: number, quedas: number) {
   if (!quedas) return '0,0'
-  return (kills / Math.max(1, quedas)).toFixed(1).replace('.', ',')
+  return (kills / quedas).toFixed(1).replace('.', ',')
 }
 
-function variationMeta(value?: number | null) {
+function getMvpRows(rows: RankingRow[], maxRows = 8) {
+  const source = rows.length > 0 ? rows : sampleRankingRows(maxRows)
+  return [...source]
+    .filter((row) => !row.empty)
+    .sort((a, b) => Number(b.kills || 0) - Number(a.kills || 0) || Number(b.pontos || 0) - Number(a.pontos || 0))
+    .slice(0, maxRows)
+}
+
+function MvpVariation({ value, fontSize = 26 }: { value?: number | null; fontSize?: number }) {
   const variation = Number(value || 0)
-  const color = variation > 0 ? '#18a63f' : variation < 0 ? '#b91c1c' : '#f97316'
+  const color = variation > 0 ? '#16a34a' : variation < 0 ? '#dc2626' : '#f97316'
   const label = variation > 0 ? `+${variation}` : `${variation}`
   const Icon = variation > 0 ? ArrowUp : variation < 0 ? ArrowDown : Minus
-  return { variation, color, label, Icon }
+  return (
+    <div className="flex items-center justify-center gap-3 font-black" style={{ color, fontSize }}>
+      <span>{label}</span>
+      <Icon size={Math.max(18, fontSize * 0.82)} strokeWidth={4} />
+    </div>
+  )
 }
 
-export function MvpGeralOverlay({
+function MvpLogo({ row, size }: { row?: RankingRow; size: number }) {
+  return (
+    <div className="flex items-center justify-center overflow-hidden bg-white/0" style={{ width: size, height: size }}>
+      {row?.logo ? (
+        <img src={row.logo} alt={row.nome} className="h-full w-full object-contain" />
+      ) : (
+        <Users size={Math.max(18, size * 0.52)} className="text-slate-800" />
+      )}
+    </div>
+  )
+}
+
+function MvpGeralOverlayInternal({
   config,
   rows,
   previewScale,
   editable,
   selectedBlock,
-  selectedColumn,
   onSelectBlock,
-  onSelectColumn,
   onStartDrag,
 }: {
   config: StreamOverlayConfig
@@ -525,37 +537,42 @@ export function MvpGeralOverlay({
   previewScale?: number
   editable?: boolean
   selectedBlock?: StreamOverlayBlock
-  selectedColumn?: string
   onSelectBlock?: (block: StreamOverlayBlock) => void
-  onSelectColumn?: (column: string) => void
   onStartDrag?: (block: StreamOverlayBlock, event: PointerEvent) => void
 }) {
-  const baseRows = rows.length > 0 ? rows : sampleRankingRows(8)
-  const ranking = [...baseRows]
-    .filter((row) => !row.empty)
-    .sort((a, b) => b.kills - a.kills || b.pontos - a.pontos || b.quedas - a.quedas)
-  const top = ranking[0] || sampleRankingRows(1)[0]
-  const tableRows = fillRows(ranking.slice(1, Number(config.mvpGeral?.tableMaxRows || 8)), 7)
-  const photo = config.tabelaGeral?.infoImage
-  const photoOpacity = Math.max(0, Math.min(100, Number(photo?.opacity ?? 100))) / 100
-  const statsOpacity = Math.max(0, Math.min(100, Number(config.brand?.textOpacity ?? 100))) / 100
-  const tableOpacity = Math.max(0, Math.min(100, Number(config.layout?.opacity ?? 100))) / 100
-  const tableScale = Math.max(10, Number(config.layout?.scale || 100)) / 100
-  const statsScale = Math.max(10, Number(config.brand?.textScale || 100)) / 100
-  const topKills = Number(top.kills || 0)
-  const topQuedas = Number(top.quedas || 0)
-  const transitionName = config.animation?.transition || config.animation?.enter || 'fade'
-  const transitionDuration = Math.max(100, Number(config.animation?.duration || 650))
-  const animationClassName = `stream-transition-${transitionName}`
+  const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
+  const mvp = merged.mvpGeral || {}
+  const leaders = getMvpRows(rows, 8)
+  const top = leaders[0] || sampleRankingRows(1)[0]
+  const tableRows = fillRows(leaders.slice(1, 8), 7)
+  const primary = merged.theme?.primary || '#ef1b1b'
+  const accent = merged.theme?.accent || '#7ea51d'
+  const text = merged.theme?.text || '#ffffff'
+  const darkText = merged.theme?.headerText || '#1f2933'
+  const fontFamily = mvp.fontFamily || 'Impact, Haettenschweiler, Arial Narrow, sans-serif'
+  const tableFont = 'Arial Black, Impact, sans-serif'
+  const photoX = Number(mvp.photoX ?? merged.brand?.x ?? 215)
+  const photoY = Number(mvp.photoY ?? merged.brand?.y ?? 110)
+  const photoW = Number(mvp.photoW ?? merged.brand?.w ?? 595)
+  const photoH = Number(mvp.photoH ?? merged.brand?.h ?? 585)
+  const infoX = Number(mvp.infoX ?? merged.brand?.textX ?? 215)
+  const infoY = Number(mvp.infoY ?? merged.brand?.textY ?? 695)
+  const infoW = Number(mvp.infoW ?? merged.brand?.textW ?? 595)
+  const infoH = Number(mvp.infoH ?? merged.brand?.textH ?? 205)
+  const tableX = Number(mvp.tableX ?? merged.layout?.x ?? 900)
+  const tableY = Number(mvp.tableY ?? merged.layout?.y ?? 165)
+  const tableW = Number(mvp.tableW ?? merged.layout?.w ?? 800)
+  const rowH = Number(mvp.tableRowHeight ?? merged.layout?.rowHeight ?? 74)
+  const gap = Number(mvp.tableGap ?? merged.layout?.rowGap ?? 12)
   const selectedStyle = (block: StreamOverlayBlock): CSSProperties => editable
     ? {
         cursor: 'pointer',
-        outline: selectedBlock === block ? '4px solid #ef4444' : '2px dashed rgba(239, 68, 68, 0.55)',
+        outline: selectedBlock === block ? '5px solid #ef4444' : '2px dashed rgba(239, 68, 68, 0.55)',
         outlineOffset: 4,
       }
     : {}
   const blockLabel = (label: string) => editable ? (
-    <span className="absolute left-0 top-0 z-10 bg-red-600 px-2 py-1 text-[18px] font-black leading-none tracking-[0.08em] text-white">
+    <span className="absolute left-0 top-0 z-20 bg-red-600 px-2 py-1 text-[18px] font-black leading-none tracking-[0.08em] text-white">
       {label}
     </span>
   ) : null
@@ -566,106 +583,61 @@ export function MvpGeralOverlay({
     onSelectBlock?.(block)
     onStartDrag?.(block, event)
   }
-  const selectColumn = (column: string) => (event: PointerEvent) => {
-    if (!editable) return
-    event.preventDefault()
-    event.stopPropagation()
-    onSelectBlock?.('table')
-    onSelectColumn?.(column)
-  }
-  const selectedColumnStyle = (column: string): CSSProperties => editable && selectedColumn === column
-    ? { outline: '3px solid rgba(250, 204, 21, 0.9)', outlineOffset: -3 }
-    : {}
-  const backgroundOpacity = Math.max(0, Math.min(100, Number(config.mvpGeral?.backgroundOpacity ?? config.tabelaGeral?.backgroundOpacity ?? 100))) / 100
-  const tableColumns = ['rank', 'logo', 'nome', 'quedashort', 'kd', 'kills', 'variacao']
-  const gridTemplateColumns = '82px 80px 1.75fr 72px 90px 94px 90px'
-  const themePrimary = config.theme?.primary || '#f97316'
-  const green = config.theme?.rowBackground || '#83a51d'
-  const textColor = config.theme?.text || '#ffffff'
+  const photoUrl = mvp.photoUrl || merged.brand?.logoDataUrl || top.logo || ''
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left overflow-hidden bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
-      <style>{`
-        @keyframes stream-transition-fade { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes stream-transition-slide-up { from { opacity: 0; transform: translateY(1080px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes stream-transition-slide-down { from { opacity: 0; transform: translateY(-1080px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes stream-transition-slide-left { from { opacity: 0; transform: translateX(1920px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes stream-transition-slide-right { from { opacity: 0; transform: translateX(-1920px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes stream-transition-zoom { from { opacity: 0; transform: scale(.72); } to { opacity: 1; transform: scale(1); } }
-        @keyframes stream-transition-flip { from { opacity: 0; transform: rotateX(72deg); } to { opacity: 1; transform: rotateX(0); } }
-        @keyframes stream-transition-wipe { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
-        @keyframes stream-transition-blur { from { opacity: 0; filter: blur(14px); } to { opacity: 1; filter: blur(0); } }
-        @keyframes stream-transition-elastic { 0% { opacity: 0; transform: scale(.78); } 68% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
-      `}</style>
-      {config.mvpGeral?.backgroundImage || config.tabelaGeral?.backgroundImage ? (
-        <img
-          src={config.mvpGeral?.backgroundImage || config.tabelaGeral?.backgroundImage}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: backgroundOpacity }}
-        />
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, #f4f1df 0%, #e9ecd9 46%, #dfe8d4 100%)',
-          }}
-        />
-      )}
-      <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(255,255,255,.75), transparent 26%), radial-gradient(circle at 85% 80%, rgba(132,165,31,.25), transparent 30%)' }} />
-      <div className="absolute inset-3 border-[10px]" style={{ borderColor: themePrimary }} />
-      <div className="absolute left-0 top-0 h-[250px] w-[270px] opacity-30" style={{ background: `repeating-linear-gradient(135deg, ${themePrimary} 0 12px, transparent 12px 28px)` }} />
-      <div className="absolute bottom-0 right-0 h-[240px] w-[340px] opacity-25" style={{ background: `repeating-linear-gradient(135deg, transparent 0 16px, ${green} 16px 32px)` }} />
-
       <div
-        className="absolute overflow-hidden bg-white"
-        onPointerDown={selectBlock('infoImage')}
+        className="absolute overflow-hidden"
+        onPointerDown={selectBlock('image')}
         style={{
-          left: Number(photo?.x ?? 210),
-          top: Number(photo?.y ?? 86),
-          width: Number(photo?.w ?? 590),
-          height: Number(photo?.h ?? 650),
-          opacity: photoOpacity,
-          border: `4px solid ${themePrimary}`,
-          animation: `${animationClassName} ${transitionDuration}ms ease both`,
-          ...selectedStyle('infoImage'),
+          left: photoX,
+          top: photoY,
+          width: photoW,
+          height: photoH,
+          background: photoUrl ? 'transparent' : 'rgba(255,255,255,0.03)',
+          ...selectedStyle('image'),
         }}
       >
         {blockLabel('FOTO MVP')}
-        {photo?.url ? (
-          <img src={photo.url} alt={top.nome} className="h-full w-full" style={{ objectFit: config.mvpGeral?.photoFit || photo.fit || 'cover' }} />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-zinc-200 text-[34px] font-black uppercase tracking-[0.18em] text-zinc-500">Foto MVP</div>
-        )}
+        {photoUrl ? (
+          <img src={photoUrl} alt={top.nome} className="h-full w-full" style={{ objectFit: mvp.photoFit || merged.brand?.objectFit || 'cover', objectPosition: merged.brand?.objectPosition || 'center center' }} />
+        ) : editable ? (
+          <div className="flex h-full w-full items-center justify-center text-[34px] font-black uppercase tracking-[0.16em] text-white/35">foto mvp</div>
+        ) : null}
       </div>
 
       <div
         className="absolute overflow-hidden uppercase"
         onPointerDown={selectBlock('text')}
         style={{
-          left: Number(config.brand?.textX ?? 210),
-          top: Number(config.brand?.textY ?? 734),
-          width: Number(config.brand?.textW ?? 590),
-          height: Number(config.brand?.textH ?? 190),
-          opacity: statsOpacity,
-          transform: `scale(${statsScale})`,
-          transformOrigin: 'top left',
-          animation: `${animationClassName} ${transitionDuration}ms ease both`,
+          left: infoX,
+          top: infoY,
+          width: infoW,
+          height: infoH,
+          background: mvp.cardBackground || accent,
+          color: text,
+          fontFamily: tableFont,
           ...selectedStyle('text'),
         }}
       >
         {blockLabel('INFO MVP')}
-        <div className="flex h-full flex-col" style={{ background: green, color: textColor }}>
-          <div className="flex flex-1 items-center gap-5 px-8">
-            <div className="flex h-88 w-110 items-center justify-center bg-white p-2" style={{ width: 110, height: 88 }}>
-              {top.logo ? <img src={top.logo} alt={top.nome} className="h-full w-full object-contain" /> : <Users size={46} className="text-zinc-900" />}
-            </div>
-            <div className="min-w-0 flex-1 truncate text-[34px] font-black leading-none">{top.nome}</div>
+        <div className="flex h-[42%] items-center" style={{ gap: 26, paddingLeft: 38, paddingRight: 38, borderBottom: '1px solid rgba(255,255,255,0.22)' }}>
+          <MvpLogo row={top} size={96} />
+          <div className="min-w-0 truncate text-[42px] font-black leading-none tracking-[-0.03em]">{top.nome}</div>
+        </div>
+        <div className="grid h-[58%] grid-cols-3 items-center text-center" style={{ paddingLeft: 30, paddingRight: 30 }}>
+          <div>
+            <div className="text-[42px] font-black leading-none">{top.quedas}</div>
+            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">QUEDAS</div>
           </div>
-          <div className="grid h-[68px] grid-cols-3 items-center px-8 text-center text-[28px] font-black">
-            <div>{topKills} ABT</div>
-            <div>{formatKd(topKills, topQuedas)} K.D</div>
-            <div>{topQuedas} QD</div>
+          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.28)', borderRight: '1px solid rgba(255,255,255,0.28)' }}>
+            <div className="text-[42px] font-black leading-none">{formatMvpKd(top.kills, top.quedas)}</div>
+            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">K.D</div>
+          </div>
+          <div>
+            <div className="text-[42px] font-black leading-none">{top.kills}</div>
+            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">ABATES</div>
           </div>
         </div>
       </div>
@@ -674,21 +646,19 @@ export function MvpGeralOverlay({
         className="absolute uppercase"
         onPointerDown={selectBlock('table')}
         style={{
-          left: Number(config.layout?.x ?? 900),
-          top: Number(config.layout?.y ?? 130),
-          width: Number(config.layout?.w ?? 800),
-          opacity: tableOpacity,
-          transform: `scale(${tableScale})`,
-          transformOrigin: 'top left',
-          animation: `${animationClassName} ${transitionDuration}ms ease both`,
+          left: tableX,
+          top: tableY,
+          width: tableW,
+          color: darkText,
+          fontFamily,
           ...selectedStyle('table'),
         }}
       >
-        <div className="mb-10 text-[74px] font-black leading-none tracking-[-0.04em] text-zinc-800">
-          {config.mvpGeral?.tableTitle || config.title || 'LÍDERES DE ABATES'}
+        {blockLabel('TABELA')}
+        <div className="text-center text-[82px] font-black leading-none tracking-[-0.06em]" style={{ color: darkText, marginBottom: 30 }}>
+          {mvp.tableTitle || merged.title || 'LÍDERES DE ABATES'}
         </div>
-        <div className="mb-5 grid items-center pr-[90px] text-center text-[25px] font-black text-zinc-800" style={{ gridTemplateColumns }}>
-          <div />
+        <div className="grid items-end text-center text-[23px] font-black tracking-[0.08em]" style={{ gridTemplateColumns: '122px 1fr 88px 88px 96px 110px', color: darkText, marginBottom: 14 }}>
           <div />
           <div />
           <div>QD</div>
@@ -696,39 +666,31 @@ export function MvpGeralOverlay({
           <div>ABT</div>
           <div />
         </div>
-        <div className="grid gap-3">
+        <div className="grid" style={{ gap }}>
           {tableRows.map((row, index) => {
             const rank = index + 2
-            const kills = Number(row.kills || 0)
-            const quedas = Number(row.quedas || 0)
-            const { color, label, Icon } = variationMeta(row.variacao)
             return (
               <div
                 key={row.id}
-                className="grid h-[74px] items-center overflow-hidden border-2 bg-white text-[27px] font-black"
-                style={{ gridTemplateColumns, borderColor: themePrimary }}
+                className="grid items-center overflow-hidden font-black"
+                style={{
+                  height: rowH,
+                  gridTemplateColumns: '62px 80px minmax(0, 1fr) 88px 88px 96px 110px',
+                  background: row.empty ? 'rgba(255,255,255,0.70)' : mvp.tableBackground || accent,
+                  border: `3px solid ${primary}`,
+                  color: row.empty ? 'transparent' : text,
+                  fontFamily: tableFont,
+                }}
               >
-                {tableColumns.map((column) => {
-                  if (column === 'rank') {
-                    return <div key={column} onPointerDown={selectColumn(column)} className="text-center text-zinc-900" style={selectedColumnStyle(column)}>{row.empty ? '' : String(rank).padStart(2, '0')}</div>
-                  }
-                  if (column === 'logo') {
-                    return <div key={column} onPointerDown={selectColumn(column)} className="flex h-full items-center justify-center bg-white p-2" style={selectedColumnStyle(column)}>{!row.empty && row.logo ? <img src={row.logo} alt={row.nome} className="h-full w-full object-contain" /> : !row.empty ? <Users size={34} className="text-zinc-900" /> : null}</div>
-                  }
-                  if (column === 'nome') {
-                    return <div key={column} onPointerDown={selectColumn(column)} className="flex h-full min-w-0 items-center truncate px-5 text-white" style={{ background: green, ...selectedColumnStyle(column) }}>{row.empty ? '' : row.nome}</div>
-                  }
-                  if (column === 'quedashort') {
-                    return <div key={column} onPointerDown={selectColumn('quedas')} className="flex h-full items-center justify-center text-white" style={{ background: green, ...selectedColumnStyle('quedas') }}>{row.empty ? '' : quedas}</div>
-                  }
-                  if (column === 'kd') {
-                    return <div key={column} onPointerDown={selectColumn(column)} className="flex h-full items-center justify-center border-l border-white/70 text-white" style={{ background: green, ...selectedColumnStyle(column) }}>{row.empty ? '' : formatKd(kills, quedas)}</div>
-                  }
-                  if (column === 'kills') {
-                    return <div key={column} onPointerDown={selectColumn(column)} className="flex h-full items-center justify-center border-l border-white/70 text-white" style={{ background: green, ...selectedColumnStyle(column) }}>{row.empty ? '' : kills}</div>
-                  }
-                  return <div key={column} onPointerDown={selectColumn('variacao')} className="flex h-full items-center justify-center gap-3 bg-white text-[22px] text-zinc-700" style={selectedColumnStyle('variacao')}>{!row.empty ? <><span>{label}</span><Icon size={24} fill={color} color={color} strokeWidth={4} /></> : null}</div>
-                })}
+                <div className="flex h-full items-center justify-center bg-white text-[34px]" style={{ color: darkText }}>{row.empty ? '' : String(rank).padStart(2, '0')}</div>
+                <div className="flex h-full items-center justify-center bg-white"><MvpLogo row={row} size={58} /></div>
+                <div className="truncate text-[30px] tracking-[-0.04em]" style={{ paddingLeft: 24, paddingRight: 24 }}>{row.empty ? '' : row.nome}</div>
+                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : row.quedas}</div>
+                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : formatMvpKd(row.kills, row.quedas)}</div>
+                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : row.kills}</div>
+                <div className="flex h-full items-center justify-center bg-white" style={{ color: darkText }}>
+                  {row.empty ? null : <MvpVariation value={row.variacao} fontSize={22} />}
+                </div>
               </div>
             )
           })}
@@ -761,15 +723,13 @@ export function TabelaGeralOverlay({
 }) {
   if (config.mvpGeral?.enabled) {
     return (
-      <MvpGeralOverlay
+      <MvpGeralOverlayInternal
         config={config}
         rows={rows}
         previewScale={previewScale}
         editable={editable}
         selectedBlock={selectedBlock}
-        selectedColumn={selectedColumn}
         onSelectBlock={onSelectBlock}
-        onSelectColumn={onSelectColumn}
         onStartDrag={onStartDrag}
       />
     )

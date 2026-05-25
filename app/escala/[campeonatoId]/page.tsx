@@ -2042,6 +2042,11 @@ export default function EscalaCampeonatoPage() {
       return;
     }
 
+    if (equipes.filter((equipe) => equipe.criado_por === userId).length >= 2) {
+      alert("Voce ja atingiu o limite de 2 equipes criadas por usuario.");
+      return;
+    }
+
     if (!nome) {
       alert("Informe o nome da equipe.");
       return;
@@ -2069,16 +2074,6 @@ export default function EscalaCampeonatoPage() {
 
       const equipeCriada = data as Equipe;
 
-      await supabase
-        .from("membros_equipe")
-        .insert({
-          equipe_id: equipeCriada.id,
-          user_id: userId,
-          tipo: "dono",
-          ativo: true,
-          entrou_em: new Date().toISOString(),
-        });
-
       setEquipes((atual) => [equipeCriada, ...atual]);
       setEquipeSelecionadaId(equipeCriada.id);
       setModoFormularioBeta(null);
@@ -2091,6 +2086,9 @@ export default function EscalaCampeonatoPage() {
 
 
 
+
+  const equipesCriadasPeloUsuario = userId ? equipes.filter((equipe) => equipe.criado_por === userId).length : 0;
+  const podeCriarEquipeBeta = Boolean(userId && equipesCriadasPeloUsuario < 2);
 
   if (loading) {
     return (
@@ -2494,7 +2492,7 @@ export default function EscalaCampeonatoPage() {
                   </section>
                 ) : null}
 
-                {modoFormularioBeta === "equipe" ? (
+                {modoFormularioBeta === "equipe" && podeCriarEquipeBeta ? (
                   <FormCriarEquipe
                     modal
                     onCancel={() => setModoFormularioBeta(null)}
@@ -2555,13 +2553,15 @@ export default function EscalaCampeonatoPage() {
                   <div className="border border-slate-200 bg-white p-4 text-center">
                     <h3 className="text-sm font-black uppercase text-slate-950">Você ainda não tem equipe</h3>
                     <p className="mt-1 text-xs font-semibold text-slate-500">Crie sua organização direto pelo link beta.</p>
-                    <button
-                      type="button"
-                      onClick={() => setModoFormularioBeta("equipe")}
-                      className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
-                    >
-                      Criar equipe
-                    </button>
+                    {podeCriarEquipeBeta ? (
+                      <button
+                        type="button"
+                        onClick={() => setModoFormularioBeta("equipe")}
+                        className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                      >
+                        Criar equipe
+                      </button>
+                    ) : null}
                   </div>
                 )}
 
@@ -2696,13 +2696,15 @@ export default function EscalaCampeonatoPage() {
                   <div className="border border-slate-200 bg-white p-4 text-center">
                     <h3 className="text-sm font-black uppercase text-slate-950">Você ainda não tem equipe</h3>
                     <p className="mt-1 text-xs font-semibold text-slate-500">Crie sua organização direto pelo link beta.</p>
-                    <button
-                      type="button"
-                      onClick={() => setModoFormularioBeta("equipe")}
-                      className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
-                    >
-                      Criar equipe
-                    </button>
+                    {podeCriarEquipeBeta ? (
+                      <button
+                        type="button"
+                        onClick={() => setModoFormularioBeta("equipe")}
+                        className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                      >
+                        Criar equipe
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
 

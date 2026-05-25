@@ -4,8 +4,8 @@ import { mvpGeralOverlayTemplate } from './mvp-geral/config'
 
 const modularTemplates = [
   tabelaGeralOverlayTemplate,
-  mvpGeralOverlayTemplate,
   booyahsDiaOverlayTemplate,
+  mvpGeralOverlayTemplate,
 ]
 
 export const streamOverlayTemplateCatalog = modularTemplates

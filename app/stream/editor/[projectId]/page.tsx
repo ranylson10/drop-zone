@@ -57,7 +57,7 @@ type BooyahBlock = 'texto' | 'logo' | 'equipe'
 type BooyahsDiaBlock = 'art' | 'cards'
 type VisualStyleTarget = 'primary' | 'accent' | 'background' | 'rowBackground' | 'text' | 'headerText' | 'border' | 'columnBackground' | 'columnText' | 'rowHighlightBackground' | 'rowHighlightText'
 
-const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'booyah', 'booyahs-do-dia', 'mvp-geral', 'mvp-queda', 'tabela-queda'])
+const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'booyah', 'booyahs-do-dia'])
 
 const blockLabels: Record<StreamOverlayBlock, string> = {
   image: 'Imagem',
@@ -569,6 +569,7 @@ export default function StreamOverlayEditorPage() {
   const PreviewOverlay = previewOverlayDefinition?.Render
   const CustomOverlayEditor = previewOverlayDefinition?.Editor
   const isTabelaOverlay = Boolean(overlayAtual?.template_id && ['tabela-geral', 'tabela-do-dia', 'tabela-da-queda', 'mvp-geral', 'mvp-do-dia', 'mvp-da-queda'].includes(overlayAtual.template_id))
+  const isMvpGeralOverlay = overlayAtual?.template_id === 'mvp-geral' || Boolean(config.mvpGeral?.enabled)
   const isCountdownOverlay = overlayAtual?.template_id === 'countdown'
   const isBooyahsDiaOverlay = Boolean(config.booyahsDia || previewOverlayDefinition?.slug === 'booyahs-do-dia')
   const isBooyahOverlay = overlayAtual?.template_id === 'booyah' && !isBooyahsDiaOverlay
@@ -1565,8 +1566,8 @@ export default function StreamOverlayEditorPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 gap-2">
-                    {(['infoImage', 'image', 'text', 'table'] as StreamOverlayBlock[]).map((block) => (
+                  <div className={isMvpGeralOverlay ? "grid grid-cols-3 gap-2" : "grid grid-cols-4 gap-2"}>
+                    {(isMvpGeralOverlay ? (['image', 'text', 'table'] as StreamOverlayBlock[]) : (['infoImage', 'image', 'text', 'table'] as StreamOverlayBlock[])).map((block) => (
                       <button
                         key={block}
                         type="button"
@@ -1583,7 +1584,7 @@ export default function StreamOverlayEditorPage() {
                         className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
                       >
                         {block === 'image' || block === 'infoImage' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
-                        {block === 'infoImage' ? 'Imagem topo' : block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela'}
+                        {isMvpGeralOverlay ? (block === 'image' ? 'Foto MVP' : block === 'text' ? 'Info MVP' : 'Tabela') : (block === 'infoImage' ? 'Imagem topo' : block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela')}
                       </button>
                     ))}
                   </div>
@@ -1610,7 +1611,7 @@ export default function StreamOverlayEditorPage() {
 
                 <div className="border border-white/10 bg-[#0b1220] p-3">
                   <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
-                    {isBooyahsDiaOverlay ? booyahsDiaBlockLabels[selectedBooyahsDiaBlock] : isCountdownOverlay ? countdownBlockLabels[selectedCountdownBlock] : isBooyahOverlay ? booyahBlockLabels[selectedBooyahBlock] : blockLabels[selectedBlock]} / {activeAction === 'move' ? 'Mover bloco' : activeAction === 'content' ? 'Conteudo' : activeAction === 'style' ? 'Visual' : activeAction === 'transition' ? 'Transicoes' : 'Tabela'}
+                    {isBooyahsDiaOverlay ? booyahsDiaBlockLabels[selectedBooyahsDiaBlock] : isCountdownOverlay ? countdownBlockLabels[selectedCountdownBlock] : isBooyahOverlay ? booyahBlockLabels[selectedBooyahBlock] : isMvpGeralOverlay ? (selectedBlock === 'image' ? 'Foto MVP' : selectedBlock === 'text' ? 'Info MVP' : 'Tabela') : blockLabels[selectedBlock]} / {activeAction === 'move' ? 'Mover bloco' : activeAction === 'content' ? 'Conteudo' : activeAction === 'style' ? 'Visual' : activeAction === 'transition' ? 'Transicoes' : 'Tabela'}
                   </div>
 
                   {activeAction === 'move' ? (

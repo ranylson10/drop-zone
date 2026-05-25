@@ -83,6 +83,16 @@ export default function FormCriarEquipe({
 
       if (!user) throw new Error("Faça login para criar uma equipe.");
 
+      const { count, error: countError } = await supabase
+        .from("equipes")
+        .select("id", { count: "exact", head: true })
+        .eq("criado_por", user.id);
+
+      if (countError) throw countError;
+      if (Number(count || 0) >= 2) {
+        throw new Error("Voce ja atingiu o limite de 2 equipes criadas por usuario.");
+      }
+
       const [logoUrl, coverUrl] = await Promise.all([
         logo ? uploadImagem("team-logos", logo, user.id, "logo") : Promise.resolve(null),
         capa ? uploadImagem("team-covers", capa, user.id, "capa") : Promise.resolve(null),
@@ -108,6 +118,7 @@ export default function FormCriarEquipe({
       if (error) throw error;
 
       await onSuccess?.(data as EquipeCriada);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setErro(err?.message || "Não foi possível criar a equipe.");
     } finally {

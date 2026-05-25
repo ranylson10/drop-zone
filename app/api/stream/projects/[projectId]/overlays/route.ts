@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     : null
 
   if (fixedTemplate) {
-    const { data: existingTemplate, error: existingTemplateError } = await supabase
+    const { data: existingTemplate, error: existingTemplateError } = await supabaseAdmin
       .from('stream_overlay_templates')
       .select('id')
       .eq('id', fixedTemplate.id)

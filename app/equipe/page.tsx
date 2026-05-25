@@ -488,6 +488,10 @@ export default function EquipePage() {
   }, [carregarEquipes, carregarLines]);
 
   function abrirNovaEquipe() {
+    if (equipes.filter((equipe) => user?.id && equipe.criado_por === user.id).length >= 2) {
+      return;
+    }
+
     setForm(formInicial);
     setArquivoLogo(null);
     setPreviewLogo(null);
@@ -532,6 +536,11 @@ export default function EquipePage() {
 
   async function salvarEquipe() {
     if (!user?.id) return;
+
+    if (equipes.filter((equipe) => equipe.criado_por === user.id).length >= 2) {
+      alert("Voce ja atingiu o limite de 2 equipes criadas por usuario.");
+      return;
+    }
 
     if (!form.nome.trim()) {
       alert("Informe o nome da equipe.");
@@ -602,6 +611,8 @@ export default function EquipePage() {
   const totalMembros = equipes.reduce((total, equipe) => total + (equipe.membros_count || 0), 0);
   const totalEventos = equipes.reduce((total, equipe) => total + (equipe.eventos_count || 0), 0);
   const totalInteracoes = equipes.reduce((total, equipe) => total + (equipe.interacoes_count || 0), 0);
+  const minhasEquipesCriadas = user?.id ? equipes.filter((equipe) => equipe.criado_por === user.id).length : 0;
+  const podeCriarEquipe = Boolean(user?.id && minhasEquipesCriadas < 2);
   const mediaScore = equipes.length
     ? Math.round(equipes.reduce((total, equipe) => total + (equipe.rank_score || 0), 0) / equipes.length)
     : 0;
@@ -636,17 +647,19 @@ export default function EquipePage() {
               Convites
             </Link>
 
-            <button
-              onClick={abrirNovaEquipe}
-              className="inline-flex h-10 items-center gap-2 bg-sky-500 px-4 text-[12px] font-semibold uppercase text-[#142340] hover:bg-sky-600"
-            >
-              <Plus size={15} />
-              Nova equipe
-            </button>
+            {podeCriarEquipe ? (
+              <button
+                onClick={abrirNovaEquipe}
+                className="inline-flex h-10 items-center gap-2 bg-sky-500 px-4 text-[12px] font-semibold uppercase text-[#142340] hover:bg-sky-600"
+              >
+                <Plus size={15} />
+                Nova equipe
+              </button>
+            ) : null}
           </div>
         </section>
 
-        {modoEdicao ? (
+        {modoEdicao && podeCriarEquipe ? (
           <FormCriarEquipe
             modal
             onCancel={fecharFormulario}

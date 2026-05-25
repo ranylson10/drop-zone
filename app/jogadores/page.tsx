@@ -25,6 +25,7 @@ import {
 
 type JogadorRow = {
   id: string
+  user_id?: string | null
   nick: string | null
   uid_jogo: string | null
   servidor: string | null
@@ -116,33 +117,111 @@ export default function JogadoresPage() {
     try {
       setLoading(true)
 
-      const { data, error } = await supabase
-        .from('vw_lealt_ranking_jogadores')
-        .select('*')
-        .order('posicao', { ascending: true })
-        .limit(300)
+      const [perfisRes, rankingRes, membrosRes] = await Promise.all([
+        supabase
+          .from('perfis_jogo')
+          .select('id,user_id,nick,uid_jogo,servidor,funcao,plataforma,foto_capa,equipe_id,created_at')
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        supabase
+          .from('vw_lealt_ranking_jogadores')
+          .select('*')
+          .limit(1000),
+        supabase
+          .from('membros_equipe')
+          .select('equipe_id,perfil_jogo_id,user_id,tipo,ativo,created_at')
+          .eq('ativo', true)
+          .limit(2000),
+      ])
 
-      if (error) throw error
+      if (perfisRes.error) throw perfisRes.error
+      if (rankingRes.error) console.error('Erro ao carregar ranking dos jogadores:', rankingRes.error)
+      if (membrosRes.error) console.error('Erro ao carregar vinculos de equipe dos jogadores:', membrosRes.error)
 
-      const jogadoresRankeados = ((data || []) as any[]).map((row) => ({
-        id: row.perfil_jogo_id,
-        nick: row.nick,
-        uid_jogo: row.uid_jogo,
-        servidor: null,
-        funcao: row.funcao,
-        plataforma: row.plataforma,
-        foto_capa: row.foto_capa || row.foto_url,
-        equipe_id: null,
-        created_at: row.calculado_em,
-        equipes: null,
-        rank_posicao: row.posicao,
-        rank_score: Number(row.score_total || 0),
-        score_bruto: Number(row.score_skill || 0),
-        score_total: Number(row.score_total || 0),
-        tier: row.tier,
-      })) as JogadorRow[]
+      const perfis = (perfisRes.data || []) as any[]
+      const rankingPorPerfil = new Map<string, any>()
+      ;((rankingRes.data || []) as any[]).forEach((row) => {
+        if (row?.perfil_jogo_id) rankingPorPerfil.set(String(row.perfil_jogo_id), row)
+      })
 
-      setJogadores(jogadoresRankeados)
+      const membros = ((membrosRes.data || []) as any[]).filter((membro) => membro?.equipe_id)
+      const membroPorPerfil = new Map<string, any>()
+      const membroPorUsuario = new Map<string, any>()
+
+      membros.forEach((membro) => {
+        if (membro.perfil_jogo_id && !membroPorPerfil.has(String(membro.perfil_jogo_id))) {
+          membroPorPerfil.set(String(membro.perfil_jogo_id), membro)
+        }
+
+        if (membro.user_id && !membroPorUsuario.has(String(membro.user_id))) {
+          membroPorUsuario.set(String(membro.user_id), membro)
+        }
+      })
+
+      const equipeIds = Array.from(
+        new Set(
+          perfis
+            .flatMap((perfil) => [
+              perfil.equipe_id,
+              membroPorPerfil.get(String(perfil.id))?.equipe_id,
+              perfil.user_id ? membroPorUsuario.get(String(perfil.user_id))?.equipe_id : null,
+            ])
+            .filter(Boolean)
+            .map(String)
+        )
+      )
+
+      const equipesRes = equipeIds.length
+        ? await supabase.from('equipes').select('id,nome,tag,logo_url').in('id', equipeIds)
+        : { data: [], error: null }
+
+      if (equipesRes.error) console.error('Erro ao carregar equipes dos jogadores:', equipesRes.error)
+
+      const equipesPorId = new Map<string, any>()
+      ;((equipesRes.data || []) as any[]).forEach((equipe) => {
+        if (equipe?.id) equipesPorId.set(String(equipe.id), equipe)
+      })
+
+      const jogadoresCompletos = perfis
+        .map((perfil) => {
+          const ranking = rankingPorPerfil.get(String(perfil.id))
+          const membroPerfil = membroPorPerfil.get(String(perfil.id))
+          const membroUsuario = perfil.user_id ? membroPorUsuario.get(String(perfil.user_id)) : null
+          const equipeId = perfil.equipe_id || membroPerfil?.equipe_id || membroUsuario?.equipe_id || null
+          const equipe = equipeId ? equipesPorId.get(String(equipeId)) || null : null
+          const jogador: JogadorRow = {
+            id: perfil.id,
+            user_id: perfil.user_id,
+            nick: perfil.nick,
+            uid_jogo: perfil.uid_jogo,
+            servidor: perfil.servidor,
+            funcao: perfil.funcao,
+            plataforma: perfil.plataforma,
+            foto_capa: perfil.foto_capa || ranking?.foto_capa || ranking?.foto_url || null,
+            equipe_id: equipeId,
+            created_at: perfil.created_at,
+            equipes: equipe,
+            rank_posicao: ranking?.posicao || undefined,
+            rank_score: ranking ? Number(ranking.score_total || 0) : 0,
+            score_bruto: ranking ? Number(ranking.score_skill || 0) : 0,
+            score_total: ranking ? Number(ranking.score_total || 0) : 0,
+            tier: ranking?.tier || null,
+          }
+
+          return {
+            ...jogador,
+            rank_score: ranking ? Number(ranking.score_total || 0) : calcularScoreJogador(jogador),
+          }
+        })
+        .sort((a, b) => {
+          const posA = a.rank_posicao || Number.MAX_SAFE_INTEGER
+          const posB = b.rank_posicao || Number.MAX_SAFE_INTEGER
+          if (posA !== posB) return posA - posB
+          return (b.rank_score || 0) - (a.rank_score || 0)
+        }) as JogadorRow[]
+
+      setJogadores(jogadoresCompletos)
     } catch (error) {
       console.error('Erro ao carregar jogadores:', error)
     } finally {
