@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { getClientCache, setClientCache } from "../../lib/clientCache";
 import { optimizeImage } from "../../lib/imageOptimize";
 import { usePerfil } from "../contexts/PerfilContext";
 import Image from "next/image";
@@ -223,6 +224,7 @@ export default function EquipePage() {
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState<"equipes" | "lines">("equipes");
   const [filtroLine, setFiltroLine] = useState<"todas" | "com_equipe" | "sem_equipe">("todas");
+  const [rankingEquipesExpandido, setRankingEquipesExpandido] = useState(false);
   const [modoEdicao, setModoEdicao] = useState(false);
   const [form, setForm] = useState<FormEquipe>(formInicial);
 
@@ -258,7 +260,15 @@ export default function EquipePage() {
 
   const carregarEquipes = useCallback(async () => {
     try {
-      setLoading(true);
+      const cacheKey = `page:equipe:equipes:${user?.id || "anon"}:v2`;
+      const cached = getClientCache<Equipe[]>(cacheKey, 2 * 60_000);
+
+      if (cached) {
+        setEquipes(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       const { data: equipesData, error: equipesError } = await supabase
         .from("equipes")
@@ -386,6 +396,7 @@ export default function EquipePage() {
         });
 
       setEquipes(equipesFormatadas);
+      setClientCache(cacheKey, equipesFormatadas);
     } catch (error: any) {
       console.error("Erro ao carregar equipes:", error?.message || error);
     } finally {
@@ -395,7 +406,15 @@ export default function EquipePage() {
 
   const carregarLines = useCallback(async () => {
     try {
-      setLoadingLines(true);
+      const cacheKey = "page:equipe:lines:v1";
+      const cached = getClientCache<Line[]>(cacheKey, 2 * 60_000);
+
+      if (cached) {
+        setLines(cached);
+        setLoadingLines(false);
+      } else {
+        setLoadingLines(true);
+      }
 
       const { data: linesData, error: linesError } = await supabase
         .from("lines")
@@ -467,14 +486,15 @@ export default function EquipePage() {
         if (item.line_id) campeonatosCountMap.set(item.line_id, (campeonatosCountMap.get(item.line_id) || 0) + 1);
       }
 
-      setLines(
-        base.map((line) => ({
+      const linesFormatadas = base.map((line) => ({
           ...line,
           equipe: line.equipe_id ? equipeMap.get(line.equipe_id) || null : null,
           jogadores_count: jogadoresCountMap.get(line.id) || 0,
           campeonatos_count: campeonatosCountMap.get(line.id) || 0,
-        }))
-      );
+        }));
+
+      setLines(linesFormatadas);
+      setClientCache(cacheKey, linesFormatadas);
     } catch (error: any) {
       console.error("Erro ao carregar lines:", error?.message || error);
     } finally {
@@ -620,6 +640,7 @@ export default function EquipePage() {
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
     .slice(0, 6);
   const topEquipes = equipes.slice(0, 6);
+  const rankingEquipesVisiveis = rankingEquipesExpandido ? equipes.slice(0, 12) : topEquipes;
 
   return (
     <main className="min-h-screen bg-[#f5f8fb] text-slate-900">
@@ -873,32 +894,58 @@ export default function EquipePage() {
                 <Link href="/ranking?tab=equipes" className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-600 hover:underline">ver ranking geral</Link>
               </div>
 
-              <div className="md:hidden">
-                {topEquipes.map((equipe) => (
+              <div className="overflow-x-auto p-3">
+                <div className="flex min-w-max gap-2">
+                {rankingEquipesVisiveis.map((equipe) => (
                   <button
-                    key={`rank-mobile-${equipe.id}`}
+                    key={`rank-${equipe.id}`}
                     onClick={() => router.push(`/equipe/${equipe.id}`)}
-                    className="flex w-full items-center gap-3 border-t border-zinc-100 px-3 py-2 text-left active:bg-zinc-50"
+                    className="flex w-[245px] shrink-0 items-center gap-2 border border-slate-200 bg-slate-50 p-2 text-left hover:border-sky-300 max-md:w-[78px] max-md:flex-col max-md:border-0 max-md:bg-transparent max-md:p-0"
                   >
-                    <span className="w-6 shrink-0 text-center text-[16px]">{medalha(equipe.rank_posicao)}</span>
-                    <div className="relative h-9 w-9 shrink-0 overflow-hidden bg-zinc-100">
+                    <span className="grid h-10 w-8 shrink-0 place-items-center text-[16px] font-black max-md:h-5 max-md:w-full">{medalha(equipe.rank_posicao)}</span>
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden border border-slate-200 bg-white max-md:h-12 max-md:w-12">
                       {equipe.logo_url ? (
                         <Image src={equipe.logo_url} alt={equipe.nome} fill className="object-cover" />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-zinc-500">
-                          <Users size={16} />
+                        <div className="flex h-full w-full items-center justify-center text-zinc-500">
+                          <Users size={18} />
                         </div>
                       )}
                     </div>
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold uppercase text-[#142340]">{equipe.nome}</span><RankingTierBadge tier={equipe.tier} posicao={equipe.rank_posicao} score={equipe.score_total || equipe.rank_score} tipo="equipe" compacto />
-                    <span className="shrink-0 text-[16px]">{getCountryFlagEmoji(equipe.pais)}</span>
-                    <MessageShortcut referenciaTipo="equipe" referenciaId={equipe.id} titulo={equipe.nome || "Equipe"} avatarUrl={equipe.logo_url} tipo="equipe" />
-                    <ChevronRight size={17} className="shrink-0 text-zinc-300" />
+                    <div className="min-w-0 flex-1 max-md:w-full max-md:text-center">
+                      <div className="flex items-center gap-1 max-md:justify-center">
+                        <span className="truncate text-[13px] font-semibold text-slate-900 max-md:text-[10px]">{equipe.nome}</span>
+                        <RankingTierBadge tier={equipe.tier} posicao={equipe.rank_posicao} score={equipe.score_total || equipe.rank_score} tipo="equipe" compacto />
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500 max-md:hidden">
+                        <span className="truncate">{getCountryFlagEmoji(equipe.pais)} {equipe.tag || equipe.pais || "N/I"}</span>
+                        <BadgeFuncao funcao={equipe.minha_funcao} />
+                      </div>
+                      <div className="mt-1 flex items-center gap-2 max-md:hidden">
+                        <span className="w-14 text-[12px] font-semibold text-sky-600">{formatScore(equipe.score_total || equipe.rank_score || 0)}</span>
+                        <div className="h-1.5 flex-1 bg-slate-200">
+                          <div className="h-full bg-sky-500" style={{ width: `${Math.max(0, Math.min(100, Number(equipe.score_total || equipe.rank_score || 0)))}%` }} />
+                        </div>
+                      </div>
+                    </div>
                   </button>
                 ))}
+                </div>
               </div>
 
-              <div className="hidden overflow-x-auto md:block">
+              {equipes.length > topEquipes.length ? (
+                <div className="border-t border-slate-100 px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setRankingEquipesExpandido((valor) => !valor)}
+                    className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-600 hover:underline"
+                  >
+                    {rankingEquipesExpandido ? "ver menos" : "ver mais"}
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="hidden">
                 <table className="w-full min-w-[860px] border-collapse text-[13px]">
                   <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-zinc-500">
                     <tr>

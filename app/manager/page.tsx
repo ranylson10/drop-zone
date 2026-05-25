@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { getClientCache, setClientCache } from '@/lib/clientCache'
 import { usePerfil } from '@/app/contexts/PerfilContext'
 import {
   CalendarClock,
@@ -225,7 +226,17 @@ export default function ManagerPage() {
     }
 
     try {
-      setLoading(true)
+      const cacheKey = `page:manager:${user.id}:v2`
+      const cached = getClientCache<{ equipesManager: EquipeManager[]; equipeSelecionadaId: string }>(cacheKey, 60_000)
+
+      if (cached) {
+        setEquipesManager(cached.equipesManager)
+        setEquipeSelecionadaId(cached.equipeSelecionadaId)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+
       setErro(null)
 
       const [perfisRes, equipesDonoRes] = await Promise.all([
@@ -263,6 +274,7 @@ export default function ManagerPage() {
       if (idsEquipes.size === 0) {
         setEquipesManager([])
         setEquipeSelecionadaId('')
+        setClientCache(cacheKey, { equipesManager: [], equipeSelecionadaId: '' })
         return
       }
 
@@ -434,7 +446,11 @@ export default function ManagerPage() {
         .sort((a, b) => b.pendencias.length - a.pendencias.length || a.equipe.nome.localeCompare(b.equipe.nome, 'pt-BR'))
 
       setEquipesManager(dados)
-      setEquipeSelecionadaId((atual) => dados.some((item) => item.equipe.id === atual) ? atual : dados[0]?.equipe.id || '')
+      setEquipeSelecionadaId((atual) => {
+        const proximaEquipeSelecionadaId = dados.some((item) => item.equipe.id === atual) ? atual : dados[0]?.equipe.id || ''
+        setClientCache(cacheKey, { equipesManager: dados, equipeSelecionadaId: proximaEquipeSelecionadaId })
+        return proximaEquipeSelecionadaId
+      })
     } catch (e: unknown) {
       console.error('Erro ao carregar manager:', e)
       setErro(e instanceof Error ? e.message : 'Nao foi possivel carregar o centro de controle.')

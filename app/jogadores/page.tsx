@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getClientCache, setClientCache } from '@/lib/clientCache'
 import Link from 'next/link'
 import Image from 'next/image'
 import MessageShortcut from '@/app/components/chat/MessageShortcut'
@@ -112,10 +113,19 @@ export default function JogadoresPage() {
   const [busca, setBusca] = useState('')
   const [filtroPlataforma, setFiltroPlataforma] = useState('')
   const [jogadores, setJogadores] = useState<JogadorRow[]>([])
+  const [rankingJogadoresExpandido, setRankingJogadoresExpandido] = useState(false)
 
   const carregarJogadores = useCallback(async () => {
     try {
-      setLoading(true)
+      const cacheKey = 'page:jogadores:v2'
+      const cached = getClientCache<JogadorRow[]>(cacheKey, 2 * 60_000)
+
+      if (cached) {
+        setJogadores(cached)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
 
       const [perfisRes, rankingRes, membrosRes] = await Promise.all([
         supabase
@@ -222,6 +232,7 @@ export default function JogadoresPage() {
         }) as JogadorRow[]
 
       setJogadores(jogadoresCompletos)
+      setClientCache(cacheKey, jogadoresCompletos)
     } catch (error) {
       console.error('Erro ao carregar jogadores:', error)
     } finally {
@@ -260,6 +271,7 @@ export default function JogadoresPage() {
     .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
     .slice(0, 6)
   const topJogadores = jogadores.slice(0, 6)
+  const rankingJogadoresVisiveis = rankingJogadoresExpandido ? jogadores.slice(0, 12) : topJogadores
 
   return (
     <div className="min-h-screen bg-[#f7f7f7] text-[#142340]">
@@ -404,6 +416,62 @@ export default function JogadoresPage() {
               </div>
 
               <div className="overflow-x-auto px-3 pb-3">
+                <div className="flex min-w-max gap-2">
+                  {rankingJogadoresVisiveis.map((jogador) => {
+                    const equipe = normalizarEquipe(jogador.equipes)
+                    return (
+                      <Link
+                        key={`rank-card-${jogador.id}`}
+                        href={`/jogadores/${jogador.id}`}
+                        className="flex w-[245px] shrink-0 items-center gap-2 bg-zinc-50 p-2.5 text-left transition hover:bg-zinc-100 max-md:w-[78px] max-md:flex-col max-md:bg-transparent max-md:p-0"
+                      >
+                        <div className="grid h-10 w-8 shrink-0 place-items-center text-sm font-semibold max-md:h-5 max-md:w-full">{medalha(jogador.rank_posicao)}</div>
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100 max-md:h-12 max-md:w-12">
+                          {jogador.foto_capa ? (
+                            <Image src={jogador.foto_capa} alt={jogador.nick || 'Jogador'} fill className="object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-zinc-500">
+                              <UserCircle2 size={22} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 max-md:w-full max-md:text-center">
+                          <div className="flex items-center gap-1 max-md:justify-center">
+                            <span className="truncate text-[12px] font-semibold uppercase max-md:text-[10px]">{jogador.nick || 'Sem nick'}</span>
+                            <RankingTierBadge tier={jogador.tier} posicao={jogador.rank_posicao} score={jogador.score_total || jogador.rank_score} tipo="jogador" compacto />
+                          </div>
+                          <div className="text-[10px] font-medium uppercase text-zinc-500 max-md:hidden">ID: {jogador.uid_jogo || 'N/I'}</div>
+                          <div className="mt-0.5 flex items-center gap-2 text-[10px] font-medium uppercase text-zinc-500 max-md:hidden">
+                            <span className="truncate">{equipe?.tag || equipe?.nome || 'Sem equipe'}</span>
+                            <span className="flex items-center gap-1">{getPlatformIcon(jogador.plataforma)} {getPlatformLabel(jogador.plataforma)}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 max-md:hidden">
+                            <span className="w-14 font-semibold text-[#2563eb]">{formatScore(jogador.score_total || jogador.rank_score || 0)}</span>
+                            <div className="h-1.5 flex-1 bg-zinc-200">
+                              <div className="h-full bg-[#2563eb]" style={{ width: `${Math.max(0, Math.min(100, Number(jogador.score_total || jogador.rank_score || 0)))}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {jogadores.length > topJogadores.length ? (
+                <div className="border-t border-zinc-100 px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setRankingJogadoresExpandido((valor) => !valor)}
+                    className="text-[10px] font-black uppercase tracking-[0.12em] text-[#2563eb] hover:underline"
+                  >
+                    {rankingJogadoresExpandido ? 'ver menos' : 'ver mais'}
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="hidden">
                 <div className="min-w-[900px]">
                   <div className="grid grid-cols-[78px_2fr_1.3fr_120px_120px_170px_120px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
                     <div>Posição</div>
