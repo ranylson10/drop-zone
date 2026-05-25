@@ -3,7 +3,7 @@ import MvpGeralOverlayView from './MvpGeralOverlayView'
 import { mvpGeralOverlayTemplate } from './config'
 import type { StreamOverlayDefinition } from '../types'
 
-export const mvpgeralOverlayDefinition: StreamOverlayDefinition = {
+export const mvpGeralOverlayDefinition: StreamOverlayDefinition = {
   ...mvpGeralOverlayTemplate,
   Render: MvpGeralOverlayView,
   Editor: MvpGeralOverlayEditor,
