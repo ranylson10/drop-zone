@@ -4,14 +4,14 @@ import {
   type FixedStreamOverlayTemplate,
 } from '@/lib/streamOverlay'
 
-export const tabelaGeralOverlayTemplate: FixedStreamOverlayTemplate = {
-  id: 'tabela-geral',
-  slug: 'tabela-geral',
-  nome: 'Tabela Geral',
+export const tabelaQuedaOverlayTemplate: FixedStreamOverlayTemplate = {
+  id: 'tabela-queda',
+  slug: 'tabela-queda',
+  nome: 'Tabela da Partida',
   categoria: 'estatisticas',
-  descricao: 'Classificacao geral acumulada do campeonato.',
+  descricao: 'Tabela de pontuacao da partida selecionada.',
   config_padrao: mergeOverlayConfig(defaultTabelaGeralConfig, {
-    title: 'TABELA GERAL',
+    title: 'TABELA DA PARTIDA',
     tabelaGeral: {
       mode: 'duplo-inferior',
       backgroundImage: '',
@@ -32,7 +32,7 @@ export const tabelaGeralOverlayTemplate: FixedStreamOverlayTemplate = {
       imageEnabled: true,
       textEnabled: true,
       name: 'NOME DO CAMPEONATO',
-      title: 'TABELA GERAL',
+      title: 'TABELA DA PARTIDA',
     },
     columns: {
       rank: true,

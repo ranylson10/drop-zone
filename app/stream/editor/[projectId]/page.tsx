@@ -2,12 +2,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
+import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Play, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
 import { getStreamOverlayDefinition, streamOverlayDefinitions } from '@/app/components/stream/overlays/registry'
+import { getFreeFireMapImage, normalizeFreeFireMapName } from '@/app/components/stream/overlays/mapas-freefire'
 import {
   RankingRow,
   StreamOverlayBlock,
@@ -50,16 +51,19 @@ type CampeonatoInfo = {
   logo_url: string | null
 }
 
-type EditorAction = 'move' | 'content' | 'style' | 'table'
+type EditorAction = 'move' | 'content' | 'style' | 'table' | 'transition'
 type CountdownBlock = 'timer' | 'equipes' | 'mapas'
 type BooyahBlock = 'texto' | 'logo' | 'equipe'
+type BooyahsDiaBlock = 'art' | 'cards'
+type VisualStyleTarget = 'primary' | 'accent' | 'background' | 'rowBackground' | 'text' | 'headerText' | 'border' | 'columnBackground' | 'columnText' | 'rowHighlightBackground' | 'rowHighlightText'
 
-const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral'])
+const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'booyah', 'booyahs-do-dia', 'mvp-geral', 'mvp-queda', 'tabela-queda'])
 
 const blockLabels: Record<StreamOverlayBlock, string> = {
   image: 'Imagem',
   text: 'Texto',
   table: 'Overlay',
+  infoImage: 'Imagem topo',
 }
 
 const countdownBlockLabels: Record<CountdownBlock, string> = {
@@ -84,6 +88,11 @@ const booyahBlockLabels: Record<BooyahBlock, string> = {
   texto: 'Texto',
   logo: 'Logo',
   equipe: 'Equipe',
+}
+
+const booyahsDiaBlockLabels: Record<BooyahsDiaBlock, string> = {
+  art: 'Imagem',
+  cards: 'Cards',
 }
 
 const booyahBlockPaths: Record<BooyahBlock, string> = {
@@ -130,6 +139,19 @@ const borderStyleOptions: [string, string][] = [
   ['2px dashed #ef4444', 'Tracejada'],
 ]
 
+const transitionOptions: [string, string][] = [
+  ['fade', 'Fade'],
+  ['slide-up', 'Sobe'],
+  ['slide-down', 'Desce'],
+  ['slide-left', 'Esquerda'],
+  ['slide-right', 'Direita'],
+  ['zoom', 'Zoom'],
+  ['flip', 'Flip'],
+  ['wipe', 'Corte'],
+  ['blur', 'Blur'],
+  ['elastic', 'Elastic'],
+]
+
 const checkerboardStyle = {
   backgroundColor: '#ffffff',
   backgroundImage:
@@ -169,6 +191,26 @@ function gradientValue(start: string, end: string, direction = '90deg') {
 
 function imageBackgroundValue(url: string) {
   return `url("${url}")`
+}
+
+function backgroundEditorMode(value?: string) {
+  const text = String(value || '').trim()
+  if (!text || text === 'transparent') return 'none'
+  if (text.startsWith('url(')) return 'image'
+  if (text.startsWith('linear-gradient')) return 'gradient'
+  return 'solid'
+}
+
+function gradientEditorParts(value?: string) {
+  const text = String(value || '')
+  const colors = text.match(/#[0-9a-fA-F]{6}|rgba?\([^)]+\)/g) || []
+  const direction = text.match(/linear-gradient\(([^,]+),/)?.[1]?.trim() || '90deg'
+
+  return {
+    direction,
+    start: colors[0] || '#ffffff',
+    end: colors[1] || '#101827',
+  }
 }
 
 function assetExtensao(fileName: string, mime?: string) {
@@ -212,13 +254,28 @@ type CampeonatoEquipeRow = {
 }
 
 type ResultadoRow = {
+  id?: string | null
+  jogo_id?: string | null
+  partida_id?: string | null
   equipe_id: string | null
   grupo_id?: string | null
+  mapa?: string | null
   colocacao?: number | null
   posicao?: number | null
   abates?: number | null
   pontos_total?: number | null
   total_pontos?: number | null
+  pontos?: number | null
+  created_at?: string | null
+}
+
+type JogoRow = {
+  id: string
+  nome?: string | null
+  nome_bloco?: string | null
+  quantidade_partidas?: number | null
+  quedas?: unknown[] | null
+  created_at?: string | null
 }
 
 function textoSeguro(valor: unknown, fallback = '') {
@@ -251,6 +308,134 @@ function normalizarTemplateNome(value: unknown) {
     .toLowerCase()
 }
 
+function rankingSort(a: RankingRow, b: RankingRow) {
+  return b.pontos - a.pontos || b.booyahs - a.booyahs || b.kills - a.kills || a.nome.localeCompare(b.nome, 'pt-BR')
+}
+
+function resultadoQuedaKey(resultado: ResultadoRow, index: number) {
+  return textoSeguro(resultado.partida_id)
+    || [textoSeguro(resultado.jogo_id), textoSeguro(resultado.mapa)].filter(Boolean).join(':')
+    || textoSeguro(resultado.created_at)
+    || textoSeguro(resultado.id)
+    || `resultado-${index}`
+}
+
+function getResultadoMapaKey(resultado: ResultadoRow) {
+  return normalizeFreeFireMapName(resultado.mapa)
+}
+
+function getQuedaMapaNome(queda: unknown) {
+  if (typeof queda === 'string') return textoSeguro(queda)
+  if (queda && typeof queda === 'object') {
+    const item = queda as Record<string, unknown>
+    return textoSeguro(item.mapa) || textoSeguro(item.nome) || textoSeguro(item.name) || textoSeguro(item.label)
+  }
+  return textoSeguro(queda)
+}
+
+function montarRowsBooyahsDiaEditor(jogo: JogoRow | null, resultados: ResultadoRow[], equipesLista: CampeonatoEquipeRow[]) {
+  const equipesMap = new Map(equipesLista.map((equipe) => [equipe.id, equipe]))
+  const publicToCampeonato = new Map<string, string>()
+  equipesLista.forEach((equipe) => {
+    const refs = [equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id].map((item) => textoSeguro(item)).filter(Boolean)
+    refs.forEach((ref) => publicToCampeonato.set(ref, equipe.id))
+  })
+
+  const mapasDoJogo = Array.isArray(jogo?.quedas) ? jogo.quedas.map((mapa) => getQuedaMapaNome(mapa)).filter(Boolean) : []
+  const quantidade = mapasDoJogo.length > 0 ? mapasDoJogo.length : Math.max(Number(jogo?.quantidade_partidas || 0), 1)
+  const fallbackMapas = ['Bermuda', 'Purgatorio', 'Kalahari', 'Alpine', 'Nova Terra', 'Solara']
+
+  return Array.from({ length: quantidade }, (_, index) => {
+    const mapaNome = mapasDoJogo[index] || fallbackMapas[index % fallbackMapas.length] || `Queda ${index + 1}`
+    const mapaKey = normalizeFreeFireMapName(mapaNome)
+    const resultadosDaQueda = resultados.filter((resultado) => {
+      if (jogo?.id && textoSeguro(resultado.jogo_id) !== jogo.id) return false
+      return getResultadoMapaKey(resultado) === mapaKey
+    })
+    const vencedor = resultadosDaQueda.find((resultado) => numero(resultado.colocacao ?? resultado.posicao) === 1)
+      || [...resultadosDaQueda].sort((a, b) => numero(b.pontos ?? b.pontos_total ?? b.total_pontos) - numero(a.pontos ?? a.pontos_total ?? a.total_pontos))[0]
+    const equipeRef = textoSeguro(vencedor?.equipe_id)
+    const campeonatoEquipeId = publicToCampeonato.get(equipeRef) || equipeRef
+    const equipe = campeonatoEquipeId ? equipesMap.get(campeonatoEquipeId) : null
+    const mapa = getFreeFireMapImage(mapaNome)
+
+    return {
+      id: `${jogo?.id || 'preview'}-${index + 1}`,
+      nome: equipe ? getEquipeNome(equipe) : '',
+      tag: equipe ? getEquipeTag(equipe) : null,
+      logo: equipe ? getEquipeLogo(equipe) : null,
+      grupo: null,
+      quedas: vencedor ? 1 : 0,
+      booyahs: vencedor ? 1 : 0,
+      kills: numero(vencedor?.abates),
+      pontos: numero(vencedor?.pontos ?? vencedor?.pontos_total ?? vencedor?.total_pontos),
+      mapa: mapa?.nome || mapaNome,
+      mapaImagem: mapa?.url || null,
+      quedaNumero: index + 1,
+      concluida: Boolean(vencedor),
+    }
+  })
+}
+
+function montarRankingComVariacao(equipesLista: CampeonatoEquipeRow[], gruposMap: Map<string, string>, publicToCampeonato: Map<string, string>, resultados: ResultadoRow[]) {
+  const orderedResultados = [...resultados].sort((a, b) => {
+    const aTime = new Date(textoSeguro(a.created_at)).getTime() || 0
+    const bTime = new Date(textoSeguro(b.created_at)).getTime() || 0
+    if (aTime !== bTime) return aTime - bTime
+    return textoSeguro(a.id).localeCompare(textoSeguro(b.id))
+  })
+  const latestKey = orderedResultados.length > 0 ? resultadoQuedaKey(orderedResultados[orderedResultados.length - 1], orderedResultados.length - 1) : ''
+  const anteriores = latestKey ? orderedResultados.filter((resultado, index) => resultadoQuedaKey(resultado, index) !== latestKey) : []
+
+  const montar = (rows: ResultadoRow[]) => {
+    const statsMap = new Map<string, { quedas: number; booyahs: number; kills: number; pontos: number; grupoId: string | null }>()
+
+    rows.forEach((resultado) => {
+      const ref = textoSeguro(resultado.equipe_id)
+      const campeonatoEquipeId = publicToCampeonato.get(ref) || ref
+      if (!campeonatoEquipeId) return
+      const atual = statsMap.get(campeonatoEquipeId) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null as string | null }
+
+      atual.quedas += 1
+      atual.kills += numero(resultado.abates)
+      atual.pontos += numero(resultado.pontos ?? resultado.pontos_total ?? resultado.total_pontos)
+      if (numero(resultado.colocacao ?? resultado.posicao) === 1) atual.booyahs += 1
+      if (!atual.grupoId && resultado.grupo_id) atual.grupoId = textoSeguro(resultado.grupo_id)
+
+      statsMap.set(campeonatoEquipeId, atual)
+    })
+
+    return equipesLista
+      .map((equipe) => {
+        const stats = statsMap.get(equipe.id) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null }
+        const grupoId = textoSeguro(stats.grupoId || equipe.grupo_id)
+        return {
+          id: equipe.id,
+          nome: getEquipeNome(equipe),
+          tag: getEquipeTag(equipe),
+          logo: getEquipeLogo(equipe),
+          grupo: grupoId ? gruposMap.get(grupoId) || '-' : '-',
+          quedas: stats.quedas,
+          booyahs: stats.booyahs,
+          kills: stats.kills,
+          pontos: stats.pontos,
+        }
+      })
+      .sort(rankingSort)
+  }
+
+  const rankingAtual = montar(orderedResultados)
+  const posicaoAnterior = new Map(montar(anteriores).map((row, index) => [row.id, index + 1]))
+
+  return rankingAtual.map((row, index) => {
+    const anterior = posicaoAnterior.get(row.id)
+    return {
+      ...row,
+      variacao: anterior ? anterior - (index + 1) : 0,
+    }
+  })
+}
+
 async function carregarRankingTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
   const [{ data: equipes }, { data: grupos }, partidasRes, jogosRes] = await Promise.all([
     supabase
@@ -267,8 +452,8 @@ async function carregarRankingTabelaGeral(campeonatoId: string): Promise<Ranking
       .eq('campeonato_id', campeonatoId)
       .order('created_at', { ascending: true }),
     supabase.from('campeonato_grupos').select('id, nome').eq('campeonato_id', campeonatoId),
-    supabase.from('resultados_partidas_equipes').select('equipe_id, grupo_id, colocacao, abates, pontos_total').eq('campeonato_id', campeonatoId),
-    supabase.from('resultados_jogos').select('equipe_id, grupo_id, posicao, abates, total_pontos').eq('campeonato_id', campeonatoId),
+    supabase.from('resultados_partidas_equipes').select('id, equipe_id, grupo_id, colocacao, abates, pontos_total, created_at').eq('campeonato_id', campeonatoId),
+    supabase.from('resultados_jogos').select('id, jogo_id, partida_id, equipe_id, grupo_id, mapa, posicao, abates, total_pontos, created_at').eq('campeonato_id', campeonatoId),
   ])
 
   const equipesLista = (equipes || []) as CampeonatoEquipeRow[]
@@ -279,54 +464,71 @@ async function carregarRankingTabelaGeral(campeonatoId: string): Promise<Ranking
     colocacao: row.colocacao,
     abates: row.abates,
     pontos: row.pontos_total,
+    created_at: row.created_at,
+    id: row.id,
   }))
   const resultadosJogos = ((jogosRes.data || []) as ResultadoRow[]).map((row) => ({
+    id: row.id,
+    jogo_id: row.jogo_id,
+    partida_id: row.partida_id,
     equipe_id: row.equipe_id,
     grupo_id: row.grupo_id,
+    mapa: row.mapa,
     colocacao: row.posicao,
     abates: row.abates,
     pontos: row.total_pontos,
+    created_at: row.created_at,
   }))
   const resultados = resultadosPartidas.length > 0 ? resultadosPartidas : resultadosJogos
-  const statsMap = new Map<string, { quedas: number; booyahs: number; kills: number; pontos: number; grupoId: string | null }>()
   const publicToCampeonato = new Map<string, string>()
 
   equipesLista.forEach((equipe) => {
     ;[equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id].map((item) => textoSeguro(item)).filter(Boolean).forEach((ref) => publicToCampeonato.set(ref, equipe.id))
   })
 
-  resultados.forEach((resultado) => {
-    const ref = textoSeguro(resultado.equipe_id)
-    const campeonatoEquipeId = publicToCampeonato.get(ref) || ref
-    if (!campeonatoEquipeId) return
-    const atual = statsMap.get(campeonatoEquipeId) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null as string | null }
+  return montarRankingComVariacao(equipesLista, gruposMap, publicToCampeonato, resultados)
+}
 
-    atual.quedas += 1
-    atual.kills += numero(resultado.abates)
-    atual.pontos += numero(resultado.pontos)
-    if (numero(resultado.colocacao) === 1) atual.booyahs += 1
-    if (!atual.grupoId && resultado.grupo_id) atual.grupoId = textoSeguro(resultado.grupo_id)
+async function carregarBooyahsDiaPreview(campeonatoId: string) {
+  const [{ data: equipes }, { data: resultados }, { data: jogos }] = await Promise.all([
+    supabase
+      .from('campeonato_equipes')
+      .select(`
+        id,
+        equipe_id,
+        equipe_avulsa_id,
+        nome_exibicao,
+        grupo_id,
+        equipes ( nome, tag, logo_url ),
+        equipe_avulsa:equipes_avulsas_campeonato ( nome, tag, logo_url )
+      `)
+      .eq('campeonato_id', campeonatoId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('resultados_jogos')
+      .select('id, jogo_id, partida_id, equipe_id, grupo_id, mapa, posicao, abates, total_pontos, created_at')
+      .eq('campeonato_id', campeonatoId),
+    supabase
+      .from('jogos')
+      .select('id, nome, nome_bloco, quantidade_partidas, quedas, created_at')
+      .eq('campeonato_id', campeonatoId)
+      .order('created_at', { ascending: false }),
+  ])
 
-    statsMap.set(campeonatoEquipeId, atual)
-  })
+  const equipesLista = (equipes || []) as CampeonatoEquipeRow[]
+  const resultadosLista = (resultados || []) as ResultadoRow[]
+  const jogosLista = (jogos || []) as JogoRow[]
+  const jogo = jogosLista.find((item) => resultadosLista.some((row) => textoSeguro(row.jogo_id) === item.id)) || jogosLista[0] || null
+  const rows = montarRowsBooyahsDiaEditor(jogo, resultadosLista, equipesLista)
 
-  return equipesLista
-    .map((equipe) => {
-      const stats = statsMap.get(equipe.id) || { quedas: 0, booyahs: 0, kills: 0, pontos: 0, grupoId: null }
-      const grupoId = textoSeguro(stats.grupoId || equipe.grupo_id)
-      return {
-        id: equipe.id,
-        nome: getEquipeNome(equipe),
-        tag: getEquipeTag(equipe),
-        logo: getEquipeLogo(equipe),
-        grupo: grupoId ? gruposMap.get(grupoId) || '-' : '-',
-        quedas: stats.quedas,
-        booyahs: stats.booyahs,
-        kills: stats.kills,
-        pontos: stats.pontos,
-      }
-    })
-    .sort((a, b) => b.pontos - a.pontos || b.booyahs - a.booyahs || b.kills - a.kills || a.nome.localeCompare(b.nome, 'pt-BR'))
+  return {
+    rows,
+    context: {
+      jogo,
+      mapas: rows.map((row) => textoSeguro(row.mapa)).filter(Boolean),
+      quantidadePartidas: rows.length,
+    },
+  }
 }
 
 export default function StreamOverlayEditorPage() {
@@ -337,6 +539,8 @@ export default function StreamOverlayEditorPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [overlays, setOverlays] = useState<Overlay[]>([])
   const [rankingRows, setRankingRows] = useState<RankingRow[]>([])
+  const [booyahsDiaRows, setBooyahsDiaRows] = useState<RankingRow[]>([])
+  const [booyahsDiaContext, setBooyahsDiaContext] = useState<any>({})
   const [campeonatoInfo, setCampeonatoInfo] = useState<CampeonatoInfo | null>(null)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
   const [overlayId, setOverlayId] = useState('')
@@ -346,10 +550,14 @@ export default function StreamOverlayEditorPage() {
   const [activeAction, setActiveAction] = useState<EditorAction>('move')
   const [selectedCountdownBlock, setSelectedCountdownBlock] = useState<CountdownBlock>('timer')
   const [selectedBooyahBlock, setSelectedBooyahBlock] = useState<BooyahBlock>('texto')
+  const [selectedBooyahsDiaBlock, setSelectedBooyahsDiaBlock] = useState<BooyahsDiaBlock>('cards')
   const [selectedColumn, setSelectedColumn] = useState('nome')
   const [selectedRow, setSelectedRow] = useState(1)
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState<VisualStyleTarget>('rowBackground')
   const [draftConfig, setDraftConfig] = useState<any | null>(null)
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false)
+  const [previewScale, setPreviewScale] = useState(0.5)
+  const historyRef = useRef<any[]>([])
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -362,7 +570,10 @@ export default function StreamOverlayEditorPage() {
   const CustomOverlayEditor = previewOverlayDefinition?.Editor
   const isTabelaOverlay = Boolean(overlayAtual?.template_id && ['tabela-geral', 'tabela-do-dia', 'tabela-da-queda', 'mvp-geral', 'mvp-do-dia', 'mvp-da-queda'].includes(overlayAtual.template_id))
   const isCountdownOverlay = overlayAtual?.template_id === 'countdown'
-  const isBooyahOverlay = overlayAtual?.template_id === 'booyah'
+  const isBooyahsDiaOverlay = Boolean(config.booyahsDia || previewOverlayDefinition?.slug === 'booyahs-do-dia')
+  const isBooyahOverlay = overlayAtual?.template_id === 'booyah' && !isBooyahsDiaOverlay
+  const booyahsDiaConfig = (config.booyahsDia || {}) as any
+  const booyahsDiaMode = String(booyahsDiaConfig.mode || 'cards')
   const selectedCountdownPath = countdownBlockPaths[selectedCountdownBlock]
   const selectedCountdownConfig = config.countdown?.[`${selectedCountdownBlock}Block`] || {}
   const selectedCountdownFallback = countdownBlockFallbacks[selectedCountdownBlock]
@@ -374,20 +585,55 @@ export default function StreamOverlayEditorPage() {
       ? `${origem}/stream/overlay/${projeto.stream_key}/${previewOverlayDefinition.slug}`
       : `${origem}/stream/render/${overlayAtual.id}`
     : ''
-  const previewRows = rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
-  const previewScale = 0.5
+  const previewRows = useMemo(() => {
+    if (!['booyah', 'booyahs-do-dia'].includes(String(overlayAtual?.template_id || ''))) return rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
+    if (booyahsDiaRows.length > 0) return booyahsDiaRows
+
+    const mapas = ['Bermuda', 'Purgatorio', 'Alpine', 'Kalahari']
+    const baseRows = rankingRows.length > 0 ? rankingRows : sampleRankingRows(mapas.length)
+    return mapas.map((mapa, index) => ({
+      ...(baseRows[index] || baseRows[0]),
+      id: `preview-booyah-${index + 1}`,
+      mapa,
+      mapaImagem: getFreeFireMapImage(mapa)?.url || null,
+      quedaNumero: index + 1,
+      concluida: index < Math.min(4, baseRows.length),
+    }))
+  }, [booyahsDiaRows, config.layout?.maxRows, overlayAtual?.template_id, rankingRows])
   const orderedColumnKeys = useMemo(() => {
     const savedOrder = ((config.columnsOrder || []) as string[]).filter((key) => tabelaGeralColumnKeys.includes(key))
-    return [...savedOrder, ...tabelaGeralColumnKeys.filter((key) => !savedOrder.includes(key))]
+    const orderedKeys = [...savedOrder]
+    tabelaGeralColumnKeys.forEach((key) => {
+      if (orderedKeys.includes(key)) return
+      const defaultIndex = tabelaGeralColumnKeys.indexOf(key)
+      const insertAt = orderedKeys.findIndex((existingKey) => tabelaGeralColumnKeys.indexOf(existingKey) > defaultIndex)
+      if (insertAt === -1) orderedKeys.push(key)
+      else orderedKeys.splice(insertAt, 0, key)
+    })
+    return orderedKeys
   }, [config.columnsOrder])
   const selectedColumnIndex = Math.max(0, orderedColumnKeys.indexOf(selectedColumn))
   const selectedColumnWidth = Number(config.columnWidths?.[selectedColumn] ?? defaultTabelaGeralColumnWidths[selectedColumn] ?? 1)
-  const previewCanvasScale = 0.5
-
   useEffect(() => {
     setDraftConfig(configSalva)
     setTemAlteracoesPendentes(false)
+    historyRef.current = []
   }, [overlayAtual?.id, configSalva])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return
+      const previous = historyRef.current.pop()
+      if (!previous) return
+
+      event.preventDefault()
+      setDraftConfig(previous)
+      setTemAlteracoesPendentes(true)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const carregar = useCallback(async () => {
     if (!projectId) return
@@ -450,17 +696,22 @@ export default function StreamOverlayEditorPage() {
   useEffect(() => {
     if (!projeto?.campeonato_id) {
       setRankingRows([])
+      setBooyahsDiaRows([])
+      setBooyahsDiaContext({})
       setCampeonatoInfo(null)
       return
     }
 
     async function carregarRanking() {
       if (!projeto?.campeonato_id) return
-      const [ranking, campeonatoRes] = await Promise.all([
+      const [ranking, booyahsDia, campeonatoRes] = await Promise.all([
         carregarRankingTabelaGeral(projeto.campeonato_id),
+        carregarBooyahsDiaPreview(projeto.campeonato_id),
         supabase.from('campeonatos').select('nome, logo_url').eq('id', projeto.campeonato_id).maybeSingle(),
       ])
       setRankingRows(ranking)
+      setBooyahsDiaRows(booyahsDia.rows)
+      setBooyahsDiaContext(booyahsDia.context)
       setCampeonatoInfo((campeonatoRes.data as CampeonatoInfo) || null)
     }
 
@@ -592,10 +843,13 @@ export default function StreamOverlayEditorPage() {
     setSalvando(true)
     try {
       const configLeve = await migrarInlineAssetsParaStorage(novoConfig, 'config')
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
       const response = await fetch(`/api/stream/projects/${encodeURIComponent(projectId)}/overlays/${encodeURIComponent(overlayAtual.id)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ config: configLeve }),
       })
@@ -657,6 +911,8 @@ export default function StreamOverlayEditorPage() {
     }
 
     alvo[partes[partes.length - 1]] = valor
+    historyRef.current.push(JSON.parse(JSON.stringify(base)))
+    if (historyRef.current.length > 50) historyRef.current.shift()
     setDraftConfig(novo)
     setTemAlteracoesPendentes(true)
   }
@@ -664,52 +920,54 @@ export default function StreamOverlayEditorPage() {
   function atualizarConfigLocal(mutator: (configAtual: any) => any) {
     const base = draftConfig || configSalva || {}
     const novo = mutator(JSON.parse(JSON.stringify(base)))
+    historyRef.current.push(JSON.parse(JSON.stringify(base)))
+    if (historyRef.current.length > 50) historyRef.current.shift()
     setDraftConfig(novo)
     setTemAlteracoesPendentes(true)
   }
 
-  function aplicarPresetTabela(tipo: 'duplo-12' | 'simples' | 'mvp-duplo') {
+  function ajustarZoomPreview(event: WheelEvent<HTMLDivElement>) {
+    event.preventDefault()
+    const delta = event.deltaY > 0 ? -0.05 : 0.05
+    setPreviewScale((current) => Math.max(0.25, Math.min(1.2, Number((current + delta).toFixed(2)))))
+  }
+
+  function atualizarLimiteLinhasTabela(valor: number) {
     atualizarConfigLocal((novo) => {
       novo.layout = novo.layout || {}
-
-      if (tipo === 'duplo-12') {
-        novo.layout.maxRows = 12
-        novo.layout.blockCount = 2
-        novo.layout.rowsPerBlock = 6
-        novo.layout.blockDirection = 'horizontal'
-        novo.layout.blockGap = 36
-        novo.layout.w = novo.layout.w || 1560
-      }
-
-      if (tipo === 'simples') {
-        novo.layout.blockCount = 1
-        novo.layout.rowsPerBlock = novo.layout.maxRows || 12
-        novo.layout.blockDirection = 'horizontal'
-      }
-
-      if (tipo === 'mvp-duplo') {
-        novo.layout.maxRows = 10
-        novo.layout.blockCount = 2
-        novo.layout.rowsPerBlock = 5
-        novo.layout.blockDirection = 'horizontal'
-        novo.layout.blockGap = 36
-        novo.columns = {
-          ...(novo.columns || {}),
-          rank: true,
-          logo: true,
-          nome: true,
-          tag: true,
-          grupo: false,
-          quedas: true,
-          booyahs: false,
-          kills: true,
-          pontos: false,
-        }
-        novo.columnsOrder = ['rank', 'logo', 'nome', 'tag', 'quedas', 'kills', 'grupo', 'booyahs', 'pontos']
-      }
-
+      const maxRows = Math.max(1, Number(valor || 1))
+      const blockCount = Math.max(1, Number(novo.layout.blockCount || 1))
+      novo.layout.maxRows = maxRows
+      novo.layout.rowsPerBlock = blockCount > 1 ? Math.ceil(maxRows / blockCount) : maxRows
       return novo
     })
+  }
+
+  function atualizarFundoUnicoLinhas(valor: string) {
+    atualizarConfigLocal((novo) => {
+      novo.theme = novo.theme || {}
+      novo.theme.rowBackground = valor
+      novo.theme.rowAltBackground = valor
+      return novo
+    })
+  }
+
+  async function uploadFundoUnicoLinhas(file: File | null) {
+    if (!file) return
+
+    try {
+      setSalvando(true)
+      const publicUrl = await uploadStreamAsset(file, 'background')
+      atualizarFundoUnicoLinhas(imageBackgroundValue(publicUrl))
+    } catch (error) {
+      alert(`Erro ao enviar imagem: ${error instanceof Error ? error.message : 'tente novamente'}`)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  function testarTransicao() {
+    atualizarCampo('animation.testKey', Date.now())
   }
 
   function usarLogoDoCampeonato() {
@@ -806,6 +1064,11 @@ export default function StreamOverlayEditorPage() {
     } else if (block === 'text') {
       novo.brand.textX = Math.round(x)
       novo.brand.textY = Math.round(y)
+    } else if (block === 'infoImage') {
+      novo.tabelaGeral = novo.tabelaGeral || {}
+      novo.tabelaGeral.infoImage = novo.tabelaGeral.infoImage || {}
+      novo.tabelaGeral.infoImage.x = Math.round(x)
+      novo.tabelaGeral.infoImage.y = Math.round(y)
     } else {
       novo.layout.x = Math.round(x)
       novo.layout.y = Math.round(y)
@@ -817,6 +1080,7 @@ export default function StreamOverlayEditorPage() {
   function lerPosicaoBloco(block: StreamOverlayBlock) {
     if (block === 'image') return { x: Number(config.brand?.x || 0), y: Number(config.brand?.y || 0) }
     if (block === 'text') return { x: Number(config.brand?.textX || 0), y: Number(config.brand?.textY || 0) }
+    if (block === 'infoImage') return { x: Number(config.tabelaGeral?.infoImage?.x || 0), y: Number(config.tabelaGeral?.infoImage?.y || 0) }
     return { x: Number(config.layout?.x || 0), y: Number(config.layout?.y || 0) }
   }
 
@@ -858,6 +1122,60 @@ export default function StreamOverlayEditorPage() {
       transform: `scale(${scale})`,
       transformOrigin: 'top left',
     }
+  }
+
+  function booyahsDiaBlockBox(block: BooyahsDiaBlock) {
+    const cfg = (config.booyahsDia || {}) as any
+    const mode = String(cfg.mode || 'cards')
+
+    if (block === 'art') {
+      if (mode === 'vertical-list') {
+        return {
+          left: Number(cfg.artSideX ?? 80),
+          top: Number(cfg.artSideY ?? 160),
+          width: Number(cfg.artSideW ?? 720),
+          height: Number(cfg.artSideH ?? 620),
+        }
+      }
+
+      return {
+        left: Number(cfg.artX ?? 0),
+        top: Number(cfg.artY ?? 20),
+        width: Number(cfg.artW ?? 1920),
+        height: Number(cfg.artH ?? 260),
+      }
+    }
+
+    if (mode === 'vertical-list') {
+      return {
+        left: Number(cfg.listX ?? 940),
+        top: Number(cfg.listY ?? 160),
+        width: Number(cfg.listW ?? 820),
+        height: Number(cfg.listH ?? 760),
+      }
+    }
+
+    const total = Math.max(previewRows.length || Number(booyahsDiaContext.quantidadePartidas || 0), 1)
+    const gap = Number(cfg.gap ?? 18)
+    const columns = Math.min(total, Math.max(1, Math.min(8, Number(cfg.columns ?? total))))
+    const containerWidth = Math.min(1920, Math.max(320, Number(cfg.containerWidth ?? 1840)))
+    const autoFit = cfg.autoFit !== false
+    const cardWidth = autoFit ? Math.floor((containerWidth - gap * Math.max(0, columns - 1)) / columns) : Number(cfg.cardWidth ?? 292)
+    const cardHeight = Number(cfg.cardHeight ?? 470)
+    const gridWidth = columns * cardWidth + gap * Math.max(0, columns - 1)
+
+    return {
+      left: autoFit ? Math.max(0, (1920 - gridWidth) / 2) : Number(cfg.x ?? 36),
+      top: Number(cfg.y ?? 360),
+      width: gridWidth,
+      height: cardHeight,
+    }
+  }
+
+  function selecionarBooyahsDiaBlock(block: BooyahsDiaBlock, event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    setSelectedBooyahsDiaBlock(block)
   }
 
   function atualizarPreviewConfig(novoConfig: any) {
@@ -1077,15 +1395,16 @@ export default function StreamOverlayEditorPage() {
                 className="relative overflow-hidden"
                 style={{
                   ...checkerboardStyle,
-                  width: 1920 * previewCanvasScale,
-                  height: 1080 * previewCanvasScale,
+                  width: 1920 * previewScale,
+                  height: 1080 * previewScale,
                 }}
+                onWheel={ajustarZoomPreview}
                 onMouseDown={() => setSelectedBlock('table')}
               >
                 {!isTabelaOverlay && PreviewOverlay && overlayAtual ? (
                   <div
                     className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left"
-                    style={{ transform: `scale(${previewCanvasScale})` }}
+                    style={{ transform: `scale(${previewScale})` }}
                   >
                     <PreviewOverlay
                       config={config}
@@ -1093,9 +1412,10 @@ export default function StreamOverlayEditorPage() {
                       templateId={overlayAtual.template_id}
                       overlayName={overlayAtual.nome}
                       context={{
-                        jogo: { nome: 'JOGO PRINCIPAL', nome_bloco: 'GRUPO A', quantidade_partidas: 4 },
-                        mapas: ['Bermuda', 'Purgatório', 'Alpine', 'Kalahari'],
-                        quantidadePartidas: 4,
+                        jogo: booyahsDiaContext.jogo || { nome: 'JOGO PRINCIPAL', nome_bloco: 'GRUPO A', quantidade_partidas: previewRows.length },
+                        mapas: booyahsDiaContext.mapas || previewRows.map((row) => textoSeguro(row.mapa)).filter(Boolean),
+                        quantidadePartidas: booyahsDiaContext.quantidadePartidas || previewRows.length,
+                        campeonato: campeonatoInfo,
                       }}
                     />
                     {isCountdownOverlay ? (
@@ -1134,6 +1454,26 @@ export default function StreamOverlayEditorPage() {
                             }}
                           >
                             <span className="absolute left-2 top-2 bg-red-600 px-2 py-1 text-[18px] leading-none">{booyahBlockLabels[block]}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {isBooyahsDiaOverlay ? (
+                      <div className="absolute left-0 top-0 h-[1080px] w-[1920px]">
+                        {(['art', 'cards'] as BooyahsDiaBlock[]).map((block) => (
+                          <button
+                            key={block}
+                            type="button"
+                            onPointerDown={(event) => selecionarBooyahsDiaBlock(block, event)}
+                            className="absolute z-20 border text-left text-[22px] font-black uppercase tracking-[0.14em] text-white"
+                            style={{
+                              ...booyahsDiaBlockBox(block),
+                              borderColor: selectedBooyahsDiaBlock === block ? '#ef4444' : 'rgba(239,68,68,0.55)',
+                              outline: selectedBooyahsDiaBlock === block ? '5px solid rgba(239,68,68,0.45)' : '2px dashed rgba(239,68,68,0.45)',
+                              background: selectedBooyahsDiaBlock === block ? 'rgba(239,68,68,0.10)' : 'rgba(15,23,42,0.03)',
+                            }}
+                          >
+                            <span className="absolute left-2 top-2 bg-red-600 px-2 py-1 text-[18px] leading-none">{booyahsDiaBlockLabels[block]}</span>
                           </button>
                         ))}
                       </div>
@@ -1178,10 +1518,25 @@ export default function StreamOverlayEditorPage() {
                     config={config}
                     onChange={atualizarCampo}
                     onChangeConfig={(mutator) => atualizarConfigLocal((atual) => mutator(atual))}
+                    onUploadImage={(path, file) => salvarImagemNoCampo(path, file, 'background')}
                   />
                 ) : null}
 
-                {isCountdownOverlay ? (
+                {isBooyahsDiaOverlay ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['art', 'cards'] as BooyahsDiaBlock[]).map((block) => (
+                      <button
+                        key={block}
+                        type="button"
+                        onClick={() => setSelectedBooyahsDiaBlock(block)}
+                        className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBooyahsDiaBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
+                      >
+                        {block === 'art' ? <ImageIcon size={17} /> : <Columns3 size={17} />}
+                        {booyahsDiaBlockLabels[block]}
+                      </button>
+                    ))}
+                  </div>
+                ) : isCountdownOverlay ? (
                   <div className="grid grid-cols-3 gap-2">
                     {(['timer', 'equipes', 'mapas'] as CountdownBlock[]).map((block) => (
                       <button
@@ -1210,14 +1565,16 @@ export default function StreamOverlayEditorPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['image', 'text', 'table'] as StreamOverlayBlock[]).map((block) => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['infoImage', 'image', 'text', 'table'] as StreamOverlayBlock[]).map((block) => (
                       <button
                         key={block}
                         type="button"
                         onClick={() => {
                           setSelectedBlock(block)
-                          if (block === 'image') {
+                          if (block === 'infoImage') {
+                            atualizarCampo('tabelaGeral.infoImage.enabled', true)
+                          } else if (block === 'image') {
                             atualizarCampo('brand.imageEnabled', true)
                           } else if (block === 'text') {
                             atualizarCampo('brand.textEnabled', true)
@@ -1225,19 +1582,20 @@ export default function StreamOverlayEditorPage() {
                         }}
                         className={`flex h-16 flex-col items-center justify-center gap-1 border text-[10px] font-black uppercase tracking-[0.12em] ${selectedBlock === block ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
                       >
-                        {block === 'image' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
-                        {block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela'}
+                        {block === 'image' || block === 'infoImage' ? <ImageIcon size={17} /> : block === 'text' ? <Type size={17} /> : <Table2 size={17} />}
+                        {block === 'infoImage' ? 'Imagem topo' : block === 'image' ? 'Logo' : block === 'text' ? 'Titulo' : 'Tabela'}
                       </button>
                     ))}
                   </div>
                 )}
 
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                   {([
                     ['move', Move],
                     ['content', Type],
                     ['style', Palette],
                     ['table', Columns3],
+                    ['transition', Play],
                   ] as const).map(([action, Icon]) => (
                     <button
                       key={action}
@@ -1252,12 +1610,43 @@ export default function StreamOverlayEditorPage() {
 
                 <div className="border border-white/10 bg-[#0b1220] p-3">
                   <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
-                    {isCountdownOverlay ? countdownBlockLabels[selectedCountdownBlock] : isBooyahOverlay ? booyahBlockLabels[selectedBooyahBlock] : blockLabels[selectedBlock]} / {activeAction === 'move' ? 'Mover bloco' : activeAction === 'content' ? 'Conteudo' : activeAction === 'style' ? 'Visual' : 'Tabela'}
+                    {isBooyahsDiaOverlay ? booyahsDiaBlockLabels[selectedBooyahsDiaBlock] : isCountdownOverlay ? countdownBlockLabels[selectedCountdownBlock] : isBooyahOverlay ? booyahBlockLabels[selectedBooyahBlock] : blockLabels[selectedBlock]} / {activeAction === 'move' ? 'Mover bloco' : activeAction === 'content' ? 'Conteudo' : activeAction === 'style' ? 'Visual' : activeAction === 'transition' ? 'Transicoes' : 'Tabela'}
                   </div>
 
                   {activeAction === 'move' ? (
                     <div className="grid grid-cols-2 gap-3">
-                      {isCountdownOverlay ? (
+                      {isBooyahsDiaOverlay ? (
+                        selectedBooyahsDiaBlock === 'art' ? (
+                          booyahsDiaMode === 'vertical-list' ? (
+                            <>
+                              <EditorNumber label="X" value={Number(booyahsDiaConfig.artSideX ?? 80)} onChange={(v) => atualizarCampo('booyahsDia.artSideX', v)} />
+                              <EditorNumber label="Y" value={Number(booyahsDiaConfig.artSideY ?? 160)} onChange={(v) => atualizarCampo('booyahsDia.artSideY', v)} />
+                              <EditorNumber label="Largura" value={Number(booyahsDiaConfig.artSideW ?? 720)} onChange={(v) => atualizarCampo('booyahsDia.artSideW', v)} />
+                              <EditorNumber label="Altura" value={Number(booyahsDiaConfig.artSideH ?? 620)} onChange={(v) => atualizarCampo('booyahsDia.artSideH', v)} />
+                            </>
+                          ) : (
+                            <>
+                              <EditorNumber label="X" value={Number(booyahsDiaConfig.artX ?? 0)} onChange={(v) => atualizarCampo('booyahsDia.artX', v)} />
+                              <EditorNumber label="Y" value={Number(booyahsDiaConfig.artY ?? 20)} onChange={(v) => atualizarCampo('booyahsDia.artY', v)} />
+                              <EditorNumber label="Largura" value={Number(booyahsDiaConfig.artW ?? 1920)} onChange={(v) => atualizarCampo('booyahsDia.artW', v)} />
+                              <EditorNumber label="Altura" value={Number(booyahsDiaConfig.artH ?? 260)} onChange={(v) => atualizarCampo('booyahsDia.artH', v)} />
+                            </>
+                          )
+                        ) : booyahsDiaMode === 'vertical-list' ? (
+                          <>
+                            <EditorNumber label="X" value={Number(booyahsDiaConfig.listX ?? 940)} onChange={(v) => atualizarCampo('booyahsDia.listX', v)} />
+                            <EditorNumber label="Y" value={Number(booyahsDiaConfig.listY ?? 160)} onChange={(v) => atualizarCampo('booyahsDia.listY', v)} />
+                            <EditorNumber label="Largura" value={Number(booyahsDiaConfig.listW ?? 820)} onChange={(v) => atualizarCampo('booyahsDia.listW', v)} />
+                            <EditorNumber label="Altura" value={Number(booyahsDiaConfig.listH ?? 760)} onChange={(v) => atualizarCampo('booyahsDia.listH', v)} />
+                          </>
+                        ) : (
+                          <>
+                            <EditorNumber label="X" value={Number(booyahsDiaConfig.x ?? 36)} onChange={(v) => atualizarCampo('booyahsDia.x', v)} />
+                            <EditorNumber label="Y" value={Number(booyahsDiaConfig.y ?? 360)} onChange={(v) => atualizarCampo('booyahsDia.y', v)} />
+                            <EditorNumber label="Area cards" value={Number(booyahsDiaConfig.containerWidth ?? 1840)} onChange={(v) => atualizarCampo('booyahsDia.containerWidth', v)} />
+                          </>
+                        )
+                      ) : isCountdownOverlay ? (
                         <>
                           <EditorNumber label="X" value={selectedCountdownConfig.x ?? selectedCountdownFallback.x} onChange={(v) => atualizarCampo(`${selectedCountdownPath}.x`, v)} />
                           <EditorNumber label="Y" value={selectedCountdownConfig.y ?? selectedCountdownFallback.y} onChange={(v) => atualizarCampo(`${selectedCountdownPath}.y`, v)} />
@@ -1274,6 +1663,14 @@ export default function StreamOverlayEditorPage() {
                           <EditorNumber label="Altura" value={selectedBooyahConfig.h ?? selectedBooyahFallback.h} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.h`, v)} />
                           <EditorNumber label="Escala" value={selectedBooyahConfig.scale ?? selectedBooyahFallback.scale} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.scale`, v)} />
                           <EditorNumber label="Opacidade" value={selectedBooyahConfig.opacity ?? selectedBooyahFallback.opacity} onChange={(v) => atualizarCampo(`${selectedBooyahPath}.opacity`, v)} />
+                        </>
+                      ) : selectedBlock === 'infoImage' ? (
+                        <>
+                          <EditorNumber label="X" value={config.tabelaGeral?.infoImage?.x || 0} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.x', v)} />
+                          <EditorNumber label="Y" value={config.tabelaGeral?.infoImage?.y || 0} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.y', v)} />
+                          <EditorNumber label="Largura" value={config.tabelaGeral?.infoImage?.w || 1920} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.w', v)} />
+                          <EditorNumber label="Altura" value={config.tabelaGeral?.infoImage?.h || 260} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.h', v)} />
+                          <EditorNumber label="Opacidade" value={config.tabelaGeral?.infoImage?.opacity || 100} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.opacity', v)} />
                         </>
                       ) : selectedBlock === 'image' ? (
                         <>
@@ -1307,7 +1704,51 @@ export default function StreamOverlayEditorPage() {
 
                   {activeAction === 'content' ? (
                     <div className="space-y-3">
-                      {isCountdownOverlay ? (
+                      {isBooyahsDiaOverlay ? (
+                        <>
+                          {selectedBooyahsDiaBlock === 'art' ? (
+                            <>
+                              <EditorInput label="Titulo" value={booyahsDiaConfig.title || config.title || 'BOOYAHS DO DIA'} onChange={(v) => atualizarCampo('booyahsDia.title', v)} />
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{booyahsDiaMode === 'vertical-list' ? 'Imagem lateral' : 'Imagem topo'}</span>
+                                <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('booyahsDia.artImageUrl', e.target.files?.[0] || null, 'booyahs-dia')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                              </label>
+                              <button type="button" onClick={() => atualizarCampo('booyahsDia.artImageUrl', '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Remover imagem
+                              </button>
+                              <EditorSelect label="Ajuste da imagem" value={booyahsDiaConfig.artFit || 'contain'} onChange={(v) => atualizarCampo('booyahsDia.artFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir'], ['fill', 'Esticar']]} />
+                            </>
+                          ) : (
+                            <>
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Mascara/recorte do mapa</span>
+                                <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('booyahsDia.mapBackgroundUrl', e.target.files?.[0] || null, 'booyahs-dia')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                              </label>
+                              <button type="button" onClick={() => atualizarCampo('booyahsDia.mapBackgroundUrl', '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Remover mascara
+                              </button>
+                              <label className="block">
+                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem faixa do nome</span>
+                                <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('booyahsDia.nameBandBackgroundUrl', e.target.files?.[0] || null, 'booyahs-dia')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                              </label>
+                              <button type="button" onClick={() => atualizarCampo('booyahsDia.nameBandBackgroundUrl', '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Remover faixa
+                              </button>
+                              {booyahsDiaMode !== 'vertical-list' ? (
+                                <>
+                                  <label className="block">
+                                    <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem fundo dos pontos</span>
+                                    <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('booyahsDia.statsBackgroundUrl', e.target.files?.[0] || null, 'booyahs-dia')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                                  </label>
+                                  <button type="button" onClick={() => atualizarCampo('booyahsDia.statsBackgroundUrl', '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                    Remover fundo pontos
+                                  </button>
+                                </>
+                              ) : null}
+                            </>
+                          )}
+                        </>
+                      ) : isCountdownOverlay ? (
                         <>
                           {selectedCountdownBlock === 'timer' ? (
                             <>
@@ -1362,6 +1803,26 @@ export default function StreamOverlayEditorPage() {
                               <EditorSelect label="Alinhamento" value={selectedBooyahConfig.align || 'left'} onChange={(v) => atualizarCampo('booyah.equipeBlock.align', v)} options={horizontalAlignOptions} />
                             </>
                           ) : null}
+                        </>
+                      ) : selectedBlock === 'infoImage' ? (
+                        <>
+                          <label className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
+                            <input type="checkbox" checked={config.tabelaGeral?.infoImage?.enabled !== false} onChange={(e) => atualizarCampo('tabelaGeral.infoImage.enabled', e.target.checked)} />
+                            Mostrar imagem topo
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem superior</span>
+                            <input type="file" accept="image/*" onChange={(e) => salvarImagemNoCampo('tabelaGeral.infoImage.url', e.target.files?.[0] || null, 'background')} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
+                          </label>
+                          <EditorSelect label="Ajuste imagem" value={config.tabelaGeral?.infoImage?.fit || 'contain'} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.fit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
+                          <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => atualizarCampo('tabelaGeral.infoImage.enabled', false)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Ocultar
+                            </button>
+                            <button type="button" onClick={() => atualizarCampo('tabelaGeral.infoImage.url', '')} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                              Limpar
+                            </button>
+                          </div>
                         </>
                       ) : selectedBlock === 'image' ? (
                         <>
@@ -1422,7 +1883,6 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         <>
                           <EditorInput label={isTabelaOverlay ? 'Titulo da tabela' : 'Titulo da overlay'} value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
-                          <EditorSelect label="Entrada" value={config.animation.enter || 'slide'} onChange={(v) => atualizarCampo('animation.enter', v)} options={[['slide', 'Slide'], ['fade', 'Fade'], ['zoom', 'Zoom'], ['none', 'Sem animacao']]} />
                         </>
                       )}
                     </div>
@@ -1430,7 +1890,24 @@ export default function StreamOverlayEditorPage() {
 
                   {activeAction === 'style' ? (
                     <div className="space-y-3">
-                      {isCountdownOverlay ? (
+                      {isBooyahsDiaOverlay ? (
+                        selectedBooyahsDiaBlock === 'art' ? (
+                          <div className="text-xs font-semibold leading-5 text-zinc-400">
+                            Use Conteudo para trocar a imagem e Mover bloco para ajustar posicao e tamanho.
+                          </div>
+                        ) : (
+                          <>
+                            <EditorColor label="Cor destaque" value={booyahsDiaConfig.accent || '#82a82b'} onChange={(v) => atualizarCampo('booyahsDia.accent', v)} />
+                            <EditorColor label="Fundo" value={booyahsDiaConfig.background || '#eef3e8'} onChange={(v) => atualizarCampo('booyahsDia.background', v)} />
+                            {booyahsDiaMode !== 'vertical-list' ? (
+                              <>
+                                <EditorColor label="Cor fundo pontos" value={booyahsDiaConfig.statsBackground || '#ffffff'} onChange={(v) => atualizarCampo('booyahsDia.statsBackground', v)} />
+                                <EditorColor label="Cor texto pontos" value={booyahsDiaConfig.statsText || '#1f2937'} onChange={(v) => atualizarCampo('booyahsDia.statsText', v)} />
+                              </>
+                            ) : null}
+                          </>
+                        )
+                      ) : isCountdownOverlay ? (
                         <>
                           {selectedCountdownBlock === 'timer' ? (
                             <>
@@ -1516,22 +1993,146 @@ export default function StreamOverlayEditorPage() {
                         </>
                       ) : (
                         <>
-                          <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
-                          <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
-                          <EditorColor label="Cor fundo" value={config.theme.background} onChange={(v) => atualizarCampo('theme.background', v)} />
-                          <EditorBackground label="Fundo linha" value={config.theme.rowBackground || ''} onChange={(v) => atualizarCampo('theme.rowBackground', v)} onImage={(file) => uploadBackgroundImage('theme.rowBackground', file)} />
-                          <EditorBackground label="Fundo alternado" value={config.theme.rowAltBackground || ''} onChange={(v) => atualizarCampo('theme.rowAltBackground', v)} onImage={(file) => uploadBackgroundImage('theme.rowAltBackground', file)} />
-                          <EditorColor label="Cor texto" value={config.theme.text} onChange={(v) => atualizarCampo('theme.text', v)} />
-                          <EditorColor label="Cor cabecalho" value={config.theme.headerText} onChange={(v) => atualizarCampo('theme.headerText', v)} />
-                          <EditorInput label="Borda" value={config.theme.border || ''} onChange={(v) => atualizarCampo('theme.border', v)} />
+                          <VisualStyleSelector
+                            selected={selectedVisualStyle}
+                            onSelect={setSelectedVisualStyle}
+                            targets={[
+                              { id: 'primary', label: 'Cor principal' },
+                              { id: 'accent', label: 'Cor destaque' },
+                              { id: 'background', label: 'Fundo da tabela' },
+                              { id: 'rowBackground', label: 'Fundo das linhas' },
+                              { id: 'columnBackground', label: 'Fundo coluna' },
+                              { id: 'columnText', label: 'Texto coluna' },
+                              { id: 'rowHighlightBackground', label: 'Fundo linha destaque' },
+                              { id: 'rowHighlightText', label: 'Texto linha destaque' },
+                              { id: 'text', label: 'Texto das linhas' },
+                              { id: 'headerText', label: 'Texto do topo' },
+                              { id: 'border', label: 'Borda' },
+                            ]}
+                          />
+
+                          {selectedVisualStyle === 'primary' ? (
+                            <EditorColor label="Cor principal" value={config.theme.primary} onChange={(v) => atualizarCampo('theme.primary', v)} />
+                          ) : null}
+                          {selectedVisualStyle === 'accent' ? (
+                            <EditorColor label="Cor destaque" value={config.theme.accent} onChange={(v) => atualizarCampo('theme.accent', v)} />
+                          ) : null}
+                          {selectedVisualStyle === 'background' ? (
+                            <EditorBackgroundMode label="Fundo da tabela" value={config.theme.background || ''} onChange={(v) => atualizarCampo('theme.background', v)} onImage={(file) => uploadBackgroundImage('theme.background', file)} />
+                          ) : null}
+                          {selectedVisualStyle === 'rowBackground' ? (
+                            <EditorBackgroundMode label="Fundo unico das linhas" value={config.theme.rowBackground || ''} onChange={atualizarFundoUnicoLinhas} onImage={uploadFundoUnicoLinhas} />
+                          ) : null}
+                          {selectedVisualStyle === 'columnBackground' ? (
+                            <div className="space-y-3">
+                              <EditorSelect
+                                label="Coluna selecionada"
+                                value={selectedColumn}
+                                onChange={setSelectedColumn}
+                                options={orderedColumnKeys.map((key) => [key, tabelaGeralColumnLabels[key] || key])}
+                              />
+                              <EditorBackgroundMode label="Fundo da coluna" value={config.columnStyles?.[selectedColumn]?.background || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.background`, v)} onImage={(file) => uploadBackgroundImage(`columnStyles.${selectedColumn}.background`, file)} />
+                              <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}.background`, '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Limpar fundo da coluna
+                              </button>
+                            </div>
+                          ) : null}
+                          {selectedVisualStyle === 'columnText' ? (
+                            <div className="space-y-3">
+                              <EditorSelect
+                                label="Coluna selecionada"
+                                value={selectedColumn}
+                                onChange={setSelectedColumn}
+                                options={orderedColumnKeys.map((key) => [key, tabelaGeralColumnLabels[key] || key])}
+                              />
+                              <EditorColor label="Texto da coluna" value={config.columnStyles?.[selectedColumn]?.text || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.text`, v)} />
+                              <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}.text`, '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Limpar texto da coluna
+                              </button>
+                            </div>
+                          ) : null}
+                          {selectedVisualStyle === 'rowHighlightBackground' ? (
+                            <div className="space-y-3">
+                              <EditorNumber label="Linha destaque" value={selectedRow} onChange={(v) => setSelectedRow(Math.max(1, v))} />
+                              <EditorBackgroundMode label="Fundo da linha" value={config.rowStyles?.[String(selectedRow)]?.background || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.background`, v)} onImage={(file) => uploadBackgroundImage(`rowStyles.${selectedRow}.background`, file)} />
+                              <button type="button" onClick={() => atualizarCampo(`rowStyles.${selectedRow}.background`, '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Limpar fundo da linha
+                              </button>
+                            </div>
+                          ) : null}
+                          {selectedVisualStyle === 'rowHighlightText' ? (
+                            <div className="space-y-3">
+                              <EditorNumber label="Linha destaque" value={selectedRow} onChange={(v) => setSelectedRow(Math.max(1, v))} />
+                              <EditorColor label="Texto da linha" value={config.rowStyles?.[String(selectedRow)]?.text || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.text`, v)} />
+                              <button type="button" onClick={() => atualizarCampo(`rowStyles.${selectedRow}.text`, '')} className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
+                                Limpar texto da linha
+                              </button>
+                            </div>
+                          ) : null}
+                          {selectedVisualStyle === 'text' ? (
+                            <EditorColor label="Texto das linhas" value={config.theme.text} onChange={(v) => atualizarCampo('theme.text', v)} />
+                          ) : null}
+                          {selectedVisualStyle === 'headerText' ? (
+                            <EditorColor label="Texto do topo" value={config.theme.headerText} onChange={(v) => atualizarCampo('theme.headerText', v)} />
+                          ) : null}
+                          {selectedVisualStyle === 'border' ? (
+                            <EditorInput label="Borda" value={config.theme.border || ''} onChange={(v) => atualizarCampo('theme.border', v)} />
+                          ) : null}
                         </>
                       )}
                     </div>
                   ) : null}
 
+                  {activeAction === 'transition' ? (
+                    <div className="space-y-3">
+                      <EditorSelect
+                        label="Tipo de transicao"
+                        value={config.animation?.transition || config.animation?.enter || 'fade'}
+                        onChange={(v) => atualizarCampo('animation.transition', v)}
+                        options={transitionOptions}
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <EditorNumber label="Duracao ms" value={config.animation?.duration || 650} onChange={(v) => atualizarCampo('animation.duration', v)} />
+                        <EditorNumber label="Delay linha ms" value={config.animation?.lineDelay || 70} onChange={(v) => atualizarCampo('animation.lineDelay', v)} />
+                      </div>
+                      <label className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
+                        <input type="checkbox" checked={Boolean(config.animation?.lineByLine)} onChange={(e) => atualizarCampo('animation.lineByLine', e.target.checked)} />
+                        Transicao linha a linha
+                      </label>
+                      <button type="button" onClick={testarTransicao} className="inline-flex h-10 w-full items-center justify-center gap-2 border border-red-600 bg-red-600 px-3 text-[10px] font-black uppercase tracking-[0.14em]">
+                        <Play size={14} />
+                        Testar transicao
+                      </button>
+                    </div>
+                  ) : null}
+
                   {activeAction === 'table' ? (
                     <div className="space-y-3">
-                      {!isTabelaOverlay ? (
+                      {isBooyahsDiaOverlay ? (
+                        selectedBooyahsDiaBlock === 'art' ? (
+                          <div className="text-xs font-semibold leading-5 text-zinc-400">
+                            A imagem usa apenas posicao, tamanho e ajuste. Edite isso nas abas Mover bloco e Conteudo.
+                          </div>
+                        ) : booyahsDiaMode === 'vertical-list' ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            <EditorNumber label="Altura mapa" value={Number(booyahsDiaConfig.listRowHeight ?? 132)} onChange={(v) => atualizarCampo('booyahsDia.listRowHeight', v)} />
+                            <EditorNumber label="Logo equipe" value={Number(booyahsDiaConfig.listLogoSize ?? 120)} onChange={(v) => atualizarCampo('booyahsDia.listLogoSize', v)} />
+                            <EditorNumber label="Espaco" value={Number(booyahsDiaConfig.gap ?? 18)} onChange={(v) => atualizarCampo('booyahsDia.gap', v)} />
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="col-span-2 flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase text-zinc-200">
+                              <input type="checkbox" checked={booyahsDiaConfig.autoFit !== false} onChange={(e) => atualizarCampo('booyahsDia.autoFit', e.target.checked)} />
+                              Ajustar e centralizar cards automaticamente
+                            </label>
+                            <EditorNumber label="Colunas" value={Number(booyahsDiaConfig.columns ?? 6)} onChange={(v) => atualizarCampo('booyahsDia.columns', v)} />
+                            <EditorNumber label="Espaco" value={Number(booyahsDiaConfig.gap ?? 18)} onChange={(v) => atualizarCampo('booyahsDia.gap', v)} />
+                            <EditorNumber label="Largura card" value={Number(booyahsDiaConfig.cardWidth ?? 292)} onChange={(v) => atualizarCampo('booyahsDia.cardWidth', v)} />
+                            <EditorNumber label="Altura card" value={Number(booyahsDiaConfig.cardHeight ?? 470)} onChange={(v) => atualizarCampo('booyahsDia.cardHeight', v)} />
+                            <EditorNumber label="Logo" value={Number(booyahsDiaConfig.logoSize ?? 150)} onChange={(v) => atualizarCampo('booyahsDia.logoSize', v)} />
+                          </div>
+                        )
+                      ) : !isTabelaOverlay ? (
                         isCountdownOverlay ? (
                           <div className="space-y-3">
                             {selectedCountdownBlock === 'timer' ? (
@@ -1583,33 +2184,13 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         <>
                           <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={(v) => atualizarCampo('layout.maxRows', v)} />
-                            <EditorNumber label="Blocos" value={config.layout.blockCount || 1} onChange={(v) => atualizarCampo('layout.blockCount', v)} />
-                            <EditorNumber label="Linhas/bloco" value={config.layout.rowsPerBlock || 6} onChange={(v) => atualizarCampo('layout.rowsPerBlock', v)} />
+                            <EditorNumber label="Limite linhas" value={config.layout.maxRows || 12} onChange={atualizarLimiteLinhasTabela} />
                             <EditorNumber label="Espaco blocos" value={config.layout.blockGap || 36} onChange={(v) => atualizarCampo('layout.blockGap', v)} />
                             <EditorNumber label="Altura linha" value={config.layout.rowHeight || 62} onChange={(v) => atualizarCampo('layout.rowHeight', v)} />
                             <EditorNumber label="Altura topo" value={config.layout.headerHeight || 72} onChange={(v) => atualizarCampo('layout.headerHeight', v)} />
                             <EditorNumber label="Fonte" value={config.layout.fontSize || 24} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                             <EditorNumber label="Logo" value={config.layout.logoSize || 44} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
                             <EditorNumber label="Espaco" value={config.layout.rowGap || 5} onChange={(v) => atualizarCampo('layout.rowGap', v)} />
-                            <EditorNumber label="Raio" value={config.layout.radius || 4} onChange={(v) => atualizarCampo('layout.radius', v)} />
-                          </div>
-
-                          <EditorSelect label="Direcao dos blocos" value={config.layout.blockDirection || 'horizontal'} onChange={(v) => atualizarCampo('layout.blockDirection', v)} options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]} />
-
-                          <div className="border border-white/10 bg-[#111827] p-3">
-                            <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Presets de blocos</div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <button type="button" onClick={() => aplicarPresetTabela('duplo-12')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                12 / 2 blocos
-                              </button>
-                              <button type="button" onClick={() => aplicarPresetTabela('mvp-duplo')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                MVP duplo
-                              </button>
-                              <button type="button" onClick={() => aplicarPresetTabela('simples')} className="min-h-10 border border-white/10 bg-white/5 px-2 text-[9px] font-black uppercase tracking-[0.12em]">
-                                1 bloco
-                              </button>
-                            </div>
                           </div>
 
                           <div>
@@ -1654,7 +2235,7 @@ export default function StreamOverlayEditorPage() {
                             </div>
                             <div className="mt-3 grid grid-cols-[1fr_88px] items-end gap-3">
                               <label className="block">
-                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Largura</span>
+                                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Largura fixa</span>
                                 <input
                                   type="range"
                                   min={0.2}
@@ -1665,11 +2246,7 @@ export default function StreamOverlayEditorPage() {
                                   className="h-10 w-full accent-red-600"
                                 />
                               </label>
-                              <EditorNumber label="Peso" value={selectedColumnWidth} onChange={(v) => atualizarCampo(`columnWidths.${selectedColumn}`, Math.max(0.2, v))} />
-                            </div>
-                            <div className="mt-3 grid grid-cols-2 gap-3">
-                              <EditorColor label="Fundo coluna" value={config.columnStyles?.[selectedColumn]?.background || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.background`, v)} />
-                              <EditorColor label="Texto coluna" value={config.columnStyles?.[selectedColumn]?.text || ''} onChange={(v) => atualizarCampo(`columnStyles.${selectedColumn}.text`, v)} />
+                              <EditorNumber label="Valor" value={selectedColumnWidth} onChange={(v) => atualizarCampo(`columnWidths.${selectedColumn}`, Math.max(0.2, v))} />
                             </div>
                             <div className="mt-3 grid grid-cols-2 gap-2">
                               <button type="button" onClick={() => atualizarCampo(`columnStyles.${selectedColumn}`, {})} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
@@ -1679,18 +2256,6 @@ export default function StreamOverlayEditorPage() {
                                 Reset largura
                               </button>
                             </div>
-                          </div>
-
-                          <div className="border-t border-white/10 pt-3">
-                            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Destaque por linha</div>
-                            <EditorNumber label="Linha" value={selectedRow} onChange={(v) => setSelectedRow(Math.max(1, v))} />
-                            <div className="mt-3 grid grid-cols-2 gap-3">
-                              <EditorBackground label="Fundo linha" value={config.rowStyles?.[String(selectedRow)]?.background || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.background`, v)} onImage={(file) => uploadBackgroundImage(`rowStyles.${selectedRow}.background`, file)} />
-                              <EditorColor label="Texto linha" value={config.rowStyles?.[String(selectedRow)]?.text || ''} onChange={(v) => atualizarCampo(`rowStyles.${selectedRow}.text`, v)} />
-                            </div>
-                            <button type="button" onClick={() => atualizarCampo(`rowStyles.${selectedRow}`, {})} className="mt-3 h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
-                              Limpar linha
-                            </button>
                           </div>
                         </>
                       )}
@@ -1849,6 +2414,121 @@ function EditorColor({ label, value, onChange }: { label: string; value: string;
         ))}
       </div>
     </label>
+  )
+}
+
+function VisualStyleSelector({
+  selected,
+  onSelect,
+  targets,
+}: {
+  selected: VisualStyleTarget
+  onSelect: (target: VisualStyleTarget) => void
+  targets: Array<{ id: VisualStyleTarget; label: string }>
+}) {
+  return (
+    <div>
+      <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">O que voce quer editar?</div>
+      <div className="grid grid-cols-2 gap-2">
+        {targets.map((target) => (
+          <button
+            key={target.id}
+            type="button"
+            onClick={() => onSelect(target.id)}
+            className={`min-h-9 border px-3 text-left text-[10px] font-black uppercase tracking-[0.1em] ${selected === target.id ? 'border-red-600 bg-red-600 text-white' : 'border-white/10 bg-white/5 text-zinc-300'}`}
+          >
+            {target.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function EditorBackgroundMode({
+  label,
+  value,
+  onChange,
+  onImage,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  onImage: (file: File | null) => void
+}) {
+  const detectedMode = backgroundEditorMode(value)
+  const [mode, setMode] = useState(detectedMode)
+  const gradient = gradientEditorParts(value)
+
+  useEffect(() => {
+    setMode(detectedMode)
+  }, [detectedMode])
+
+  return (
+    <div className="block">
+      <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">{label}</div>
+      <div className="space-y-3 border border-white/10 bg-[#0b1220] p-3">
+        <div className="h-8 border border-white/10" style={{ background: value || 'transparent' }} />
+
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Tipo de fundo</span>
+          <select
+            value={mode}
+            onChange={(event) => {
+              const nextMode = event.target.value
+              setMode(nextMode)
+              if (nextMode === 'none') onChange('transparent')
+              if (nextMode === 'solid') onChange(extractColor(value))
+              if (nextMode === 'gradient') onChange(gradientValue(gradient.start, gradient.end, gradient.direction))
+            }}
+            className="h-10 w-full border border-white/10 bg-[#080d16] px-3 text-sm font-bold outline-none"
+          >
+            <option value="none">Sem fundo</option>
+            <option value="solid">Cor solida</option>
+            <option value="gradient">Degrade</option>
+            <option value="image">Imagem</option>
+          </select>
+        </label>
+
+        {mode === 'solid' ? (
+          <EditorColor label="Cor solida" value={value || '#ffffff'} onChange={onChange} />
+        ) : null}
+
+        {mode === 'gradient' ? (
+          <div className="space-y-3">
+            <EditorSelect
+              label="Direcao"
+              value={gradient.direction}
+              onChange={(direction) => onChange(gradientValue(gradient.start, gradient.end, direction))}
+              options={[['90deg', 'Horizontal'], ['180deg', 'Vertical'], ['135deg', 'Diagonal']]}
+            />
+            <EditorColor label="Cor inicial" value={gradient.start} onChange={(start) => onChange(gradientValue(start, gradient.end, gradient.direction))} />
+            <EditorColor label="Cor final" value={gradient.end} onChange={(end) => onChange(gradientValue(gradient.start, end, gradient.direction))} />
+          </div>
+        ) : null}
+
+        {mode === 'image' ? (
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => onImage(e.target.files?.[0] || null)}
+                className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange('transparent')}
+              className="h-9 w-full border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.12em]"
+            >
+              Limpar fundo
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 

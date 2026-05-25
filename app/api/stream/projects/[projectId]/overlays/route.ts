@@ -1,78 +1,113 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
+import { mergeOverlayConfig, defaultTabelaGeralConfig } from '@/lib/streamOverlay'
+import { streamOverlayTemplateCatalog } from '@/app/components/stream/overlays/catalog'
+import { getServerSupabaseClient, getUserFromBearerToken, supabaseAdmin } from '@/lib/supabaseAdmin'
 
 type RouteContext = {
-  params: Promise<{ projectId: string; overlayId: string }>
+  params: Promise<{ projectId: string }>
 }
 
-function cleanId(value: unknown) {
-  return String(value || '').trim()
-}
-
-function badRequest(message: string, status = 400) {
-  return NextResponse.json({ ok: false, error: message }, { status })
-}
-
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  try {
-    const { projectId, overlayId } = await context.params
-    const safeProjectId = cleanId(projectId)
-    const safeOverlayId = cleanId(overlayId)
-
-    if (!safeProjectId || !safeOverlayId) {
-      return badRequest('Projeto ou overlay ausente.')
-    }
-
-    const body = await request.json().catch(() => ({}))
-
-    const hasConfig = Object.prototype.hasOwnProperty.call(body, 'config')
-    const hasVisivel = Object.prototype.hasOwnProperty.call(body, 'visivel')
-    const hasOrdem = Object.prototype.hasOwnProperty.call(body, 'ordem')
-
-    if (!hasConfig && !hasVisivel && !hasOrdem) {
-      return badRequest('Nada para atualizar.')
-    }
-
-    const config = hasConfig && body.config && typeof body.config === 'object' ? body.config : null
-    const visivel = hasVisivel ? Boolean(body.visivel) : null
-    const ordem = hasOrdem ? Number(body.ordem || 1) : null
-
-    const { data: rpcOverlay, error: rpcError } = await supabaseAdmin.rpc(
-      'stream_salvar_project_overlay',
-      {
-        p_project_id: safeProjectId,
-        p_overlay_id: safeOverlayId,
-        p_config: config,
-        p_visivel: visivel,
-        p_ordem: ordem,
-      }
-    )
-
-    if (rpcError) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: rpcError.message,
-          hint: 'Confira se a função SQL stream_salvar_project_overlay foi criada no Supabase.',
-        },
-        { status: 500 }
-      )
-    }
-
-    const overlay = Array.isArray(rpcOverlay) ? rpcOverlay[0] : rpcOverlay
-
-    if (!overlay?.id) {
-      return NextResponse.json(
-        { ok: false, error: 'O banco nao confirmou a atualizacao da overlay.' },
-        { status: 409 }
-      )
-    }
-
-    return NextResponse.json({ ok: true, overlay })
-  } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || 'Erro ao salvar overlay.' },
-      { status: 500 }
-    )
+export async function POST(request: NextRequest, context: RouteContext) {
+  const authHeader = request.headers.get('authorization')
+  const user = await getUserFromBearerToken(authHeader)
+  if (!user) {
+    return NextResponse.json({ error: 'Nao autenticado.' }, { status: 401 })
   }
+
+  const supabase = getServerSupabaseClient(authHeader)
+  const { projectId } = await context.params
+  const body = await request.json().catch(() => ({}))
+  const templateId = String(body?.templateId || '').trim()
+
+  if (!projectId || !templateId) {
+    return NextResponse.json({ error: 'Projeto ou template ausente.' }, { status: 400 })
+  }
+
+  const fixedTemplate = streamOverlayTemplateCatalog.find((template) => template.id === templateId || template.slug === templateId)
+  let template = fixedTemplate
+    ? {
+        id: fixedTemplate.id,
+        nome: fixedTemplate.nome,
+        categoria: fixedTemplate.categoria,
+        descricao: fixedTemplate.descricao,
+        config_padrao: fixedTemplate.config_padrao,
+      }
+    : null
+
+  if (fixedTemplate) {
+    const { data: existingTemplate, error: existingTemplateError } = await supabase
+      .from('stream_overlay_templates')
+      .select('id')
+      .eq('id', fixedTemplate.id)
+      .maybeSingle()
+
+    if (existingTemplateError) {
+      return NextResponse.json({ error: `Erro ao verificar template: ${existingTemplateError.message}` }, { status: 500 })
+    }
+
+    if (!existingTemplate?.id) {
+      const { error: syncTemplateError } = await supabaseAdmin
+        .from('stream_overlay_templates')
+        .upsert({
+          id: fixedTemplate.id,
+          nome: fixedTemplate.nome,
+          categoria: fixedTemplate.categoria,
+          descricao: fixedTemplate.descricao,
+          config_padrao: fixedTemplate.config_padrao,
+          ativo: true,
+        }, { onConflict: 'id' })
+
+      if (syncTemplateError) {
+        return NextResponse.json({ error: `Erro ao preparar template: ${syncTemplateError.message}` }, { status: 500 })
+      }
+    }
+  }
+
+  if (!template) {
+    const { data: dbTemplate, error: templateError } = await supabase
+      .from('stream_overlay_templates')
+      .select('id, nome, categoria, descricao, config_padrao')
+      .eq('id', templateId)
+      .maybeSingle()
+
+    if (templateError) return NextResponse.json({ error: templateError.message }, { status: 500 })
+    if (!dbTemplate) return NextResponse.json({ error: 'Template nao encontrado.' }, { status: 404 })
+
+    template = dbTemplate
+  }
+
+  const { data: existing } = await supabase
+    .from('stream_project_overlays')
+    .select('id, project_id, template_id, nome, config, visivel, ordem')
+    .eq('project_id', projectId)
+    .eq('template_id', template.id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ ok: true, overlay: existing })
+  }
+
+  const { count } = await supabase
+    .from('stream_project_overlays')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+
+  const { data: overlay, error: overlayError } = await supabase
+    .from('stream_project_overlays')
+    .insert({
+      project_id: projectId,
+      template_id: template.id,
+      nome: template.nome,
+      config: mergeOverlayConfig(defaultTabelaGeralConfig, template.config_padrao || {}),
+      visivel: true,
+      ordem: Number(count || 0) + 1,
+    })
+    .select('id, project_id, template_id, nome, config, visivel, ordem')
+    .single()
+
+  if (overlayError) {
+    return NextResponse.json({ error: overlayError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, overlay })
 }

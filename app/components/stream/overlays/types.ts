@@ -16,6 +16,12 @@ export type StreamOverlayContext = {
     nome?: string | null
     logo_url?: string | null
   } | null
+  booyahsDia?: Array<{
+    mapa?: string | null
+    mapaImagem?: string | null
+    quedaNumero?: number | null
+    concluida?: boolean
+  }>
 }
 
 export type StreamOverlayRenderProps = {
@@ -30,6 +36,7 @@ export type StreamOverlayEditorProps = {
   config: StreamOverlayConfig
   onChange: (path: string, value: unknown) => void
   onChangeConfig?: (mutator: (config: StreamOverlayConfig) => StreamOverlayConfig) => void
+  onUploadImage?: (path: string, file: File) => Promise<void>
 }
 
 export type StreamOverlayDefinition = {

@@ -1,7 +1,7 @@
-import { Users } from 'lucide-react'
+import { ArrowDown, ArrowUp, Minus, Users } from 'lucide-react'
 import type { CSSProperties, PointerEvent } from 'react'
 
-export type StreamOverlayBlock = 'image' | 'text' | 'table'
+export type StreamOverlayBlock = 'image' | 'text' | 'table' | 'infoImage'
 
 export type StreamOverlayConfig = {
   title?: string
@@ -86,10 +86,63 @@ export type StreamOverlayConfig = {
     blockGap?: number
     blockDirection?: 'horizontal' | 'vertical'
   }
+  booyahsDia?: {
+    mode?: 'cards' | 'vertical-list'
+    title?: string
+    subtitle?: string
+    artImageUrl?: string
+    artX?: number
+    artY?: number
+    artW?: number
+    artH?: number
+    artSideX?: number
+    artSideY?: number
+    artSideW?: number
+    artSideH?: number
+    artFit?: 'contain' | 'cover' | 'fill'
+    autoFit?: boolean
+    columns?: number
+    containerWidth?: number
+    cardWidth?: number
+    cardHeight?: number
+    gap?: number
+    x?: number
+    y?: number
+    logoSize?: number
+    background?: string
+    accent?: string
+    text?: string
+    mutedMapFilter?: string
+    pendingMapFilter?: string
+    mapBackgroundUrl?: string
+    nameBandBackgroundUrl?: string
+    statsBackground?: string
+    statsBackgroundUrl?: string
+    statsText?: string
+    sideX?: number
+    sideY?: number
+    sideW?: number
+    sideImageUrl?: string
+    sideImageSize?: number
+    sideTitleSmall?: string
+    sideTitleMain?: string
+    sideTitleSize?: number
+    sideSmallSize?: number
+    listX?: number
+    listY?: number
+    listW?: number
+    listH?: number
+    listRowHeight?: number
+    listLogoSize?: number
+  }
   columns?: Record<string, boolean>
   animation?: {
     enter?: string
     duration?: number
+    transition?: string
+    lineByLine?: boolean
+    lineDelay?: number
+    testKey?: number
   }
 }
 
@@ -103,6 +156,11 @@ export type RankingRow = {
   booyahs: number
   kills: number
   pontos: number
+  variacao?: number | null
+  mapa?: string | null
+  mapaImagem?: string | null
+  quedaNumero?: number | null
+  concluida?: boolean
   empty?: boolean
 }
 
@@ -174,7 +232,7 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
   columnStyles: {},
   rowStyles: {},
   columnWidths: {},
-  columnsOrder: ['rank', 'logo', 'nome', 'tag', 'grupo', 'quedas', 'booyahs', 'kills', 'pontos'],
+  columnsOrder: ['rank', 'logo', 'nome', 'tag', 'grupo', 'variacao', 'quedas', 'booyahs', 'kills', 'pontos'],
   layout: {
     x: 180,
     y: 140,
@@ -201,6 +259,7 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
     nome: true,
     tag: true,
     grupo: true,
+    variacao: true,
     quedas: true,
     booyahs: true,
     kills: true,
@@ -214,100 +273,12 @@ export const defaultTabelaGeralConfig: StreamOverlayConfig = {
 
 export const fixedStreamOverlayTemplates: FixedStreamOverlayTemplate[] = [
   {
-    id: 'booyah',
-    slug: 'booyah',
-    nome: 'Booyah',
-    categoria: 'transmissao',
-    descricao: 'Chamada de Booyah da queda.',
-    config_padrao: fixedTemplateConfig('BOOYAH', {
-      layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 96, rowHeight: 90 },
-      booyah: {
-        texto: 'BOOYAH',
-        textoBlock: { x: 630, y: 330, w: 880, h: 190, scale: 100, opacity: 100, fontSize: 132, color: '#f6c453', shadowColor: 'rgba(0,0,0,0.35)' },
-        logoBlock: { x: 300, y: 360, w: 230, h: 230, scale: 100, opacity: 100, delay: 2000 },
-        equipeBlock: { x: 620, y: 530, w: 760, h: 80, scale: 100, opacity: 100, fontSize: 42, color: '#ffffff' },
-      },
-    } as StreamOverlayConfig),
-  },
-  {
-    id: 'countdown',
-    slug: 'countdown',
-    nome: 'Countdown',
-    categoria: 'transmissao',
-    descricao: 'Contagem regressiva com equipes do jogo, mapas/quedas e blocos moveis.',
-    config_padrao: fixedTemplateConfig('COUNTDOWN', {
-      title: 'A LIVE COMEÇA EM',
-      layout: { maxRows: 18, rowsPerBlock: 18, headerHeight: 96, rowHeight: 90 },
-      countdown: {
-        seconds: 900,
-        titulo: 'A LIVE COMEÇA EM',
-        subtitulo: '',
-        texto: '',
-        imagemUrl: '',
-        maxEquipes: 18,
-        timerBlock: { x: 585, y: 110, w: 750, scale: 100, opacity: 100 },
-        equipesBlock: { x: 95, y: 380, w: 760, h: 390, scale: 100, opacity: 100, columns: 3, columnGap: 20, rowGap: 20, cardWidth: 190, cardHeight: 150, logoBackground: 'transparent' },
-        mapasBlock: { x: 1120, y: 405, w: 620, h: 380, scale: 100, opacity: 100, rowHeight: 62, rowGap: 12 },
-        imagemBlock: { x: 80, y: 60, w: 260, h: 180, scale: 100, opacity: 100 },
-        textoBlock: { x: 500, y: 925, w: 920, scale: 100, opacity: 100 },
-      },
-    } as StreamOverlayConfig),
-  },
-  {
-    id: 'tabela-da-queda',
-    slug: 'tabela-da-queda',
-    nome: 'Tabela da queda',
-    categoria: 'estatisticas',
-    descricao: 'Tabela de pontuacao da queda atual.',
-    config_padrao: fixedTemplateConfig('TABELA DA QUEDA'),
-  },
-  {
-    id: 'mvp-da-queda',
-    slug: 'mvp-da-queda',
-    nome: 'MVP da queda',
-    categoria: 'estatisticas',
-    descricao: 'MVP da queda atual.',
-    config_padrao: fixedTemplateConfig('MVP DA QUEDA', { layout: { maxRows: 6, rowsPerBlock: 6 } }),
-  },
-  {
     id: 'tabela-geral',
     slug: 'tabela-geral',
     nome: 'Tabela geral',
     categoria: 'estatisticas',
     descricao: 'Classificacao geral acumulada.',
-    config_padrao: fixedTemplateConfig('TABELA GERAL'),
-  },
-  {
-    id: 'mvp-geral',
-    slug: 'mvp-geral',
-    nome: 'MVP geral',
-    categoria: 'estatisticas',
-    descricao: 'Ranking MVP geral.',
-    config_padrao: fixedTemplateConfig('MVP GERAL', { layout: { maxRows: 8, rowsPerBlock: 8 } }),
-  },
-  {
-    id: 'tabela-do-dia',
-    slug: 'tabela-do-dia',
-    nome: 'Tabela do dia',
-    categoria: 'estatisticas',
-    descricao: 'Classificacao do dia.',
-    config_padrao: fixedTemplateConfig('TABELA DO DIA'),
-  },
-  {
-    id: 'mvp-do-dia',
-    slug: 'mvp-do-dia',
-    nome: 'MVP do dia',
-    categoria: 'estatisticas',
-    descricao: 'Ranking MVP do dia.',
-    config_padrao: fixedTemplateConfig('MVP DO DIA', { layout: { maxRows: 8, rowsPerBlock: 8 } }),
-  },
-  {
-    id: 'agradecimentos',
-    slug: 'agradecimentos',
-    nome: 'Agradecimentos',
-    categoria: 'transmissao',
-    descricao: 'Tela final de agradecimentos.',
-    config_padrao: fixedTemplateConfig('AGRADECIMENTOS', { layout: { maxRows: 1, rowsPerBlock: 1, headerHeight: 110, rowHeight: 90 } }),
+    config_padrao: defaultTabelaGeralConfig,
   },
 ]
 
@@ -324,6 +295,7 @@ export const tabelaGeralColumnLabels: Record<string, string> = {
   nome: 'EQUIPE',
   tag: 'TAG',
   grupo: 'GR',
+  variacao: 'VAR',
   quedas: 'QD',
   booyahs: 'B!',
   kills: 'KILL',
@@ -336,6 +308,7 @@ export const defaultTabelaGeralColumnWidths: Record<string, number> = {
   nome: 2.35,
   tag: 0.9,
   grupo: 0.72,
+  variacao: 0.72,
   quedas: 0.72,
   booyahs: 0.78,
   kills: 0.9,
@@ -370,7 +343,14 @@ export function getVisibleTabelaColumns(config: StreamOverlayConfig) {
   const columns = config.columns || defaultTabelaGeralConfig.columns || {}
   const defaultOrder = Object.keys(tabelaGeralColumnLabels)
   const savedOrder = (config.columnsOrder || []).filter((key) => defaultOrder.includes(key))
-  const orderedColumns = [...savedOrder, ...defaultOrder.filter((key) => !savedOrder.includes(key))]
+  const orderedColumns = [...savedOrder]
+  defaultOrder.forEach((key) => {
+    if (orderedColumns.includes(key)) return
+    const defaultIndex = defaultOrder.indexOf(key)
+    const insertAt = orderedColumns.findIndex((existingKey) => defaultOrder.indexOf(existingKey) > defaultIndex)
+    if (insertAt === -1) orderedColumns.push(key)
+    else orderedColumns.splice(insertAt, 0, key)
+  })
   return orderedColumns.filter((key) => columns[key] !== false)
 }
 
@@ -381,10 +361,21 @@ export function getTabelaBorder(config: StreamOverlayConfig) {
 }
 
 export function buildTabelaGrid(columns: string[], config?: StreamOverlayConfig) {
+  const layout = config?.layout || {}
+  const blockCount = Math.max(1, Math.min(4, Number(layout.blockCount || 1)))
+  const blockGap = Number(layout.blockGap || 36)
+  const blockDirection = layout.blockDirection || 'horizontal'
+  const baseTableWidth = Number(layout.w || 1560)
+  const blockWidth = blockDirection === 'horizontal'
+    ? (baseTableWidth - blockGap * (blockCount - 1)) / blockCount
+    : baseTableWidth
+  const defaultTotal = columns.reduce((sum, key) => sum + Number(defaultTabelaGeralColumnWidths[key] ?? 1), 0) || 1
+  const unit = Math.max(1, blockWidth / defaultTotal)
+
   return columns
     .map((key) => {
       const width = Number(config?.columnWidths?.[key] ?? defaultTabelaGeralColumnWidths[key] ?? 1)
-      return `${Math.max(0.2, width)}fr`
+      return `${Math.max(12, Math.round(Math.max(0.2, width) * unit))}px`
     })
     .join(' ')
 }
@@ -415,6 +406,7 @@ export function sampleRankingRows(maxRows = 12): RankingRow[] {
       booyahs,
       kills,
       pontos: kills + booyahs * 12 + Math.max(0, 38 - index * 4),
+      variacao: index % 3 === 0 ? 2 : index % 3 === 1 ? -1 : 0,
     }
   }).sort((a, b) => b.pontos - a.pontos || b.booyahs - a.booyahs || b.kills - a.kills)
 }
@@ -425,6 +417,7 @@ function displayValue(row: RankingRow, column: string, rank: number) {
   if (column === 'nome') return row.nome
   if (column === 'tag') return row.tag || '-'
   if (column === 'grupo') return row.grupo || '-'
+  if (column === 'variacao') return row.variacao == null ? 0 : row.variacao
   if (column === 'quedas') return row.quedas
   if (column === 'booyahs') return row.booyahs
   if (column === 'kills') return row.kills
@@ -448,6 +441,7 @@ function fillRows(rows: RankingRow[], maxRows: number) {
       booyahs: 0,
       kills: 0,
       pontos: 0,
+      variacao: null,
       empty: true,
     })),
   ]
@@ -543,9 +537,42 @@ export function TabelaGeralOverlay({
         outlineOffset: -3,
       }
     : {}
+  const transitionName = merged.animation?.transition || merged.animation?.enter || 'fade'
+  const transitionDuration = Math.max(100, Number(merged.animation?.duration || 650))
+  const lineByLine = Boolean(merged.animation?.lineByLine)
+  const lineDelay = Math.max(0, Number(merged.animation?.lineDelay || 70))
+  const animationClassName = `stream-transition-${transitionName}`
+  const containerAnimationStyle: CSSProperties = !lineByLine
+    ? { animation: `${animationClassName} ${transitionDuration}ms ease both` }
+    : {}
+  const rowAnimationStyle = (index: number): CSSProperties => lineByLine
+    ? { animation: `${animationClassName} ${transitionDuration}ms cubic-bezier(0.22, 1, 0.36, 1) both`, animationDelay: `${index * lineDelay}ms` }
+    : {}
+  const topImageAnimationStyle: CSSProperties = {
+    animation: `${animationClassName} ${transitionDuration}ms cubic-bezier(0.22, 1, 0.36, 1) both`,
+  }
+  const headerAnimationStyle: CSSProperties = lineByLine
+    ? { animation: `${animationClassName} ${transitionDuration}ms cubic-bezier(0.22, 1, 0.36, 1) both`, animationDelay: `${lineDelay}ms` }
+    : {}
+  const headerLabel = (column: string) => {
+    if (!['variacao', 'quedas', 'booyahs', 'kills', 'pontos'].includes(column)) return ''
+    return tabelaGeralColumnLabels[column]
+  }
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
+      <style>{`
+        @keyframes stream-transition-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes stream-transition-slide-up { from { opacity: 0; transform: translateY(1080px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes stream-transition-slide-down { from { opacity: 0; transform: translateY(-1080px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes stream-transition-slide-left { from { opacity: 0; transform: translateX(1920px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes stream-transition-slide-right { from { opacity: 0; transform: translateX(-1920px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes stream-transition-zoom { from { opacity: 0; transform: scale(.72); } to { opacity: 1; transform: scale(1); } }
+        @keyframes stream-transition-flip { from { opacity: 0; transform: rotateX(72deg); } to { opacity: 1; transform: rotateX(0); } }
+        @keyframes stream-transition-wipe { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+        @keyframes stream-transition-blur { from { opacity: 0; filter: blur(14px); } to { opacity: 1; filter: blur(0); } }
+        @keyframes stream-transition-elastic { 0% { opacity: 0; transform: scale(.78); } 68% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+      `}</style>
       {merged.tabelaGeral?.backgroundImage ? (
         <img
           src={merged.tabelaGeral.backgroundImage}
@@ -557,15 +584,20 @@ export function TabelaGeralOverlay({
 
       {infoImage?.enabled !== false && infoImage?.url ? (
         <div
+          key={`info-${merged.animation?.testKey || 0}`}
           className="absolute overflow-hidden"
+          onPointerDown={selectBlock('infoImage')}
           style={{
             left: Number(infoImage.x ?? 0),
             top: Number(infoImage.y ?? 0),
             width: Number(infoImage.w ?? 1920),
             height: Number(infoImage.h ?? 260),
             opacity: infoImageOpacity,
+            ...topImageAnimationStyle,
+            ...selectedStyle('infoImage'),
           }}
         >
+          {blockLabel('IMAGEM')}
           <img
             src={infoImage.url}
             alt=""
@@ -641,6 +673,7 @@ export function TabelaGeralOverlay({
       ) : null}
 
       <div
+        key={`table-${merged.animation?.testKey || 0}`}
         className="absolute overflow-hidden uppercase"
         onPointerDown={selectBlock('table')}
         style={{
@@ -656,19 +689,21 @@ export function TabelaGeralOverlay({
           ...selectedStyle('table'),
         }}
       >
-        {blockLabel('TABELA')}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: blockDirection === 'horizontal' ? `repeat(${blocks.length}, minmax(0, 1fr))` : '1fr',
             gap: blockGap,
+            ...containerAnimationStyle,
           }}
         >
           {blocks.map((blockRows, blockIndex) => (
-            <div key={blockIndex} style={{ width: blockWidth }}>
+            <div key={blockIndex} style={{ width: blockWidth, minWidth: blockWidth }}>
         <div
           className="grid items-center overflow-hidden font-black"
           style={{
+            width: blockWidth,
+            minWidth: blockWidth,
             minHeight: Number(merged.layout?.headerHeight || 72),
             gridTemplateColumns,
             background: merged.theme?.primary || '#e60012',
@@ -676,6 +711,7 @@ export function TabelaGeralOverlay({
             borderRadius: Number(merged.layout?.radius ?? 0),
             border: tableBorder,
             columnGap,
+            ...headerAnimationStyle,
           }}
         >
           {visibleColumns.map((column) => (
@@ -695,7 +731,7 @@ export function TabelaGeralOverlay({
                 ...selectedColumnStyle(column),
               }}
             >
-              {column === 'nome' ? merged.title || 'TABELA GERAL' : tabelaGeralColumnLabels[column]}
+              {headerLabel(column)}
             </div>
           ))}
         </div>
@@ -712,15 +748,19 @@ export function TabelaGeralOverlay({
                 key={row.id}
                 className="grid items-center overflow-hidden font-black"
                 style={{
+                  width: blockWidth,
+                  minWidth: blockWidth,
                   gridTemplateColumns,
                   height: Number(merged.layout?.rowHeight || 62),
+                  overflow: 'visible',
                   background: rowBackground || 'rgba(248,250,252,0.94)',
-                  backgroundSize: '100% 100%',
-                  backgroundPosition: 'center',
+                  backgroundSize: `${blockWidth}px 100%`,
+                  backgroundPosition: 'left center',
                   backgroundRepeat: 'no-repeat',
                   borderRadius: Number(merged.layout?.radius ?? 0),
                   border: tableBorder,
                   columnGap,
+                  ...rowAnimationStyle(globalIndex),
                 }}
               >
                 {visibleColumns.map((column) => {
@@ -745,21 +785,26 @@ export function TabelaGeralOverlay({
                       <div
                         key={column}
                         onPointerDown={selectColumn(column)}
-                        className="flex items-center justify-center"
+                        className="relative flex items-center justify-center"
                         style={{
                           background: merged.columnStyles?.[column]?.background || undefined,
                           color: merged.columnStyles?.[column]?.text || rowText || undefined,
                           height: '100%',
+                          minHeight: 0,
                           paddingLeft: cellPaddingX,
                           paddingRight: cellPaddingX,
+                          overflow: 'visible',
                           ...selectedColumnStyle(column),
                         }}
                       >
                         <div
-                          className="flex items-center justify-center overflow-hidden bg-white text-[0.78em] text-slate-900"
+                          className="absolute flex items-center justify-center overflow-hidden text-[0.78em] text-slate-900"
                           style={{
+                            left: '50%',
+                            top: '50%',
                             width: Number(merged.layout?.logoSize || 44),
                             height: Number(merged.layout?.logoSize || 44),
+                            transform: 'translate(-50%, -50%)',
                             borderRadius: Math.max(0, Number(merged.layout?.radius ?? 0)),
                           }}
                         >
@@ -769,6 +814,41 @@ export function TabelaGeralOverlay({
                             <Users size={Math.max(16, Number(merged.layout?.logoSize || 44) * 0.5)} />
                           )}
                         </div>
+                      </div>
+                    )
+                  }
+
+                  if (column === 'variacao') {
+                    const variation = Number(row.variacao || 0)
+                    const color = variation > 0 ? '#22c55e' : variation < 0 ? '#ef4444' : '#facc15'
+                    const label = variation > 0 ? `+${variation}` : `${variation}`
+                    const VariationIcon = variation > 0 ? ArrowUp : variation < 0 ? ArrowDown : Minus
+
+                    return (
+                      <div
+                        key={column}
+                        className="text-center"
+                        onPointerDown={selectColumn(column)}
+                        style={{
+                          color: merged.columnStyles?.[column]?.text || color,
+                          background: merged.columnStyles?.[column]?.background || undefined,
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          paddingLeft: cellPaddingX,
+                          paddingRight: cellPaddingX,
+                          minWidth: 0,
+                          ...selectedColumnStyle(column),
+                        }}
+                      >
+                        {!row.empty ? (
+                          <>
+                            <VariationIcon size={Math.max(12, Number(merged.layout?.fontSize || 24) * 0.72)} strokeWidth={4} />
+                            <span>{label}</span>
+                          </>
+                        ) : null}
                       </div>
                     )
                   }

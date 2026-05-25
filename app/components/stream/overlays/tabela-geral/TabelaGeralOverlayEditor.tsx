@@ -35,17 +35,19 @@ function applyPreset(base: StreamOverlayConfig, mode: 'lateral' | 'duplo-inferio
     nome: true,
     tag: false,
     grupo: false,
+    variacao: true,
     quedas: true,
     booyahs: true,
     kills: true,
     pontos: true,
   }
-  next.columnsOrder = ['rank', 'logo', 'nome', 'tag', 'grupo', 'quedas', 'booyahs', 'kills', 'pontos']
+  next.columnsOrder = ['rank', 'logo', 'nome', 'tag', 'grupo', 'variacao', 'quedas', 'booyahs', 'kills', 'pontos']
   next.columnWidths = {
     ...(next.columnWidths || {}),
     rank: 0.52,
     logo: 0.7,
     nome: 2.6,
+    variacao: 0.72,
     quedas: 0.72,
     booyahs: 0.72,
     kills: 0.85,
