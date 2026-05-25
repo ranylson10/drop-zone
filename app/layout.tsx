@@ -125,7 +125,8 @@ function TopHeader({ onOpenMenu }: { onOpenMenu: () => void }) {
             type="button"
             onClick={onOpenMenu}
             className="flex h-10 w-10 items-center justify-center border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 xl:hidden"
-            aria-label="Abrir menu"
+            aria-label="Abrir menu lateral"
+            aria-expanded={false}
           >
             <Menu size={19} />
           </button>
@@ -314,6 +315,17 @@ function AppChrome({ children }: { children: React.ReactNode }) {
   const { user, perfisJogo } = usePerfil()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isSiteAdmin, setIsSiteAdmin] = useState(false)
+
+  useEffect(() => {
+    if (isAuthRoute || isCleanRoute) return
+
+    const originalOverflow = document.body.style.overflow
+    if (mobileMenuOpen) document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [mobileMenuOpen, isAuthRoute, isCleanRoute])
   const [isModerador, setIsModerador] = useState(false)
   const [isManager, setIsManager] = useState(false)
 
@@ -412,16 +424,16 @@ function AppChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       {mobileMenuOpen ? (
-        <div className="fixed inset-0 z-[200] xl:hidden">
-          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-[86vw] max-w-[330px] shadow-2xl">
+        <div className="fixed inset-0 z-[300] xl:hidden" role="dialog" aria-modal="true" aria-label="Menu lateral">
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px]" onClick={() => setMobileMenuOpen(false)} />
+          <div className="absolute inset-y-0 left-0 w-[280px] max-w-[88vw] overflow-hidden border-r border-white/10 bg-[#070b18] shadow-[20px_0_60px_rgba(2,6,23,0.45)]">
             <SidebarNavigation isSiteAdmin={isSiteAdmin} isModerador={isModerador} isManager={isManager} onNavigate={() => setMobileMenuOpen(false)} />
           </div>
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center border border-white/20 bg-white/10 text-white backdrop-blur"
-            aria-label="Fechar menu"
+            className="absolute left-[min(292px,calc(88vw+12px))] top-4 flex h-10 w-10 items-center justify-center border border-white/20 bg-white/10 text-white backdrop-blur"
+            aria-label="Fechar menu lateral"
           >
             <X size={19} />
           </button>
@@ -436,7 +448,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <MobileBottomNavigation />
+      {!mobileMenuOpen ? <MobileBottomNavigation /> : null}
     </div>
   )
 }

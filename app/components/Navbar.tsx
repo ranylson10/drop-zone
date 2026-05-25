@@ -11,7 +11,7 @@ function formatarDinheiro(valor: number) {
  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-export default function Navbar() {
+export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  const { user, perfilAtivo, tipoPerfil, loading } = usePerfil()
  const router = useRouter()
  const [saldo, setSaldo] = useState(0)
@@ -59,7 +59,12 @@ export default function Navbar() {
  return (
  <nav className="dz-topbar sticky top-0 z-50 flex h-[60px] items-center justify-between px-3 md:px-5">
  <div className="flex min-w-0 items-center gap-3">
- <button className="dz-icon-btn lg:hidden" type="button" aria-label="Menu">
+ <button
+ className="dz-icon-btn lg:hidden"
+ type="button"
+ aria-label="Abrir menu lateral"
+ onClick={onOpenMenu}
+ >
  <Menu size={16} />
  </button>
 
