@@ -211,99 +211,75 @@ function CampeonatoShowCard({ camp, index = 0, compacto = false }: { camp: any; 
  <Link
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
  className={[
- 'group relative block shrink-0 overflow-hidden rounded-[22px] p-[2px] text-white shadow-[0_18px_40px_rgba(15,23,42,0.22)] transition active:scale-[0.99] md:hover:-translate-y-0.5',
+ 'group relative block shrink-0 overflow-hidden rounded-[18px] border border-white/70 bg-white p-0 text-white transition active:scale-[0.99]',
  compacto ? 'w-[300px] max-md:w-[86vw]' : 'w-full',
  ].join(' ')}
- style={{
- background: 'linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.18), rgba(255,255,255,0.78))',
- }}
  >
- <div className={`relative min-h-[156px] overflow-hidden rounded-[20px] bg-gradient-to-br ${palette.field}`}>
+ <div className={`relative h-[132px] overflow-hidden rounded-[18px] bg-gradient-to-br ${palette.field}`}>
  {bannerUrl ? (
  <img src={bannerUrl} alt={camp.nome || 'Campeonato'} className="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-overlay" />
  ) : null}
  <div className={`absolute inset-0 bg-gradient-to-br ${palette.sky} opacity-55`} />
  <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.85)_0_2px,transparent_3px),radial-gradient(circle_at_82%_28%,rgba(255,255,255,0.75)_0_1px,transparent_3px),linear-gradient(90deg,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:80px_70px,64px_64px,28px_28px,28px_28px]" />
- <div className="absolute -bottom-10 left-1/2 h-28 w-[120%] -translate-x-1/2 rounded-[50%] border-t-4 border-white/35 bg-black/10" />
- <div className="absolute bottom-4 left-4 right-4 h-[2px] bg-white/50" />
- <div className="absolute bottom-0 left-1/2 h-20 w-[2px] -translate-x-1/2 bg-white/35" />
- <div className="absolute -left-8 bottom-2 h-24 w-24 rounded-full border-[14px] border-white/95 bg-black shadow-[0_8px_22px_rgba(15,23,42,0.28)]">
+ <div className="absolute -bottom-12 left-1/2 h-24 w-[120%] -translate-x-1/2 rounded-[50%] border-t-3 border-white/35 bg-black/10" />
+ <div className="absolute bottom-[52px] left-4 right-4 h-[2px] bg-white/45" />
+ <div className="absolute bottom-0 left-1/2 h-[72px] w-[2px] -translate-x-1/2 bg-white/30" />
+ <div className="absolute -left-9 bottom-4 h-20 w-20 rounded-full border-[12px] border-white/95 bg-black">
  <div className="absolute inset-3 rounded-full border border-black/20 bg-white" />
  </div>
 
- <div className="relative z-10 flex min-h-[156px] flex-col justify-between p-3">
+ <div className="relative z-10 flex h-full flex-col p-3">
  <div className="flex items-start justify-between gap-2">
  <div className="min-w-0">
- <div className="inline-flex rounded-full bg-black/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/90 backdrop-blur">
+ <div className="inline-flex rounded-full bg-black/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/90">
  {meta?.titulo || 'Campeonato'} - {formatarDataCurta(inicio)}
  </div>
- <h3 className="mt-2 line-clamp-1 text-[16px] font-black uppercase leading-none tracking-tight text-white drop-shadow">
+ <h3 className="mt-2 line-clamp-1 text-[16px] font-black uppercase leading-none tracking-tight text-white">
  {camp.nome || 'Campeonato sem nome'}
  </h3>
  <p className="mt-1 line-clamp-1 text-[10px] font-bold uppercase text-white/80">{produtora}</p>
  </div>
- <div className="shrink-0 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-slate-950 shadow">
+ <div className="shrink-0 rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-950">
  {getPaisFlag(camp.regiao)}
  </div>
  </div>
 
- <div className="relative mx-4 my-2 rounded-[18px] bg-white px-3 py-3 text-slate-950 shadow-[0_16px_30px_rgba(15,23,42,0.20)]">
- <div className="absolute -top-2 left-5 rounded-full bg-[#fde047] px-2 py-0.5 text-[8px] font-black uppercase text-[#92400e] shadow">PREMIO</div>
- <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="absolute inset-x-3 bottom-3 rounded-[16px] bg-white px-3 py-2 text-slate-950">
+ <div className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-2">
  <div className="min-w-0 text-center">
- <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow">
+ <div className="mx-auto flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-100 bg-slate-100">
  {camp.logo_url ? (
  <img src={camp.logo_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
  ) : (
- <span className="text-lg font-black text-[#008069]">{getLogoFallback(camp.nome)}</span>
+ <span className="text-base font-black text-[#008069]">{getLogoFallback(camp.nome)}</span>
  )}
  </div>
- <div className="mt-1 truncate text-[9px] font-black uppercase">{camp.nome || 'DROP'}</div>
  </div>
 
- <div className="text-center">
- <div className="text-[9px] font-black uppercase text-slate-400">VS</div>
- <div className={`mt-1 h-1.5 w-12 rounded-full ${palette.stripe}`} />
- <div className="mt-1 text-[9px] font-bold uppercase text-slate-500">{plataforma}</div>
- </div>
-
- <div className="min-w-0 text-center">
- <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow">
- {camp.banner_url ? (
- <img src={camp.banner_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
- ) : (
- <Trophy size={22} className="text-[#f97316]" />
- )}
- </div>
- <div className="mt-1 truncate text-[9px] font-black uppercase">{camp.categoria || camp.tipo_campeonato || 'Squad'}</div>
- </div>
- </div>
-
- <div className="mt-3 flex items-center justify-between gap-2">
  <div className="min-w-0">
- <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">Prize pool</div>
- <div className="truncate text-[15px] font-black text-[#f97316]">{premio > 0 ? formatarMoeda(premio) : 'A definir'}</div>
+ <div className="flex items-center gap-2">
+ <div className="text-[8px] font-black uppercase text-slate-400">VS</div>
+ <div className={`h-1.5 w-11 rounded-full ${palette.stripe}`} />
+ <div className="truncate text-[8px] font-bold uppercase text-slate-500">{plataforma}</div>
  </div>
- <div className="text-right">
- <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">Inscricao</div>
- <div className={`text-[12px] font-black ${gratuito ? 'text-emerald-600' : 'text-slate-950'}`}>{gratuito ? 'Gratis' : formatarMoeda(camp.valor_vaga || 0)}</div>
+ <div className="mt-1 grid grid-cols-2 gap-2">
+ <div className="min-w-0">
+ <div className="text-[7px] font-black uppercase tracking-[0.12em] text-slate-400">Prize pool</div>
+ <div className="truncate text-[13px] font-black text-[#f97316]">{premio > 0 ? formatarMoeda(premio) : 'A definir'}</div>
+ </div>
+ <div className="min-w-0">
+ <div className="text-[7px] font-black uppercase tracking-[0.12em] text-slate-400">Inscricao</div>
+ <div className={`truncate text-[12px] font-black ${gratuito ? 'text-emerald-600' : 'text-slate-950'}`}>{gratuito ? 'Gratis' : formatarMoeda(camp.valor_vaga || 0)}</div>
  </div>
  </div>
  </div>
 
- <div className="flex items-center justify-between gap-3">
- <div className="min-w-0">
- <div className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">Score {formatScore(camp.score_total || 0)}</div>
- <div className="mt-1 h-1.5 w-28 overflow-hidden rounded-full bg-white/30">
- <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, Math.max(10, Number(camp.score_total || 0) / 20))}%` }} />
- </div>
- </div>
  <span
- className={`inline-flex h-10 items-center justify-center rounded-full bg-gradient-to-r ${palette.button} px-5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_24px_var(--camp-glow)]`}
- style={{ ['--camp-glow' as string]: palette.glow }}
+ className={`inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r ${palette.button} px-4 text-[10px] font-black uppercase tracking-[0.12em] text-white`}
  >
  Entrar
  </span>
+ </div>
  </div>
  </div>
  </div>

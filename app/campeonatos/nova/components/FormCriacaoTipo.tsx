@@ -30,6 +30,16 @@ type FaseEstrutura = {
   grupos: GrupoEstrutura[]
 }
 
+const LETRAS_GRUPO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
+function extrairLetraGrupo(nome?: string | null) {
+  return String(nome || '').trim().toUpperCase().replace(/^GRUPO\s+/, '').slice(0, 2) || 'A'
+}
+
+function montarNomeGrupo(letra: string) {
+  return `Grupo ${String(letra || 'A').trim().toUpperCase()}`
+}
+
 const OPCOES_SERVIDOR = [
   'Brasil (BR)',
   'Latam (LATAM)',
@@ -265,13 +275,14 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     setFasesEstrutura((prev) =>
       prev.map((fase, i) => {
         if (i !== faseIndex) return fase
-        const letra = String.fromCharCode(65 + fase.grupos.length)
+        const letrasUsadas = new Set(fase.grupos.map((grupo) => extrairLetraGrupo(grupo.nome)))
+        const letra = LETRAS_GRUPO.find((item) => !letrasUsadas.has(item)) || LETRAS_GRUPO[0]
         return {
           ...fase,
           grupos: [
             ...fase.grupos,
             {
-              nome: `Grupo ${letra}`,
+              nome: montarNomeGrupo(letra),
               quantidade_equipes: form.vagas || '12',
               numero_partidas: '4',
               classificam: '1',
@@ -1480,13 +1491,22 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                               <div className="grid gap-3 sm:grid-cols-2">
                                 <label className="space-y-2">
                                   <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                                    Nome do grupo
+                                    Letra do grupo
                                   </span>
-                                  <input
-                                    value={grupo.nome}
-                                    onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'nome', e.target.value)}
+                                  <select
+                                    value={extrairLetraGrupo(grupo.nome)}
+                                    onChange={(e) => atualizarGrupoEstrutura(faseIndex, grupoIndex, 'nome', montarNomeGrupo(e.target.value))}
                                     className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
-                                  />
+                                  >
+                                    {LETRAS_GRUPO.map((letra) => {
+                                      const usada = fase.grupos.some((item, itemIndex) => itemIndex !== grupoIndex && extrairLetraGrupo(item.nome) === letra)
+                                      return (
+                                        <option key={letra} value={letra} disabled={usada}>
+                                          {montarNomeGrupo(letra)}{usada ? ' - JA EXISTE' : ''}
+                                        </option>
+                                      )
+                                    })}
+                                  </select>
                                 </label>
 
                                 <label className="space-y-2">

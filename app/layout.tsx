@@ -23,6 +23,8 @@ import { supabase } from '../lib/supabase'
 import ModeradorMatchToast from '@/app/components/ModeradorMatchToast'
 import HeaderAlerts from '@/app/components/HeaderAlerts'
 import SidebarNavigation, { MobileBottomNavigation } from '@/app/components/SidebarNavigation'
+import PWARegister from '@/app/components/PWARegister'
+import PWAInstallPrompt from '@/app/components/PWAInstallPrompt'
 
 type ItemPerfilProps = {
   ativo?: boolean
@@ -448,6 +450,7 @@ function AppChrome({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
+      <PWAInstallPrompt />
       {!mobileMenuOpen ? <MobileBottomNavigation /> : null}
     </div>
   )
@@ -464,6 +467,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-br">
       <body className="min-h-screen bg-[var(--dz-bg)] font-sans text-slate-950 selection:bg-blue-200 selection:text-slate-950">
         <PerfilProvider>
+          <PWARegister />
           <AppChrome>{children}</AppChrome>
         </PerfilProvider>
       </body>

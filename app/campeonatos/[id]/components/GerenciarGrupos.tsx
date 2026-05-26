@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -21,6 +21,8 @@ import { toast } from "react-hot-toast";
 
 type CampConfig = {
   id: string;
+  nome?: string | null;
+  logo_url?: string | null;
   tipo_competicao: string | null;
   permitir_troca_grupos: boolean | null;
   permitir_troca_grupos_livre: boolean | null;
@@ -28,6 +30,8 @@ type CampConfig = {
   exigir_aprovacao_organizacao_troca_grupo: boolean | null;
   formato: string | null;
 };
+
+const LETRAS_GRUPO = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 type Fase = {
   id: string;
@@ -135,10 +139,10 @@ function PainelSemPermissaoGrupos() {
   return (
     <div className="border border-amber-200 bg-amber-50 p-5 text-sm font-semibold text-amber-800">
       <div className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">
-        Edição de grupos bloqueada
+        EdiÃ§Ã£o de grupos bloqueada
       </div>
       <p className="mt-2 leading-6">
-        Criar fases, criar grupos, mover equipes ou aceitar trocas é permitido
+        Criar fases, criar grupos, mover equipes ou aceitar trocas Ã© permitido
         apenas para o dono do campeonato ou ajudantes autorizados.
       </p>
     </div>
@@ -148,6 +152,15 @@ function PainelSemPermissaoGrupos() {
 function montarNomeComSufixo(nome: string, numero: number) {
   const sufixo = sufixoRomano(numero);
   return sufixo ? `${nome} ${sufixo}` : nome;
+}
+
+function extrairLetraGrupo(nome?: string | null) {
+  const texto = String(nome || "").trim().toUpperCase();
+  return texto.replace(/^GRUPO\s+/, "").slice(0, 2) || "A";
+}
+
+function montarNomeGrupo(letra: string) {
+  return `GRUPO ${String(letra || "A").trim().toUpperCase()}`;
 }
 
 export default function GerenciarGrupos({
@@ -190,7 +203,7 @@ export default function GerenciarGrupos({
   const [classificamGrupo, setClassificamGrupo] = useState("1");
   const [mapasGrupoSelecionados, setMapasGrupoSelecionados] = useState<
     string[]
-  >(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
+  >(["Bermuda", "PurgatÃ³rio", "Alpine", "Kalahari"]);
   const [buscaEquipe, setBuscaEquipe] = useState("");
 
   const [slotSelecionado, setSlotSelecionado] = useState<SlotGrupo | null>(
@@ -213,7 +226,7 @@ export default function GerenciarGrupos({
 
   const OPCOES_MAPA = [
     "Bermuda",
-    "Purgatório",
+    "PurgatÃ³rio",
     "Alpine",
     "Kalahari",
     "Nexterra",
@@ -274,7 +287,7 @@ export default function GerenciarGrupos({
     setDataJogoGrupo("");
     setHoraJogoGrupo("");
     setClassificamGrupo("1");
-    setMapasGrupoSelecionados(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
+    setMapasGrupoSelecionados(["Bermuda", "PurgatÃ³rio", "Alpine", "Kalahari"]);
     setShowModalGrupo(false);
   };
 
@@ -307,7 +320,7 @@ export default function GerenciarGrupos({
         supabase
           .from("campeonatos")
           .select(
-            "id, tipo_competicao, permitir_troca_grupos, permitir_troca_grupos_livre, permitir_troca_grupos_generica, exigir_aprovacao_organizacao_troca_grupo, formato",
+            "id, nome, logo_url, tipo_competicao, permitir_troca_grupos, permitir_troca_grupos_livre, permitir_troca_grupos_generica, exigir_aprovacao_organizacao_troca_grupo, formato",
           )
           .eq("id", campeonatoId)
           .single(),
@@ -644,6 +657,15 @@ export default function GerenciarGrupos({
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [slotTrocaSelecionado, grupos]);
 
+  const proximaLetraGrupo = useCallback((faseId: string) => {
+    const usadas = new Set(
+      grupos
+        .filter((grupo) => grupo.fase_id === faseId)
+        .map((grupo) => extrairLetraGrupo(grupo.nome)),
+    );
+    return LETRAS_GRUPO.find((letra) => !usadas.has(letra)) || LETRAS_GRUPO[0];
+  }, [grupos]);
+
   const solicitacoesRelacionadasAoSlot = useMemo(() => {
     if (!slotTrocaSelecionado?.campeonato_equipe_id) return [];
 
@@ -708,7 +730,7 @@ export default function GerenciarGrupos({
       (fase) => fase.nome.trim().toLowerCase() === nome.toLowerCase(),
     );
     if (duplicadoNome) {
-      toast.error("Já existe uma fase com esse nome");
+      toast.error("JÃ¡ existe uma fase com esse nome");
       return;
     }
 
@@ -740,7 +762,8 @@ export default function GerenciarGrupos({
   };
 
   const handleCriarGrupo = async () => {
-    const nome = nomeGrupo.trim().toUpperCase();
+    const letra = extrairLetraGrupo(nomeGrupo);
+    const nome = montarNomeGrupo(letra);
 
     if (!nome) {
       toast.error("Informe o nome do grupo");
@@ -754,19 +777,19 @@ export default function GerenciarGrupos({
 
     const quantidade = Number(quantidadeEquipesGrupo);
     if (!Number.isFinite(quantidade) || quantidade <= 0) {
-      toast.error("Informe uma quantidade válida de equipes");
+      toast.error("Informe uma quantidade vÃ¡lida de equipes");
       return;
     }
 
     const qtdQuedas = Number(quantidadeQuedasGrupo);
     if (!Number.isFinite(qtdQuedas) || qtdQuedas <= 0) {
-      toast.error("Informe uma quantidade válida de partidas");
+      toast.error("Informe uma quantidade vÃ¡lida de partidas");
       return;
     }
 
     const intervalo = Number(intervaloGrupo);
     if (!Number.isFinite(intervalo) || intervalo < 0) {
-      toast.error("Informe um intervalo válido");
+      toast.error("Informe um intervalo vÃ¡lido");
       return;
     }
 
@@ -783,7 +806,7 @@ export default function GerenciarGrupos({
     );
 
     if (duplicado) {
-      toast.error("Já existe um grupo com esse nome nessa fase");
+      toast.error("JÃ¡ existe um grupo com esse nome nessa fase");
       return;
     }
 
@@ -803,7 +826,7 @@ export default function GerenciarGrupos({
         .single();
 
       if (error) throw error;
-      if (!grupoCriado?.id) throw new Error("Não foi possível criar o grupo");
+      if (!grupoCriado?.id) throw new Error("NÃ£o foi possÃ­vel criar o grupo");
 
       const { error: slotsError } = await supabase.rpc("criar_slots_do_grupo", {
         p_grupo_id: grupoCriado.id,
@@ -942,14 +965,14 @@ export default function GerenciarGrupos({
 
   const abrirCriarGrupoNaFase = (faseId: string) => {
     setFaseSelecionadaParaGrupo(faseId);
-    setNomeGrupo("");
+    setNomeGrupo(proximaLetraGrupo(faseId));
     setQuantidadeEquipesGrupo("12");
     setQuantidadeQuedasGrupo("4");
     setIntervaloGrupo("15");
     setDataJogoGrupo("");
     setHoraJogoGrupo("");
     setClassificamGrupo("1");
-    setMapasGrupoSelecionados(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
+    setMapasGrupoSelecionados(["Bermuda", "PurgatÃ³rio", "Alpine", "Kalahari"]);
     setShowModalGrupo(true);
   };
 
@@ -966,7 +989,7 @@ export default function GerenciarGrupos({
     }
 
     if (!campConfig?.permitir_troca_grupos) {
-      toast.error("Troca de grupos não está habilitada neste campeonato");
+      toast.error("Troca de grupos nÃ£o estÃ¡ habilitada neste campeonato");
       return;
     }
 
@@ -989,8 +1012,8 @@ export default function GerenciarGrupos({
     setSalvando(true);
 
     try {
-      // REGRA CERTA: a trava é por campeonato_equipes.id (inscricao_id), não por equipe_id.
-      // ALOE, ALOE II e ALOE III são vagas diferentes e podem entrar na mesma fase.
+      // REGRA CERTA: a trava Ã© por campeonato_equipes.id (inscricao_id), nÃ£o por equipe_id.
+      // ALOE, ALOE II e ALOE III sÃ£o vagas diferentes e podem entrar na mesma fase.
       const vagaJaUsadaNaFase = slots.find(
         (slot) =>
           slot.fase_id === slotSelecionado.fase_id &&
@@ -1000,17 +1023,17 @@ export default function GerenciarGrupos({
 
       if (vagaJaUsadaNaFase) {
         throw new Error(
-          "Esta vaga específica já está em outro slot desta fase.",
+          "Esta vaga especÃ­fica jÃ¡ estÃ¡ em outro slot desta fase.",
         );
       }
 
       if (slotSelecionado.campeonato_equipe_id) {
-        throw new Error("Este slot já possui equipe.");
+        throw new Error("Este slot jÃ¡ possui equipe.");
       }
 
-      // Atualização direta por campeonato_equipes.id.
+      // AtualizaÃ§Ã£o direta por campeonato_equipes.id.
       // No modo line, o line_id fica em campeonato_equipes.line_id.
-      // O slot guarda a vaga/inscrição; a line é resolvida por esse vínculo.
+      // O slot guarda a vaga/inscriÃ§Ã£o; a line Ã© resolvida por esse vÃ­nculo.
       const { error: slotError } = await supabase
         .from("campeonato_grupo_slots")
         .update({ campeonato_equipe_id: campeonatoEquipeId })
@@ -1039,7 +1062,7 @@ export default function GerenciarGrupos({
           JSON.stringify(equipeError, null, 2),
         );
 
-        // rollback simples para não deixar slot preso se a segunda atualização falhar
+        // rollback simples para nÃ£o deixar slot preso se a segunda atualizaÃ§Ã£o falhar
         await supabase
           .from("campeonato_grupo_slots")
           .update({ campeonato_equipe_id: null })
@@ -1048,9 +1071,9 @@ export default function GerenciarGrupos({
         throw equipeError;
       }
 
-      // Garante que a súmula enxergue a vaga adicionada no grupo.
+      // Garante que a sÃºmula enxergue a vaga adicionada no grupo.
       // IMPORTANTE: jogo_equipes precisa receber campeonato_id/fase_id SEM depender dos campos antigos de jogos,
-      // porque alguns jogos antigos estão com campeonato_id/fase_id nulos.
+      // porque alguns jogos antigos estÃ£o com campeonato_id/fase_id nulos.
       const grupoContexto = grupos.find(
         (grupo) => grupo.id === slotSelecionado.grupo_id,
       );
@@ -1063,7 +1086,7 @@ export default function GerenciarGrupos({
 
       if (!campeonatoIdAlvo || !faseIdAlvo) {
         console.warn(
-          "Sincronização de jogo_equipes ignorada: campeonato_id ou fase_id não encontrado.",
+          "SincronizaÃ§Ã£o de jogo_equipes ignorada: campeonato_id ou fase_id nÃ£o encontrado.",
           {
             campeonatoIdAlvo,
             faseIdAlvo,
@@ -1079,7 +1102,7 @@ export default function GerenciarGrupos({
 
         if (jogosDoGrupoError) {
           console.error(
-            "Erro ao buscar jogos do grupo para sincronizar súmula:",
+            "Erro ao buscar jogos do grupo para sincronizar sÃºmula:",
             JSON.stringify(jogosDoGrupoError, null, 2),
           );
         } else if ((jogosDoGrupo || []).length > 0) {
@@ -1137,7 +1160,7 @@ export default function GerenciarGrupos({
     const nomeVaga =
       slot.equipe?.nome_exibicao || slot.equipe?.nome || "esta equipe";
     const confirmar = window.confirm(
-      `Remover ${nomeVaga} deste grupo?\n\nSe ela já tiver jogado ou possuir resultado salvo, o sistema deve bloquear pela regra do banco/resultado.`,
+      `Remover ${nomeVaga} deste grupo?\n\nSe ela jÃ¡ tiver jogado ou possuir resultado salvo, o sistema deve bloquear pela regra do banco/resultado.`,
     );
 
     if (!confirmar) return;
@@ -1147,7 +1170,7 @@ export default function GerenciarGrupos({
     try {
       const campeonatoEquipeId = slot.campeonato_equipe_id;
 
-      // Remoção direta do slot. Não usa RPC antiga.
+      // RemoÃ§Ã£o direta do slot. NÃ£o usa RPC antiga.
       const { error: slotError } = await supabase
         .from("campeonato_grupo_slots")
         .update({ campeonato_equipe_id: null })
@@ -1162,7 +1185,7 @@ export default function GerenciarGrupos({
         throw slotError;
       }
 
-      // Remove também da súmula/jogos vinculados a este slot.
+      // Remove tambÃ©m da sÃºmula/jogos vinculados a este slot.
       const { error: jogoEquipesDeleteError } = await supabase
         .from("jogo_equipes")
         .delete()
@@ -1171,7 +1194,7 @@ export default function GerenciarGrupos({
 
       if (jogoEquipesDeleteError) {
         console.error(
-          "Erro ao remover vínculo em jogo_equipes:",
+          "Erro ao remover vÃ­nculo em jogo_equipes:",
           JSON.stringify(jogoEquipesDeleteError, null, 2),
         );
         throw jogoEquipesDeleteError;
@@ -1228,12 +1251,12 @@ export default function GerenciarGrupos({
       return;
 
     if (!aceitaQualquerGrupo && !grupoDesejadoTroca) {
-      toast.error("Selecione um grupo desejado ou marque troca genérica");
+      toast.error("Selecione um grupo desejado ou marque troca genÃ©rica");
       return;
     }
 
     if (aceitaQualquerGrupo && !campConfig?.permitir_troca_grupos_generica) {
-      toast.error("Troca genérica não está habilitada neste campeonato");
+      toast.error("Troca genÃ©rica nÃ£o estÃ¡ habilitada neste campeonato");
       return;
     }
 
@@ -1253,11 +1276,11 @@ export default function GerenciarGrupos({
 
       if (error) throw error;
 
-      toast.success("Solicitação de troca criada com sucesso");
+      toast.success("SolicitaÃ§Ã£o de troca criada com sucesso");
       resetModalTroca();
       await carregarDados();
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao criar solicitação de troca");
+      toast.error(error?.message || "Erro ao criar solicitaÃ§Ã£o de troca");
     } finally {
       setSalvando(false);
     }
@@ -1274,7 +1297,7 @@ export default function GerenciarGrupos({
       solicitacao.solicitante_campeonato_equipe_id ===
       slotTrocaSelecionado.campeonato_equipe_id
     ) {
-      toast.error("A mesma equipe não pode aceitar a própria solicitação");
+      toast.error("A mesma equipe nÃ£o pode aceitar a prÃ³pria solicitaÃ§Ã£o");
       return;
     }
 
@@ -1323,7 +1346,7 @@ export default function GerenciarGrupos({
         if (e2) throw e2;
       }
 
-      toast.success("Troca concluída com sucesso");
+      toast.success("Troca concluÃ­da com sucesso");
       resetModalTroca();
       await carregarDados();
     } catch (error: any) {
@@ -1334,7 +1357,7 @@ export default function GerenciarGrupos({
   };
 
   const cancelarSolicitacaoTroca = async (solicitacaoId: string) => {
-    const confirmar = confirm("Deseja cancelar esta solicitação de troca?");
+    const confirmar = confirm("Deseja cancelar esta solicitaÃ§Ã£o de troca?");
     if (!confirmar) return;
 
     setSalvando(true);
@@ -1346,10 +1369,10 @@ export default function GerenciarGrupos({
 
       if (error) throw error;
 
-      toast.success("Solicitação cancelada");
+      toast.success("SolicitaÃ§Ã£o cancelada");
       await carregarDados();
     } catch (error: any) {
-      toast.error(error?.message || "Erro ao cancelar solicitação");
+      toast.error(error?.message || "Erro ao cancelar solicitaÃ§Ã£o");
     } finally {
       setSalvando(false);
     }
@@ -1359,15 +1382,15 @@ export default function GerenciarGrupos({
     if (tipo === "mesma_fase_e_mesmas_quedas")
       return "Mesma fase + mesmas quedas";
     if (tipo === "mesma_fase") return "Mesma fase";
-    if (tipo === "aprovacao_manual") return "Aprovação manual";
-    return "Regra padrão";
+    if (tipo === "aprovacao_manual") return "AprovaÃ§Ã£o manual";
+    return "Regra padrÃ£o";
   };
 
   const formatarMapasGrupo = (grupo: GrupoComSlots) => {
     const anyGrupo = grupo as any;
     const mapas = Array.isArray(anyGrupo.mapas) ? anyGrupo.mapas : [];
-    if (mapas.length === 0) return "Mapas não definidos";
-    return mapas.join(" • ");
+    if (mapas.length === 0) return "Mapas nÃ£o definidos";
+    return mapas.join(" â€¢ ");
   };
 
   const formatarAgendaGrupo = (grupo: GrupoComSlots) => {
@@ -1376,10 +1399,10 @@ export default function GerenciarGrupos({
       ? new Date(anyGrupo.data_jogo).toLocaleDateString("pt-BR")
       : null;
     const hora = anyGrupo.horario_inicio || null;
-    if (data && hora) return `${data} • ${hora.slice(0, 5)}`;
+    if (data && hora) return `${data} â€¢ ${hora.slice(0, 5)}`;
     if (data) return data;
     if (hora) return hora.slice(0, 5);
-    return "Dia e hora não definidos";
+    return "Dia e hora nÃ£o definidos";
   };
 
   if (loading) {
@@ -1458,6 +1481,7 @@ export default function GerenciarGrupos({
                   return;
                 }
                 setFaseSelecionadaParaGrupo(fases[0]?.id || "");
+                setNomeGrupo(proximaLetraGrupo(fases[0]?.id || ""));
                 setQuantidadeEquipesGrupo("12");
                 setQuantidadeQuedasGrupo("4");
                 setIntervaloGrupo("15");
@@ -1466,7 +1490,7 @@ export default function GerenciarGrupos({
                 setClassificamGrupo("1");
                 setMapasGrupoSelecionados([
                   "Bermuda",
-                  "Purgatório",
+                  "PurgatÃ³rio",
                   "Alpine",
                   "Kalahari",
                 ]);
@@ -1491,16 +1515,16 @@ export default function GerenciarGrupos({
           </span>
           <span className="px-3 py-1 border border-zinc-200 bg-zinc-50 text-zinc-700">
             Troca livre:{" "}
-            {campConfig.permitir_troca_grupos_livre ? "SIM" : "NÃO"}
+            {campConfig.permitir_troca_grupos_livre ? "SIM" : "NÃƒO"}
           </span>
           <span className="px-3 py-1 border border-zinc-200 bg-zinc-50 text-zinc-700">
-            Troca genérica:{" "}
-            {campConfig.permitir_troca_grupos_generica ? "SIM" : "NÃO"}
+            Troca genÃ©rica:{" "}
+            {campConfig.permitir_troca_grupos_generica ? "SIM" : "NÃƒO"}
           </span>
           <span className="px-3 py-1 border border-zinc-200 bg-zinc-50 text-zinc-700">
-            Aprovação:{" "}
+            AprovaÃ§Ã£o:{" "}
             {campConfig.exigir_aprovacao_organizacao_troca_grupo
-              ? "OBRIGATÓRIA"
+              ? "OBRIGATÃ“RIA"
               : "LIVRE"}
           </span>
           <span className="px-3 py-1 border border-zinc-200 bg-zinc-50 text-zinc-700">
@@ -1549,7 +1573,7 @@ export default function GerenciarGrupos({
                       </span>
                       {genericasFase.length > 0 && (
                         <span className="text-[8px] font-black uppercase px-2 py-1 bg-orange-200 text-black">
-                          {genericasFase.length} troca(s) genérica(s)
+                          {genericasFase.length} troca(s) genÃ©rica(s)
                         </span>
                       )}
                     </div>
@@ -1619,7 +1643,8 @@ export default function GerenciarGrupos({
                                       <MessageShortcut
                                         referenciaTipo="grupo_campeonato"
                                         referenciaId={grupo.id}
-                                        titulo={`${grupo.nome} • Grupo do campeonato`}
+                                        titulo={`${campConfig?.nome || "Campeonato"} - ${fase.nome} - ${extrairLetraGrupo(grupo.nome)}`}
+                                        avatarUrl={campConfig?.logo_url || null}
                                         tipo="grupo_campeonato"
                                         compact
                                         className="h-7 w-7 border-blue-200 bg-white"
@@ -1857,7 +1882,7 @@ export default function GerenciarGrupos({
                                                         toggleSlot(slot.id);
                                                       }}
                                                       className="h-8 w-8 flex items-center justify-center border border-black bg-black text-[#7cfc00]"
-                                                      title="Abrir ações"
+                                                      title="Abrir aÃ§Ãµes"
                                                     >
                                                       {slotAberto ? (
                                                         <ChevronDown
@@ -1999,11 +2024,11 @@ export default function GerenciarGrupos({
           <div className="p-5 border-b border-slate-200 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-[11px] font-black uppercase italic">
-                Solicitações de troca
+                SolicitaÃ§Ãµes de troca
               </h3>
               <p className="mt-1 text-[9px] font-black uppercase italic text-slate-400">
-                Mesmo fase sempre • pontos corridos exige mesma quantidade de
-                quedas na validação final
+                Mesmo fase sempre â€¢ pontos corridos exige mesma quantidade de
+                quedas na validaÃ§Ã£o final
               </p>
             </div>
 
@@ -2018,7 +2043,7 @@ export default function GerenciarGrupos({
 
           {solicitacoes.length === 0 ? (
             <div className="p-10 text-center text-[10px] font-black uppercase italic text-slate-400">
-              Nenhuma solicitação cadastrada.
+              Nenhuma solicitaÃ§Ã£o cadastrada.
             </div>
           ) : (
             <div className="divide-y divide-slate-200">
@@ -2050,7 +2075,7 @@ export default function GerenciarGrupos({
                           </span>
                         ) : (
                           <span className="text-[8px] font-black uppercase px-2 py-1 bg-orange-200 text-black border border-black">
-                            Troca genérica
+                            Troca genÃ©rica
                           </span>
                         )}
                       </div>
@@ -2183,14 +2208,27 @@ export default function GerenciarGrupos({
 
               <div>
                 <label className="block text-[10px] font-black uppercase italic text-slate-500 mb-2">
-                  Nome do grupo
+                  Letra do grupo
                 </label>
-                <input
-                  value={nomeGrupo}
+                <select
+                  value={extrairLetraGrupo(nomeGrupo)}
                   onChange={(e) => setNomeGrupo(e.target.value)}
-                  placeholder="Ex: GRUPO A"
                   className="w-full border-2 border-black bg-white px-4 py-3 text-[11px] font-black uppercase outline-none"
-                />
+                >
+                  {LETRAS_GRUPO.map((letra) => {
+                    const nomeCompleto = montarNomeGrupo(letra);
+                    const usada = grupos.some(
+                      (grupo) =>
+                        grupo.fase_id === faseSelecionadaParaGrupo &&
+                        extrairLetraGrupo(grupo.nome) === letra,
+                    );
+                    return (
+                      <option key={letra} value={letra} disabled={usada}>
+                        {nomeCompleto}{usada ? " - JÃ EXISTE" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
 
               <div>
@@ -2210,7 +2248,7 @@ export default function GerenciarGrupos({
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <label className="block text-[10px] font-black uppercase italic text-slate-500 mb-2">
-                      Número de partidas
+                      NÃºmero de partidas
                     </label>
                     <input
                       value={quantidadeQuedasGrupo}
@@ -2345,7 +2383,7 @@ export default function GerenciarGrupos({
                   Selecionar equipe
                 </h3>
                 <p className="mt-1 text-[10px] font-black uppercase italic text-zinc-400">
-                  {mapaGrupos.get(slotSelecionado.grupo_id)?.nome || "Grupo"} •
+                  {mapaGrupos.get(slotSelecionado.grupo_id)?.nome || "Grupo"} â€¢
                   Slot {slotSelecionado.slot_numero}
                 </p>
               </div>
@@ -2366,7 +2404,7 @@ export default function GerenciarGrupos({
               <div className="mt-4 border border-slate-200 max-h-[420px] overflow-y-auto">
                 {equipesDisponiveisParaSlot.length === 0 ? (
                   <div className="p-6 text-center text-[10px] font-black uppercase italic text-slate-400">
-                    Nenhuma equipe disponível
+                    Nenhuma equipe disponÃ­vel
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-200">
@@ -2422,7 +2460,7 @@ export default function GerenciarGrupos({
                         <div className="flex items-center gap-2">
                           {equipe.numero_repeticao > 1 && (
                             <span className="text-[8px] font-black uppercase italic text-slate-400">
-                              {equipe.numero_repeticao}ª VAGA
+                              {equipe.numero_repeticao}Âª VAGA
                             </span>
                           )}
                           <span className="border border-black bg-[#7cfc00] px-3 py-2 text-[8px] font-black uppercase italic text-black">
@@ -2457,7 +2495,7 @@ export default function GerenciarGrupos({
                   Troca de grupo
                 </h3>
                 <p className="mt-1 text-[10px] font-black uppercase italic text-zinc-400">
-                  {slotTrocaSelecionado.equipe.nome} •{" "}
+                  {slotTrocaSelecionado.equipe.nome} â€¢{" "}
                   {mapaGrupos.get(slotTrocaSelecionado.grupo_id)?.nome ||
                     "Grupo atual"}
                 </p>
@@ -2471,7 +2509,7 @@ export default function GerenciarGrupos({
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
               <div className="p-5 border-b xl:border-b-0 xl:border-r border-slate-200">
                 <h4 className="text-[10px] font-black uppercase italic text-slate-500 mb-4">
-                  Criar solicitação
+                  Criar solicitaÃ§Ã£o
                 </h4>
 
                 <div className="space-y-4">
@@ -2498,7 +2536,7 @@ export default function GerenciarGrupos({
                           {fases.find(
                             (f) => f.id === slotTrocaSelecionado.fase_id,
                           )?.nome || "---"}{" "}
-                          • Grupo{" "}
+                          â€¢ Grupo{" "}
                           {mapaGrupos.get(slotTrocaSelecionado.grupo_id)
                             ?.nome || "---"}
                         </p>
@@ -2537,14 +2575,14 @@ export default function GerenciarGrupos({
 
                   <div>
                     <label className="block text-[10px] font-black uppercase italic text-slate-500 mb-2">
-                      Observação
+                      ObservaÃ§Ã£o
                     </label>
                     <textarea
                       value={observacaoTroca}
                       onChange={(e) => setObservacaoTroca(e.target.value)}
                       rows={4}
                       className="w-full border-2 border-black bg-white px-4 py-3 text-[11px] font-black outline-none"
-                      placeholder="Ex: preferimos trocar por horário de confronto"
+                      placeholder="Ex: preferimos trocar por horÃ¡rio de confronto"
                     />
                   </div>
 
@@ -2553,20 +2591,20 @@ export default function GerenciarGrupos({
                     disabled={salvando}
                     className="w-full bg-[#7cfc00] text-black p-3 text-[10px] font-black uppercase italic border border-black"
                   >
-                    {salvando ? "SALVANDO..." : "CRIAR SOLICITAÇÃO"}
+                    {salvando ? "SALVANDO..." : "CRIAR SOLICITAÃ‡ÃƒO"}
                   </button>
                 </div>
               </div>
 
               <div className="p-5">
                 <h4 className="text-[10px] font-black uppercase italic text-slate-500 mb-4">
-                  Solicitações compatíveis
+                  SolicitaÃ§Ãµes compatÃ­veis
                 </h4>
 
                 <div className="space-y-3 max-h-[520px] overflow-y-auto">
                   {solicitacoesRelacionadasAoSlot.length === 0 ? (
                     <div className="border border-slate-200 bg-slate-50 p-6 text-center text-[10px] font-black uppercase italic text-slate-400">
-                      Nenhuma solicitação compatível encontrada.
+                      Nenhuma solicitaÃ§Ã£o compatÃ­vel encontrada.
                     </div>
                   ) : (
                     solicitacoesRelacionadasAoSlot.map((solicitacao) => {
@@ -2604,7 +2642,7 @@ export default function GerenciarGrupos({
                                   </span>
                                 ) : (
                                   <span className="text-[8px] font-black uppercase px-2 py-1 bg-orange-200 text-black border border-black">
-                                    Genérica
+                                    GenÃ©rica
                                   </span>
                                 )}
                                 <span className="text-[8px] font-black uppercase px-2 py-1 bg-white border border-slate-200 text-slate-500">
@@ -2667,7 +2705,7 @@ export default function GerenciarGrupos({
             {campConfig?.exigir_aprovacao_organizacao_troca_grupo && (
               <div className="border-t border-slate-200 bg-amber-50 px-5 py-3 flex items-center gap-2 text-[9px] font-black uppercase italic text-amber-700">
                 <Shield size={13} />
-                Este campeonato exige aprovação da organização para concluir a
+                Este campeonato exige aprovaÃ§Ã£o da organizaÃ§Ã£o para concluir a
                 troca.
               </div>
             )}

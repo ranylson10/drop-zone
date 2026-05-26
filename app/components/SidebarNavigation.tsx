@@ -17,6 +17,7 @@ import {
   MessageCircle,
   User,
   Radio,
+  Plus,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -31,8 +32,6 @@ type NavItem = {
   icon: React.ReactNode
   badge?: string
   children?: NavChild[]
-  adminOnly?: boolean
-  moderatorOnly?: boolean
 }
 
 type SidebarNavigationProps = {
@@ -61,7 +60,6 @@ const baseItems: NavItem[] = [
       { href: '/produtora', label: 'Produtoras' },
     ],
   },
-
   {
     href: '/stream/projects',
     label: 'Stream',
@@ -136,29 +134,36 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
   const childAtivo = item.children?.some((child) => isActivePath(pathname, child.href))
   const [open, setOpen] = useState(Boolean(ativo || childAtivo))
   const hasChildren = Boolean(item.children?.length)
+  const current = Boolean(ativo || childAtivo)
 
   const rowClass = [
-    'group flex min-h-11 w-full items-center gap-3 border px-3 text-left text-[12px] font-black uppercase tracking-[0.12em] transition',
-    ativo || childAtivo
-      ? 'border-[#2563eb]/40 bg-[#2563eb] text-white shadow-[0_8px_24px_rgba(37,99,235,0.22)]'
-      : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.07] hover:text-white',
+    'group flex min-h-10 w-full items-center gap-3 rounded-md border px-3 text-left text-[12px] font-semibold uppercase tracking-[0.06em] transition',
+    current
+      ? 'border-[#2563eb] bg-[#2563eb] text-white shadow-[0_8px_18px_rgba(37,99,235,0.18)]'
+      : 'border-transparent bg-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-950',
   ].join(' ')
 
   return (
     <div>
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <Link href={item.href} onClick={onNavigate} className={rowClass}>
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-white/15 bg-black/15 text-current">
+          <span
+            className={[
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded border text-current',
+              current ? 'border-white/20 bg-white/15' : 'border-slate-200 bg-white',
+            ].join(' ')}
+          >
             {item.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {item.badge ? <span className="bg-orange-500 px-1.5 py-0.5 text-[8px] text-white">{item.badge}</span> : null}
+          {item.badge ? <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[8px] font-bold text-orange-600">{item.badge}</span> : null}
         </Link>
+
         {hasChildren ? (
           <button
             type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="flex h-11 w-11 shrink-0 items-center justify-center border border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/[0.07] hover:text-white"
+            onClick={() => setOpen((value) => !value)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-slate-400 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-900"
             aria-label={`Abrir submenu ${item.label}`}
           >
             <ChevronDown size={15} className={open ? 'rotate-180 transition' : 'transition'} />
@@ -167,7 +172,7 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
       </div>
 
       {hasChildren && open ? (
-        <div className="ml-5 mt-1 border-l border-white/10 pl-3">
+        <div className="ml-5 mt-1 border-l border-slate-200 pl-3">
           {item.children?.map((child) => {
             const ativoChild = isActivePath(pathname, child.href)
             return (
@@ -176,8 +181,8 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
                 href={child.href}
                 onClick={onNavigate}
                 className={[
-                  'block border border-transparent px-3 py-2 text-[11px] font-bold uppercase tracking-[0.10em] transition',
-                  ativoChild ? 'bg-white text-[#142340]' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white',
+                  'block rounded-md border border-transparent px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.05em] transition',
+                  ativoChild ? 'bg-blue-50 text-[#2563eb]' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-950',
                 ].join(' ')}
               >
                 {child.label}
@@ -200,30 +205,32 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
   }, [isManager, isModerador, isSiteAdmin])
 
   return (
-    <aside className="flex h-full flex-col bg-[#070b18] text-white">
-      <div className="border-b border-cyan-400/10 px-3 py-4">
+    <aside className="flex h-full flex-col border-r border-slate-200 bg-[#f8fafc] text-slate-950">
+      <div className="border-b border-slate-200 px-3 py-3">
         <Link
           href="/feed"
           onClick={onNavigate}
-          className="group flex min-h-[150px] flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-[#111d35] via-[#0c172b] to-[#08111f] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_0_35px_rgba(37,99,235,0.10)] transition hover:border-cyan-400/45"
+          className="group flex min-h-[118px] flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition hover:border-blue-200"
         >
-          <div className="flex h-[92px] w-[92px] items-center justify-center rounded-[28px] border border-cyan-300/25 bg-[#071225]/80 p-2.5 shadow-[0_0_34px_rgba(34,211,238,0.16)]">
-            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain drop-shadow-[0_0_16px_rgba(56,189,248,0.22)]" />
+          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 p-2 shadow-[0_8px_20px_rgba(37,99,235,0.10)]">
+            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
           </div>
           <div className="text-center leading-none">
-            <div className="text-[18px] font-black uppercase tracking-[-0.05em] text-white drop-shadow-[0_0_14px_rgba(56,189,248,0.20)]">DROP<span className="text-cyan-200">ZONE</span></div>
-            <div className="mt-1 text-[9px] font-black uppercase tracking-[0.32em] text-cyan-200/60">Sistema competitivo</div>
+            <div className="text-[17px] font-extrabold uppercase tracking-[-0.03em] text-slate-950">
+              DROP<span className="text-[#2563eb]">ZONE</span>
+            </div>
+            <div className="mt-1 text-[9px] font-semibold uppercase tracking-[0.24em] text-slate-400">Sistema competitivo</div>
           </div>
         </Link>
       </div>
 
-      <nav className="custom-scrollbar flex-1 space-y-2 overflow-y-auto p-3">
+      <nav className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3">
         {items.map((item) => (
           <NavRow key={item.href} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
 
-      <div className="border-t border-white/10 p-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+      <div className="border-t border-slate-200 p-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
         Sistema competitivo LEALT
       </div>
     </aside>
@@ -233,15 +240,15 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
 export function MobileBottomNavigation() {
   const pathname = usePathname()
   const items = [
-    { href: '/feed', label: 'Home', icon: <Home size={19} /> },
-    { href: '/campeonatos', label: 'Comp', icon: <Trophy size={19} /> },
-    { href: '/apostados', label: 'Apostas', icon: <Flame size={19} /> },
-    { href: '/chat', label: 'Chat', icon: <MessageCircle size={19} /> },
-    { href: '/perfil', label: 'Perfil', icon: <User size={19} /> },
+    { href: '/feed', label: 'Inicio', icon: <Home size={20} /> },
+    { href: '/campeonatos', label: 'Comp', icon: <Trophy size={20} /> },
+    { href: '/campeonatos/nova', label: 'Criar', icon: <Plus size={22} />, primary: true },
+    { href: '/chat', label: 'Chat', icon: <MessageCircle size={20} /> },
+    { href: '/perfil', label: 'Perfil', icon: <User size={20} /> },
   ]
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[120] grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 py-1 shadow-[0_-12px_30px_rgba(15,23,42,0.10)] backdrop-blur xl:hidden">
+    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[120] grid grid-cols-5 border-t border-slate-200 bg-white/95 px-1 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 shadow-[0_-12px_30px_rgba(15,23,42,0.10)] backdrop-blur xl:hidden">
       {items.map((item) => {
         const ativo = isActivePath(pathname, item.href)
         return (
@@ -250,10 +257,21 @@ export function MobileBottomNavigation() {
             href={item.href}
             className={[
               'flex min-h-12 flex-col items-center justify-center gap-1 text-[9px] font-black uppercase tracking-[0.08em]',
-              ativo ? 'text-[#2563eb]' : 'text-slate-500',
+              item.primary ? '-mt-5 text-[#008069]' : ativo ? 'text-[#008069]' : 'text-slate-500',
             ].join(' ')}
           >
-            <span className={ativo ? 'rounded-full bg-blue-50 px-3 py-1' : 'px-3 py-1'}>{item.icon}</span>
+            <span
+              className={[
+                'flex items-center justify-center',
+                item.primary
+                  ? 'h-12 w-12 rounded-full border-4 border-white bg-[#008069] text-white shadow-[0_10px_30px_rgba(0,128,105,0.28)]'
+                  : ativo
+                    ? 'h-8 min-w-10 rounded-full bg-emerald-50 px-3 text-[#008069]'
+                    : 'h-8 min-w-10 px-3',
+              ].join(' ')}
+            >
+              {item.icon}
+            </span>
             {item.label}
           </Link>
         )
