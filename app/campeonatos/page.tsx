@@ -39,6 +39,16 @@ function formatarData(data?: string | null) {
  return new Date(data).toLocaleDateString('pt-BR')
 }
 
+function formatarDataCurta(data?: string | null) {
+ if (!data) return 'DATA N/I'
+ try {
+ const valor = new Date(data)
+ return valor.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '').toUpperCase()
+ } catch {
+ return 'DATA N/I'
+ }
+}
+
 function normalizarTexto(valor?: string | null) {
  return String(valor || '').toLowerCase().trim()
 }
@@ -125,6 +135,180 @@ function getTipoVisual(slug?: string | null) {
  border: 'border-l-[#2563eb]',
  text: 'text-[#2563eb]',
  }
+}
+
+function getArenaPalette(slug?: string | null, index = 0) {
+ const key = normalizarTexto(slug)
+ const palettes: Record<string, { field: string; sky: string; stripe: string; button: string; glow: string }> = {
+ diario: {
+ field: 'from-[#0f9f59] via-[#45c35f] to-[#0b7a34]',
+ sky: 'from-[#0c4a6e] via-[#0284c7] to-[#22c55e]',
+ stripe: 'bg-[#fb7185]',
+ button: 'from-[#ff2f8a] to-[#ff7a2f]',
+ glow: 'rgba(251,113,133,0.36)',
+ },
+ copa: {
+ field: 'from-[#166534] via-[#84cc16] to-[#15803d]',
+ sky: 'from-[#1d4ed8] via-[#4f46e5] to-[#14b8a6]',
+ stripe: 'bg-[#f97316]',
+ button: 'from-[#f97316] to-[#facc15]',
+ glow: 'rgba(249,115,22,0.36)',
+ },
+ liga: {
+ field: 'from-[#047857] via-[#22c55e] to-[#65a30d]',
+ sky: 'from-[#064e3b] via-[#0f766e] to-[#0ea5e9]',
+ stripe: 'bg-[#22d3ee]',
+ button: 'from-[#06b6d4] to-[#2563eb]',
+ glow: 'rgba(34,211,238,0.34)',
+ },
+ xtreino: {
+ field: 'from-[#14532d] via-[#16a34a] to-[#4d7c0f]',
+ sky: 'from-[#111827] via-[#166534] to-[#65a30d]',
+ stripe: 'bg-[#a3e635]',
+ button: 'from-[#22c55e] to-[#84cc16]',
+ glow: 'rgba(132,204,22,0.32)',
+ },
+ confrontos: {
+ field: 'from-[#7f1d1d] via-[#ef4444] to-[#f97316]',
+ sky: 'from-[#111827] via-[#7f1d1d] to-[#dc2626]',
+ stripe: 'bg-[#38bdf8]',
+ button: 'from-[#ef4444] to-[#f97316]',
+ glow: 'rgba(239,68,68,0.35)',
+ },
+ apostados: {
+ field: 'from-[#78350f] via-[#f59e0b] to-[#16a34a]',
+ sky: 'from-[#111827] via-[#92400e] to-[#ea580c]',
+ stripe: 'bg-[#facc15]',
+ button: 'from-[#facc15] to-[#f97316]',
+ glow: 'rgba(250,204,21,0.34)',
+ },
+ }
+
+ const fallback = [
+ palettes.diario,
+ palettes.copa,
+ palettes.liga,
+ palettes.xtreino,
+ palettes.confrontos,
+ palettes.apostados,
+ ][Math.abs(index) % 6]
+
+ return palettes[key] || fallback
+}
+
+function CampeonatoShowCard({ camp, index = 0, compacto = false }: { camp: any; index?: number; compacto?: boolean }) {
+ const tipoCompeticao = resolverTipoCompeticao(camp)
+ const meta = TIPOS_COMPETICAO.find((item) => item.slug === tipoCompeticao)
+ const palette = getArenaPalette(tipoCompeticao, index)
+ const gratuito = Number(camp.valor_vaga || 0) === 0
+ const premio = Number(camp.valor_premiacao || 0)
+ const inicio = camp.data_inicio || camp.created_at
+ const bannerUrl = camp.banner_url || camp.imagem_url || camp.capa_url || null
+ const produtora = camp.produtoras?.nome || camp.organizador_nome || 'Organizacao'
+ const plataforma = camp.plataforma || camp.modo_jogo || 'Mobile'
+
+ return (
+ <Link
+ href={getCampeonatoHref(camp.id, tipoCompeticao)}
+ className={[
+ 'group relative block shrink-0 overflow-hidden rounded-[22px] p-[2px] text-white shadow-[0_18px_40px_rgba(15,23,42,0.22)] transition active:scale-[0.99] md:hover:-translate-y-0.5',
+ compacto ? 'w-[300px] max-md:w-[86vw]' : 'w-full',
+ ].join(' ')}
+ style={{
+ background: 'linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.18), rgba(255,255,255,0.78))',
+ }}
+ >
+ <div className={`relative min-h-[156px] overflow-hidden rounded-[20px] bg-gradient-to-br ${palette.field}`}>
+ {bannerUrl ? (
+ <img src={bannerUrl} alt={camp.nome || 'Campeonato'} className="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-overlay" />
+ ) : null}
+ <div className={`absolute inset-0 bg-gradient-to-br ${palette.sky} opacity-55`} />
+ <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.85)_0_2px,transparent_3px),radial-gradient(circle_at_82%_28%,rgba(255,255,255,0.75)_0_1px,transparent_3px),linear-gradient(90deg,rgba(255,255,255,0.11)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:80px_70px,64px_64px,28px_28px,28px_28px]" />
+ <div className="absolute -bottom-10 left-1/2 h-28 w-[120%] -translate-x-1/2 rounded-[50%] border-t-4 border-white/35 bg-black/10" />
+ <div className="absolute bottom-4 left-4 right-4 h-[2px] bg-white/50" />
+ <div className="absolute bottom-0 left-1/2 h-20 w-[2px] -translate-x-1/2 bg-white/35" />
+ <div className="absolute -left-8 bottom-2 h-24 w-24 rounded-full border-[14px] border-white/95 bg-black shadow-[0_8px_22px_rgba(15,23,42,0.28)]">
+ <div className="absolute inset-3 rounded-full border border-black/20 bg-white" />
+ </div>
+
+ <div className="relative z-10 flex min-h-[156px] flex-col justify-between p-3">
+ <div className="flex items-start justify-between gap-2">
+ <div className="min-w-0">
+ <div className="inline-flex rounded-full bg-black/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/90 backdrop-blur">
+ {meta?.titulo || 'Campeonato'} - {formatarDataCurta(inicio)}
+ </div>
+ <h3 className="mt-2 line-clamp-1 text-[16px] font-black uppercase leading-none tracking-tight text-white drop-shadow">
+ {camp.nome || 'Campeonato sem nome'}
+ </h3>
+ <p className="mt-1 line-clamp-1 text-[10px] font-bold uppercase text-white/80">{produtora}</p>
+ </div>
+ <div className="shrink-0 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-slate-950 shadow">
+ {getPaisFlag(camp.regiao)}
+ </div>
+ </div>
+
+ <div className="relative mx-4 my-2 rounded-[18px] bg-white px-3 py-3 text-slate-950 shadow-[0_16px_30px_rgba(15,23,42,0.20)]">
+ <div className="absolute -top-2 left-5 rounded-full bg-[#fde047] px-2 py-0.5 text-[8px] font-black uppercase text-[#92400e] shadow">PREMIO</div>
+ <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+ <div className="min-w-0 text-center">
+ <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow">
+ {camp.logo_url ? (
+ <img src={camp.logo_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
+ ) : (
+ <span className="text-lg font-black text-[#008069]">{getLogoFallback(camp.nome)}</span>
+ )}
+ </div>
+ <div className="mt-1 truncate text-[9px] font-black uppercase">{camp.nome || 'DROP'}</div>
+ </div>
+
+ <div className="text-center">
+ <div className="text-[9px] font-black uppercase text-slate-400">VS</div>
+ <div className={`mt-1 h-1.5 w-12 rounded-full ${palette.stripe}`} />
+ <div className="mt-1 text-[9px] font-bold uppercase text-slate-500">{plataforma}</div>
+ </div>
+
+ <div className="min-w-0 text-center">
+ <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-100 shadow">
+ {camp.banner_url ? (
+ <img src={camp.banner_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
+ ) : (
+ <Trophy size={22} className="text-[#f97316]" />
+ )}
+ </div>
+ <div className="mt-1 truncate text-[9px] font-black uppercase">{camp.categoria || camp.tipo_campeonato || 'Squad'}</div>
+ </div>
+ </div>
+
+ <div className="mt-3 flex items-center justify-between gap-2">
+ <div className="min-w-0">
+ <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">Prize pool</div>
+ <div className="truncate text-[15px] font-black text-[#f97316]">{premio > 0 ? formatarMoeda(premio) : 'A definir'}</div>
+ </div>
+ <div className="text-right">
+ <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">Inscricao</div>
+ <div className={`text-[12px] font-black ${gratuito ? 'text-emerald-600' : 'text-slate-950'}`}>{gratuito ? 'Gratis' : formatarMoeda(camp.valor_vaga || 0)}</div>
+ </div>
+ </div>
+ </div>
+
+ <div className="flex items-center justify-between gap-3">
+ <div className="min-w-0">
+ <div className="text-[9px] font-black uppercase tracking-[0.14em] text-white/70">Score {formatScore(camp.score_total || 0)}</div>
+ <div className="mt-1 h-1.5 w-28 overflow-hidden rounded-full bg-white/30">
+ <div className="h-full rounded-full bg-white" style={{ width: `${Math.min(100, Math.max(10, Number(camp.score_total || 0) / 20))}%` }} />
+ </div>
+ </div>
+ <span
+ className={`inline-flex h-10 items-center justify-center rounded-full bg-gradient-to-r ${palette.button} px-5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_24px_var(--camp-glow)]`}
+ style={{ ['--camp-glow' as string]: palette.glow }}
+ >
+ Entrar
+ </span>
+ </div>
+ </div>
+ </div>
+ </Link>
+ )
 }
 
 export default function ListaCampeonatos() {
@@ -480,7 +664,7 @@ export default function ListaCampeonatos() {
  </section>
 
  {ultimosCampeonatos.length > 0 && (
- <section className="mb-4 border border-zinc-200 bg-white">
+ <section className="mb-4 overflow-hidden border border-zinc-200 bg-white max-md:border-0 max-md:bg-transparent">
  <div className="flex items-center justify-between px-4 py-2 max-md:px-3">
  <div className="flex items-center gap-2 text-[12px] font-semibold uppercase ">
  <Flame size={16} className="text-[#2563eb]" />
@@ -489,41 +673,11 @@ export default function ListaCampeonatos() {
  <span className="text-[10px] font-medium uppercase text-zinc-500">recentes</span>
  </div>
 
- <div className="overflow-x-auto px-3 pb-3 max-md:px-3">
- <div className="flex min-w-max gap-3 max-md:gap-2">
- {ultimosCampeonatos.map((camp) => {
- const tipoCompeticao = resolverTipoCompeticao(camp)
- const meta = TIPOS_COMPETICAO.find((item) => item.slug === tipoCompeticao)
- const visual = getTipoVisual(tipoCompeticao)
-
- return (
- <Link
- key={`recente-${camp.id}`}
- href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="flex w-[250px] shrink-0 items-center gap-2 border border-zinc-200 bg-white p-2 transition hover:bg-zinc-50 max-md:w-[76px] max-md:flex-col max-md:border-0 max-md:bg-transparent max-md:p-0"
- >
- <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100 max-md:h-12 max-md:w-12">
- {camp.logo_url ? (
- <img src={camp.logo_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
- ) : (
- <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-emerald-600">
- {getLogoFallback(camp.nome)}
- </div>
- )}
- </div>
-
- <div className="min-w-0 max-md:w-full max-md:text-center">
- <div className="truncate text-sm font-semibold uppercase max-md:text-[10px] max-md:leading-tight">{camp.nome || 'Sem nome'}</div>
- <div className={`mt-1 inline-flex border px-2 py-0.5 text-[10px] font-medium uppercase max-md:hidden ${visual.chip}`}>
- {meta?.titulo || 'Campeonato'}
- </div>
- <div className="text-[10px] font-medium uppercase text-zinc-500 max-md:hidden">
- {formatarData(camp.created_at)}
- </div>
- </div>
- </Link>
- )
- })}
+ <div className="overflow-x-auto px-3 pb-4 max-md:px-2">
+ <div className="flex min-w-max gap-4 max-md:gap-3">
+ {ultimosCampeonatos.map((camp, index) => (
+ <CampeonatoShowCard key={`recente-${camp.id}`} camp={camp} index={index} compacto />
+ ))}
  </div>
  </div>
  </section>
@@ -550,49 +704,10 @@ export default function ListaCampeonatos() {
  </div>
  ) : (
  <>
- <div className="md:hidden">
- {campeonatosFiltrados.map((camp) => {
- const tipoCompeticao = resolverTipoCompeticao(camp)
- const TipoIcone = getTipoIcone(tipoCompeticao)
- const visual = getTipoVisual(tipoCompeticao)
-
- return (
- <Link
- key={`mobile-${camp.id}`}
- href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="flex min-h-[58px] items-center gap-3 border-t border-zinc-100 px-3 py-2 active:bg-zinc-50"
- >
- <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100">
- {camp.logo_url ? (
- <img src={camp.logo_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
- ) : (
- <div className="flex h-full w-full items-center justify-center text-[13px] font-semibold text-[#2563eb]">
- {getLogoFallback(camp.nome)}
- </div>
- )}
- </div>
-
- <span className="min-w-0 flex-1 truncate text-[14px] font-semibold uppercase leading-tight text-[#142340]">
- {camp.nome || 'Campeonato sem nome'}
- </span>
- <RankingTierBadge tier={camp.tier} posicao={camp.rank_posicao} score={camp.score_total} tipo="campeonato" compacto />
-
- <span className={`inline-flex h-6 w-6 shrink-0 items-center justify-center border ${visual.badge}`} title={tipoCompeticao}>
- <TipoIcone size={13} strokeWidth={2.2} />
- </span>
-
- <span className="shrink-0 text-[13px] leading-none opacity-80" title={camp.regiao || 'País'}>
- {getPaisFlag(camp.regiao)}
- </span>
-
- <span className="shrink-0 border border-[#2563eb] bg-[#2563eb] px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white">
- Inscrever
- </span>
-
- <ChevronRight size={16} className="shrink-0 text-zinc-300" />
- </Link>
- )
- })}
+ <div className="space-y-4 bg-[#eef7f0] px-2 py-3 md:hidden">
+ {campeonatosFiltrados.map((camp, index) => (
+ <CampeonatoShowCard key={`mobile-${camp.id}`} camp={camp} index={index} />
+ ))}
  </div>
 
  <div className="hidden overflow-x-auto px-3 pb-3 md:block">
