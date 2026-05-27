@@ -81,6 +81,7 @@ type LineMobile = {
   equipe_id: string | null;
   ativa: boolean | null;
   simbolo?: string | null;
+  logo_url?: string | null;
 };
 
 type PerfilJogo = {
@@ -398,7 +399,7 @@ export default function EscalaCampeonatoPage() {
   const [partidasJogador, setPartidasJogador] = useState(0);
   const [posicaoMvp, setPosicaoMvp] = useState<number | null>(null);
   const [tipoAcesso, setTipoAcesso] = useState<"jogador" | "equipe" | null>(null);
-  const [aba, setAba] = useState<"escala" | "equipe" | "jogador">("equipe");
+  const [aba, setAba] = useState<"escala" | "equipe" | "jogador">("escala");
   const [equipeSelecionadaId, setEquipeSelecionadaId] = useState<string | null>(null);
   const [lineSelecionadaPorEquipe, setLineSelecionadaPorEquipe] = useState<Record<string, string>>({});
   const [managerBusca, setManagerBusca] = useState("");
@@ -439,6 +440,8 @@ export default function EscalaCampeonatoPage() {
   const [vagaAtivaPorEquipe, setVagaAtivaPorEquipe] = useState<
     Record<string, string>
   >({});
+  const [vagaEditandoId, setVagaEditandoId] = useState<string | null>(null);
+  const [formVaga, setFormVaga] = useState({ nome: "", logo_url: "" });
   const [erro, setErro] = useState<string | null>(null);
   const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
@@ -846,7 +849,7 @@ export default function EscalaCampeonatoPage() {
 
         const { data: linesData } = await supabase
           .from("equipes_lines")
-          .select("id,nome,tipo,equipe_id,ativa")
+          .select("id,nome,tipo,equipe_id,ativa,logo_url")
           .in("equipe_id", equipeIds)
           .eq("ativa", true)
           .order("nome", { ascending: true });
@@ -1387,6 +1390,113 @@ export default function EscalaCampeonatoPage() {
     setLinePickerAberto({ equipeId: equipe.id, lineId: line.id });
   }
 
+  async function garantirLineAutomaticaBeta(equipe: Equipe, inscricao: CampeonatoEquipe) {
+    if (inscricao.line_id) return inscricao.line_id;
+
+    try {
+      const nomeBase =
+        inscricao.nome_exibicao ||
+        `${equipe.tag || equipe.nome || "Equipe"} ${inscricao.numero_vaga || ""}`.trim();
+
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: criada, error: criarError } = await supabase
+        .from("lines")
+        .insert({
+          nome: nomeBase,
+          tipo: "campeonato",
+          equipe_id: equipe.id,
+          ativa: true,
+          visibilidade: "equipe",
+          created_by: userData?.user?.id || userId || null,
+        })
+        .select("id,nome,tipo,equipe_id,ativa,logo_url")
+        .single();
+
+      if (criarError) throw criarError;
+
+      const lineCriada = criada as LineMobile;
+      const { error: vinculoError } = await supabase
+        .from("campeonato_equipes")
+        .update({ line_id: lineCriada.id, updated_at: new Date().toISOString() })
+        .eq("id", inscricao.id);
+
+      if (vinculoError) throw vinculoError;
+
+      setInscricoesEquipe((atuais) =>
+        atuais.map((item) =>
+          item.id === inscricao.id ? { ...item, line_id: lineCriada.id } : item,
+        ),
+      );
+      setLinesPorEquipe((atual) => ({
+        ...atual,
+        [equipe.id]: [lineCriada, ...(atual[equipe.id] || [])],
+      }));
+
+      return lineCriada.id;
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao criar line automatica.");
+      return null;
+    }
+  }
+
+  async function salvarVagaBeta(equipe: Equipe, inscricao: CampeonatoEquipe) {
+    const nome = formVaga.nome.trim();
+    const logoUrl = formVaga.logo_url.trim();
+
+    try {
+      const { error: vagaError } = await supabase
+        .from("campeonato_equipes")
+        .update({
+          nome_exibicao: nome || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", inscricao.id);
+
+      if (vagaError) throw vagaError;
+
+      let lineId = inscricao.line_id;
+      if (!lineId && logoUrl) {
+        lineId = await garantirLineAutomaticaBeta(equipe, inscricao);
+      }
+
+      if (lineId) {
+        const updates: Record<string, string | null> = {
+          nome: nome || null,
+          logo_url: logoUrl || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error: lineError } = await supabase
+          .from("lines")
+          .update(updates)
+          .eq("id", lineId);
+
+        if (lineError) throw lineError;
+
+        setLinesPorEquipe((atual) => ({
+          ...atual,
+          [equipe.id]: (atual[equipe.id] || []).map((line) =>
+            line.id === lineId
+              ? { ...line, nome: nome || line.nome, logo_url: logoUrl || null }
+              : line,
+          ),
+        }));
+      }
+
+      setInscricoesEquipe((atuais) =>
+        atuais.map((item) =>
+          item.id === inscricao.id
+            ? { ...item, nome_exibicao: nome || null, line_id: lineId || item.line_id }
+            : item,
+        ),
+      );
+      setVagaEditandoId(null);
+      setFormVaga({ nome: "", logo_url: "" });
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao salvar vaga.");
+    }
+  }
+
   async function adicionarPerfilNaLineBeta(equipe: Equipe, line: LineMobile, perfil: PerfilJogo) {
     const vagaDaLine = inscricoesEquipe.find((vaga) => vaga.line_id === line.id && vaga.equipe_id === equipe.id);
     if (!vagaDaLine?.id) {
@@ -1679,7 +1789,7 @@ export default function EscalaCampeonatoPage() {
       setUsuarioLogado(data.user || null);
       setUserId(data.user?.id || null);
       setTipoAcesso(null);
-      setAba("equipe");
+      setAba("escala");
       await carregar();
     } catch (error: any) {
       setAuthMensagem(error?.message || "Não foi possível entrar na conta.");
@@ -1729,7 +1839,7 @@ export default function EscalaCampeonatoPage() {
         setUsuarioLogado(data.session.user);
         setUserId(data.session.user.id);
         setTipoAcesso(null);
-        setAba("equipe");
+        setAba("escala");
         await carregar();
         return;
       }
@@ -2283,7 +2393,7 @@ export default function EscalaCampeonatoPage() {
                   await supabase.auth.signOut();
                   setUserId(null);
                   setTipoAcesso(null);
-                  setAba("equipe");
+                  setAba("escala");
                 }}
                 className="flex h-10 w-full items-center justify-center border border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.16em] text-red-600"
               >
@@ -2339,7 +2449,7 @@ export default function EscalaCampeonatoPage() {
                       type="button"
                       onClick={() => {
                         setTipoAcesso("equipe");
-                        setAba("equipe");
+                        setAba("escala");
                       }}
                       className="group relative overflow-hidden border border-violet-500 bg-slate-950 p-0 text-left text-white shadow-sm transition hover:border-cyan-400"
                     >
@@ -2517,22 +2627,22 @@ export default function EscalaCampeonatoPage() {
 
                 <section className="mt-2 border border-slate-200 bg-white p-2">
                   {tipoAcesso !== "jogador" ? (
-                    <div className="grid grid-cols-2 gap-1 rounded-md bg-slate-100 p-1">
+                    <div className="grid grid-cols-[1.35fr_.9fr] gap-1 rounded-lg bg-slate-100 p-1">
                       <button
                         type="button"
                         onClick={() => setAba("escala")}
-                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase transition ${aba === "escala" ? "bg-cyan-500 text-white" : "bg-white text-slate-600 hover:text-cyan-700"}`}
+                        className={`flex h-12 items-center justify-center gap-2 rounded-md px-2 text-[11px] font-black uppercase transition ${aba === "escala" ? "bg-cyan-500 text-white" : "bg-white text-slate-700 hover:text-cyan-700"}`}
                       >
                         <ListChecks size={14} />
-                        Escalar
+                        Escalação
                       </button>
                       <button
                         type="button"
                         onClick={() => setAba("equipe")}
-                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase transition ${aba === "equipe" ? "bg-emerald-600 text-white" : "bg-white text-slate-600 hover:text-emerald-700"}`}
+                        className={`flex h-12 items-center justify-center gap-2 rounded-md px-2 text-[10px] font-bold uppercase transition ${aba === "equipe" ? "bg-emerald-600 text-white" : "bg-white/70 text-slate-500 hover:text-emerald-700"}`}
                       >
                         <Users size={14} />
-                        Gerenciar
+                        Equipe
                       </button>
                     </div>
                   ) : null}
@@ -2620,7 +2730,7 @@ export default function EscalaCampeonatoPage() {
                                     jogadoresPorEquipe[inscricao.id] || []
                                   ).filter(
                                     (jogador) =>
-                                      jogador.status === "ativo",
+                                      jogador.status !== "removido",
                                   ).length;
 
                                   return (
@@ -2663,14 +2773,101 @@ export default function EscalaCampeonatoPage() {
                             {inscricaoAtiva ? (
                               <div className="border border-emerald-100 bg-slate-50">
                                 <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-2 py-1">
-                                  <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-emerald-900">
-                                    {inscricaoAtiva.nome_exibicao ||
-                                      `Vaga ${inscricaoAtiva.numero_vaga || ""}`}
-                                  </p>
-                                  <span className="rounded bg-emerald-600 px-2 py-0.5 text-[8px] font-black uppercase text-white">
-                                    Line vinculada
-                                  </span>
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <Logo
+                                      url={
+                                        (linesPorEquipe[equipe.id] || []).find(
+                                          (line) => line.id === inscricaoAtiva.line_id,
+                                        )?.logo_url || equipe.logo_url
+                                      }
+                                      nome={inscricaoAtiva.nome_exibicao || equipe.nome}
+                                    />
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-emerald-900">
+                                        {inscricaoAtiva.nome_exibicao ||
+                                          `Vaga ${inscricaoAtiva.numero_vaga || ""}`}
+                                      </p>
+                                      <p className="text-[8px] font-black uppercase text-emerald-600">
+                                        {inscricaoAtiva.line_id ? "Line vinculada" : "Line automatica pendente"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const lineAtual = (linesPorEquipe[equipe.id] || []).find(
+                                        (line) => line.id === inscricaoAtiva.line_id,
+                                      );
+                                      setVagaEditandoId(inscricaoAtiva.id);
+                                      setFormVaga({
+                                        nome:
+                                          inscricaoAtiva.nome_exibicao ||
+                                          lineAtual?.nome ||
+                                          `Vaga ${inscricaoAtiva.numero_vaga || ""}`,
+                                        logo_url: lineAtual?.logo_url || "",
+                                      });
+                                    }}
+                                    className="h-7 rounded border border-emerald-200 bg-white px-2 text-[8px] font-black uppercase text-emerald-700"
+                                  >
+                                    Editar
+                                  </button>
                                 </div>
+                                {vagaEditandoId === inscricaoAtiva.id ? (
+                                  <div className="grid gap-1.5 border-b border-emerald-100 bg-white p-2">
+                                    <input
+                                      value={formVaga.nome}
+                                      onChange={(event) =>
+                                        setFormVaga((atual) => ({
+                                          ...atual,
+                                          nome: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="Nome da vaga ou line"
+                                      className="h-9 rounded border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold uppercase outline-none focus:border-emerald-500"
+                                    />
+                                    <input
+                                      value={formVaga.logo_url}
+                                      onChange={(event) =>
+                                        setFormVaga((atual) => ({
+                                          ...atual,
+                                          logo_url: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="URL da logo da vaga"
+                                      className="h-9 rounded border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold outline-none focus:border-emerald-500"
+                                    />
+                                    <div className="grid grid-cols-2 gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => salvarVagaBeta(equipe, inscricaoAtiva)}
+                                        className="h-9 rounded bg-emerald-600 text-[9px] font-black uppercase text-white"
+                                      >
+                                        Salvar vaga
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setVagaEditandoId(null);
+                                          setFormVaga({ nome: "", logo_url: "" });
+                                        }}
+                                        className="h-9 rounded border border-slate-200 bg-white text-[9px] font-black uppercase text-slate-600"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {!inscricaoAtiva.line_id ? (
+                                  <div className="border-b border-amber-100 bg-amber-50 p-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => garantirLineAutomaticaBeta(equipe, inscricaoAtiva)}
+                                      className="h-9 w-full rounded bg-amber-500 text-[9px] font-black uppercase text-white"
+                                    >
+                                      Criar line automatica desta vaga
+                                    </button>
+                                  </div>
+                                ) : null}
                                 <EscalacaoCards
                                   campeonato={campeonato}
                                   inscricoes={[inscricaoAtiva]}
