@@ -440,8 +440,8 @@ export default function EscalaCampeonatoPage() {
   const [vagaAtivaPorEquipe, setVagaAtivaPorEquipe] = useState<
     Record<string, string>
   >({});
-  const [vagaEditandoId, setVagaEditandoId] = useState<string | null>(null);
-  const [formVaga, setFormVaga] = useState({ nome: "", logo_url: "" });
+  const [lineEditandoVagaId, setLineEditandoVagaId] = useState<string | null>(null);
+  const [formLine, setFormLine] = useState({ nome: "", logo_url: "" });
   const [erro, setErro] = useState<string | null>(null);
   const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
@@ -1439,11 +1439,85 @@ export default function EscalaCampeonatoPage() {
     }
   }
 
-  async function salvarVagaBeta(equipe: Equipe, inscricao: CampeonatoEquipe) {
-    const nome = formVaga.nome.trim();
-    const logoUrl = formVaga.logo_url.trim();
+  async function uploadLogoLineBeta(
+    file: File | null,
+    equipe: Equipe,
+    inscricao: CampeonatoEquipe,
+  ) {
+    if (!file) return;
+
+    if (!userId) {
+      alert("Faca login para enviar logo.");
+      return;
+    }
 
     try {
+      setSalvandoFormularioBeta(true);
+
+      const lineId =
+        inscricao.line_id || (await garantirLineAutomaticaBeta(equipe, inscricao));
+      if (!lineId) return;
+
+      const extensao = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const nomeArquivo = `${userId}/lines/${lineId}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${extensao}`;
+      const buckets = ["equipes", "logos-equipes", "imagens", "avatars"];
+      let publicUrl = "";
+      let ultimoErro: any = null;
+
+      for (const bucket of buckets) {
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(nomeArquivo, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
+
+        if (!error) {
+          const { data } = supabase.storage.from(bucket).getPublicUrl(nomeArquivo);
+          publicUrl = data.publicUrl;
+          break;
+        }
+
+        ultimoErro = error;
+      }
+
+      if (!publicUrl) {
+        throw ultimoErro || new Error("Nao foi possivel enviar a logo da line.");
+      }
+
+      const { error: lineError } = await supabase
+        .from("lines")
+        .update({ logo_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq("id", lineId);
+
+      if (lineError) throw lineError;
+
+      setFormLine((atual) => ({ ...atual, logo_url: publicUrl }));
+      setLinesPorEquipe((atual) => ({
+        ...atual,
+        [equipe.id]: (atual[equipe.id] || []).map((line) =>
+          line.id === lineId ? { ...line, logo_url: publicUrl } : line,
+        ),
+      }));
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Erro ao enviar logo da line.");
+    } finally {
+      setSalvandoFormularioBeta(false);
+    }
+  }
+
+  async function salvarLineBeta(equipe: Equipe, inscricao: CampeonatoEquipe) {
+    const nome = formLine.nome.trim();
+    const logoUrl = formLine.logo_url.trim();
+
+    try {
+      const lineId =
+        inscricao.line_id || (await garantirLineAutomaticaBeta(equipe, inscricao));
+
+      if (!lineId) return;
+
       const { error: vagaError } = await supabase
         .from("campeonato_equipes")
         .update({
@@ -1454,34 +1528,27 @@ export default function EscalaCampeonatoPage() {
 
       if (vagaError) throw vagaError;
 
-      let lineId = inscricao.line_id;
-      if (!lineId && logoUrl) {
-        lineId = await garantirLineAutomaticaBeta(equipe, inscricao);
-      }
+      const updates: Record<string, string | null> = {
+        nome: nome || null,
+        logo_url: logoUrl || null,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (lineId) {
-        const updates: Record<string, string | null> = {
-          nome: nome || null,
-          logo_url: logoUrl || null,
-          updated_at: new Date().toISOString(),
-        };
+      const { error: lineError } = await supabase
+        .from("lines")
+        .update(updates)
+        .eq("id", lineId);
 
-        const { error: lineError } = await supabase
-          .from("lines")
-          .update(updates)
-          .eq("id", lineId);
+      if (lineError) throw lineError;
 
-        if (lineError) throw lineError;
-
-        setLinesPorEquipe((atual) => ({
-          ...atual,
-          [equipe.id]: (atual[equipe.id] || []).map((line) =>
-            line.id === lineId
-              ? { ...line, nome: nome || line.nome, logo_url: logoUrl || null }
-              : line,
-          ),
-        }));
-      }
+      setLinesPorEquipe((atual) => ({
+        ...atual,
+        [equipe.id]: (atual[equipe.id] || []).map((line) =>
+          line.id === lineId
+            ? { ...line, nome: nome || line.nome, logo_url: logoUrl || null }
+            : line,
+        ),
+      }));
 
       setInscricoesEquipe((atuais) =>
         atuais.map((item) =>
@@ -1490,10 +1557,10 @@ export default function EscalaCampeonatoPage() {
             : item,
         ),
       );
-      setVagaEditandoId(null);
-      setFormVaga({ nome: "", logo_url: "" });
+      setLineEditandoVagaId(null);
+      setFormLine({ nome: "", logo_url: "" });
     } catch (error: any) {
-      alert(error?.message || error?.details || "Erro ao salvar vaga.");
+      alert(error?.message || error?.details || "Erro ao salvar line.");
     }
   }
 
@@ -2798,12 +2865,12 @@ export default function EscalaCampeonatoPage() {
                                       const lineAtual = (linesPorEquipe[equipe.id] || []).find(
                                         (line) => line.id === inscricaoAtiva.line_id,
                                       );
-                                      setVagaEditandoId(inscricaoAtiva.id);
-                                      setFormVaga({
+                                      setLineEditandoVagaId(inscricaoAtiva.id);
+                                      setFormLine({
                                         nome:
                                           inscricaoAtiva.nome_exibicao ||
                                           lineAtual?.nome ||
-                                          `Vaga ${inscricaoAtiva.numero_vaga || ""}`,
+                                          `Line ${inscricaoAtiva.numero_vaga || ""}`,
                                         logo_url: lineAtual?.logo_url || "",
                                       });
                                     }}
@@ -2812,43 +2879,53 @@ export default function EscalaCampeonatoPage() {
                                     Editar
                                   </button>
                                 </div>
-                                {vagaEditandoId === inscricaoAtiva.id ? (
+                                {lineEditandoVagaId === inscricaoAtiva.id ? (
                                   <div className="grid gap-1.5 border-b border-emerald-100 bg-white p-2">
                                     <input
-                                      value={formVaga.nome}
+                                      value={formLine.nome}
                                       onChange={(event) =>
-                                        setFormVaga((atual) => ({
+                                        setFormLine((atual) => ({
                                           ...atual,
                                           nome: event.target.value,
                                         }))
                                       }
-                                      placeholder="Nome da vaga ou line"
+                                      placeholder="Nome da line"
                                       className="h-9 rounded border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold uppercase outline-none focus:border-emerald-500"
                                     />
-                                    <input
-                                      value={formVaga.logo_url}
-                                      onChange={(event) =>
-                                        setFormVaga((atual) => ({
-                                          ...atual,
-                                          logo_url: event.target.value,
-                                        }))
-                                      }
-                                      placeholder="URL da logo da vaga"
-                                      className="h-9 rounded border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold outline-none focus:border-emerald-500"
-                                    />
+                                    <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2">
+                                      <Logo
+                                        url={formLine.logo_url || null}
+                                        nome={formLine.nome || "Line"}
+                                      />
+                                      <label className="flex h-9 flex-1 cursor-pointer items-center justify-center rounded border border-emerald-500 bg-white px-2 text-[9px] font-black uppercase text-emerald-700">
+                                        Upload da logo
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(event) =>
+                                            uploadLogoLineBeta(
+                                              event.target.files?.[0] || null,
+                                              equipe,
+                                              inscricaoAtiva,
+                                            )
+                                          }
+                                        />
+                                      </label>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-1">
                                       <button
                                         type="button"
-                                        onClick={() => salvarVagaBeta(equipe, inscricaoAtiva)}
+                                        onClick={() => salvarLineBeta(equipe, inscricaoAtiva)}
                                         className="h-9 rounded bg-emerald-600 text-[9px] font-black uppercase text-white"
                                       >
-                                        Salvar vaga
+                                        Salvar line
                                       </button>
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setVagaEditandoId(null);
-                                          setFormVaga({ nome: "", logo_url: "" });
+                                          setLineEditandoVagaId(null);
+                                          setFormLine({ nome: "", logo_url: "" });
                                         }}
                                         className="h-9 rounded border border-slate-200 bg-white text-[9px] font-black uppercase text-slate-600"
                                       >
@@ -2864,7 +2941,7 @@ export default function EscalaCampeonatoPage() {
                                       onClick={() => garantirLineAutomaticaBeta(equipe, inscricaoAtiva)}
                                       className="h-9 w-full rounded bg-amber-500 text-[9px] font-black uppercase text-white"
                                     >
-                                      Criar line automatica desta vaga
+                                      Criar line automatica
                                     </button>
                                   </div>
                                 ) : null}
