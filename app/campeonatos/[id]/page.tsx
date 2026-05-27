@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
@@ -167,6 +167,11 @@ type CompraEquipeOption = {
   logo_url: string | null
 }
 
+type WhatsContato = {
+  nome: string
+  numero: string
+}
+
 type ComprovanteCompra = {
   campeonato: string
   equipe: string
@@ -187,6 +192,31 @@ const STATUS_CAMPEONATO_OPTIONS = [
 function normalizarStatusCampeonato(status?: string | null) {
   const value = String(status || 'rascunho').trim().toLowerCase()
   return STATUS_CAMPEONATO_OPTIONS.find((item) => item.value === value) || STATUS_CAMPEONATO_OPTIONS[0]
+}
+
+function limparNumeroWhatsApp(numero: string) {
+  return String(numero || '').replace(/\D/g, '')
+}
+
+function normalizarContatosWhatsApp(contatos: WhatsContato[]) {
+  return contatos
+    .slice(0, 3)
+    .map((contato) => ({
+      nome: String(contato.nome || '').trim(),
+      numero: limparNumeroWhatsApp(contato.numero),
+    }))
+    .filter((contato) => contato.nome && contato.numero)
+}
+
+function contatosWhatsAppIniciais(camp?: Record<string, unknown> | null): WhatsContato[] {
+  const lista = Array.isArray(camp?.whatsapp_contatos) ? camp.whatsapp_contatos : []
+  const normalizados = normalizarContatosWhatsApp(lista as WhatsContato[])
+  if (normalizados.length) return normalizados
+
+  const numeroLegado = limparNumeroWhatsApp(String(camp?.whatsapp_suporte || camp?.whatsapp_contato || ''))
+  if (numeroLegado) return [{ nome: 'Vendas', numero: numeroLegado }]
+
+  return [{ nome: '', numero: '' }]
 }
 
 function normalizarEquipeRelacionada(
@@ -1836,6 +1866,18 @@ function PainelConfiguracoesCampeonato({
     }
   }
 
+  async function salvarContatosWhatsApp(contatos: WhatsContato[]) {
+    const contatosNormalizados = normalizarContatosWhatsApp(contatos)
+
+    setSalvandoCampo('whatsapp_contatos')
+    try {
+      await onSalvar('whatsapp_contatos', contatosNormalizados)
+      await onSalvar('whatsapp_suporte', contatosNormalizados[0]?.numero || null)
+    } finally {
+      setSalvandoCampo(null)
+    }
+  }
+
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(linkMobile)
@@ -1890,6 +1932,15 @@ function PainelConfiguracoesCampeonato({
               <ConfigNumber label="Valor da vaga" value={valorVagaCompra} min={0} step="0.01" onSave={(valor) => salvar('valor_vaga', valor)} loading={salvandoCampo === 'valor_vaga'} />
               <ConfigNumber label="Premiação" value={camp?.valor_premiacao || 0} min={0} step="0.01" onSave={(valor) => salvar('valor_premiacao', valor)} loading={salvandoCampo === 'valor_premiacao'} />
             </div>
+          </ConfigCard>
+
+          <ConfigCard titulo="Contatos de venda" descricao="Cadastre os WhatsApps que aparecem para equipes comprarem vagas pelo link mobile.">
+            <ConfigWhatsAppContatos
+              key={JSON.stringify(contatosWhatsAppIniciais(camp))}
+              value={contatosWhatsAppIniciais(camp)}
+              onSave={salvarContatosWhatsApp}
+              loading={salvandoCampo === 'whatsapp_contatos'}
+            />
           </ConfigCard>
 
           <ConfigCard titulo="Limite de jogadores" descricao="Esses campos já existem na tabela campeonatos. Não foi criada tabela duplicada.">
@@ -1958,7 +2009,7 @@ function PainelConfiguracoesCampeonato({
   )
 }
 
-function ConfigCard({ titulo, descricao, children }: { titulo: string; descricao?: string; children: any }) {
+function ConfigCard({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) {
   return (
     <section className="border border-zinc-200 bg-white p-4">
       <div className="mb-3 border-b border-zinc-200 pb-3">
@@ -1967,6 +2018,100 @@ function ConfigCard({ titulo, descricao, children }: { titulo: string; descricao
       </div>
       {children}
     </section>
+  )
+}
+
+function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
+  value: WhatsContato[]
+  onSave: (contatos: WhatsContato[]) => Promise<void>
+  loading?: boolean
+}) {
+  const [contatos, setContatos] = useState<WhatsContato[]>(() => (value.length ? value : [{ nome: '', numero: '' }]))
+  const contatosAtuais = contatos.length ? contatos : value
+
+  function atualizarContato(index: number, campo: keyof WhatsContato, valor: string) {
+    setContatos((prev) => {
+      const proximos = [...prev]
+      proximos[index] = { ...proximos[index], [campo]: valor }
+      return proximos
+    })
+  }
+
+  function adicionarContato() {
+    setContatos((prev) => {
+      const atuais = prev.length ? prev : value
+      return atuais.length >= 3 ? atuais : [...atuais, { nome: '', numero: '' }]
+    })
+  }
+
+  function removerContato(index: number) {
+    setContatos((prev) => {
+      const atuais = prev.length ? prev : value
+      const proximos = atuais.filter((_, itemIndex) => itemIndex !== index)
+      return proximos.length ? proximos : [{ nome: '', numero: '' }]
+    })
+  }
+
+  const contatosValidos = normalizarContatosWhatsApp(contatosAtuais)
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-2">
+        {contatosAtuais.map((contato, index) => (
+          <div key={index} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+            <label className="block">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Nome do vendedor</span>
+              <input
+                value={contato.nome}
+                onChange={(event) => atualizarContato(index, 'nome', event.target.value)}
+                placeholder={`Vendedor ${index + 1}`}
+                className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">WhatsApp</span>
+              <input
+                value={contato.numero}
+                onChange={(event) => atualizarContato(index, 'numero', event.target.value)}
+                placeholder="5591999999999"
+                className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => removerContato(index)}
+              className="mt-6 h-9 border border-red-200 bg-white px-3 text-[10px] font-black uppercase text-red-600 hover:bg-red-50"
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={adicionarContato}
+          disabled={contatosAtuais.length >= 3}
+          className="h-9 border border-zinc-300 bg-white px-3 text-[10px] font-black uppercase text-[#142340] disabled:opacity-50"
+        >
+          + Contato
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase text-zinc-500">
+            {contatosValidos.length}/3 contato(s) valido(s)
+          </span>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => onSave(contatosAtuais)}
+            className="h-9 border border-[#2563eb] bg-[#2563eb] px-4 text-[10px] font-black uppercase text-white disabled:opacity-60"
+          >
+            {loading ? 'Salvando...' : 'Salvar contatos'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
