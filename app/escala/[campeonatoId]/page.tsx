@@ -1243,6 +1243,16 @@ export default function EscalaCampeonatoPage() {
         await rpcFallbackBeta(["aceitar_convite_equipe_v2", "aceitar_convite_equipe"], {
           p_convite_id: conviteId,
         });
+
+        if (conviteAtual?.perfil_jogo_id && conviteAtual?.equipe_id) {
+          await supabase
+            .from("jogadores_campeonato")
+            .update({ status: "ativo" })
+            .eq("campeonato_id", campeonato.id)
+            .eq("equipe_id", conviteAtual.equipe_id)
+            .eq("perfil_jogo_id", conviteAtual.perfil_jogo_id)
+            .eq("status", "pendente");
+        }
       } else {
         await rpcFallbackBeta(["recusar_convite_equipe_v2", "recusar_convite_equipe"], {
           p_convite_id: conviteId,
@@ -1366,7 +1376,7 @@ export default function EscalaCampeonatoPage() {
 
     vagasDaLine.forEach((vaga) => {
       (jogadoresPorEquipe[vaga.id] || []).forEach((jogador) => {
-        if (jogador.status === "ativo") jogadoresMap.set(jogador.id, jogador);
+        if (jogador.status !== "removido") jogadoresMap.set(jogador.id, jogador);
       });
     });
 
@@ -3101,7 +3111,8 @@ export default function EscalaCampeonatoPage() {
                                             name={getNomeJogador(jogador)}
                                             uid={getUidJogador(jogador)}
                                             photoUrl={getFotoJogador(jogador)}
-                                            badge={getTierJogador(jogador)}
+                                            pending={jogador.status === "pendente"}
+                                            badge={jogador.status === "pendente" ? "Pendente" : getTierJogador(jogador)}
                                           />
                                           <button
                                             type="button"
@@ -3598,7 +3609,7 @@ function EscalacaoCards({
   });
 
   const jogadores = Array.from(jogadoresUnicosMap.values()).filter(
-    (jogador) => jogador.status === "ativo",
+    (jogador) => jogador.status !== "removido",
   );
 
   const totalSlots = Math.max(limiteJogadores || 8, 1);
@@ -3903,6 +3914,8 @@ function EscalacaoCards({
     if (!vagaPrincipal?.equipe_id)
       return alert("Esta vaga não está vinculada a uma equipe.");
 
+    if (!vagaPrincipal?.id) return alert("Vaga do campeonato nao encontrada.");
+
     try {
       setProcessando(`convite-${perfil.id}`);
       const { error } = await supabase.rpc("enviar_convite_equipe", {
@@ -3911,8 +3924,56 @@ function EscalacaoCards({
         p_mensagem: mensagem.trim() || null,
       });
       if (error) throw error;
-      alert("Convite enviado para o jogador.");
+      const { data: jogadorId, error: garantirError } = await supabase.rpc(
+        "fn_garantir_jogador_campeonato_vaga",
+        {
+          p_campeonato_id: campeonato.id,
+          p_campeonato_equipe_id: vagaPrincipal.id,
+          p_perfil_jogo_id: perfil.id,
+          p_jogador_avulso_id: null,
+          p_criado_por: null,
+        },
+      );
+      if (garantirError) throw garantirError;
+
+      const { error: pendenteError } = await supabase
+        .from("jogadores_campeonato")
+        .update({
+          status: "pendente",
+          origem: "convite",
+          criado_automaticamente: false,
+          observacoes: "Reserva pendente de aceite do jogador",
+        })
+        .eq("id", jogadorId);
+      if (pendenteError) throw pendenteError;
+
+      const jogadorPendente: JogadorEquipe = {
+        id: String(jogadorId),
+        campeonato_id: campeonato.id,
+        equipe_id: vagaPrincipal.equipe_id,
+        campeonato_equipe_id: vagaPrincipal.id,
+        perfil_jogo_id: perfil.id,
+        jogador_avulso_id: null,
+        status: "pendente",
+        nick_snapshot: getNomePerfil(perfil),
+        uid_jogo_snapshot: getUidPerfil(perfil),
+        perfil,
+        avulso: null,
+      };
+
+      setJogadoresPorEquipeLocal((atual) => {
+        const listaAtual = atual[vagaPrincipal.id] || [];
+        const semDuplicado = listaAtual.filter((item) => item.perfil_jogo_id !== perfil.id);
+
+        return {
+          ...atual,
+          [vagaPrincipal.id]: [...semDuplicado, jogadorPendente],
+        };
+      });
+
+      alert("Convite enviado e vaga reservada como pendente.");
       setMensagem("");
+      setBusca("");
     } catch (error: any) {
       alert(error?.message || error?.details || "Erro ao enviar convite.");
     } finally {
@@ -3943,6 +4004,7 @@ function EscalacaoCards({
           const avulso = Boolean(
             jogador?.jogador_avulso_id || (jogador && !jogador.perfil_jogo_id),
           );
+          const pendente = jogador?.status === "pendente";
           const slotId = jogador?.id || `card-slot-${index}`;
 
           return (
@@ -3953,7 +4015,8 @@ function EscalacaoCards({
                 photoUrl={getFotoJogador(jogador)}
                 index={index + 1}
                 empty={!jogador}
-                badge={jogador ? (avulso ? "Avulso" : getTierJogador(jogador)) : ""}
+                pending={pendente}
+                badge={jogador ? (pendente ? "Pendente" : avulso ? "Avulso" : getTierJogador(jogador)) : ""}
                 onClick={() => {
                   if (!jogador) {
                     abrirAdicionar(null);
@@ -4120,7 +4183,7 @@ function EscalacaoCards({
 
           <div className="mt-3 space-y-1">
             <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-600">
-              Buscar jogador para convite
+              Buscar jogador para reservar vaga
             </p>
             <textarea
               value={mensagem}
@@ -4162,7 +4225,7 @@ function EscalacaoCards({
                       onClick={() => enviarConvite(perfil)}
                     className="flex h-8 items-center gap-1 border border-amber-500 bg-amber-500 px-2 text-[9px] font-black uppercase text-white disabled:opacity-50"
                     >
-                      <MailPlus size={13} /> Convite
+                      <MailPlus size={13} /> Reservar
                     </button>
                   </div>
                 ))}
@@ -4294,6 +4357,7 @@ function JogadorQuadrado({
   badge,
   empty = false,
   danger = false,
+  pending = false,
   onClick,
 }: {
   name: string;
@@ -4303,6 +4367,7 @@ function JogadorQuadrado({
   badge?: string | null;
   empty?: boolean;
   danger?: boolean;
+  pending?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -4313,7 +4378,9 @@ function JogadorQuadrado({
         "group relative aspect-square w-full overflow-hidden rounded-lg border bg-white text-left transition active:scale-[0.98]",
         empty
           ? "border-dashed border-amber-300 bg-amber-50/70"
-          : danger
+          : pending
+            ? "border-slate-300 bg-slate-100"
+            : danger
             ? "border-red-300"
             : "border-cyan-100",
       ].join(" ")}
@@ -4331,7 +4398,10 @@ function JogadorQuadrado({
             <img
               src={photoUrl}
               alt={name}
-              className="h-full w-full object-cover"
+              className={[
+                "h-full w-full object-cover",
+                pending ? "grayscale opacity-70" : "",
+              ].join(" ")}
             />
           ) : (
             <div className="grid h-full w-full place-items-center bg-slate-100 text-2xl font-black uppercase text-slate-400">
@@ -4352,14 +4422,19 @@ function JogadorQuadrado({
             <span
               className={[
                 "absolute right-1 top-1 rounded px-1 py-0.5 text-[7px] font-black text-white",
-                danger ? "bg-red-500" : "bg-emerald-500",
+                pending ? "bg-slate-500" : danger ? "bg-red-500" : "bg-emerald-500",
               ].join(" ")}
             >
               {String(index).padStart(2, "0")}
             </span>
           ) : null}
           {badge ? (
-            <span className="absolute left-1 top-1 max-w-[56px] truncate rounded bg-white/90 px-1 py-0.5 text-[7px] font-black uppercase text-slate-700">
+            <span
+              className={[
+                "absolute left-1 top-1 max-w-[62px] truncate rounded px-1 py-0.5 text-[7px] font-black uppercase",
+                pending ? "bg-slate-900 text-white" : "bg-white/90 text-slate-700",
+              ].join(" ")}
+            >
               {badge}
             </span>
           ) : null}
