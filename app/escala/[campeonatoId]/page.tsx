@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
-import PlayerCard from "@/app/components/PlayerCard";
 import FormCriarEquipe from "@/app/components/FormCriarEquipe";
 import AuthLinkCampeonato from "@/app/components/AuthLinkCampeonato";
 
@@ -2710,7 +2709,55 @@ export default function EscalaCampeonatoPage() {
                   </div>
                 ) : null}
 
-                {equipesVisiveis.map((equipe) => {
+                {equipes.length ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {equipes.map((equipe, index) => {
+                      const inscricoesEquipeAtual = inscricoesEquipe.filter(
+                        (item) => item.equipe_id === equipe.id,
+                      );
+                      const ativa = equipeSelecionadaId === equipe.id;
+                      const cores = [
+                        "border-emerald-200 bg-emerald-50 text-emerald-900",
+                        "border-cyan-200 bg-cyan-50 text-cyan-900",
+                        "border-amber-200 bg-amber-50 text-amber-900",
+                        "border-violet-200 bg-violet-50 text-violet-900",
+                      ];
+
+                      return (
+                        <button
+                          key={equipe.id}
+                          type="button"
+                          onClick={() => setEquipeSelecionadaId(equipe.id)}
+                          className={[
+                            "flex min-h-[72px] items-center gap-2 rounded-lg border p-2 text-left transition active:scale-[0.98]",
+                            ativa ? "ring-2 ring-emerald-500" : cores[index % cores.length],
+                          ].join(" ")}
+                        >
+                          <Logo url={equipe.logo_url} nome={equipe.nome} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[11px] font-black uppercase leading-none">
+                              {equipe.tag ? `[${equipe.tag}] ` : ""}
+                              {equipe.nome}
+                            </p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] opacity-70">
+                              {inscricoesEquipeAtual.length
+                                ? `${inscricoesEquipeAtual.length} vaga${inscricoesEquipeAtual.length === 1 ? "" : "s"}`
+                                : "Sem vaga"}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {!equipeSelecionadaId && equipes.length ? (
+                  <div className="border border-dashed border-emerald-200 bg-emerald-50/60 p-3 text-center text-[10px] font-bold uppercase text-emerald-700">
+                    Toque em uma equipe para abrir lines, elenco e controles.
+                  </div>
+                ) : null}
+
+                {(equipeSelecionadaId ? equipesVisiveis : []).map((equipe) => {
                   const inscricoes = inscricoesEquipe.filter(
                     (item) => item.equipe_id === equipe.id,
                   );
@@ -3933,7 +3980,7 @@ function EscalacaoCards({
           {jogadores.length}/{totalSlots} cards usados
         </p>
         <p className="rounded bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase text-amber-700">
-          Toque na carta
+          Toque no jogador
         </p>
       </div>
 
@@ -3949,13 +3996,13 @@ function EscalacaoCards({
 
           return (
             <div key={slotId} className="relative min-w-0">
-              <PlayerCard
-                name={jogador ? getNomeJogador(jogador) : ""}
-                tier={jogador ? (getTierJogador(jogador) as any) : "C"}
-                number={index + 1}
-                variant={jogador ? (avulso ? "avulso" : "oficial") : "slot"}
+              <JogadorQuadrado
+                name={jogador ? getNomeJogador(jogador) : "Adicionar"}
+                uid={jogador ? getUidJogador(jogador) : ""}
                 photoUrl={getFotoJogador(jogador)}
-                className="!max-w-none cursor-pointer"
+                index={index + 1}
+                empty={!jogador}
+                badge={jogador ? (avulso ? "Avulso" : getTierJogador(jogador)) : ""}
                 onClick={() => {
                   if (!jogador) {
                     abrirAdicionar(null);
@@ -4025,13 +4072,13 @@ function EscalacaoCards({
                   key={`excedente-${jogador.id}`}
                   className="relative min-w-0 border border-red-300 bg-white p-0.5"
                 >
-                  <PlayerCard
+                  <JogadorQuadrado
                     name={getNomeJogador(jogador)}
-                    tier={getTierJogador(jogador) as any}
-                    number={totalSlots + index + 1}
-                    variant={avulso ? "avulso" : "oficial"}
+                    uid={getUidJogador(jogador)}
                     photoUrl={getFotoJogador(jogador)}
-                    className="!max-w-none cursor-pointer"
+                    index={totalSlots + index + 1}
+                    badge={avulso ? "Avulso" : getTierJogador(jogador)}
+                    danger
                     onClick={() => abrirInformacoesJogador(jogador)}
                   />
                   <div className="mt-0.5 text-center text-[7px] font-black uppercase text-red-600">
@@ -4103,13 +4150,12 @@ function EscalacaoCards({
                     }}
                     className={`min-w-0 ${processando === perfil.id ? "pointer-events-none opacity-50" : "cursor-pointer"}`}
                   >
-                    <PlayerCard
+                    <JogadorQuadrado
                       name={getNomePerfil(perfil)}
-                      tier={tierPerfil(perfil) as any}
-                      number={index + 1}
-                      variant="oficial"
+                      uid={getUidPerfil(perfil)}
                       photoUrl={perfil.foto_capa || null}
-                      className="!max-w-none"
+                      index={index + 1}
+                      badge={tierPerfil(perfil)}
                     />
                   </div>
                 ))}
@@ -4180,7 +4226,17 @@ function EscalacaoCards({
       ) : null}
 
       {infoAberta ? (
-        <div className="border-t border-slate-200 bg-slate-50 p-2">
+        <div
+          className="fixed inset-0 z-[500] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center"
+          onClick={() => {
+            setInfoAberta(null);
+            setStatsJogador(null);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-t-2xl border border-cyan-100 bg-slate-50 p-2 sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
@@ -4261,6 +4317,7 @@ function EscalacaoCards({
               Abrir perfil de jogo
             </Link>
           ) : null}
+          </div>
         </div>
       ) : null}
     </div>
@@ -4275,6 +4332,89 @@ function InfoMini({ label, value }: { label: string; value: string }) {
       </p>
       <p className="truncate text-[10px] font-black text-slate-950">{value}</p>
     </div>
+  );
+}
+
+function JogadorQuadrado({
+  name,
+  uid,
+  photoUrl,
+  index,
+  badge,
+  empty = false,
+  danger = false,
+  onClick,
+}: {
+  name: string;
+  uid?: string | null;
+  photoUrl?: string | null;
+  index?: number;
+  badge?: string | null;
+  empty?: boolean;
+  danger?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "group relative aspect-square w-full overflow-hidden rounded-lg border bg-white text-left transition active:scale-[0.98]",
+        empty
+          ? "border-dashed border-amber-300 bg-amber-50/70"
+          : danger
+            ? "border-red-300"
+            : "border-cyan-100",
+      ].join(" ")}
+    >
+      {empty ? (
+        <div className="flex h-full flex-col items-center justify-center gap-1 text-amber-600">
+          <span className="text-2xl font-black leading-none">+</span>
+          <span className="text-[8px] font-black uppercase tracking-[0.12em]">
+            Adicionar
+          </span>
+        </div>
+      ) : (
+        <>
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="grid h-full w-full place-items-center bg-slate-100 text-2xl font-black uppercase text-slate-400">
+              {name.slice(0, 1)}
+            </div>
+          )}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/65 to-transparent px-1.5 pb-1.5 pt-5">
+            <p className="truncate text-[9px] font-black uppercase leading-none text-white">
+              {name}
+            </p>
+            {uid ? (
+              <p className="mt-0.5 truncate text-[7px] font-bold uppercase text-cyan-100">
+                UID {uid}
+              </p>
+            ) : null}
+          </div>
+          {index ? (
+            <span
+              className={[
+                "absolute right-1 top-1 rounded px-1 py-0.5 text-[7px] font-black text-white",
+                danger ? "bg-red-500" : "bg-emerald-500",
+              ].join(" ")}
+            >
+              {String(index).padStart(2, "0")}
+            </span>
+          ) : null}
+          {badge ? (
+            <span className="absolute left-1 top-1 max-w-[56px] truncate rounded bg-white/90 px-1 py-0.5 text-[7px] font-black uppercase text-slate-700">
+              {badge}
+            </span>
+          ) : null}
+        </>
+      )}
+    </button>
   );
 }
 
