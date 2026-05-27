@@ -405,7 +405,7 @@ export default function EscalaCampeonatoPage() {
   const [managerBusca, setManagerBusca] = useState("");
   const [linePickerAberto, setLinePickerAberto] = useState<{ equipeId: string; lineId: string } | null>(null);
   const [painelEquipeAtivo, setPainelEquipeAtivo] = useState<"jogadores" | "lideres">("jogadores");
-  const [subJogadoresAtiva, setSubJogadoresAtiva] = useState<"elenco" | "convites" | "pedidos">("elenco");
+  const [subJogadoresAtiva, setSubJogadoresAtiva] = useState<"elenco" | "convites" | "pedidos" | "lines">("elenco");
   const [buscaJogadorEquipe, setBuscaJogadorEquipe] = useState("");
   const [jogadorElencoSelecionado, setJogadorElencoSelecionado] = useState<string | null>(null);
   const [resultadosBuscaJogadorSite, setResultadosBuscaJogadorSite] = useState<PerfilJogo[]>([]);
@@ -2506,36 +2506,38 @@ export default function EscalaCampeonatoPage() {
                   />
                 ) : null}
 
-                <section className="mt-2 flex flex-wrap items-center justify-end gap-1">
+                <section className="mt-2 border border-slate-200 bg-white p-2">
                   {tipoAcesso !== "jogador" ? (
-                    <>
+                    <div className="grid grid-cols-2 gap-1 rounded-md bg-slate-100 p-1">
                       <button
+                        type="button"
                         onClick={() => setAba("escala")}
-                        className={`flex h-11 items-center justify-center gap-2 border px-2 text-[9px] font-black uppercase ${aba === "escala" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-800"}`}
+                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase ${aba === "escala" ? "bg-blue-600 text-white" : "bg-transparent text-slate-600"}`}
                       >
                         <ListChecks size={14} />
-                        Escalação
+                        Escalar
                       </button>
                       <button
+                        type="button"
                         onClick={() => setAba("equipe")}
-                        className={`flex h-11 items-center justify-center gap-2 border px-2 text-[9px] font-black uppercase ${aba === "equipe" ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-800"}`}
+                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase ${aba === "equipe" ? "bg-blue-600 text-white" : "bg-transparent text-slate-600"}`}
                       >
                         <Users size={14} />
-                        Equipe
+                        Gerenciar
                       </button>
-                    </>
+                    </div>
                   ) : null}
                 </section>
 
                 {(tipoAcesso === "equipe") && equipes.length > 1 ? (
                   <section className="mt-2 border border-slate-200 bg-white p-2">
-                    <p className="mb-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
-                      Selecionar equipe
+                    <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      Equipe
                     </p>
                     <select
                       value={equipeSelecionadaId || ""}
                       onChange={(event) => setEquipeSelecionadaId(event.target.value || null)}
-                      className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-black uppercase outline-none"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-bold uppercase outline-none focus:border-blue-500"
                     >
                       <option value="">Todas as equipes vinculadas</option>
                       {equipes.map((equipe) => (
@@ -2753,69 +2755,33 @@ export default function EscalaCampeonatoPage() {
                           />
                         </div>
 
-                        <div className="mt-2 grid grid-cols-2 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setPainelEquipeAtivo("jogadores")}
-                            className={`h-9 border px-2 text-[9px] font-black uppercase ${
-                              painelEquipeAtivo === "jogadores"
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-slate-200 bg-white text-slate-800"
-                            }`}
+                        <div className="mt-2 border border-slate-200 bg-slate-50 p-2">
+                          <label className="block text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                            O que você quer ver?
+                          </label>
+                          <select
+                            value={painelEquipeAtivo === "lideres" ? "lideres" : subJogadoresAtiva}
+                            onChange={(event) => {
+                              const valor = event.target.value as "elenco" | "convites" | "pedidos" | "lines" | "lideres";
+                              if (valor === "lideres") {
+                                setPainelEquipeAtivo("lideres");
+                              } else {
+                                setPainelEquipeAtivo("jogadores");
+                                setSubJogadoresAtiva(valor);
+                              }
+                            }}
+                            className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-xs font-bold uppercase outline-none focus:border-blue-500"
                           >
-                            Jogadores
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPainelEquipeAtivo("lideres")}
-                            className={`h-9 border px-2 text-[9px] font-black uppercase ${
-                              painelEquipeAtivo === "lideres"
-                                ? "border-blue-600 bg-blue-600 text-white"
-                                : "border-slate-200 bg-white text-slate-800"
-                            }`}
-                          >
-                            Líderes
-                          </button>
+                            <option value="elenco">Elenco da equipe</option>
+                            <option value="lines">Lines e escalação</option>
+                            <option value="convites">Convites enviados</option>
+                            <option value="pedidos">Pedidos recebidos</option>
+                            <option value="lideres">Líderes e managers</option>
+                          </select>
                         </div>
 
-                        {painelEquipeAtivo === "jogadores" ? (
+                        {painelEquipeAtivo === "jogadores" && subJogadoresAtiva !== "lines" ? (
                           <div className="mt-2 border border-slate-200 bg-white p-2">
-                            <div className="grid grid-cols-4 gap-1">
-                              <button
-                                type="button"
-                                onClick={() => setSubJogadoresAtiva("elenco")}
-                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
-                                  subJogadoresAtiva === "elenco"
-                                    ? "border-blue-600 bg-blue-600 text-white"
-                                    : "border-slate-200 bg-white text-slate-700"
-                                }`}
-                              >
-                                Elenco
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSubJogadoresAtiva("convites")}
-                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
-                                  subJogadoresAtiva === "convites"
-                                    ? "border-blue-600 bg-blue-600 text-white"
-                                    : "border-slate-200 bg-white text-slate-700"
-                                }`}
-                              >
-                                Convites
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSubJogadoresAtiva("pedidos")}
-                                className={`h-8 border px-1 text-[8px] font-black uppercase ${
-                                  subJogadoresAtiva === "pedidos"
-                                    ? "border-blue-600 bg-blue-600 text-white"
-                                    : "border-slate-200 bg-white text-slate-700"
-                                }`}
-                              >
-                                Pedidos
-                              </button>
-                            </div>
-
                             {subJogadoresAtiva === "elenco" ? (
                               <div className="mt-2 border border-slate-200 bg-slate-50">
                                 <div className="border-b border-slate-200 bg-white p-1.5">
@@ -3026,7 +2992,7 @@ export default function EscalaCampeonatoPage() {
                           </div>
                         ) : null}
 
-                        {painelEquipeAtivo === "jogadores" ? (
+                        {painelEquipeAtivo === "jogadores" && subJogadoresAtiva === "lines" ? (
                           <>
                         {(() => {
                           const linhas = linesPorEquipe[equipe.id] || [];
