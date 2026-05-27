@@ -2110,7 +2110,7 @@ export default function EscalaCampeonatoPage() {
           <button
             type="button"
             onClick={() => carregar()}
-            className="mt-5 inline-flex h-11 items-center justify-center border border-blue-500 bg-blue-600 px-5 text-xs font-black uppercase text-white"
+            className="mt-5 inline-flex h-11 items-center justify-center border border-cyan-400 bg-cyan-500 px-5 text-xs font-black uppercase text-white"
           >
             Tentar novamente
           </button>
@@ -2128,7 +2128,7 @@ export default function EscalaCampeonatoPage() {
           </h1>
           <Link
             href="#"
-            className="mt-4 inline-flex h-11 items-center justify-center border border-blue-600 bg-blue-600 px-5 text-xs font-black uppercase text-white"
+            className="mt-4 inline-flex h-11 items-center justify-center border border-cyan-500 bg-cyan-500 px-5 text-xs font-black uppercase text-white"
           >
             Voltar ao painel
           </Link>
@@ -2146,7 +2146,7 @@ export default function EscalaCampeonatoPage() {
           <div className="relative overflow-hidden bg-slate-950 p-4 text-white">
             <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_20%_20%,#2563eb_0,transparent_28%),linear-gradient(135deg,transparent_0_45%,rgba(255,255,255,.12)_45%_47%,transparent_47%)]" />
             <div className="relative">
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-300">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-200">
                 Recuperação de senha
               </p>
               <h1 className="mt-1 text-xl font-black uppercase tracking-[-0.05em]">
@@ -2179,7 +2179,7 @@ export default function EscalaCampeonatoPage() {
               type="button"
               disabled={authLoadingBeta}
               onClick={salvarNovaSenhaBeta}
-              className="flex h-12 items-center justify-center gap-2 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
+              className="flex h-12 items-center justify-center gap-2 border border-cyan-500 bg-cyan-500 text-xs font-black uppercase text-white shadow-sm disabled:opacity-60"
             >
               {authLoadingBeta ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
               Salvar nova senha
@@ -2195,11 +2195,11 @@ export default function EscalaCampeonatoPage() {
       <div className="mx-auto max-w-md pb-5">
         {tipoAcesso !== "jogador" ? (
         <section className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-blue-500 bg-gradient-to-r from-blue-600 to-blue-700 p-2 text-white">
+          <div className="border-b border-cyan-400 bg-gradient-to-r from-cyan-500 to-violet-600 p-2 text-white">
             <div className="flex gap-2">
               <Logo url={campeonato.logo_url} nome={campeonato.nome} />
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-100">
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-50">
                   Inscrição mobile
                 </p>
                 <h1 className="mt-0.5 truncate text-lg font-black uppercase tracking-[-0.05em]">
@@ -2286,7 +2286,7 @@ export default function EscalaCampeonatoPage() {
               <section className="mt-2">
                 <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-200 p-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-600">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-600">
                       Acesso beta
                     </p>
                     <h2 className="mt-1 text-xl font-black uppercase tracking-[-0.05em] text-slate-950">
@@ -2304,15 +2304,15 @@ export default function EscalaCampeonatoPage() {
                         setTipoAcesso("jogador");
                         setAba("jogador");
                       }}
-                      className="group relative overflow-hidden border border-slate-200 bg-white p-0 text-left shadow-sm transition hover:border-blue-500"
+                      className="group relative overflow-hidden border border-slate-200 bg-white p-0 text-left shadow-sm transition hover:border-cyan-400"
                     >
                       <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(135deg,rgba(37,99,235,.08)_0_25%,transparent_25%_50%,rgba(37,99,235,.06)_50%_75%,transparent_75%)] [background-size:24px_24px]" />
                       <div className="relative flex min-h-[96px] items-center gap-3 p-3">
-                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-blue-200 bg-blue-50 text-blue-600">
+                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-cyan-100 bg-cyan-50 text-cyan-600">
                           <Gamepad2 size={26} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-600">
                             Jogador
                           </p>
                           <h3 className="mt-1 text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
@@ -2322,7 +2322,7 @@ export default function EscalaCampeonatoPage() {
                             Perfil, convites, pedidos, equipe e agenda.
                           </p>
                         </div>
-                        <ChevronRight size={20} className="text-blue-600 transition group-hover:translate-x-1" />
+                        <ChevronRight size={20} className="text-cyan-600 transition group-hover:translate-x-1" />
                       </div>
                     </button>
 
@@ -2332,25 +2332,25 @@ export default function EscalaCampeonatoPage() {
                         setTipoAcesso("equipe");
                         setAba("equipe");
                       }}
-                      className="group relative overflow-hidden border border-blue-700 bg-slate-950 p-0 text-left text-white shadow-sm transition hover:border-blue-500"
+                      className="group relative overflow-hidden border border-violet-500 bg-slate-950 p-0 text-left text-white shadow-sm transition hover:border-cyan-400"
                     >
                       <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_20%_20%,rgba(37,99,235,.55)_0,transparent_35%),linear-gradient(135deg,transparent_0_44%,rgba(255,255,255,.12)_44%_46%,transparent_46%)]" />
                       <div className="relative flex min-h-[96px] items-center gap-3 p-3">
-                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-white/15 bg-white/10 text-blue-200">
+                        <div className="grid h-14 w-14 shrink-0 place-items-center border border-white/15 bg-white/10 text-cyan-100">
                           <Users size={26} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-200">
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">
                             Equipe
                           </p>
                           <h3 className="mt-1 text-lg font-black uppercase tracking-[-0.04em]">
                             Gestão da equipe
                           </h3>
-                          <p className="mt-1 text-[11px] font-semibold leading-4 text-blue-100">
+                          <p className="mt-1 text-[11px] font-semibold leading-4 text-cyan-50">
                             Equipes próprias, equipes como manager, lines e escalação.
                           </p>
                         </div>
-                        <ChevronRight size={20} className="text-blue-200 transition group-hover:translate-x-1" />
+                        <ChevronRight size={20} className="text-cyan-100 transition group-hover:translate-x-1" />
                       </div>
                     </button>
                   </div>
@@ -2362,7 +2362,7 @@ export default function EscalaCampeonatoPage() {
                   <section className="mt-2 border border-slate-200 bg-white p-3 shadow-sm">
                     <div className="mb-3 flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
                           Perfil de jogo
                         </p>
                         <h2 className="text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
@@ -2453,7 +2453,7 @@ export default function EscalaCampeonatoPage() {
                           Foto do perfil
                         </span>
                         <div className="flex items-center gap-2 border border-slate-200 bg-white p-2">
-                          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-slate-200 bg-slate-100 text-blue-600">
+                          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-slate-200 bg-slate-100 text-cyan-600">
                             {formPerfilBeta.foto_capa ? (
                               <img
                                 src={formPerfilBeta.foto_capa}
@@ -2471,7 +2471,7 @@ export default function EscalaCampeonatoPage() {
                               onChange={(event) =>
                                 uploadFotoPerfilBeta(event.target.files?.[0] || null)
                               }
-                              className="w-full text-[10px] font-bold uppercase text-slate-500 file:mr-2 file:h-8 file:border-0 file:bg-blue-600 file:px-3 file:text-[8px] file:font-black file:uppercase file:text-white"
+                              className="w-full text-[10px] font-bold uppercase text-slate-500 file:mr-2 file:h-8 file:border-0 file:bg-cyan-500 file:px-3 file:text-[8px] file:font-black file:uppercase file:text-white"
                             />
                             <p className="mt-1 text-[8px] font-bold uppercase text-slate-400">
                               Envie uma imagem para aparecer no card do jogador.
@@ -2484,7 +2484,7 @@ export default function EscalaCampeonatoPage() {
                         type="button"
                         disabled={salvandoFormularioBeta}
                         onClick={salvarPerfilBeta}
-                        className="mt-1 h-11 border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white disabled:opacity-50"
+                        className="mt-1 h-11 border border-cyan-500 bg-cyan-500 text-xs font-black uppercase text-white disabled:opacity-50"
                       >
                         {salvandoFormularioBeta ? "Salvando..." : "Salvar perfil"}
                       </button>
@@ -2512,7 +2512,7 @@ export default function EscalaCampeonatoPage() {
                       <button
                         type="button"
                         onClick={() => setAba("escala")}
-                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase ${aba === "escala" ? "bg-blue-600 text-white" : "bg-transparent text-slate-600"}`}
+                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase transition ${aba === "escala" ? "bg-cyan-500 text-white" : "bg-white text-slate-600 hover:text-cyan-700"}`}
                       >
                         <ListChecks size={14} />
                         Escalar
@@ -2520,7 +2520,7 @@ export default function EscalaCampeonatoPage() {
                       <button
                         type="button"
                         onClick={() => setAba("equipe")}
-                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase ${aba === "equipe" ? "bg-blue-600 text-white" : "bg-transparent text-slate-600"}`}
+                        className={`flex h-10 items-center justify-center gap-2 rounded px-2 text-[10px] font-bold uppercase transition ${aba === "equipe" ? "bg-emerald-600 text-white" : "bg-white text-slate-600 hover:text-emerald-700"}`}
                       >
                         <Users size={14} />
                         Gerenciar
@@ -2537,7 +2537,7 @@ export default function EscalaCampeonatoPage() {
                     <select
                       value={equipeSelecionadaId || ""}
                       onChange={(event) => setEquipeSelecionadaId(event.target.value || null)}
-                      className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-bold uppercase outline-none focus:border-blue-500"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-bold uppercase outline-none focus:border-emerald-500"
                     >
                       <option value="">Todas as equipes vinculadas</option>
                       {equipes.map((equipe) => (
@@ -2559,7 +2559,7 @@ export default function EscalaCampeonatoPage() {
                       <button
                         type="button"
                         onClick={() => setModoFormularioBeta("equipe")}
-                        className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                        className="mt-3 h-10 w-full border border-cyan-500 bg-cyan-500 text-xs font-black uppercase text-white"
                       >
                         Criar equipe
                       </button>
@@ -2603,7 +2603,7 @@ export default function EscalaCampeonatoPage() {
                         return (
                           <div className="space-y-2">
                             {inscricoes.length > 1 ? (
-                              <div className="flex gap-1 overflow-x-auto border border-slate-200 bg-slate-50 p-1">
+                              <div className="flex gap-1 overflow-x-auto border border-emerald-100 bg-emerald-50/60 p-1">
                                 {inscricoes.map((inscricao) => {
                                   const ativa =
                                     inscricao.id === inscricaoAtiva?.id;
@@ -2627,8 +2627,8 @@ export default function EscalaCampeonatoPage() {
                                       className={[
                                         "shrink-0 border px-2 py-1 text-left uppercase",
                                         ativa
-                                          ? "border-blue-600 bg-blue-600 text-white"
-                                          : "border-slate-200 bg-white text-slate-700",
+                                          ? "border-emerald-600 bg-emerald-600 text-white"
+                                          : "border-emerald-100 bg-white text-slate-700",
                                       ].join(" ")}
                                     >
                                       <p className="max-w-[110px] truncate text-[9px] font-black tracking-[0.12em]">
@@ -2639,8 +2639,8 @@ export default function EscalaCampeonatoPage() {
                                         className={[
                                           "mt-0.5 text-[8px] font-black",
                                           ativa
-                                            ? "text-blue-100"
-                                            : "text-blue-600",
+                                            ? "text-emerald-100"
+                                            : "text-emerald-600",
                                         ].join(" ")}
                                       >
                                         {usados}/{limiteJogadores || 8} cards
@@ -2652,13 +2652,13 @@ export default function EscalaCampeonatoPage() {
                             ) : null}
 
                             {inscricaoAtiva ? (
-                              <div className="border border-slate-200 bg-slate-50">
-                                <div className="flex items-center justify-between border-b border-slate-200 px-2 py-1">
-                                  <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
+                              <div className="border border-emerald-100 bg-slate-50">
+                                <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-2 py-1">
+                                  <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-emerald-900">
                                     {inscricaoAtiva.nome_exibicao ||
                                       `Vaga ${inscricaoAtiva.numero_vaga || ""}`}
                                   </p>
-                                  <span className="text-[9px] font-black uppercase text-blue-600">
+                                  <span className="rounded bg-emerald-600 px-2 py-0.5 text-[8px] font-black uppercase text-white">
                                     Line vinculada
                                   </span>
                                 </div>
@@ -2702,7 +2702,7 @@ export default function EscalaCampeonatoPage() {
                       <button
                         type="button"
                         onClick={() => setModoFormularioBeta("equipe")}
-                        className="mt-3 h-10 w-full border border-blue-600 bg-blue-600 text-xs font-black uppercase text-white"
+                        className="mt-3 h-10 w-full border border-cyan-500 bg-cyan-500 text-xs font-black uppercase text-white"
                       >
                         Criar equipe
                       </button>
@@ -2755,8 +2755,8 @@ export default function EscalaCampeonatoPage() {
                           />
                         </div>
 
-                        <div className="mt-2 border border-slate-200 bg-slate-50 p-2">
-                          <label className="block text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                        <div className="mt-2 border border-emerald-100 bg-emerald-50/50 p-2">
+                          <label className="block text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-700">
                             O que você quer ver?
                           </label>
                           <select
@@ -2770,7 +2770,7 @@ export default function EscalaCampeonatoPage() {
                                 setSubJogadoresAtiva(valor);
                               }
                             }}
-                            className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-xs font-bold uppercase outline-none focus:border-blue-500"
+                            className="mt-1 h-10 w-full rounded-md border border-emerald-100 bg-white px-3 text-xs font-bold uppercase outline-none focus:border-emerald-500"
                           >
                             <option value="elenco">Elenco da equipe</option>
                             <option value="lines">Lines e escalação</option>
@@ -2792,7 +2792,7 @@ export default function EscalaCampeonatoPage() {
                                     className="h-9 w-full border border-slate-200 bg-slate-50 px-2 text-[10px] font-bold uppercase text-slate-700 outline-none"
                                   />
                                   {buscandoJogadorSite ? (
-                                    <p className="mt-1 text-[8px] font-black uppercase text-blue-600">
+                                    <p className="mt-1 text-[8px] font-black uppercase text-cyan-600">
                                       Pesquisando...
                                     </p>
                                   ) : null}
@@ -2823,7 +2823,7 @@ export default function EscalaCampeonatoPage() {
                                         <div
                                           key={perfil.id}
                                           className={`bg-white px-2 py-1.5 ${
-                                            jogadorElencoSelecionado === perfil.id ? "ring-1 ring-blue-600" : ""
+                                            jogadorElencoSelecionado === perfil.id ? "ring-1 ring-cyan-500" : ""
                                           }`}
                                         >
                                           <button
@@ -2852,7 +2852,7 @@ export default function EscalaCampeonatoPage() {
                                                 UID {getUidPerfil(perfil)}
                                               </p>
                                             </div>
-                                            <span className="text-[8px] font-black uppercase text-blue-600">
+                                            <span className="text-[8px] font-black uppercase text-cyan-600">
                                               {jogadorElencoSelecionado === perfil.id ? "Selecionado" : "Jogador"}
                                             </span>
                                           </button>
@@ -2895,7 +2895,7 @@ export default function EscalaCampeonatoPage() {
                                             type="button"
                                             disabled={operandoJogadorId === perfil.id}
                                             onClick={() => adicionarJogadorElencoBeta(equipe, perfil)}
-                                            className="h-8 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
+                                            className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
                                           >
                                             Adicionar
                                           </button>
@@ -2977,7 +2977,7 @@ export default function EscalaCampeonatoPage() {
                               <button
                                 type="button"
                                 onClick={adicionarManagerBeta}
-                                className="h-9 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                                className="h-9 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
                               >
                                 Adicionar
                               </button>
@@ -3009,7 +3009,7 @@ export default function EscalaCampeonatoPage() {
                                   </p>
                                   <button
                                     type="button"
-                                    className="h-7 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                                    className="h-7 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
                                     onClick={() => alert("Criação de line será adicionada depois dos formulários princiservidor.")}
                                   >
                                     + Line
@@ -3035,14 +3035,14 @@ export default function EscalaCampeonatoPage() {
                                           className={[
                                             "shrink-0 border px-2 py-1 text-left uppercase",
                                             ativa
-                                              ? "border-blue-600 bg-blue-600 text-white"
-                                              : "border-slate-200 bg-white text-slate-700",
+                                              ? "border-emerald-600 bg-emerald-600 text-white"
+                                              : "border-emerald-100 bg-white text-slate-700",
                                           ].join(" ")}
                                         >
                                           <p className="max-w-[110px] truncate text-[9px] font-black tracking-[0.12em]">
                                             {line.nome}
                                           </p>
-                                          <p className={["mt-0.5 text-[8px] font-black", ativa ? "text-blue-100" : "text-blue-600"].join(" ")}>
+                                          <p className={["mt-0.5 text-[8px] font-black", ativa ? "text-emerald-100" : "text-emerald-600"].join(" ")}>
                                             {total} jogador{total === 1 ? "" : "es"}
                                           </p>
                                         </button>
@@ -3063,14 +3063,14 @@ export default function EscalaCampeonatoPage() {
                                       <p className="truncate text-[10px] font-black uppercase text-slate-950">
                                         {lineAtiva.nome}
                                       </p>
-                                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-600">
+                                      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-emerald-600">
                                         Line selecionada
                                       </p>
                                     </div>
                                     <button
                                       type="button"
                                       onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
-                                      className="h-8 border border-blue-600 bg-blue-600 px-2 text-[8px] font-black uppercase text-white"
+                                      className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
                                     >
                                       + Jogador
                                     </button>
@@ -3117,9 +3117,9 @@ export default function EscalaCampeonatoPage() {
                               ) : null}
 
                               {lineAtiva && linePickerAberto?.equipeId === equipe.id && linePickerAberto?.lineId === lineAtiva.id ? (
-                                <div className="border border-blue-200 bg-blue-50 p-2">
+                                <div className="border border-cyan-100 bg-cyan-50 p-2">
                                   <div className="mb-2 flex items-center justify-between gap-2">
-                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-blue-600">
+                                    <p className="text-[8px] font-black uppercase tracking-[0.14em] text-cyan-600">
                                       Adicionar jogador na line
                                     </p>
                                     <button
@@ -3166,14 +3166,14 @@ export default function EscalaCampeonatoPage() {
                                                 UID {getUidPerfil(perfil)}
                                               </p>
                                             </div>
-                                            <span className="text-[8px] font-black uppercase text-blue-600">
+                                            <span className="text-[8px] font-black uppercase text-cyan-600">
                                               Adicionar
                                             </span>
                                           </button>
                                         ))}
                                     </div>
                                   ) : (
-                                    <div className="border border-dashed border-blue-200 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
+                                    <div className="border border-dashed border-cyan-100 bg-white p-2 text-center text-[10px] font-bold text-slate-500">
                                       Nenhum jogador disponível no elenco.
                                     </div>
                                   )}
@@ -3197,7 +3197,7 @@ export default function EscalaCampeonatoPage() {
               <section className="mt-2 space-y-2">
                 {!perfilJogo && modoFormularioBeta !== "perfil" ? (
                   <div className="border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
                       Perfil de jogo
                     </p>
                     <h2 className="mt-1 text-lg font-black uppercase tracking-[-0.04em] text-slate-950">
@@ -3208,7 +3208,7 @@ export default function EscalaCampeonatoPage() {
                     </p>
                     <button
                       type="button"
-                      className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
+                      className="mt-3 flex h-10 w-full items-center justify-center gap-1 border border-cyan-500 bg-cyan-500 text-[10px] font-black uppercase text-white"
                       onClick={() => { setFormPerfilBeta((atual) => ({ ...atual, nick: perfilJogo?.nick || "", uid_jogo: perfilJogo?.uid_jogo || "", servidor: perfilJogo?.servidor || "BR", plataforma: perfilJogo?.plataforma || "mobile", funcao: perfilJogo?.funcao || "", foto_capa: perfilJogo?.foto_capa || "" })); setModoFormularioBeta("perfil"); }}
                     >
                       <Edit3 size={14} /> Criar perfil
@@ -3216,7 +3216,7 @@ export default function EscalaCampeonatoPage() {
                   </div>
                 ) : (
                   <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-                    <div className="relative h-28 bg-gradient-to-r from-slate-900 to-blue-700">
+                    <div className="relative h-28 bg-gradient-to-r from-slate-900 to-violet-600">
                       {getCapaPerfilMobile(perfilJogo) ? (
                         <img
                           src={getCapaPerfilMobile(perfilJogo) || ""}
@@ -3234,19 +3234,19 @@ export default function EscalaCampeonatoPage() {
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <div className="grid h-full w-full place-items-center text-blue-600">
+                            <div className="grid h-full w-full place-items-center text-cyan-600">
                               <UserRound size={26} />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1 pb-1 text-white">
-                          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-100">
+                          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-50">
                             Perfil de jogo
                           </p>
                           <h2 className="truncate text-xl font-black uppercase tracking-[-0.05em]">
                             {getNomePerfil(perfilJogo)}
                           </h2>
-                          <p className="text-[10px] font-bold text-blue-100">
+                          <p className="text-[10px] font-bold text-cyan-50">
                             UID {getUidPerfil(perfilJogo)}
                           </p>
                         </div>
@@ -3262,7 +3262,7 @@ export default function EscalaCampeonatoPage() {
                             setEquipeSelecionadaId(null);
                             setAba("equipe");
                           }}
-                          className="inline-flex h-7 items-center justify-center border border-blue-600 bg-blue-600 px-3 text-[8px] font-black uppercase text-white"
+                          className="inline-flex h-7 items-center justify-center border border-cyan-500 bg-cyan-500 px-3 text-[8px] font-black uppercase text-white"
                           title="Trocar perfil de acesso"
                         >
                           Jogador
@@ -3288,7 +3288,7 @@ export default function EscalaCampeonatoPage() {
                       <div className="mt-2 grid grid-cols-2 gap-1.5">
                         <button
                           type="button"
-                          className="flex h-10 items-center justify-center gap-1 border border-blue-600 bg-blue-600 text-[10px] font-black uppercase text-white"
+                          className="flex h-10 items-center justify-center gap-1 border border-cyan-500 bg-cyan-500 text-[10px] font-black uppercase text-white"
                           onClick={() => setModoFormularioBeta("perfil")}
                         >
                           <Edit3 size={14} /> Editar perfil
@@ -3313,7 +3313,7 @@ export default function EscalaCampeonatoPage() {
                             onClick={() => setSubAbaJogadorEquipe("convites")}
                             className={`h-8 border px-1 text-[8px] font-black uppercase ${
                               subAbaJogadorEquipe === "convites"
-                                ? "border-blue-600 bg-blue-600 text-white"
+                                ? "border-cyan-500 bg-cyan-500 text-white"
                                 : "border-slate-200 bg-white text-slate-700"
                             }`}
                           >
@@ -3324,7 +3324,7 @@ export default function EscalaCampeonatoPage() {
                             onClick={() => setSubAbaJogadorEquipe("pedidos")}
                             className={`h-8 border px-1 text-[8px] font-black uppercase ${
                               subAbaJogadorEquipe === "pedidos"
-                                ? "border-blue-600 bg-blue-600 text-white"
+                                ? "border-cyan-500 bg-cyan-500 text-white"
                                 : "border-slate-200 bg-white text-slate-700"
                             }`}
                           >
@@ -3435,7 +3435,7 @@ export default function EscalaCampeonatoPage() {
                                               "h-8 shrink-0 border px-2 text-[8px] font-black uppercase disabled:opacity-50",
                                               pedidoExistente
                                                 ? "border-amber-300 bg-amber-50 text-amber-700"
-                                                : "border-blue-600 bg-blue-600 text-white",
+                                                : "border-cyan-500 bg-cyan-500 text-white",
                                             ].join(" ")}
                                           >
                                             {pedidoExistente ? "Editar" : "Solicitar"}
@@ -3483,7 +3483,7 @@ export default function EscalaCampeonatoPage() {
                       </div>
 
                       <div className="mt-3 border border-slate-200 bg-slate-50 p-2">
-                        <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-blue-600">
+                        <div className="mb-2 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-600">
                           <CalendarDays size={13} /> Agenda do jogador
                         </div>
                         {agendaJogador.length ? (
@@ -3927,12 +3927,12 @@ function EscalacaoCards({
   );
 
   return (
-    <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-2 py-1">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+    <div className="overflow-hidden border border-slate-200 bg-white">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-2 py-1">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
           {jogadores.length}/{totalSlots} cards usados
         </p>
-        <p className="text-[9px] font-black uppercase text-blue-600">
+        <p className="rounded bg-amber-100 px-2 py-0.5 text-[8px] font-black uppercase text-amber-700">
           Toque na carta
         </p>
       </div>
@@ -3971,7 +3971,7 @@ function EscalacaoCards({
                   <button
                     type="button"
                     onClick={() => abrirAdicionar(jogador)}
-                    className="flex h-8 w-full items-center px-2 text-left text-[9px] font-black uppercase hover:bg-slate-100"
+                      className="flex h-8 w-full items-center px-2 text-left text-[9px] font-black uppercase text-amber-700 hover:bg-amber-50"
                   >
                     Trocar
                   </button>
@@ -4048,7 +4048,7 @@ function EscalacaoCards({
         <div className="border-t border-slate-200 bg-white p-2">
           <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
                 {trocarJogador ? "Trocar jogador" : "Adicionar jogador"}
               </p>
               <h4 className="text-sm font-black uppercase tracking-[-0.03em] text-slate-950">
@@ -4122,7 +4122,7 @@ function EscalacaoCards({
           </div>
 
           <div className="mt-3 space-y-1">
-            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-600">
+            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-600">
               Buscar jogador para convite
             </p>
             <textarea
@@ -4163,7 +4163,7 @@ function EscalacaoCards({
                       type="button"
                       disabled={processando === `convite-${perfil.id}`}
                       onClick={() => enviarConvite(perfil)}
-                      className="flex h-8 items-center gap-1 border border-blue-600 bg-blue-600 px-2 text-[9px] font-black uppercase text-white disabled:opacity-50"
+                    className="flex h-8 items-center gap-1 border border-amber-500 bg-amber-500 px-2 text-[9px] font-black uppercase text-white disabled:opacity-50"
                     >
                       <MailPlus size={13} /> Convite
                     </button>
@@ -4183,7 +4183,7 @@ function EscalacaoCards({
         <div className="border-t border-slate-200 bg-slate-50 p-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-600">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
                 Informações do jogador
               </p>
               <h4 className="truncate text-sm font-black uppercase text-slate-950">
@@ -4239,7 +4239,7 @@ function EscalacaoCards({
             <button
               type="button"
               onClick={() => abrirAdicionar(infoAberta)}
-              className="flex h-8 items-center justify-center border border-slate-300 bg-white text-[9px] font-black uppercase text-slate-800"
+              className="flex h-8 items-center justify-center border border-amber-300 bg-amber-50 text-[9px] font-black uppercase text-amber-700"
             >
               Trocar
             </button>
@@ -4256,7 +4256,7 @@ function EscalacaoCards({
           {infoAberta.perfil_jogo_id ? (
             <Link
               href={`/jogadores/${infoAberta.perfil_jogo_id}`}
-              className="mt-1 flex h-8 items-center justify-center border border-blue-600 bg-blue-600 text-[9px] font-black uppercase text-white"
+              className="mt-1 flex h-8 items-center justify-center border border-cyan-500 bg-cyan-500 text-[9px] font-black uppercase text-white"
             >
               Abrir perfil de jogo
             </Link>
@@ -4353,7 +4353,7 @@ function CardVazio({
       </p>
       <Link
         href={href}
-        className="mt-4 inline-flex h-11 items-center justify-center border border-blue-600 bg-blue-600 px-5 text-xs font-black uppercase text-white"
+        className="mt-4 inline-flex h-11 items-center justify-center border border-cyan-500 bg-cyan-500 px-5 text-xs font-black uppercase text-white"
       >
         {label}
       </Link>
