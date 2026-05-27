@@ -14,6 +14,30 @@ const STATUS_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado' },
 ]
 
+type WhatsContato = { nome: string; numero: string }
+
+function limparNumeroWhatsApp(numero: string) {
+  return String(numero || '').replace(/\D/g, '')
+}
+
+function normalizarContatosWhatsApp(contatos: WhatsContato[]) {
+  return contatos
+    .slice(0, 3)
+    .map((contato) => ({
+      nome: String(contato.nome || '').trim(),
+      numero: limparNumeroWhatsApp(contato.numero),
+    }))
+    .filter((contato) => contato.nome && contato.numero)
+}
+
+function contatosIniciais(data: any): WhatsContato[] {
+  const lista = Array.isArray(data?.whatsapp_contatos) ? data.whatsapp_contatos : []
+  const normalizados = normalizarContatosWhatsApp(lista)
+  if (normalizados.length) return normalizados
+  if (data?.whatsapp_suporte) return [{ nome: 'Vendas', numero: String(data.whatsapp_suporte) }]
+  return [{ nome: '', numero: '' }]
+}
+
 function extrairMensagemErro(error: any) {
   if (!error) return 'Erro desconhecido.'
   if (typeof error === 'string') return error
@@ -81,6 +105,7 @@ export default function EditarCampeonatoPage() {
     data_abertura_inscricoes: '',
     data_encerramento_inscricoes: '',
     whatsapp_suporte: '',
+    whatsapp_contatos: [{ nome: '', numero: '' }] as WhatsContato[],
   })
 
   useEffect(() => {
@@ -111,6 +136,7 @@ export default function EditarCampeonatoPage() {
           data_abertura_inscricoes: toDatetimeLocal(data?.data_abertura_inscricoes),
           data_encerramento_inscricoes: toDatetimeLocal(data?.data_encerramento_inscricoes),
           whatsapp_suporte: data?.whatsapp_suporte || '',
+          whatsapp_contatos: contatosIniciais(data),
         })
       } catch (error: any) {
         console.error('Erro ao carregar campeonato:', error)
@@ -143,7 +169,8 @@ export default function EditarCampeonatoPage() {
         data_fim: toIsoOrNull(form.data_fim),
         data_abertura_inscricoes: toIsoOrNull(form.data_abertura_inscricoes),
         data_encerramento_inscricoes: toIsoOrNull(form.data_encerramento_inscricoes),
-        whatsapp_suporte: String(form.whatsapp_suporte || '').trim() || null,
+        whatsapp_suporte: normalizarContatosWhatsApp(form.whatsapp_contatos)[0]?.numero || String(form.whatsapp_suporte || '').trim() || null,
+        whatsapp_contatos: normalizarContatosWhatsApp(form.whatsapp_contatos),
         updated_at: new Date().toISOString(),
       }
 
@@ -179,7 +206,8 @@ export default function EditarCampeonatoPage() {
   const linkEscala = origem ? `${origem}/escala/${id}` : `/escala/${id}`
   const linkCompleto = origem ? `${origem}/campeonatos/${id}` : `/campeonatos/${id}`
   const mensagemWhatsApp = `Olá, vim pelo Drop Zone e quero comprar vaga no campeonato ${form.nome || ''}.`
-  const whatsappLimpo = String(form.whatsapp_suporte || '').replace(/\D/g, '')
+  const contatoTesteWhatsApp = normalizarContatosWhatsApp(form.whatsapp_contatos)[0]
+  const whatsappLimpo = contatoTesteWhatsApp?.numero || String(form.whatsapp_suporte || '').replace(/\D/g, '')
   const linkWhatsApp = whatsappLimpo ? `https://wa.me/${whatsappLimpo}?text=${encodeURIComponent(mensagemWhatsApp)}` : ''
 
   async function copiar(texto: string) {
@@ -270,6 +298,59 @@ export default function EditarCampeonatoPage() {
         </section>
 
         <section className="grid gap-3 border border-zinc-200 bg-white p-4 md:grid-cols-2">
+          <div className="md:col-span-2 border border-zinc-200 bg-zinc-50 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="block text-[10px] font-medium uppercase tracking-wide text-zinc-500">Contatos WhatsApp para venda de vagas</span>
+              {form.whatsapp_contatos.length < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => atualizar('whatsapp_contatos', [...form.whatsapp_contatos, { nome: '', numero: '' }])}
+                  className="h-8 border border-zinc-300 bg-white px-3 text-[10px] font-black uppercase text-zinc-700"
+                >
+                  + Contato
+                </button>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              {form.whatsapp_contatos.map((contato: WhatsContato, index: number) => (
+                <div key={index} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+                  <input
+                    value={contato.nome}
+                    onChange={(event) => {
+                      const proximos = [...form.whatsapp_contatos]
+                      proximos[index] = { ...proximos[index], nome: event.target.value }
+                      atualizar('whatsapp_contatos', proximos)
+                    }}
+                    placeholder={`Nome do vendedor ${index + 1}`}
+                    className="h-9 w-full border border-zinc-300 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                  />
+                  <input
+                    value={contato.numero}
+                    onChange={(event) => {
+                      const proximos = [...form.whatsapp_contatos]
+                      proximos[index] = { ...proximos[index], numero: event.target.value }
+                      atualizar('whatsapp_contatos', proximos)
+                      if (index === 0) atualizar('whatsapp_suporte', event.target.value)
+                    }}
+                    placeholder="5591999999999"
+                    className="h-9 w-full border border-zinc-300 bg-white px-3 text-[12px] font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const proximos = form.whatsapp_contatos.filter((_: WhatsContato, i: number) => i !== index)
+                      atualizar('whatsapp_contatos', proximos.length ? proximos : [{ nome: '', numero: '' }])
+                    }}
+                    className="h-9 border border-red-200 bg-white px-3 text-[10px] font-black uppercase text-red-600"
+                  >
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <label className="md:col-span-2">
             <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">Nome</span>
             <input
@@ -365,7 +446,7 @@ export default function EditarCampeonatoPage() {
           </label>
 
 
-          <label className="md:col-span-2">
+          <label className="hidden">
             <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-zinc-500">WhatsApp do responsável para compra de vaga</span>
             <input
               value={form.whatsapp_suporte}

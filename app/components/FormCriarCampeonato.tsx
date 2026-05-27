@@ -25,6 +25,7 @@ type FormCriarCampeonatoProps = {
 }
 
 type Etapa = 1 | 2 | 3 | 4 | 5
+type WhatsContato = { nome: string; numero: string }
 
 const OPCOES_PLATAFORMA = ['Mobile', 'Emulador', 'Misto']
 const OPCOES_ABRANGENCIA = ['Nacional', 'Estadual', 'Regional', 'Internacional']
@@ -71,6 +72,20 @@ const OPCOES_TIPO_PREMIACAO = [
  'Diamantes',
  'Troféu / Medalha',
 ]
+
+function limparNumeroWhatsApp(numero: string) {
+ return String(numero || '').replace(/\D/g, '')
+}
+
+function normalizarContatosWhatsApp(contatos: WhatsContato[]) {
+ return contatos
+ .slice(0, 3)
+ .map((contato) => ({
+ nome: String(contato.nome || '').trim(),
+ numero: limparNumeroWhatsApp(contato.numero),
+ }))
+ .filter((contato) => contato.nome && contato.numero)
+}
 const OPCOES_PLATAFORMA_TRANSMISSAO = ['YouTube', 'Twitch', 'TikTok']
 const OPCOES_TROCA_JOGADORES = ['Permitida', 'Proibida']
 
@@ -489,6 +504,7 @@ export default function FormCriarCampeonato({
  discord_url: '',
  canal_oficial_url: '',
  whatsapp_suporte: '',
+ whatsapp_contatos: [{ nome: '', numero: '' }] as WhatsContato[],
  email_suporte: '',
  responsavel_nome: '',
 
@@ -668,6 +684,7 @@ export default function FormCriarCampeonato({
  const logo_url = await uploadImagem(logoFile, 'logos')
  const banner_url = await uploadImagem(bannerFile, 'banners')
  const distribuicaoPremiacao = parseDistribuicaoPremiacao()
+ const contatosWhatsApp = normalizarContatosWhatsApp(form.whatsapp_contatos)
 
  const payload = {
  produtora_id: produtoraFinalId,
@@ -743,7 +760,8 @@ export default function FormCriarCampeonato({
  discord_oficial: form.discord_oficial,
  discord_url: toNullableText(form.discord_url),
  canal_oficial_url: toNullableText(form.canal_oficial_url),
- whatsapp_suporte: toNullableText(form.whatsapp_suporte),
+ whatsapp_suporte: contatosWhatsApp[0]?.numero || toNullableText(form.whatsapp_suporte),
+ whatsapp_contatos: contatosWhatsApp,
  email_suporte: toNullableText(form.email_suporte),
  responsavel_nome: toNullableText(form.responsavel_nome),
 
@@ -1459,11 +1477,61 @@ export default function FormCriarCampeonato({
  placeholder="Canal oficial"
  />
 
+ <div className="border border-zinc-200 bg-zinc-50 p-3">
+ <div className="mb-2 flex items-center justify-between gap-2">
+ <InputLabel>Contatos WhatsApp para venda de vagas</InputLabel>
+ {form.whatsapp_contatos.length < 3 ? (
+ <button
+ type="button"
+ onClick={() =>
+ updateField('whatsapp_contatos', [
+ ...form.whatsapp_contatos,
+ { nome: '', numero: '' },
+ ])
+ }
+ className="h-8 border border-zinc-300 bg-white px-3 text-[10px] font-black uppercase text-zinc-700"
+ >
+ + Contato
+ </button>
+ ) : null}
+ </div>
+
+ <div className="space-y-2">
+ {form.whatsapp_contatos.map((contato, index) => (
+ <div key={index} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
  <TextInput
- value={form.whatsapp_suporte}
- onChange={(value) => updateField('whatsapp_suporte', value)}
- placeholder="WhatsApp de suporte"
+ value={contato.nome}
+ onChange={(value) => {
+ const proximos = [...form.whatsapp_contatos]
+ proximos[index] = { ...proximos[index], nome: value }
+ updateField('whatsapp_contatos', proximos)
+ }}
+ placeholder={`Nome do vendedor ${index + 1}`}
  />
+ <TextInput
+ value={contato.numero}
+ onChange={(value) => {
+ const proximos = [...form.whatsapp_contatos]
+ proximos[index] = { ...proximos[index], numero: value }
+ updateField('whatsapp_contatos', proximos)
+ if (index === 0) updateField('whatsapp_suporte', value)
+ }}
+ placeholder="5591999999999"
+ />
+ <button
+ type="button"
+ onClick={() => {
+ const proximos = form.whatsapp_contatos.filter((_, i) => i !== index)
+ updateField('whatsapp_contatos', proximos.length ? proximos : [{ nome: '', numero: '' }])
+ }}
+ className="h-10 border border-red-200 bg-white px-3 text-[10px] font-black uppercase text-red-600"
+ >
+ Remover
+ </button>
+ </div>
+ ))}
+ </div>
+ </div>
 
  <TextInput
  value={form.email_suporte}

@@ -29,6 +29,8 @@ import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 import FormCriarEquipe from "@/app/components/FormCriarEquipe";
 import AuthLinkCampeonato from "@/app/components/AuthLinkCampeonato";
 
+type WhatsContato = { nome: string; numero: string };
+
 type Campeonato = {
   id: string;
   nome: string;
@@ -51,6 +53,9 @@ type Campeonato = {
   reservas_permitidos: number | null;
   troca_jogadores: string | null;
   checkin_obrigatorio: boolean | null;
+  whatsapp_suporte?: string | null;
+  whatsapp_contato?: string | null;
+  whatsapp_contatos?: WhatsContato[] | null;
 };
 
 type Equipe = {
@@ -442,6 +447,10 @@ export default function EscalaCampeonatoPage() {
   >({});
   const [lineEditandoVagaId, setLineEditandoVagaId] = useState<string | null>(null);
   const [formLine, setFormLine] = useState({ nome: "", logo_url: "" });
+  const [selecionarContatoInscricao, setSelecionarContatoInscricao] = useState<{
+    equipe: Equipe;
+    contatos: WhatsContato[];
+  } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
@@ -687,7 +696,7 @@ export default function EscalaCampeonatoPage() {
         paramLimpo,
       );
     const select =
-      "id,nome,slug,logo_url,banner_url,status,tipo,tipo_campeonato,formato,plataforma,vagas,quantidade_equipes,valor_vaga,valor_premiacao,data_inicio,data_abertura_inscricoes,data_encerramento_inscricoes,jogadores_por_equipe,reservas_permitidos,troca_jogadores,checkin_obrigatorio";
+      "id,nome,slug,logo_url,banner_url,status,tipo,tipo_campeonato,formato,plataforma,vagas,quantidade_equipes,valor_vaga,valor_premiacao,data_inicio,data_abertura_inscricoes,data_encerramento_inscricoes,jogadores_por_equipe,reservas_permitidos,troca_jogadores,checkin_obrigatorio,whatsapp_suporte,whatsapp_contato,whatsapp_contatos";
 
     if (!paramLimpo) return null;
 
@@ -1562,6 +1571,32 @@ export default function EscalaCampeonatoPage() {
     } catch (error: any) {
       alert(error?.message || error?.details || "Erro ao salvar line.");
     }
+  }
+
+  function contatosInscricaoWhatsappBeta() {
+    const contatos = Array.isArray(campeonato?.whatsapp_contatos)
+      ? campeonato.whatsapp_contatos
+      : [];
+    const normalizados = contatos
+      .slice(0, 3)
+      .map((contato) => ({
+        nome: String(contato?.nome || "").trim(),
+        numero: String(contato?.numero || "").replace(/\D/g, ""),
+      }))
+      .filter((contato) => contato.nome && contato.numero);
+
+    if (normalizados.length) return normalizados;
+
+    const numero = String(campeonato?.whatsapp_suporte || campeonato?.whatsapp_contato || "").replace(/\D/g, "");
+    return numero ? [{ nome: "Vendas", numero }] : [];
+  }
+
+  function linkInscricaoWhatsappBeta(equipe: Equipe | null, contato: WhatsContato) {
+    const numero = String(contato.numero || "").replace(/\D/g, "");
+    if (!numero) return "";
+
+    const mensagem = `Ola, vim pelo Drop Zone e quero inscrever a equipe ${equipe?.nome || ""} no campeonato ${campeonato?.nome || ""}.`;
+    return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   }
 
   async function adicionarPerfilNaLineBeta(equipe: Equipe, line: LineMobile, perfil: PerfilJogo) {
@@ -2759,7 +2794,63 @@ export default function EscalaCampeonatoPage() {
                   );
                   const inscrita = inscricoes.length > 0;
 
-                  if (!inscrita) return null;
+                  if (!inscrita) {
+                    const contatosWhats = contatosInscricaoWhatsappBeta();
+                    const linkWhats =
+                      contatosWhats.length === 1
+                        ? linkInscricaoWhatsappBeta(equipe, contatosWhats[0])
+                        : "";
+
+                    return (
+                      <div
+                        key={equipe.id}
+                        className="border border-amber-200 bg-amber-50 p-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Logo url={equipe.logo_url} nome={equipe.nome} />
+                          <div className="min-w-0 flex-1">
+                            <h3 className="truncate text-sm font-black uppercase tracking-[-0.03em] text-slate-950">
+                              {equipe.tag ? `[${equipe.tag}] ` : ""}
+                              {equipe.nome}
+                            </h3>
+                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-700">
+                              Ainda nao tem vaga neste campeonato
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-600">
+                          Essa equipe ainda nao esta inscrita. Fale com a organizacao para garantir a vaga.
+                        </p>
+                        {contatosWhats.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelecionarContatoInscricao({
+                                equipe,
+                                contatos: contatosWhats,
+                              })
+                            }
+                            className="mt-2 flex h-9 w-full items-center justify-center rounded bg-emerald-600 text-[9px] font-black uppercase text-white"
+                          >
+                            Inscrever-se
+                          </button>
+                        ) : linkWhats ? (
+                          <a
+                            href={linkWhats}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 flex h-9 items-center justify-center rounded bg-emerald-600 text-[9px] font-black uppercase text-white"
+                          >
+                            Inscrever-se
+                          </a>
+                        ) : (
+                          <div className="mt-2 rounded border border-dashed border-amber-300 bg-white p-2 text-center text-[9px] font-bold uppercase text-amber-700">
+                            WhatsApp do campeonato nao cadastrado
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
 
                   return (
                     <div
@@ -2818,8 +2909,11 @@ export default function EscalaCampeonatoPage() {
                                       ].join(" ")}
                                     >
                                       <p className="max-w-[110px] truncate text-[9px] font-black tracking-[0.12em]">
-                                        {inscricao.nome_exibicao ||
-                                          `Vaga ${inscricao.numero_vaga || ""}`}
+                                        {(linesPorEquipe[equipe.id] || []).find(
+                                          (line) => line.id === inscricao.line_id,
+                                        )?.nome ||
+                                          inscricao.nome_exibicao ||
+                                          `Line ${inscricao.numero_vaga || ""}`}
                                       </p>
                                       <p
                                         className={[
@@ -2851,8 +2945,11 @@ export default function EscalaCampeonatoPage() {
                                     />
                                     <div className="min-w-0">
                                       <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-emerald-900">
-                                        {inscricaoAtiva.nome_exibicao ||
-                                          `Vaga ${inscricaoAtiva.numero_vaga || ""}`}
+                                        {(linesPorEquipe[equipe.id] || []).find(
+                                          (line) => line.id === inscricaoAtiva.line_id,
+                                        )?.nome ||
+                                          inscricaoAtiva.nome_exibicao ||
+                                          `Line ${inscricaoAtiva.numero_vaga || ""}`}
                                       </p>
                                       <p className="text-[8px] font-black uppercase text-emerald-600">
                                         {inscricaoAtiva.line_id ? "Line vinculada" : "Line automatica pendente"}
@@ -2868,8 +2965,8 @@ export default function EscalaCampeonatoPage() {
                                       setLineEditandoVagaId(inscricaoAtiva.id);
                                       setFormLine({
                                         nome:
-                                          inscricaoAtiva.nome_exibicao ||
                                           lineAtual?.nome ||
+                                          inscricaoAtiva.nome_exibicao ||
                                           `Line ${inscricaoAtiva.numero_vaga || ""}`,
                                         logo_url: lineAtual?.logo_url || "",
                                       });
@@ -3803,6 +3900,52 @@ export default function EscalaCampeonatoPage() {
         {erro ? (
           <div className="mt-3 border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
             {erro}
+          </div>
+        ) : null}
+        {selecionarContatoInscricao ? (
+          <div
+            className="fixed inset-0 z-[600] flex items-end justify-center bg-slate-950/45 p-3"
+            onClick={() => setSelecionarContatoInscricao(null)}
+          >
+            <div
+              className="w-full max-w-sm rounded-t-2xl border border-emerald-100 bg-white p-3"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-600">
+                Escolha o vendedor
+              </p>
+              <h3 className="mt-1 text-lg font-black uppercase text-slate-950">
+                Inscrever equipe
+              </h3>
+              <div className="mt-3 space-y-2">
+                {selecionarContatoInscricao.contatos.map((contato) => (
+                  <a
+                    key={`${contato.nome}-${contato.numero}`}
+                    href={linkInscricaoWhatsappBeta(
+                      selecionarContatoInscricao.equipe,
+                      contato,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3"
+                  >
+                    <span className="text-[11px] font-black uppercase text-slate-950">
+                      {contato.nome}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-700">
+                      {contato.numero}
+                    </span>
+                  </a>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelecionarContatoInscricao(null)}
+                className="mt-3 h-9 w-full rounded border border-slate-200 bg-white text-[9px] font-black uppercase text-slate-600"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
