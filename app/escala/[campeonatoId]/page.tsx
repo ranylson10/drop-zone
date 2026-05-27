@@ -2845,7 +2845,7 @@ export default function EscalaCampeonatoPage() {
                                   ) : null}
                                 </div>
 
-                                <div className="divide-y divide-slate-100">
+                                <div className="grid grid-cols-4 gap-1.5 p-1.5">
                                   {(elencoPorEquipe[equipe.id] || [])
                                     .filter((perfil) => {
                                       const busca = buscaJogadorEquipe.trim().toLowerCase();
@@ -2869,49 +2869,30 @@ export default function EscalaCampeonatoPage() {
                                       .map((perfil) => (
                                         <div
                                           key={perfil.id}
-                                          className={`bg-white px-2 py-1.5 ${
-                                            jogadorElencoSelecionado === perfil.id ? "ring-1 ring-cyan-500" : ""
+                                          className={`min-w-0 rounded-lg ${
+                                            jogadorElencoSelecionado === perfil.id ? "ring-2 ring-cyan-500" : ""
                                           }`}
                                         >
-                                          <button
-                                            type="button"
+                                          <JogadorQuadrado
+                                            name={getNomePerfil(perfil)}
+                                            uid={getUidPerfil(perfil)}
+                                            photoUrl={perfil.foto_capa || null}
+                                            badge={jogadorElencoSelecionado === perfil.id ? "Selecionado" : "Jogador"}
                                             onClick={() =>
                                               setJogadorElencoSelecionado(
                                                 jogadorElencoSelecionado === perfil.id ? null : perfil.id,
                                               )
                                             }
-                                            className="flex w-full items-center gap-2 text-left"
-                                          >
-                                            <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
-                                              {perfil.foto_capa ? (
-                                                <img
-                                                  src={perfil.foto_capa}
-                                                  alt={getNomePerfil(perfil)}
-                                                  className="h-full w-full object-cover"
-                                                />
-                                              ) : null}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                              <p className="truncate text-[10px] font-black uppercase text-slate-950">
-                                                {getNomePerfil(perfil)}
-                                              </p>
-                                              <p className="text-[8px] font-bold uppercase text-slate-500">
-                                                UID {getUidPerfil(perfil)}
-                                              </p>
-                                            </div>
-                                            <span className="text-[8px] font-black uppercase text-cyan-600">
-                                              {jogadorElencoSelecionado === perfil.id ? "Selecionado" : "Jogador"}
-                                            </span>
-                                          </button>
+                                          />
 
                                           {jogadorElencoSelecionado === perfil.id ? (
                                             <button
                                               type="button"
                                               onClick={() => removerJogadorElencoBeta(equipe, perfil)}
                                               disabled={operandoJogadorId === perfil.id}
-                                              className="mt-1 h-8 w-full border border-red-200 bg-red-50 text-[8px] font-black uppercase text-red-600"
+                                              className="mt-1 min-h-8 w-full rounded-md border border-red-200 bg-red-50 px-1 text-[7px] font-black uppercase leading-tight text-red-600"
                                             >
-                                              Remover do elenco
+                                              Remover
                                             </button>
                                           ) : null}
                                         </div>
@@ -2920,29 +2901,18 @@ export default function EscalaCampeonatoPage() {
                                     resultadosBuscaJogadorSite
                                       .filter((perfil) => perfil.equipe_id !== equipe.id)
                                       .map((perfil) => (
-                                        <div key={perfil.id} className="flex items-center gap-2 bg-white px-2 py-1.5">
-                                          <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
-                                            {perfil.foto_capa ? (
-                                              <img
-                                                src={perfil.foto_capa}
-                                                alt={getNomePerfil(perfil)}
-                                                className="h-full w-full object-cover"
-                                              />
-                                            ) : null}
-                                          </div>
-                                          <div className="min-w-0 flex-1">
-                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
-                                              {getNomePerfil(perfil)}
-                                            </p>
-                                            <p className="text-[8px] font-bold uppercase text-slate-500">
-                                              UID {getUidPerfil(perfil)}
-                                            </p>
-                                          </div>
+                                        <div key={perfil.id} className="min-w-0">
+                                          <JogadorQuadrado
+                                            name={getNomePerfil(perfil)}
+                                            uid={getUidPerfil(perfil)}
+                                            photoUrl={perfil.foto_capa || null}
+                                            badge="Novo"
+                                          />
                                           <button
                                             type="button"
                                             disabled={operandoJogadorId === perfil.id}
                                             onClick={() => adicionarJogadorElencoBeta(equipe, perfil)}
-                                            className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
+                                            className="mt-1 min-h-8 w-full rounded-md border border-amber-500 bg-amber-500 px-1 text-[7px] font-black uppercase leading-tight text-white disabled:opacity-50"
                                           >
                                             Adicionar
                                           </button>
@@ -3124,31 +3094,20 @@ export default function EscalaCampeonatoPage() {
                                   </div>
 
                                   {jogadoresLine.length ? (
-                                    <div className="divide-y divide-slate-100">
+                                    <div className="grid grid-cols-4 gap-1.5 p-1.5">
                                       {jogadoresLine.map((jogador) => (
-                                        <div key={jogador.id} className="flex items-center gap-2 px-2 py-1.5">
-                                          <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
-                                            {getFotoJogador(jogador) ? (
-                                              <img
-                                                src={getFotoJogador(jogador) || ""}
-                                                alt={getNomeJogador(jogador)}
-                                                className="h-full w-full object-cover"
-                                              />
-                                            ) : null}
-                                          </div>
-                                          <div className="min-w-0 flex-1">
-                                            <p className="truncate text-[10px] font-black uppercase text-slate-950">
-                                              {getNomeJogador(jogador)}
-                                            </p>
-                                            <p className="text-[8px] font-bold uppercase text-slate-500">
-                                              UID {getUidJogador(jogador)}
-                                            </p>
-                                          </div>
+                                        <div key={jogador.id} className="min-w-0">
+                                          <JogadorQuadrado
+                                            name={getNomeJogador(jogador)}
+                                            uid={getUidJogador(jogador)}
+                                            photoUrl={getFotoJogador(jogador)}
+                                            badge={getTierJogador(jogador)}
+                                          />
                                           <button
                                             type="button"
                                             onClick={() => removerJogadorLineBeta(jogador)}
                                             disabled={operandoJogadorId === jogador.id}
-                                            className="h-7 border border-red-200 bg-red-50 px-2 text-[8px] font-black uppercase text-red-600"
+                                            className="mt-1 min-h-8 w-full rounded-md border border-red-200 bg-red-50 px-1 text-[7px] font-black uppercase leading-tight text-red-600"
                                           >
                                             Remover
                                           </button>
@@ -3182,7 +3141,7 @@ export default function EscalaCampeonatoPage() {
                                     const usados = new Set(jogadoresLine.map((jogador) => jogador.perfil_jogo_id).filter(Boolean));
                                     return perfil.id && !usados.has(perfil.id);
                                   }).length ? (
-                                    <div className="space-y-1">
+                                    <div className="grid grid-cols-4 gap-1.5">
                                       {(elencoPorEquipe[equipe.id] || [])
                                         .filter((perfil) => {
                                           const usados = new Set(jogadoresLine.map((jogador) => jogador.perfil_jogo_id).filter(Boolean));
@@ -3190,33 +3149,25 @@ export default function EscalaCampeonatoPage() {
                                         })
                                         .slice(0, 20)
                                         .map((perfil) => (
-                                          <button
+                                          <div
                                             key={perfil.id}
-                                            type="button"
-                                            onClick={() => adicionarPerfilNaLineBeta(equipe, lineAtiva, perfil)}
-                                            className="flex w-full items-center gap-2 border border-slate-200 bg-white p-1.5 text-left"
+                                            className="min-w-0"
                                           >
-                                            <div className="h-8 w-8 overflow-hidden border border-slate-200 bg-slate-100">
-                                              {perfil.foto_capa ? (
-                                                <img
-                                                  src={perfil.foto_capa}
-                                                  alt={getNomePerfil(perfil)}
-                                                  className="h-full w-full object-cover"
-                                                />
-                                              ) : null}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                              <p className="truncate text-[10px] font-black uppercase text-slate-950">
-                                                {getNomePerfil(perfil)}
-                                              </p>
-                                              <p className="text-[8px] font-bold uppercase text-slate-500">
-                                                UID {getUidPerfil(perfil)}
-                                              </p>
-                                            </div>
-                                            <span className="text-[8px] font-black uppercase text-cyan-600">
+                                            <JogadorQuadrado
+                                              name={getNomePerfil(perfil)}
+                                              uid={getUidPerfil(perfil)}
+                                              photoUrl={perfil.foto_capa || null}
+                                              badge={tierPerfil(perfil)}
+                                              onClick={() => adicionarPerfilNaLineBeta(equipe, lineAtiva, perfil)}
+                                            />
+                                            <button
+                                              type="button"
+                                              onClick={() => adicionarPerfilNaLineBeta(equipe, lineAtiva, perfil)}
+                                              className="mt-1 min-h-8 w-full rounded-md border border-cyan-500 bg-cyan-500 px-1 text-[7px] font-black uppercase leading-tight text-white"
+                                            >
                                               Adicionar
-                                            </span>
-                                          </button>
+                                            </button>
+                                          </div>
                                         ))}
                                     </div>
                                   ) : (
