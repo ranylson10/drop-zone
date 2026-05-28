@@ -172,6 +172,18 @@ type WhatsContato = {
   numero: string
 }
 
+type PaisWhatsApp = {
+  nome: string
+  codigo: string
+  bandeira: string
+}
+
+type WhatsContatoForm = {
+  nome: string
+  codigoPais: string
+  numero: string
+}
+
 type ComprovanteCompra = {
   campeonato: string
   equipe: string
@@ -187,6 +199,20 @@ const STATUS_CAMPEONATO_OPTIONS = [
   { value: 'em_andamento', label: 'Em andamento', classes: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   { value: 'finalizado', label: 'Finalizado', classes: 'border-red-200 bg-red-50 text-red-700' },
   { value: 'cancelado', label: 'Cancelado', classes: 'border-zinc-200 bg-zinc-50 text-zinc-700' },
+]
+
+const PAISES_WHATSAPP: PaisWhatsApp[] = [
+  { nome: 'Brasil', codigo: '55', bandeira: '🇧🇷' },
+  { nome: 'Estados Unidos', codigo: '1', bandeira: '🇺🇸' },
+  { nome: 'Portugal', codigo: '351', bandeira: '🇵🇹' },
+  { nome: 'Angola', codigo: '244', bandeira: '🇦🇴' },
+  { nome: 'Mocambique', codigo: '258', bandeira: '🇲🇿' },
+  { nome: 'Argentina', codigo: '54', bandeira: '🇦🇷' },
+  { nome: 'Paraguai', codigo: '595', bandeira: '🇵🇾' },
+  { nome: 'Uruguai', codigo: '598', bandeira: '🇺🇾' },
+  { nome: 'Chile', codigo: '56', bandeira: '🇨🇱' },
+  { nome: 'Colombia', codigo: '57', bandeira: '🇨🇴' },
+  { nome: 'Mexico', codigo: '52', bandeira: '🇲🇽' },
 ]
 
 function normalizarStatusCampeonato(status?: string | null) {
@@ -206,6 +232,44 @@ function normalizarContatosWhatsApp(contatos: WhatsContato[]) {
       numero: limparNumeroWhatsApp(contato.numero),
     }))
     .filter((contato) => contato.nome && contato.numero)
+}
+
+function paisWhatsAppPorCodigo(codigo?: string) {
+  return PAISES_WHATSAPP.find((pais) => pais.codigo === codigo) || PAISES_WHATSAPP[0]
+}
+
+function separarNumeroWhatsApp(numero: string): WhatsContatoForm {
+  const limpo = limparNumeroWhatsApp(numero)
+  const pais = [...PAISES_WHATSAPP]
+    .sort((a, b) => b.codigo.length - a.codigo.length)
+    .find((item) => limpo.startsWith(item.codigo))
+
+  if (!pais) {
+    return { nome: '', codigoPais: PAISES_WHATSAPP[0].codigo, numero: limpo }
+  }
+
+  return {
+    nome: '',
+    codigoPais: pais.codigo,
+    numero: limpo.slice(pais.codigo.length),
+  }
+}
+
+function contatoParaForm(contato: WhatsContato): WhatsContatoForm {
+  const separado = separarNumeroWhatsApp(contato.numero)
+  return {
+    nome: contato.nome || '',
+    codigoPais: separado.codigoPais,
+    numero: separado.numero,
+  }
+}
+
+function contatoFormParaContato(contato: WhatsContatoForm): WhatsContato {
+  const codigoPais = paisWhatsAppPorCodigo(contato.codigoPais).codigo
+  return {
+    nome: contato.nome,
+    numero: `${codigoPais}${limparNumeroWhatsApp(contato.numero)}`,
+  }
 }
 
 function contatosWhatsAppIniciais(camp?: Record<string, unknown> | null): WhatsContato[] {
@@ -538,6 +602,18 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     } catch {
       console.error(`${titulo} | json: não foi possível serializar`)
     }
+  }
+
+  const mensagemErroSupabase = (err: any) => {
+    const partes = [err?.message, err?.details, err?.hint, err?.code]
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+
+    if (partes.some((item) => item.includes('whatsapp_contatos') || item.includes('PGRST204'))) {
+      return 'Erro ao salvar contatos. A coluna whatsapp_contatos ainda nao existe no banco de producao. Rode a migration do Supabase e tente novamente.'
+    }
+
+    return partes[0] || 'Erro ao salvar alteração.'
   }
 
   useEffect(() => {
@@ -1350,7 +1426,28 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       setCamp((prev: any) => ({ ...prev, [campo]: valorFinal }))
     } catch (err) {
       logErroSupabase('Erro ao salvar alteração', err)
-      alert('Erro ao salvar alteração.')
+      alert(mensagemErroSupabase(err))
+      throw err
+    }
+  }
+
+  async function salvarAlteracoes(campos: Record<string, any>) {
+    if (!id) return
+
+    try {
+      const payload = { ...campos }
+      const { error } = await supabase.from('campeonatos').update(payload).eq('id', id)
+
+      if (error) {
+        logErroSupabase('Erro ao salvar alterações', error)
+        throw error
+      }
+
+      setCamp((prev: any) => ({ ...prev, ...payload }))
+    } catch (err) {
+      logErroSupabase('Erro ao salvar alterações', err)
+      alert(mensagemErroSupabase(err))
+      throw err
     }
   }
 
@@ -1822,6 +1919,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 valorVagaCompra={valorVagaCompra}
                 vagasRestantesCompra={vagasRestantesCompra}
                 onSalvar={salvarAlteracao}
+                onSalvarCampos={salvarAlteracoes}
               />
             )}
           </main>
@@ -1839,6 +1937,7 @@ function PainelConfiguracoesCampeonato({
   valorVagaCompra,
   vagasRestantesCompra,
   onSalvar,
+  onSalvarCampos,
 }: {
   camp: any
   campeonatoId: string
@@ -1846,6 +1945,7 @@ function PainelConfiguracoesCampeonato({
   valorVagaCompra: number
   vagasRestantesCompra: number
   onSalvar: (campo: string, valor: any) => Promise<void>
+  onSalvarCampos: (campos: Record<string, any>) => Promise<void>
 }) {
   const [salvandoCampo, setSalvandoCampo] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
@@ -1871,8 +1971,10 @@ function PainelConfiguracoesCampeonato({
 
     setSalvandoCampo('whatsapp_contatos')
     try {
-      await onSalvar('whatsapp_contatos', contatosNormalizados)
-      await onSalvar('whatsapp_suporte', contatosNormalizados[0]?.numero || null)
+      await onSalvarCampos({
+        whatsapp_contatos: contatosNormalizados,
+        whatsapp_suporte: contatosNormalizados[0]?.numero || null,
+      })
     } finally {
       setSalvandoCampo(null)
     }
@@ -2026,10 +2128,12 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
   onSave: (contatos: WhatsContato[]) => Promise<void>
   loading?: boolean
 }) {
-  const [contatos, setContatos] = useState<WhatsContato[]>(() => (value.length ? value : [{ nome: '', numero: '' }]))
-  const contatosAtuais = contatos.length ? contatos : value
+  const [contatos, setContatos] = useState<WhatsContatoForm[]>(() =>
+    (value.length ? value : [{ nome: '', numero: '' }]).map(contatoParaForm)
+  )
+  const contatosAtuais = contatos.length ? contatos : value.map(contatoParaForm)
 
-  function atualizarContato(index: number, campo: keyof WhatsContato, valor: string) {
+  function atualizarContato(index: number, campo: keyof WhatsContatoForm, valor: string) {
     setContatos((prev) => {
       const proximos = [...prev]
       proximos[index] = { ...proximos[index], [campo]: valor }
@@ -2039,26 +2143,27 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
 
   function adicionarContato() {
     setContatos((prev) => {
-      const atuais = prev.length ? prev : value
-      return atuais.length >= 3 ? atuais : [...atuais, { nome: '', numero: '' }]
+      const atuais = prev.length ? prev : value.map(contatoParaForm)
+      return atuais.length >= 3 ? atuais : [...atuais, { nome: '', codigoPais: PAISES_WHATSAPP[0].codigo, numero: '' }]
     })
   }
 
   function removerContato(index: number) {
     setContatos((prev) => {
-      const atuais = prev.length ? prev : value
+      const atuais = prev.length ? prev : value.map(contatoParaForm)
       const proximos = atuais.filter((_, itemIndex) => itemIndex !== index)
-      return proximos.length ? proximos : [{ nome: '', numero: '' }]
+      return proximos.length ? proximos : [{ nome: '', codigoPais: PAISES_WHATSAPP[0].codigo, numero: '' }]
     })
   }
 
-  const contatosValidos = normalizarContatosWhatsApp(contatosAtuais)
+  const contatosParaSalvar = contatosAtuais.map(contatoFormParaContato)
+  const contatosValidos = normalizarContatosWhatsApp(contatosParaSalvar)
 
   return (
     <div className="space-y-3">
       <div className="grid gap-2">
         {contatosAtuais.map((contato, index) => (
-          <div key={index} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+          <div key={index} className="grid gap-2 md:grid-cols-[1fr_150px_1fr_auto]">
             <label className="block">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Nome do vendedor</span>
               <input
@@ -2069,11 +2174,25 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
               />
             </label>
             <label className="block">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Pais</span>
+              <select
+                value={contato.codigoPais}
+                onChange={(event) => atualizarContato(index, 'codigoPais', event.target.value)}
+                className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-xs font-black text-[#142340] outline-none focus:border-[#2563eb]"
+              >
+                {PAISES_WHATSAPP.map((pais) => (
+                  <option key={pais.codigo} value={pais.codigo}>
+                    {pais.bandeira} +{pais.codigo}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">WhatsApp</span>
               <input
                 value={contato.numero}
                 onChange={(event) => atualizarContato(index, 'numero', event.target.value)}
-                placeholder="5591999999999"
+                placeholder="91999999999"
                 className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]"
               />
             </label>
@@ -2104,7 +2223,7 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
           <button
             type="button"
             disabled={loading}
-            onClick={() => onSave(contatosAtuais)}
+            onClick={() => onSave(contatosParaSalvar)}
             className="h-9 border border-[#2563eb] bg-[#2563eb] px-4 text-[10px] font-black uppercase text-white disabled:opacity-60"
           >
             {loading ? 'Salvando...' : 'Salvar contatos'}
