@@ -152,6 +152,27 @@ function normalizarStatusLista(status?: string | null) {
  return { label: 'Rascunho', className: 'border-amber-200 bg-amber-50 text-amber-700' }
 }
 
+function contatosInscricaoCampeonato(camp: any) {
+ const contatos = Array.isArray(camp?.whatsapp_contatos) ? camp.whatsapp_contatos : []
+ const normalizados = contatos
+ .map((contato: any) => ({
+ nome: String(contato?.nome || '').trim(),
+ numero: String(contato?.numero || '').replace(/\D/g, ''),
+ }))
+ .filter((contato: any) => contato.nome && contato.numero)
+
+ if (normalizados.length) return normalizados
+
+ const numero = String(camp?.whatsapp_suporte || camp?.whatsapp_contato || '').replace(/\D/g, '')
+ return numero ? [{ nome: 'Vendas', numero }] : []
+}
+
+function linkInscricaoWhatsApp(camp: any, contato: { nome: string; numero: string }) {
+ const numero = String(contato.numero || '').replace(/\D/g, '')
+ const mensagem = `Ola, vim pelo Drop Zone e quero comprar vaga no campeonato ${camp?.nome || ''}.`
+ return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`
+}
+
 function getArenaPalette(slug?: string | null, index = 0) {
  const key = normalizarTexto(slug)
  const palettes: Record<string, { field: string; sky: string; stripe: string; button: string; glow: string }> = {
@@ -211,7 +232,17 @@ function getArenaPalette(slug?: string | null, index = 0) {
  return palettes[key] || fallback
 }
 
-function CampeonatoShowCard({ camp, index = 0, compacto = false }: { camp: any; index?: number; compacto?: boolean }) {
+function CampeonatoShowCard({
+ camp,
+ index = 0,
+ compacto = false,
+ onInscrever,
+}: {
+ camp: any
+ index?: number
+ compacto?: boolean
+ onInscrever?: (camp: any) => void
+}) {
  const tipoCompeticao = resolverTipoCompeticao(camp)
  const meta = TIPOS_COMPETICAO.find((item) => item.slug === tipoCompeticao)
  const palette = getArenaPalette(tipoCompeticao, index)
@@ -289,11 +320,17 @@ function CampeonatoShowCard({ camp, index = 0, compacto = false }: { camp: any; 
  </div>
  </div>
 
- <span
+ <button
+ type="button"
+ onClick={(event) => {
+ event.preventDefault()
+ event.stopPropagation()
+ onInscrever?.(camp)
+ }}
  className={`inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r ${palette.button} px-4 text-[10px] font-black uppercase tracking-[0.12em] text-white`}
  >
- Entrar
- </span>
+ Inscrever-se
+ </button>
  </div>
  </div>
  </div>
@@ -313,6 +350,20 @@ export default function ListaCampeonatos() {
  const [premioMin, setPremioMin] = useState('')
  const [gratis, setGratis] = useState(false)
  const [tipoCompeticaoAtivo, setTipoCompeticaoAtivo] = useState('todos')
+ const [selecionarContato, setSelecionarContato] = useState<{ camp: any; contatos: { nome: string; numero: string }[] } | null>(null)
+
+ function abrirInscricao(camp: any) {
+ const contatos = contatosInscricaoCampeonato(camp)
+ if (contatos.length === 1) {
+ window.open(linkInscricaoWhatsApp(camp, contatos[0]), '_blank', 'noopener,noreferrer')
+ return
+ }
+ if (contatos.length > 1) {
+ setSelecionarContato({ camp, contatos })
+ return
+ }
+ window.location.href = getCampeonatoHref(camp.id, resolverTipoCompeticao(camp))
+ }
 
  useEffect(() => {
  const fetchCamps = async () => {
@@ -433,6 +484,16 @@ export default function ListaCampeonatos() {
 
  return (
  <div className="min-h-screen bg-[#f7f7f7] text-[#142340]">
+ <style jsx>{`
+ @keyframes campeonatos-marquee {
+ from {
+ transform: translateX(0);
+ }
+ to {
+ transform: translateX(-50%);
+ }
+ }
+ `}</style>
 
  <div className="mx-auto max-w-[1520px] px-4 pb-6 pt-5">
  <section className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -664,10 +725,10 @@ export default function ListaCampeonatos() {
  <span className="text-[10px] font-medium uppercase text-zinc-500">recentes</span>
  </div>
 
- <div className="px-3 pb-4 max-md:overflow-x-auto max-md:px-2">
- <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 max-md:flex max-md:min-w-max max-md:gap-3">
- {ultimosCampeonatos.map((camp, index) => (
- <CampeonatoShowCard key={`recente-${camp.id}`} camp={camp} index={index} compacto />
+ <div className="overflow-hidden px-3 pb-4 max-md:overflow-x-auto max-md:px-2">
+ <div className="flex min-w-max gap-4 md:animate-[campeonatos-marquee_34s_linear_infinite] md:hover:[animation-play-state:paused] max-md:gap-3">
+ {[...ultimosCampeonatos, ...ultimosCampeonatos].map((camp, index) => (
+ <CampeonatoShowCard key={`recente-${camp.id}-${index}`} camp={camp} index={index} compacto onInscrever={abrirInscricao} />
  ))}
  </div>
  </div>
@@ -703,13 +764,14 @@ export default function ListaCampeonatos() {
 
  <div className="hidden px-3 pb-3 md:block">
  <div className="overflow-hidden border border-zinc-200">
- <div className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px] items-center bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+ <div className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px_140px] items-center bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
  <div>Campeonato</div>
  <div className="text-center">Pais</div>
  <div>Tipo</div>
  <div>Inscricao</div>
  <div>Premiacao</div>
  <div>Status</div>
+ <div className="text-right">Acao</div>
  </div>
 
  {campeonatosFiltrados.map((camp) => {
@@ -722,7 +784,7 @@ export default function ListaCampeonatos() {
  <Link
  key={camp.id}
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px] items-center border-t border-zinc-200 px-3 py-3 text-[12px] transition hover:bg-zinc-50"
+ className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px_140px] items-center border-t border-zinc-200 px-3 py-3 text-[12px] transition hover:bg-zinc-50"
  >
  <div className="flex min-w-0 items-center gap-3">
  <div className="h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
@@ -772,6 +834,20 @@ export default function ListaCampeonatos() {
  {status.label}
  </span>
  </div>
+
+ <div className="flex justify-end">
+ <button
+ type="button"
+ onClick={(event) => {
+ event.preventDefault()
+ event.stopPropagation()
+ abrirInscricao(camp)
+ }}
+ className="inline-flex h-9 items-center justify-center bg-[#00a884] px-4 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-[#008f72]"
+ >
+ Inscrever-se
+ </button>
+ </div>
  </Link>
  )
  })}
@@ -781,6 +857,45 @@ export default function ListaCampeonatos() {
  )}
  </section>
  </div>
+ {selecionarContato ? (
+ <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 md:items-center">
+ <div className="w-full max-w-[420px] border border-zinc-200 bg-white p-4 shadow-xl">
+ <div className="flex items-start justify-between gap-3">
+ <div>
+ <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#00a884]">Escolha o vendedor</div>
+ <h2 className="mt-1 text-[18px] font-black uppercase text-[#142340]">{selecionarContato.camp?.nome || 'Campeonato'}</h2>
+ <p className="mt-1 text-[12px] font-semibold text-zinc-500">Selecione um contato para continuar a inscricao pelo WhatsApp.</p>
+ </div>
+ <button
+ type="button"
+ onClick={() => setSelecionarContato(null)}
+ className="grid h-8 w-8 place-items-center border border-zinc-200 text-[16px] font-black text-zinc-500 hover:bg-zinc-50"
+ >
+ x
+ </button>
+ </div>
+
+ <div className="mt-4 space-y-2">
+ {selecionarContato.contatos.map((contato) => (
+ <a
+ key={`${contato.nome}-${contato.numero}`}
+ href={linkInscricaoWhatsApp(selecionarContato.camp, contato)}
+ target="_blank"
+ rel="noreferrer"
+ onClick={() => setSelecionarContato(null)}
+ className="flex items-center justify-between gap-3 border border-zinc-200 bg-zinc-50 px-3 py-3 text-left transition hover:border-[#00a884] hover:bg-emerald-50"
+ >
+ <div className="min-w-0">
+ <div className="truncate text-[13px] font-black uppercase text-[#142340]">{contato.nome}</div>
+ <div className="mt-0.5 text-[11px] font-semibold text-zinc-500">{contato.numero}</div>
+ </div>
+ <span className="shrink-0 bg-[#00a884] px-3 py-2 text-[10px] font-black uppercase text-white">WhatsApp</span>
+ </a>
+ ))}
+ </div>
+ </div>
+ </div>
+ ) : null}
  </div>
  )
 }

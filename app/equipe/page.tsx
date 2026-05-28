@@ -644,6 +644,16 @@ export default function EquipePage() {
 
   return (
     <main className="min-h-screen bg-[#f5f8fb] text-slate-900">
+      <style jsx>{`
+        @keyframes equipes-marquee {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+      `}</style>
       <div className="mx-auto max-w-6xl px-2 py-3">
         <section className="mb-4 flex flex-col gap-3 border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -853,11 +863,11 @@ export default function EquipePage() {
                   <Flame size={15} className="text-orange-500" />
                 </div>
 
-                <div className="overflow-x-auto p-3">
-                  <div className="flex min-w-max gap-2">
-                    {ultimasEquipes.map((equipe) => (
+                <div className="overflow-hidden p-3 max-md:overflow-x-auto">
+                  <div className="flex min-w-max gap-2 md:animate-[equipes-marquee_32s_linear_infinite] md:hover:[animation-play-state:paused]">
+                    {[...ultimasEquipes, ...ultimasEquipes].map((equipe, index) => (
                       <button
-                        key={`ultima-${equipe.id}`}
+                        key={`ultima-${equipe.id}-${index}`}
                         onClick={() => router.push(`/equipe/${equipe.id}`)}
                         className="flex w-[210px] shrink-0 items-center gap-2 border border-slate-200 bg-slate-50 p-2 text-left hover:border-sky-300 max-md:w-[70px] max-md:flex-col max-md:border-0 max-md:bg-transparent max-md:p-0"
                       >
@@ -894,11 +904,11 @@ export default function EquipePage() {
                 <Link href="/ranking?tab=equipes" className="text-[10px] font-black uppercase tracking-[0.12em] text-sky-600 hover:underline">ver ranking geral</Link>
               </div>
 
-              <div className="overflow-x-auto p-3">
-                <div className="flex min-w-max gap-2">
-                {rankingEquipesVisiveis.map((equipe) => (
+              <div className="overflow-hidden p-3 max-md:overflow-x-auto">
+                <div className="flex min-w-max gap-2 md:animate-[equipes-marquee_38s_linear_infinite] md:hover:[animation-play-state:paused]">
+                {[...rankingEquipesVisiveis, ...rankingEquipesVisiveis].map((equipe, index) => (
                   <button
-                    key={`rank-${equipe.id}`}
+                    key={`rank-${equipe.id}-${index}`}
                     onClick={() => router.push(`/equipe/${equipe.id}`)}
                     className="flex w-[245px] shrink-0 items-center gap-2 border border-slate-200 bg-slate-50 p-2 text-left hover:border-sky-300 max-md:w-[78px] max-md:flex-col max-md:border-0 max-md:bg-transparent max-md:p-0"
                   >
