@@ -329,7 +329,7 @@ export default function AbaJogadores({
           `,
           )
           .eq("campeonato_id", campeonatoId)
-          .eq("status", "ativo"),
+          .neq("status", "removido"),
       ]);
 
       if (baseEquipesError) throw baseEquipesError;
