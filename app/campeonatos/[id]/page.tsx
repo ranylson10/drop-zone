@@ -1722,8 +1722,17 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             )}
           </div>
 
-          <div className={`border-l-4 ${lealtHeaderGradient} px-4 py-4 text-white md:px-6`}>
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_150px_150px_150px_150px] md:items-center">
+          <div className={`relative overflow-hidden border-l-4 ${lealtHeaderGradient} px-4 py-4 text-white md:px-6`}>
+            {(camp?.banner_url || camp?.logo_url) ? (
+              <img
+                src={camp.banner_url || camp.logo_url || ''}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-overlay saturate-150"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,.24)_0,transparent_26%),radial-gradient(circle_at_82%_10%,rgba(124,252,0,.18)_0,transparent_24%),linear-gradient(135deg,rgba(0,0,0,.28),rgba(0,0,0,.06)_45%,rgba(0,0,0,.34))]" />
+            <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(90deg,rgba(255,255,255,.22)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:18px_18px]" />
+            <div className="relative grid gap-4 md:grid-cols-[minmax(0,1fr)_150px_150px_150px_150px] md:items-center">
               <div className="flex min-w-0 items-center gap-4">
                 <div className="h-16 w-16 shrink-0 border border-white/20 bg-white p-1">
                   <img src={camp?.logo_url || '/placeholder.png'} className="h-full w-full object-contain" alt="" />
