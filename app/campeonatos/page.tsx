@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
- ChevronRight,
  Search,
  Swords,
  Trophy,
@@ -17,7 +16,6 @@ import {
  Users,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import RankingTierBadge, { formatScore } from '@/app/components/RankingTierBadge'
 import { TIPOS_COMPETICAO, resolverTipoCompeticao } from './components/tiposCompeticao'
 import { getCampeonatoHref } from './utils/getCampeonatoHref'
 
@@ -137,6 +135,23 @@ function getTipoVisual(slug?: string | null) {
  }
 }
 
+function normalizarStatusLista(status?: string | null) {
+ const value = normalizarTexto(status || 'rascunho')
+ if (value.includes('abert') || value.includes('inscri')) {
+ return { label: 'Aberto', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
+ }
+ if (value.includes('andamento') || value.includes('ao vivo') || value.includes('live')) {
+ return { label: 'Ao vivo', className: 'border-sky-200 bg-sky-50 text-sky-700' }
+ }
+ if (value.includes('final')) {
+ return { label: 'Finalizado', className: 'border-zinc-200 bg-zinc-100 text-zinc-600' }
+ }
+ if (value.includes('cancel')) {
+ return { label: 'Cancelado', className: 'border-red-200 bg-red-50 text-red-700' }
+ }
+ return { label: 'Rascunho', className: 'border-amber-200 bg-amber-50 text-amber-700' }
+}
+
 function getArenaPalette(slug?: string | null, index = 0) {
  const key = normalizarTexto(slug)
  const palettes: Record<string, { field: string; sky: string; stripe: string; button: string; glow: string }> = {
@@ -212,7 +227,7 @@ function CampeonatoShowCard({ camp, index = 0, compacto = false }: { camp: any; 
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
  className={[
  'group relative block shrink-0 overflow-hidden rounded-[18px] border border-white/70 bg-white p-0 text-white transition active:scale-[0.99]',
- compacto ? 'w-[300px] max-md:w-[86vw]' : 'w-full',
+ compacto ? 'w-[300px] max-md:w-[86vw] md:w-full' : 'w-full',
  ].join(' ')}
  >
  <div className={`relative h-[132px] overflow-hidden rounded-[18px] bg-gradient-to-br ${palette.field}`}>
@@ -649,8 +664,8 @@ export default function ListaCampeonatos() {
  <span className="text-[10px] font-medium uppercase text-zinc-500">recentes</span>
  </div>
 
- <div className="overflow-x-auto px-3 pb-4 max-md:px-2">
- <div className="flex min-w-max gap-4 max-md:gap-3">
+ <div className="px-3 pb-4 max-md:overflow-x-auto max-md:px-2">
+ <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 max-md:flex max-md:min-w-max max-md:gap-3">
  {ultimosCampeonatos.map((camp, index) => (
  <CampeonatoShowCard key={`recente-${camp.id}`} camp={camp} index={index} compacto />
  ))}
@@ -686,34 +701,31 @@ export default function ListaCampeonatos() {
  ))}
  </div>
 
- <div className="hidden overflow-x-auto px-3 pb-3 md:block">
- <div className="min-w-[1120px]">
- <div className="grid grid-cols-[2.2fr_120px_120px_130px_120px_130px_130px_130px] bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
+ <div className="hidden px-3 pb-3 md:block">
+ <div className="overflow-hidden border border-zinc-200">
+ <div className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px] items-center bg-zinc-50 px-3 py-2 text-[10px] font-medium uppercase text-zinc-500">
  <div>Campeonato</div>
- <div>Tier</div>
+ <div className="text-center">Pais</div>
  <div>Tipo</div>
- <div>Produtora</div>
- <div>Plataforma</div>
- <div>Inscrição</div>
- <div>Premiação</div>
- <div>Score</div>
- <div>Ações</div>
+ <div>Inscricao</div>
+ <div>Premiacao</div>
+ <div>Status</div>
  </div>
 
  {campeonatosFiltrados.map((camp) => {
  const tipoCompeticao = resolverTipoCompeticao(camp)
  const meta = TIPOS_COMPETICAO.find((item) => item.slug === tipoCompeticao)
- const visual = getTipoVisual(tipoCompeticao)
  const gratuito = Number(camp.valor_vaga || 0) === 0
+ const status = normalizarStatusLista(camp.status)
 
  return (
  <Link
  key={camp.id}
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
- className="grid grid-cols-[2.2fr_120px_120px_130px_120px_130px_130px_130px] items-center border-t border-zinc-200 px-3 py-2 text-[12px] transition hover:bg-zinc-50"
+ className="grid grid-cols-[minmax(280px,1.8fr)_78px_120px_130px_140px_120px] items-center border-t border-zinc-200 px-3 py-3 text-[12px] transition hover:bg-zinc-50"
  >
  <div className="flex min-w-0 items-center gap-3">
- <div className="h-10 w-10 shrink-0 overflow-hidden bg-zinc-100">
+ <div className="h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
  {camp.logo_url ? (
  <img src={camp.logo_url} alt={camp.nome || 'Campeonato'} className="h-full w-full object-cover" />
  ) : (
@@ -724,54 +736,40 @@ export default function ListaCampeonatos() {
  </div>
 
  <div className="min-w-0">
- <div className="truncate text-[13px] font-semibold uppercase text-[#142340]">
+ <div className="truncate text-[14px] font-black uppercase text-[#142340]">
  {camp.nome || 'Campeonato sem nome'}
  </div>
- <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
+ <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase text-zinc-500">
  <span className="inline-flex items-center gap-1">
  <CalendarDays size={11} />
  {formatarData(camp.created_at)}
  </span>
- <span>{camp.regiao || 'Sem região'}</span>
  <span>{camp.categoria || 'Sem categoria'}</span>
  </div>
  </div>
  </div>
 
- <div>
- <RankingTierBadge tier={camp.tier} posicao={camp.rank_posicao} score={camp.score_total} tipo="campeonato" compacto />
+ <div className="text-center text-xl leading-none">
+ {getPaisFlag(camp.regiao)}
  </div>
 
  <div>
- <span className="inline-flex border border-zinc-200 bg-[#2563eb]/10 px-2.5 py-1 text-[10px] font-semibold uppercase text-[#2563eb]">
+ <span className="inline-flex border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[10px] font-black uppercase text-[#142340]">
  {meta?.titulo || 'Tipo'}
  </span>
  </div>
 
- <div className="truncate font-semibold uppercase text-zinc-600">
- {camp.produtoras?.nome || 'Organização'}
- </div>
-
- <div className="font-semibold uppercase text-zinc-600">
- {camp.plataforma || 'N/I'}
- </div>
-
  <div className={`font-semibold uppercase ${gratuito ? 'text-emerald-600' : 'text-[#142340]'}`}>
- {gratuito ? 'Grátis' : formatarMoeda(camp.valor_vaga || 0)}
+ {gratuito ? 'Gratis' : formatarMoeda(camp.valor_vaga || 0)}
  </div>
 
- <div className="font-semibold text-emerald-600">
+ <div className="font-black text-emerald-600">
  {formatarMoeda(camp.valor_premiacao || 0)}
  </div>
 
- <div className="font-black text-[#2563eb]">
- {formatScore(camp.score_total || 0)}
- </div>
-
- <div className="flex justify-end">
- <span className="inline-flex h-9 items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition hover:bg-[#1d4ed8]">
- Inscrever-se
- <ChevronRight size={14} />
+ <div>
+ <span className={`inline-flex border px-2.5 py-1 text-[10px] font-black uppercase ${status.className}`}>
+ {status.label}
  </span>
  </div>
  </Link>
