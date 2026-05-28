@@ -25,7 +25,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 import FormCriarEquipe from "@/app/components/FormCriarEquipe";
 import AuthLinkCampeonato from "@/app/components/AuthLinkCampeonato";
 
@@ -259,14 +258,6 @@ function inscricoesAbertas(campeonato: Campeonato | null) {
       .toLowerCase()
       .includes("abert") ||
     !campeonato.status
-  );
-}
-
-function getHrefCampeonatoSeguro(campeonato?: Campeonato | null) {
-  if (!campeonato?.id) return "/campeonatos";
-  return getCampeonatoHref(
-    campeonato.id,
-    campeonato.tipo || campeonato.tipo_campeonato || campeonato.formato || null,
   );
 }
 
@@ -1595,7 +1586,7 @@ export default function EscalaCampeonatoPage() {
     const numero = String(contato.numero || "").replace(/\D/g, "");
     if (!numero) return "";
 
-    const mensagem = `Ola, vim pelo Drop Zone e quero inscrever a equipe ${equipe?.nome || ""} no campeonato ${campeonato?.nome || ""}.`;
+    const mensagem = `Ola, vim pelo Drop Zone e quero comprar uma vaga para a equipe ${equipe?.nome || ""} no campeonato ${campeonato?.nome || ""}.`;
     return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   }
 
@@ -2852,6 +2843,12 @@ export default function EscalaCampeonatoPage() {
                     );
                   }
 
+                  const contatosWhats = contatosInscricaoWhatsappBeta();
+                  const linkNovaVaga =
+                    contatosWhats.length === 1
+                      ? linkInscricaoWhatsappBeta(equipe, contatosWhats[0])
+                      : "";
+
                   return (
                     <div
                       key={equipe.id}
@@ -2868,6 +2865,33 @@ export default function EscalaCampeonatoPage() {
                             Escalação
                           </p>
                         </div>
+                        {contatosWhats.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelecionarContatoInscricao({
+                                equipe,
+                                contatos: contatosWhats,
+                              })
+                            }
+                            className="h-8 shrink-0 rounded bg-emerald-600 px-3 text-[8px] font-black uppercase text-white"
+                          >
+                            Nova vaga
+                          </button>
+                        ) : linkNovaVaga ? (
+                          <a
+                            href={linkNovaVaga}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex h-8 shrink-0 items-center justify-center rounded bg-emerald-600 px-3 text-[8px] font-black uppercase text-white"
+                          >
+                            Nova vaga
+                          </a>
+                        ) : (
+                          <div className="shrink-0 rounded border border-dashed border-slate-200 px-2 py-1 text-center text-[8px] font-black uppercase text-slate-400">
+                            Sem WhatsApp
+                          </div>
+                        )}
                       </div>
 
                       {(() => {
@@ -3065,8 +3089,6 @@ export default function EscalaCampeonatoPage() {
                   <CardVazio
                     titulo="Nenhuma equipe com vaga"
                     texto="Suas equipes ainda não compraram ou receberam vaga neste campeonato."
-                    href={getHrefCampeonatoSeguro(campeonato)}
-                    label="Ver campeonato"
                   />
                 ) : null}
               </section>
@@ -3915,7 +3937,7 @@ export default function EscalaCampeonatoPage() {
                 Escolha o vendedor
               </p>
               <h3 className="mt-1 text-lg font-black uppercase text-slate-950">
-                Inscrever equipe
+                Comprar vaga
               </h3>
               <div className="mt-3 space-y-2">
                 {selecionarContatoInscricao.contatos.map((contato) => (
@@ -4922,8 +4944,8 @@ function CardVazio({
 }: {
   titulo: string;
   texto: string;
-  href: string;
-  label: string;
+  href?: string;
+  label?: string;
 }) {
   return (
     <div className="border border-slate-200 bg-white p-4 text-center shadow-sm">
@@ -4934,12 +4956,14 @@ function CardVazio({
       <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
         {texto}
       </p>
-      <Link
-        href={href}
-        className="mt-4 inline-flex h-11 items-center justify-center border border-cyan-500 bg-cyan-500 px-5 text-xs font-black uppercase text-white"
-      >
-        {label}
-      </Link>
+      {href && label ? (
+        <Link
+          href={href}
+          className="mt-4 inline-flex h-11 items-center justify-center border border-cyan-500 bg-cyan-500 px-5 text-xs font-black uppercase text-white"
+        >
+          {label}
+        </Link>
+      ) : null}
     </div>
   );
 }
