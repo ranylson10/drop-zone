@@ -258,7 +258,7 @@ function CampeonatoShowCard({
  href={getCampeonatoHref(camp.id, tipoCompeticao)}
  className={[
  'group relative block shrink-0 overflow-hidden rounded-[18px] border border-white/70 bg-white p-0 text-white transition active:scale-[0.99]',
- compacto ? 'w-[300px] max-md:w-[86vw] md:w-full' : 'w-full',
+ compacto ? 'w-[420px] max-md:w-[86vw]' : 'w-full',
  ].join(' ')}
  >
  <div className={`relative h-[132px] overflow-hidden rounded-[18px] bg-gradient-to-br ${palette.field}`}>
