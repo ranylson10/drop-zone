@@ -58,24 +58,29 @@ type PerfilJogo = {
  profiles?: ProfileResumo | ProfileResumo[] | null
 }
 
+type TipoMembroEquipe = 'dono' | 'admin' | 'manager' | 'membro'
+
 type MembroEquipe = {
  id: string
  equipe_id: string
- perfil_jogo_id: string
- tipo: 'dono' | 'admin' | 'membro'
+ user_id: string | null
+ perfil_jogo_id: string | null
+ tipo: TipoMembroEquipe
  ativo: boolean
  entrou_em: string | null
  saiu_em: string | null
  perfis_jogo: PerfilJogo | PerfilJogo[] | null
+ profiles?: ProfileResumo | ProfileResumo[] | null
 }
 
-type MembroEquipeNormalizado = Omit<MembroEquipe, 'perfis_jogo'> & {
+type MembroEquipeNormalizado = Omit<MembroEquipe, 'perfis_jogo' | 'profiles'> & {
+ profileConta: ProfileResumo | null
  perfil: (PerfilJogo & { profile: ProfileResumo | null }) | null
 }
 
 type LiderComando = {
  id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: TipoMembroEquipe
  entrou_em: string | null
  perfilUsuario: ProfileResumo | null
  perfilJogo: {
@@ -414,6 +419,7 @@ export default function PerfilEquipePage() {
  .select(`
  id,
  equipe_id,
+ user_id,
  perfil_jogo_id,
  tipo,
  ativo,
@@ -431,6 +437,12 @@ export default function PerfilEquipePage() {
  nome_exibicao,
  foto_url
  )
+ ),
+ profiles:user_id (
+ id,
+ username,
+ nome_exibicao,
+ foto_url
  )
  `)
  .eq('equipe_id', equipeId)
@@ -473,13 +485,18 @@ export default function PerfilEquipePage() {
  const membrosNormalizados = useMemo<MembroEquipeNormalizado[]>(() => {
  return membros.map((membro) => ({
  ...membro,
+ profileConta: normalizarProfile(membro.profiles),
  perfil: normalizarPerfilJogo(membro.perfis_jogo),
  }))
  }, [membros])
 
  const meuVinculo = useMemo(() => {
  if (!user?.id) return null
- return membrosNormalizados.find((m) => m.perfil?.user_id === user.id) || null
+ return (
+   membrosNormalizados.find((m) => m.user_id === user.id) ||
+   membrosNormalizados.find((m) => m.perfil?.user_id === user.id) ||
+   null
+ )
  }, [membrosNormalizados, user?.id])
 
  const isDonoEquipe = useMemo(() => {
@@ -491,18 +508,18 @@ export default function PerfilEquipePage() {
  const podeGerenciar = useMemo(() => {
  if (!user?.id || !equipe) return false
  if (equipe.criado_por === user.id) return true
- return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin'
+ return meuVinculo?.tipo === 'dono' || meuVinculo?.tipo === 'admin' || meuVinculo?.tipo === 'manager'
  }, [equipe, meuVinculo, user?.id])
 
  const lideres = useMemo<LiderComando[]>(
  () =>
  membrosNormalizados
- .filter((m) => m.tipo === 'dono' || m.tipo === 'admin')
+ .filter((m) => m.tipo === 'dono' || m.tipo === 'admin' || m.tipo === 'manager')
  .map((m) => ({
  id: m.id,
  tipo: m.tipo,
  entrou_em: m.entrou_em,
- perfilUsuario: m.perfil?.profile || null,
+ perfilUsuario: m.profileConta || m.perfil?.profile || null,
  perfilJogo: m.perfil
  ? {
  id: m.perfil.id,

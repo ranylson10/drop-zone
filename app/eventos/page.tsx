@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, CalendarDays, Loader2, MessageCircle, Trophy } from 'lucide-react'
+import { CalendarDays, Loader2, MessageCircle, Trophy } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 type WhatsContato = { nome?: string | null; numero?: string | null }
@@ -106,9 +105,9 @@ export default function EventosPage() {
         <header className="overflow-hidden border border-slate-200 bg-white shadow-sm">
           <div className="bg-gradient-to-r from-cyan-500 to-violet-600 p-4 text-white">
             <div className="flex items-center gap-3">
-              <Link href="/" className="grid h-10 w-10 shrink-0 place-items-center border border-white/25 bg-white/10">
-                <ArrowLeft size={18} />
-              </Link>
+              <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/25 bg-white/10">
+                <CalendarDays size={18} />
+              </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/75">Drop Zone</p>
                 <h1 className="truncate text-xl font-black uppercase tracking-[-0.05em]">Outros eventos</h1>

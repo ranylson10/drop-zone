@@ -32,7 +32,7 @@ type PerfilEquipe = {
 
 type Membro = {
  id: string
- tipo: 'dono' | 'admin' | 'membro'
+ tipo: 'dono' | 'admin' | 'manager' | 'membro'
  entrou_em: string | null
  perfil?: PerfilEquipe | null
 }

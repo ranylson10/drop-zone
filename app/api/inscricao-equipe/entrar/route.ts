@@ -71,6 +71,13 @@ export async function POST(req: Request) {
 
     const perfilId = perfil.id
 
+    if (perfil.equipe_id && perfil.equipe_id !== vaga.equipe_id) {
+      return NextResponse.json(
+        { error: 'Este perfil gamer já está em outra equipe. Saia da equipe atual antes de entrar por este token.' },
+        { status: 409 },
+      )
+    }
+
     if (perfil.equipe_id !== vaga.equipe_id) {
       const { error: perfilUpdateError } = await supabase
         .from('perfis_jogo')

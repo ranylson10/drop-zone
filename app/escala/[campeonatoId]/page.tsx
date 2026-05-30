@@ -18,6 +18,7 @@ import {
   GitBranch,
   Send,
   Search,
+  LogOut,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -416,6 +417,7 @@ export default function EscalaCampeonatoPage() {
   const [carregandoBuscaEquipeJogador, setCarregandoBuscaEquipeJogador] = useState(false);
   const [enviandoPedidoJogadorId, setEnviandoPedidoJogadorId] = useState<string | null>(null);
   const [processandoConviteJogadorId, setProcessandoConviteJogadorId] = useState<string | null>(null);
+  const [saindoEquipeJogador, setSaindoEquipeJogador] = useState(false);
   const [modoFormularioBeta, setModoFormularioBeta] = useState<"perfil" | "equipe" | null>(null);
   const [salvandoFormularioBeta, setSalvandoFormularioBeta] = useState(false);
   const [formPerfilBeta, setFormPerfilBeta] = useState({
@@ -1371,6 +1373,33 @@ export default function EscalaCampeonatoPage() {
       );
     } finally {
       setEnviandoPedidoJogadorId(null);
+    }
+  }
+
+
+  async function sairDaEquipeJogador() {
+    if (!perfilJogo?.id) return;
+    const confirmar = window.confirm('Deseja sair da equipe atual deste perfil gamer?');
+    if (!confirmar) return;
+
+    try {
+      setSaindoEquipeJogador(true);
+      const { error } = await supabase.rpc('sair_da_equipe', {
+        p_perfil_jogo_id: perfilJogo.id,
+      });
+      if (error) throw error;
+
+      setPerfilJogo((atual) => (atual ? { ...atual, equipe_id: null } : atual));
+      setEquipeDoJogador(null);
+      setJogadorNoCampeonato(null);
+      setSubAbaJogadorEquipe('pedidos');
+      await carregar();
+      alert('Você saiu da equipe. Agora pode pedir entrada em outra equipe.');
+    } catch (error: any) {
+      console.error('Erro ao sair da equipe:', error);
+      alert(error?.message || 'Não foi possível sair da equipe.');
+    } finally {
+      setSaindoEquipeJogador(false);
     }
   }
 
@@ -2533,7 +2562,7 @@ export default function EscalaCampeonatoPage() {
                       : recuperarSenhaBeta
               }
               onReenviarCodigo={reenviarCodigoCadastroBeta}
-              onVoltarInicio={() => window.location.href = "/"}
+              onVoltarInicio={() => {}}
               className="min-h-0 px-0 py-0"
             />
           </div>
@@ -3793,6 +3822,29 @@ export default function EscalaCampeonatoPage() {
                           value={posicaoMvp ? `#${posicaoMvp}` : "-"}
                         />
                       </div>
+
+                      {equipePrincipalDoJogador?.id ? (
+                        <div className="mt-2 border border-emerald-200 bg-emerald-50 p-2">
+                          <div className="flex items-center gap-2">
+                            <Logo url={equipePrincipalDoJogador.logo_url} nome={equipePrincipalDoJogador.nome} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-700">Equipe atual</p>
+                              <p className="truncate text-xs font-black uppercase text-slate-950">
+                                {equipePrincipalDoJogador.tag ? `[${equipePrincipalDoJogador.tag}] ` : ""}{equipePrincipalDoJogador.nome}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={saindoEquipeJogador}
+                            onClick={sairDaEquipeJogador}
+                            className="mt-2 flex h-9 w-full items-center justify-center gap-1 border border-red-200 bg-white text-[9px] font-black uppercase text-red-600 disabled:opacity-60"
+                          >
+                            {saindoEquipeJogador ? <Loader2 size={13} className="animate-spin" /> : <LogOut size={13} />}
+                            Sair da equipe
+                          </button>
+                        </div>
+                      ) : null}
 
                       <div className="mt-2 grid grid-cols-2 gap-1.5">
                         <button
