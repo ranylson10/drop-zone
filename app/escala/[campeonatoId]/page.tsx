@@ -2494,6 +2494,15 @@ export default function EscalaCampeonatoPage() {
               value={moeda.format(Number(campeonato.valor_vaga || 0))}
             />
           </div>
+          <div className="bg-white p-2">
+            <Link
+              href="/eventos"
+              className="flex h-10 w-full items-center justify-center gap-2 border border-cyan-200 bg-cyan-50 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-700"
+            >
+              <CalendarDays size={14} />
+              Ver outros eventos
+            </Link>
+          </div>
         </section>
         ) : null}
 
