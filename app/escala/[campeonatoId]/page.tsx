@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,7 +18,6 @@ import {
   GitBranch,
   Send,
   Search,
-  Copy,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -373,8 +372,6 @@ async function rpcFallbackBeta(nameList: string[], payload: Record<string, unkno
 export default function EscalaCampeonatoPage() {
   const params = useParams<{ campeonatoId: string }>();
   const campeonatoParam = String(params?.campeonatoId || "");
-  const searchParams = useSearchParams();
-  const tokenConviteRapido = String(searchParams?.get("convite") || "").trim();
 
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -445,6 +442,8 @@ export default function EscalaCampeonatoPage() {
     equipe: Equipe;
     contatos: WhatsContato[];
   } | null>(null);
+  const [gerandoLinkInscricaoId, setGerandoLinkInscricaoId] = useState<string | null>(null);
+  const [linksInscricaoEquipe, setLinksInscricaoEquipe] = useState<Record<string, { token: string; url: string }>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [authModoBeta, setAuthModoBeta] = useState<"login" | "cadastro" | "recuperar" | "confirmar">("login");
   const [authEmailBeta, setAuthEmailBeta] = useState("");
@@ -467,9 +466,6 @@ export default function EscalaCampeonatoPage() {
   const [authOtpTipo, setAuthOtpTipo] = useState<"signup" | "recovery">("signup");
   const [authNome, setAuthNome] = useState("");
   const [authMensagem, setAuthMensagem] = useState<string | null>(null);
-  const [processandoConviteRapido, setProcessandoConviteRapido] = useState(false);
-  const [conviteRapidoMensagem, setConviteRapidoMensagem] = useState<string | null>(null);
-  const [conviteRapidoConcluidoToken, setConviteRapidoConcluidoToken] = useState<string | null>(null);
   const [authProcessando, setAuthProcessando] = useState(false);
 
   useEffect(() => {
@@ -1596,68 +1592,52 @@ export default function EscalaCampeonatoPage() {
     return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   }
 
-  function gerarTokenConviteRapidoBeta() {
-    const bytes = new Uint8Array(18);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes).map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 32);
-  }
+  async function gerarLinkDiretoEquipeBeta(inscricao: CampeonatoEquipe) {
+    if (!inscricao?.id) return;
 
-  async function gerarLinkConviteRapidoBeta(equipe: Equipe, line: LineMobile) {
-    const vagaDaLine = inscricoesEquipe.find((vaga) => vaga.line_id === line.id && vaga.equipe_id === equipe.id);
-    if (!vagaDaLine?.id) {
-      alert("Essa line precisa estar vinculada a uma vaga do campeonato antes de gerar o link.");
-      return;
-    }
+    setGerandoLinkInscricaoId(inscricao.id);
 
     try {
-      setProcessandoConviteRapido(true);
-      const token = gerarTokenConviteRapidoBeta();
-      const { error } = await supabase.from("equipe_convite_links").insert({
-        token,
-        campeonato_id: campeonato.id,
-        campeonato_equipe_id: vagaDaLine.id,
-        equipe_id: equipe.id,
-        line_id: line.id,
-        criado_por: userId,
-        ativo: true,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error("Faça login para gerar o link da equipe.");
+      }
+
+      const res = await fetch("/api/inscricao-equipe/gerar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          campeonato_equipe_id: inscricao.id,
+          limite_usos: null,
+        }),
       });
 
-      if (error) throw error;
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Não foi possível gerar o link.");
 
-      const origem = typeof window !== "undefined" ? window.location.origin : "";
-      const link = `${origem}/escala/${campeonato.id}?convite=${encodeURIComponent(token)}`;
-      await navigator.clipboard.writeText(link);
-      alert("Link copiado. Envie para os jogadores: quem entrar por ele cai direto nessa equipe/line do campeonato.");
+      const url = String(json?.url || json?.path || "");
+      const token = String(json?.token || "");
+
+      setLinksInscricaoEquipe((atual) => ({
+        ...atual,
+        [inscricao.id]: { token, url },
+      }));
+
+      if (url && navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        alert("Link copiado. Envie para os jogadores da equipe.");
+      } else {
+        alert(`Token gerado: ${token}`);
+      }
     } catch (error: any) {
-      alert(error?.message || error?.details || "Não foi possível gerar o link rápido.");
+      alert(error?.message || "Erro ao gerar link de inscrição.");
     } finally {
-      setProcessandoConviteRapido(false);
-    }
-  }
-
-  async function entrarPeloConviteRapidoBeta() {
-    if (!tokenConviteRapido || !perfilJogo?.id || processandoConviteRapido || conviteRapidoConcluidoToken === tokenConviteRapido) return;
-
-    try {
-      setProcessandoConviteRapido(true);
-      setConviteRapidoMensagem("Confirmando sua entrada na equipe...");
-
-      const { error } = await supabase.rpc("fn_entrar_equipe_campeonato_por_link", {
-        p_token: tokenConviteRapido,
-        p_perfil_jogo_id: perfilJogo.id,
-      });
-
-      if (error) throw error;
-
-      setConviteRapidoConcluidoToken(tokenConviteRapido);
-      setConviteRapidoMensagem("Pronto. Você já entrou na equipe e foi escalado neste campeonato.");
-      setAba("jogador");
-      await carregar();
-    } catch (error: any) {
-      const msg = error?.message || error?.details || "Não foi possível entrar pelo link rápido.";
-      setConviteRapidoMensagem(msg);
-    } finally {
-      setProcessandoConviteRapido(false);
+      setGerandoLinkInscricaoId(null);
     }
   }
 
@@ -2116,19 +2096,6 @@ export default function EscalaCampeonatoPage() {
     if (authModo === "confirmar") return confirmarCodigoNoLinkBeta();
     return recuperarSenhaNoLinkBeta();
   }
-
-
-  useEffect(() => {
-    if (!tokenConviteRapido || checkingAuth || loading || !usuarioLogado || conviteRapidoConcluidoToken === tokenConviteRapido) return;
-    if (!perfilJogo?.id) {
-      setTipoAcesso("jogador");
-      setAba("jogador");
-      setConviteRapidoMensagem("Crie seu perfil de jogo para entrar automaticamente na equipe do link.");
-      return;
-    }
-    void entrarPeloConviteRapidoBeta();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokenConviteRapido, checkingAuth, loading, usuarioLogado?.id, perfilJogo?.id, conviteRapidoConcluidoToken]);
 
 
   if (checkingAuth) {
@@ -3289,6 +3256,53 @@ export default function EscalaCampeonatoPage() {
                           />
                         </div>
 
+                        {inscricoes.length ? (
+                          <div className="mt-2 space-y-1.5 border border-cyan-100 bg-cyan-50 p-2">
+                            <p className="text-[8px] font-black uppercase tracking-[0.14em] text-cyan-700">
+                              Link direto para jogadores
+                            </p>
+                            {inscricoes.map((inscricao) => {
+                              const linkGerado = linksInscricaoEquipe[inscricao.id];
+                              const gerando = gerandoLinkInscricaoId === inscricao.id;
+
+                              return (
+                                <div key={inscricao.id} className="border border-cyan-100 bg-white p-1.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[9px] font-black uppercase text-slate-800">
+                                        {inscricao.nome_exibicao || equipe.nome}
+                                      </p>
+                                      <p className="text-[8px] font-bold uppercase text-slate-500">
+                                        Vaga {inscricao.numero_vaga || "-"} • jogador usa token e entra direto
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => gerarLinkDiretoEquipeBeta(inscricao)}
+                                      disabled={gerando}
+                                      className="shrink-0 border border-cyan-600 bg-cyan-600 px-2 py-1.5 text-[8px] font-black uppercase text-white disabled:opacity-60"
+                                    >
+                                      {gerando ? "Gerando..." : linkGerado ? "Copiar" : "Gerar link"}
+                                    </button>
+                                  </div>
+                                  {linkGerado ? (
+                                    <div className="mt-1 grid grid-cols-[1fr_auto] gap-1">
+                                      <input
+                                        readOnly
+                                        value={linkGerado.url}
+                                        className="h-8 min-w-0 border border-slate-200 bg-slate-50 px-2 text-[9px] font-bold text-slate-700 outline-none"
+                                      />
+                                      <span className="grid h-8 place-items-center border border-slate-200 bg-slate-50 px-2 text-[9px] font-black uppercase tracking-[0.12em] text-slate-700">
+                                        {linkGerado.token}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
                         <div className="mt-2 border border-emerald-100 bg-emerald-50/50 p-2">
                           <label className="block text-[9px] font-bold uppercase tracking-[0.12em] text-emerald-700">
                             O que você quer ver?
@@ -3571,24 +3585,13 @@ export default function EscalaCampeonatoPage() {
                                         Line selecionada
                                       </p>
                                     </div>
-                                    <div className="flex shrink-0 items-center gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => gerarLinkConviteRapidoBeta(equipe, lineAtiva)}
-                                        disabled={processandoConviteRapido}
-                                        className="h-8 border border-cyan-500 bg-cyan-500 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
-                                        title="Copia um link que cadastra o jogador nesta equipe e já escala nesta line"
-                                      >
-                                        <Copy size={12} className="mr-1 inline" /> Link
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
-                                        className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
-                                      >
-                                        + Jogador
-                                      </button>
-                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
+                                      className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
+                                    >
+                                      + Jogador
+                                    </button>
                                   </div>
 
                                   {jogadoresLine.length ? (
