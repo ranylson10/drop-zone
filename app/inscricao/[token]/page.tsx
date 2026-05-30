@@ -3,17 +3,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { CheckCircle2, Loader2, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
+import { CheckCircle2, Gamepad2, Loader2, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
-const SERVIDORES = ['BR', 'LATAM', 'NA', 'SAC', 'EU', 'MEA', 'IND', 'SG']
-const FUNCOES = [
-  { value: 'rush', label: 'Rush' },
-  { value: 'suporte', label: 'Suporte' },
-  { value: 'sniper', label: 'Sniper' },
-  { value: 'flex', label: 'Flex' },
-  { value: 'granadeiro', label: 'Granadeiro' },
-]
+type PerfilJogo = {
+  id: string
+  nick: string | null
+  uid_jogo: string | null
+  servidor: string | null
+  plataforma: string | null
+  funcao: string | null
+  foto_capa: string | null
+}
+
+function labelPerfil(perfil: PerfilJogo) {
+  return `${perfil.nick || 'Perfil gamer'}${perfil.uid_jogo ? ` • ID ${perfil.uid_jogo}` : ''}`
+}
 
 export default function InscricaoTokenPage() {
   const params = useParams<{ token: string }>()
@@ -22,57 +27,62 @@ export default function InscricaoTokenPage() {
 
   const [checking, setChecking] = useState(true)
   const [logado, setLogado] = useState(false)
+  const [perfis, setPerfis] = useState<PerfilJogo[]>([])
+  const [perfilSelecionadoId, setPerfilSelecionadoId] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<any>(null)
 
-  const [nick, setNick] = useState('')
-  const [uidJogo, setUidJogo] = useState('')
-  const [servidor, setServidor] = useState('BR')
-  const [plataforma, setPlataforma] = useState('mobile')
-  const [funcao, setFuncao] = useState('flex')
-
   useEffect(() => {
     let ativo = true
+
     async function init() {
+      setChecking(true)
+      setErro(null)
+
       const { data } = await supabase.auth.getSession()
       if (!ativo) return
-      setLogado(Boolean(data.session?.user))
 
-      if (data.session?.user) {
-        const { data: perfil } = await supabase
+      const user = data.session?.user
+      setLogado(Boolean(user))
+
+      if (user?.id) {
+        const { data: perfisData, error } = await supabase
           .from('perfis_jogo')
-          .select('nick,uid_jogo,servidor,plataforma,funcao')
-          .eq('user_id', data.session.user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
+          .select('id,nick,uid_jogo,servidor,plataforma,funcao,foto_capa')
+          .eq('user_id', user.id)
+          .eq('ativo', true)
+          .order('created_at', { ascending: true })
 
         if (!ativo) return
-        if (perfil) {
-          setNick(String((perfil as any).nick || ''))
-          setUidJogo(String((perfil as any).uid_jogo || ''))
-          setServidor(String((perfil as any).servidor || 'BR'))
-          setPlataforma(String((perfil as any).plataforma || 'mobile'))
-          setFuncao(String((perfil as any).funcao || 'flex'))
+
+        if (error) {
+          setErro('Não foi possível carregar seus perfis gamer.')
+          setPerfis([])
+        } else {
+          const lista = (perfisData || []) as PerfilJogo[]
+          setPerfis(lista)
+          setPerfilSelecionadoId(lista[0]?.id || '')
         }
       }
 
       setChecking(false)
     }
+
     init()
     return () => {
       ativo = false
     }
   }, [])
 
-  async function enviar(event: React.FormEvent) {
-    event.preventDefault()
+  async function entrarComPerfil() {
     setErro(null)
     setSucesso(null)
 
-    if (!nick.trim()) return setErro('Informe seu nick.')
-    if (!uidJogo.trim()) return setErro('Informe seu ID do jogo.')
+    if (!perfilSelecionadoId) {
+      setErro('Selecione ou crie um perfil gamer primeiro.')
+      return
+    }
 
     setEnviando(true)
     try {
@@ -88,11 +98,7 @@ export default function InscricaoTokenPage() {
         },
         body: JSON.stringify({
           token,
-          nick: nick.trim(),
-          uid_jogo: uidJogo.trim(),
-          servidor,
-          plataforma,
-          funcao,
+          perfil_jogo_id: perfilSelecionadoId,
         }),
       })
 
@@ -106,101 +112,138 @@ export default function InscricaoTokenPage() {
     }
   }
 
+  const perfilSelecionado = perfis.find((perfil) => perfil.id === perfilSelecionadoId) || null
+  const redirectAtual = `/inscricao/${token}`
+
   return (
-    <main className="min-h-screen bg-[#07111f] px-4 py-8 text-white">
-      <div className="mx-auto max-w-xl border border-white/10 bg-white/[0.04] p-4 shadow-[8px_8px_0_rgba(0,0,0,.35)]">
-        <div className="mb-5 flex items-center gap-3 border-b border-white/10 pb-4">
-          <div className="grid h-12 w-12 place-items-center bg-emerald-500 text-black">
-            <ShieldCheck size={24} />
+    <main className="min-h-screen bg-[#eef3f9] px-3 py-4 text-[#12213f] sm:px-4">
+      <div className="mx-auto w-full max-w-[430px] overflow-hidden border border-[#d8e2ef] bg-white shadow-[0_16px_38px_rgba(16,36,70,.12)]">
+        <header className="bg-gradient-to-r from-[#0ea5e9] to-[#6d5dfc] p-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center border border-white/30 bg-black/20">
+              <ShieldCheck size={22} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/80">Drop Zone</p>
+              <h1 className="truncate text-lg font-black uppercase leading-none tracking-[-0.04em]">Convite de equipe</h1>
+              <p className="mt-1 text-[11px] font-bold uppercase text-white/80">Use seu perfil gamer original</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">Drop Zone</p>
-            <h1 className="text-xl font-black uppercase tracking-[-0.04em]">Inscrição direta na equipe</h1>
-          </div>
-        </div>
+        </header>
 
-        <div className="mb-4 border border-emerald-400/20 bg-emerald-400/10 p-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Token recebido</p>
-          <p className="mt-1 text-2xl font-black tracking-[0.18em] text-white">{token || 'SEM TOKEN'}</p>
-        </div>
+        <section className="space-y-3 p-4">
+          <div className="border border-cyan-200 bg-cyan-50 p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-700">Token recebido</p>
+            <p className="mt-1 break-all text-[22px] font-black tracking-[0.16em] text-[#142340]">{token || 'SEM TOKEN'}</p>
+          </div>
 
-        {checking ? (
-          <div className="flex items-center gap-2 border border-white/10 bg-white/5 p-3 text-sm font-bold text-white/80">
-            <Loader2 className="animate-spin" size={18} /> Verificando login...
-          </div>
-        ) : !logado ? (
-          <div className="space-y-3 border border-amber-300/30 bg-amber-300/10 p-4">
-            <div className="flex items-center gap-2 text-sm font-black uppercase text-amber-200">
-              <LogIn size={18} /> Login necessário
+          {checking ? (
+            <div className="flex h-14 items-center justify-center gap-2 border border-zinc-200 bg-zinc-50 text-xs font-black uppercase text-zinc-600">
+              <Loader2 className="animate-spin" size={17} /> Verificando conta
             </div>
-            <p className="text-sm font-semibold text-white/75">
-              Entre ou crie sua conta para usar o token. Depois volte neste mesmo link.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Link href={`/login?redirect=/inscricao/${token}`} className="grid h-11 place-items-center bg-white text-xs font-black uppercase text-slate-950">
-                Entrar
-              </Link>
-              <Link href={`/cadastro?redirect=/inscricao/${token}`} className="grid h-11 place-items-center border border-white/20 text-xs font-black uppercase text-white">
-                Criar conta
-              </Link>
-            </div>
-          </div>
-        ) : sucesso ? (
-          <div className="space-y-3 border border-emerald-300/30 bg-emerald-300/10 p-4">
-            <div className="flex items-center gap-2 text-sm font-black uppercase text-emerald-200">
-              <CheckCircle2 size={18} /> Inscrição concluída
-            </div>
-            <p className="text-sm font-semibold text-white/75">
-              Você entrou na equipe e já foi escalado automaticamente neste campeonato.
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push(`/escala/${sucesso.campeonato_id}`)}
-              className="h-11 w-full bg-emerald-400 text-xs font-black uppercase text-slate-950"
-            >
-              Abrir campeonato
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={enviar} className="space-y-3">
-            <div>
-              <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-white/55">Nick</label>
-              <input value={nick} onChange={(e) => setNick(e.target.value)} className="h-11 w-full border border-white/10 bg-black/30 px-3 text-sm font-bold outline-none focus:border-emerald-400" placeholder="Seu nick no Free Fire" />
-            </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-white/55">ID do jogo</label>
-              <input value={uidJogo} onChange={(e) => setUidJogo(e.target.value)} className="h-11 w-full border border-white/10 bg-black/30 px-3 text-sm font-bold outline-none focus:border-emerald-400" placeholder="UID / ID do Free Fire" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-white/55">Servidor</label>
-                <select value={servidor} onChange={(e) => setServidor(e.target.value)} className="h-11 w-full border border-white/10 bg-black/30 px-3 text-sm font-bold outline-none focus:border-emerald-400">
-                  {SERVIDORES.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
+          ) : !logado ? (
+            <div className="space-y-3 border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-center gap-2 text-xs font-black uppercase text-amber-800">
+                <LogIn size={17} /> Entre para continuar
               </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-white/55">Plataforma</label>
-                <select value={plataforma} onChange={(e) => setPlataforma(e.target.value)} className="h-11 w-full border border-white/10 bg-black/30 px-3 text-sm font-bold outline-none focus:border-emerald-400">
-                  <option value="mobile">Mobile</option>
-                  <option value="emulador">Emulador</option>
-                </select>
+              <p className="text-xs font-semibold leading-relaxed text-amber-900/75">
+                O jogador entra com a conta dele, escolhe o perfil gamer já cadastrado e o sistema escala automaticamente.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Link href={`/login?redirect=${encodeURIComponent(redirectAtual)}`} className="grid h-11 place-items-center bg-[#142340] text-[11px] font-black uppercase text-white">
+                  Entrar
+                </Link>
+                <Link href={`/cadastro?redirect=${encodeURIComponent(redirectAtual)}`} className="grid h-11 place-items-center border border-[#142340]/20 bg-white text-[11px] font-black uppercase text-[#142340]">
+                  Criar conta
+                </Link>
               </div>
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-white/55">Função</label>
-              <select value={funcao} onChange={(e) => setFuncao(e.target.value)} className="h-11 w-full border border-white/10 bg-black/30 px-3 text-sm font-bold outline-none focus:border-emerald-400">
-                {FUNCOES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </select>
+          ) : sucesso ? (
+            <div className="space-y-3 border border-emerald-200 bg-emerald-50 p-3">
+              <div className="flex items-center gap-2 text-xs font-black uppercase text-emerald-800">
+                <CheckCircle2 size={17} /> Inscrição concluída
+              </div>
+              <p className="text-xs font-semibold leading-relaxed text-emerald-900/75">
+                Você entrou na equipe e já foi escalado automaticamente neste campeonato.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push(`/escala/${sucesso.campeonato_id}`)}
+                className="h-11 w-full bg-emerald-500 text-[11px] font-black uppercase text-white"
+              >
+                Abrir campeonato
+              </button>
             </div>
+          ) : perfis.length === 0 ? (
+            <div className="space-y-3 border border-blue-200 bg-blue-50 p-3">
+              <div className="flex items-center gap-2 text-xs font-black uppercase text-blue-800">
+                <Gamepad2 size={17} /> Crie seu perfil gamer
+              </div>
+              <p className="text-xs font-semibold leading-relaxed text-blue-900/75">
+                Não vamos criar perfil por este link. Use o formulário original do site e depois volte neste convite para entrar direto na equipe.
+              </p>
+              <Link
+                href={`/perfil?aba=gamer&convite=${encodeURIComponent(token)}`}
+                className="grid h-11 place-items-center bg-[#2563eb] text-[11px] font-black uppercase text-white"
+              >
+                Abrir formulário original
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500">Escolha o perfil gamer</label>
+                <select
+                  value={perfilSelecionadoId}
+                  onChange={(e) => setPerfilSelecionadoId(e.target.value)}
+                  className="h-12 w-full border border-zinc-300 bg-white px-3 text-xs font-black uppercase text-[#142340] outline-none focus:border-[#2563eb]"
+                >
+                  {perfis.map((perfil) => (
+                    <option key={perfil.id} value={perfil.id}>{labelPerfil(perfil)}</option>
+                  ))}
+                </select>
+              </div>
 
-            {erro ? <div className="border border-red-300/30 bg-red-500/10 p-3 text-sm font-bold text-red-100">{erro}</div> : null}
+              {perfilSelecionado ? (
+                <div className="flex items-center gap-3 border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden border border-zinc-200 bg-white">
+                    {perfilSelecionado.foto_capa ? (
+                      <img src={perfilSelecionado.foto_capa} alt="Perfil gamer" className="h-full w-full object-cover" />
+                    ) : (
+                      <Gamepad2 size={20} className="text-zinc-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black uppercase text-[#142340]">{perfilSelecionado.nick || 'Perfil gamer'}</p>
+                    <p className="truncate text-[11px] font-bold uppercase text-zinc-500">
+                      ID {perfilSelecionado.uid_jogo || '-'} • {perfilSelecionado.plataforma || 'mobile'} • {perfilSelecionado.funcao || 'função'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
 
-            <button disabled={enviando} className="flex h-12 w-full items-center justify-center gap-2 bg-emerald-400 text-xs font-black uppercase text-slate-950 disabled:opacity-60">
-              {enviando ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
-              Entrar na equipe e escalar
-            </button>
-          </form>
-        )}
+              {erro ? <div className="border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{erro}</div> : null}
+
+              <button
+                type="button"
+                onClick={entrarComPerfil}
+                disabled={enviando || !perfilSelecionadoId}
+                className="flex h-12 w-full items-center justify-center gap-2 bg-emerald-500 text-[11px] font-black uppercase text-white disabled:opacity-60"
+              >
+                {enviando ? <Loader2 className="animate-spin" size={17} /> : <UserPlus size={17} />}
+                Entrar na equipe e escalar
+              </button>
+
+              <Link href={`/perfil?aba=gamer&convite=${encodeURIComponent(token)}`} className="grid h-10 place-items-center border border-zinc-200 text-[10px] font-black uppercase text-zinc-500">
+                Editar/criar perfil gamer original
+              </Link>
+            </div>
+          )}
+
+          {erro && !checking && (logado ? perfis.length === 0 : false) ? (
+            <div className="border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{erro}</div>
+          ) : null}
+        </section>
       </div>
     </main>
   )

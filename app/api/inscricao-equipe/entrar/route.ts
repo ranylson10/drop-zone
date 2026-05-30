@@ -3,11 +3,7 @@ import { getServerSupabaseClient, getUserFromBearerToken } from '@/lib/supabaseA
 
 type Body = {
   token?: string
-  nick?: string
-  uid_jogo?: string
-  servidor?: string
-  plataforma?: string
-  funcao?: string
+  perfil_jogo_id?: string
 }
 
 function limparTexto(valor: unknown) {
@@ -24,15 +20,10 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => ({}))) as Body
     const token = limparTexto(body.token).toUpperCase()
-    const nick = limparTexto(body.nick)
-    const uidJogo = limparTexto(body.uid_jogo)
-    const servidor = limparTexto(body.servidor || 'BR') || 'BR'
-    const plataforma = limparTexto(body.plataforma || 'mobile') || 'mobile'
-    const funcao = limparTexto(body.funcao || 'flex') || 'flex'
+    const perfilJogoId = limparTexto(body.perfil_jogo_id)
 
     if (!token) return NextResponse.json({ error: 'Informe o token.' }, { status: 400 })
-    if (!nick) return NextResponse.json({ error: 'Informe seu nick.' }, { status: 400 })
-    if (!uidJogo) return NextResponse.json({ error: 'Informe seu ID do jogo.' }, { status: 400 })
+    if (!perfilJogoId) return NextResponse.json({ error: 'Selecione seu perfil gamer.' }, { status: 400 })
 
     const supabase = getServerSupabaseClient(authHeader)
 
@@ -66,55 +57,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'A vaga vinculada ao token não existe mais.' }, { status: 404 })
     }
 
-    let { data: perfil, error: perfilError } = await supabase
+    const { data: perfil, error: perfilError } = await supabase
       .from('perfis_jogo')
-      .select('*')
+      .select('id,user_id,nick,uid_jogo,servidor,plataforma,funcao,equipe_id,ativo')
+      .eq('id', perfilJogoId)
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
       .maybeSingle()
 
     if (perfilError) throw perfilError
-
-    if (perfil?.id) {
-      const { data: perfilAtualizado, error: updatePerfilError } = await supabase
-        .from('perfis_jogo')
-        .update({
-          nick,
-          uid_jogo: uidJogo,
-          servidor,
-          plataforma,
-          funcao,
-          equipe_id: vaga.equipe_id,
-          ativo: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', perfil.id)
-        .select('*')
-        .single()
-      if (updatePerfilError) throw updatePerfilError
-      perfil = perfilAtualizado
-    } else {
-      const { data: novoPerfil, error: insertPerfilError } = await supabase
-        .from('perfis_jogo')
-        .insert({
-          user_id: user.id,
-          nick,
-          uid_jogo: uidJogo,
-          servidor,
-          plataforma,
-          funcao,
-          equipe_id: vaga.equipe_id,
-          ativo: true,
-        })
-        .select('*')
-        .single()
-      if (insertPerfilError) throw insertPerfilError
-      perfil = novoPerfil
+    if (!perfil?.id) {
+      return NextResponse.json({ error: 'Perfil gamer não encontrado para sua conta.' }, { status: 404 })
     }
 
-    const perfilId = perfil?.id
-    if (!perfilId) throw new Error('Não foi possível localizar/criar seu perfil gamer.')
+    const perfilId = perfil.id
+
+    if (perfil.equipe_id !== vaga.equipe_id) {
+      const { error: perfilUpdateError } = await supabase
+        .from('perfis_jogo')
+        .update({ equipe_id: vaga.equipe_id, ativo: true, updated_at: new Date().toISOString() })
+        .eq('id', perfilId)
+        .eq('user_id', user.id)
+      if (perfilUpdateError) throw perfilUpdateError
+    }
 
     const { data: membroExistente } = await supabase
       .from('membros_equipe')
@@ -158,7 +122,7 @@ export async function POST(req: Request) {
           perfil_jogo_id: perfilId,
           status: 'ativo',
           origem: 'app',
-          criado_automaticamente: false,
+          criado_automaticamente: true,
         })
         .select('id')
         .single()
@@ -223,9 +187,6 @@ export async function POST(req: Request) {
     })
   } catch (error: any) {
     console.error('Erro ao entrar via token:', error)
-    const msg = error?.code === '23505'
-      ? 'Esse nick ou ID já está vinculado a outro perfil. Entre com sua conta correta ou altere os dados.'
-      : error?.message || 'Erro ao concluir inscrição.'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: error?.message || 'Erro ao concluir inscrição.' }, { status: 500 })
   }
 }
