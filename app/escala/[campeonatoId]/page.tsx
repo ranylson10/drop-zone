@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -18,6 +18,7 @@ import {
   GitBranch,
   Send,
   Search,
+  Copy,
   ShieldCheck,
   Trophy,
   UserRound,
@@ -372,6 +373,8 @@ async function rpcFallbackBeta(nameList: string[], payload: Record<string, unkno
 export default function EscalaCampeonatoPage() {
   const params = useParams<{ campeonatoId: string }>();
   const campeonatoParam = String(params?.campeonatoId || "");
+  const searchParams = useSearchParams();
+  const tokenConviteRapido = String(searchParams?.get("convite") || "").trim();
 
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -464,6 +467,9 @@ export default function EscalaCampeonatoPage() {
   const [authOtpTipo, setAuthOtpTipo] = useState<"signup" | "recovery">("signup");
   const [authNome, setAuthNome] = useState("");
   const [authMensagem, setAuthMensagem] = useState<string | null>(null);
+  const [processandoConviteRapido, setProcessandoConviteRapido] = useState(false);
+  const [conviteRapidoMensagem, setConviteRapidoMensagem] = useState<string | null>(null);
+  const [conviteRapidoConcluidoToken, setConviteRapidoConcluidoToken] = useState<string | null>(null);
   const [authProcessando, setAuthProcessando] = useState(false);
 
   useEffect(() => {
@@ -1590,6 +1596,71 @@ export default function EscalaCampeonatoPage() {
     return `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
   }
 
+  function gerarTokenConviteRapidoBeta() {
+    const bytes = new Uint8Array(18);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 32);
+  }
+
+  async function gerarLinkConviteRapidoBeta(equipe: Equipe, line: LineMobile) {
+    const vagaDaLine = inscricoesEquipe.find((vaga) => vaga.line_id === line.id && vaga.equipe_id === equipe.id);
+    if (!vagaDaLine?.id) {
+      alert("Essa line precisa estar vinculada a uma vaga do campeonato antes de gerar o link.");
+      return;
+    }
+
+    try {
+      setProcessandoConviteRapido(true);
+      const token = gerarTokenConviteRapidoBeta();
+      const { error } = await supabase.from("equipe_convite_links").insert({
+        token,
+        campeonato_id: campeonato.id,
+        campeonato_equipe_id: vagaDaLine.id,
+        equipe_id: equipe.id,
+        line_id: line.id,
+        criado_por: userId,
+        ativo: true,
+      });
+
+      if (error) throw error;
+
+      const origem = typeof window !== "undefined" ? window.location.origin : "";
+      const link = `${origem}/escala/${campeonato.id}?convite=${encodeURIComponent(token)}`;
+      await navigator.clipboard.writeText(link);
+      alert("Link copiado. Envie para os jogadores: quem entrar por ele cai direto nessa equipe/line do campeonato.");
+    } catch (error: any) {
+      alert(error?.message || error?.details || "Não foi possível gerar o link rápido.");
+    } finally {
+      setProcessandoConviteRapido(false);
+    }
+  }
+
+  async function entrarPeloConviteRapidoBeta() {
+    if (!tokenConviteRapido || !perfilJogo?.id || processandoConviteRapido || conviteRapidoConcluidoToken === tokenConviteRapido) return;
+
+    try {
+      setProcessandoConviteRapido(true);
+      setConviteRapidoMensagem("Confirmando sua entrada na equipe...");
+
+      const { error } = await supabase.rpc("fn_entrar_equipe_campeonato_por_link", {
+        p_token: tokenConviteRapido,
+        p_perfil_jogo_id: perfilJogo.id,
+      });
+
+      if (error) throw error;
+
+      setConviteRapidoConcluidoToken(tokenConviteRapido);
+      setConviteRapidoMensagem("Pronto. Você já entrou na equipe e foi escalado neste campeonato.");
+      setAba("jogador");
+      await carregar();
+    } catch (error: any) {
+      const msg = error?.message || error?.details || "Não foi possível entrar pelo link rápido.";
+      setConviteRapidoMensagem(msg);
+    } finally {
+      setProcessandoConviteRapido(false);
+    }
+  }
+
   async function adicionarPerfilNaLineBeta(equipe: Equipe, line: LineMobile, perfil: PerfilJogo) {
     const vagaDaLine = inscricoesEquipe.find((vaga) => vaga.line_id === line.id && vaga.equipe_id === equipe.id);
     if (!vagaDaLine?.id) {
@@ -2045,6 +2116,19 @@ export default function EscalaCampeonatoPage() {
     if (authModo === "confirmar") return confirmarCodigoNoLinkBeta();
     return recuperarSenhaNoLinkBeta();
   }
+
+
+  useEffect(() => {
+    if (!tokenConviteRapido || checkingAuth || loading || !usuarioLogado || conviteRapidoConcluidoToken === tokenConviteRapido) return;
+    if (!perfilJogo?.id) {
+      setTipoAcesso("jogador");
+      setAba("jogador");
+      setConviteRapidoMensagem("Crie seu perfil de jogo para entrar automaticamente na equipe do link.");
+      return;
+    }
+    void entrarPeloConviteRapidoBeta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenConviteRapido, checkingAuth, loading, usuarioLogado?.id, perfilJogo?.id, conviteRapidoConcluidoToken]);
 
 
   if (checkingAuth) {
@@ -3487,13 +3571,24 @@ export default function EscalaCampeonatoPage() {
                                         Line selecionada
                                       </p>
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
-                                      className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
-                                    >
-                                      + Jogador
-                                    </button>
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => gerarLinkConviteRapidoBeta(equipe, lineAtiva)}
+                                        disabled={processandoConviteRapido}
+                                        className="h-8 border border-cyan-500 bg-cyan-500 px-2 text-[8px] font-black uppercase text-white disabled:opacity-50"
+                                        title="Copia um link que cadastra o jogador nesta equipe e já escala nesta line"
+                                      >
+                                        <Copy size={12} className="mr-1 inline" /> Link
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => adicionarJogadorLineBeta(equipe, lineAtiva)}
+                                        className="h-8 border border-amber-500 bg-amber-500 px-2 text-[8px] font-black uppercase text-white"
+                                      >
+                                        + Jogador
+                                      </button>
+                                    </div>
                                   </div>
 
                                   {jogadoresLine.length ? (

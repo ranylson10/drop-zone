@@ -32,6 +32,7 @@ import {
   QrCode,
   MessageCircle,
   ExternalLink,
+  Trash2,
 } from 'lucide-react'
 import Draggable from 'react-draggable'
 
@@ -512,6 +513,31 @@ function obterSeloReputacao(score: number) {
 }
 
 function HeaderStat({ label, value }: { label: string; value: any }) {
+  async function excluirCampeonato() {
+    const nomeCampeonato = String(camp?.nome || '').trim()
+    if (!nomeCampeonato || textoExclusao.trim() !== nomeCampeonato) return
+
+    setErroExclusao('')
+    setExcluindo(true)
+    try {
+      const { error } = await supabase.from('campeonatos').delete().eq('id', campeonatoId)
+
+      if (error) throw error
+
+      router.push('/campeonatos')
+    } catch (error: any) {
+      console.error('Erro ao excluir campeonato:', error)
+      const mensagem = String(error?.message || error?.details || '')
+      if (mensagem.toLowerCase().includes('foreign key') || mensagem.toLowerCase().includes('violates')) {
+        setErroExclusao('Nao foi possivel apagar porque existem equipes, jogos, grupos ou registros vinculados a este campeonato. Remova os vinculos antes de tentar novamente.')
+      } else {
+        setErroExclusao(mensagem || 'Nao foi possivel apagar o campeonato agora.')
+      }
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
   return (
     <div className="border-l border-white/15 pl-4">
       <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">{label}</div>
@@ -1956,8 +1982,13 @@ function PainelConfiguracoesCampeonato({
   onSalvar: (campo: string, valor: any) => Promise<void>
   onSalvarCampos: (campos: Record<string, any>) => Promise<void>
 }) {
+  const router = useRouter()
   const [salvandoCampo, setSalvandoCampo] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
+  const [textoExclusao, setTextoExclusao] = useState('')
+  const [erroExclusao, setErroExclusao] = useState('')
+  const [excluindo, setExcluindo] = useState(false)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
   const linkMobile = `${origem}/escala/${campeonatoId}`
