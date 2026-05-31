@@ -59,6 +59,7 @@ type EventoCalendario = {
  descricao: string
  cor: string
  texto?: string
+ borda?: string
  horarioInicio: HorarioKey
  duracaoSlots: number
  tipo?: 'jogo' | 'tarefa'
@@ -94,6 +95,7 @@ type SidebarJogo = {
 type CampeonatoCor = {
  bg: string
  text: string
+ border?: string
 }
 
 type EscopoCalendario = 'meu' | 'todos'
@@ -152,11 +154,48 @@ function normalizarHorario(valor: string | null): HorarioKey | null {
 function textoSeguroCalendario(valor: unknown) {
  if (valor === null || valor === undefined) return ''
  if (typeof valor === 'string' || typeof valor === 'number' || typeof valor === 'boolean') return String(valor)
+ if (typeof valor === 'object') {
+ const item = valor as Record<string, unknown>
+ const nome = item.nome ?? item.NOME ?? item.name ?? item.NAME ?? item.mapa ?? item.MAPA
+ const numero = item.numero ?? item.NUMERO ?? item.ordem ?? item.ORDEM
+ if (nome && numero) return `${textoSeguroCalendario(nome)} ${textoSeguroCalendario(numero)}`
+ if (nome) return textoSeguroCalendario(nome)
+ }
  try {
  return JSON.stringify(valor)
  } catch {
  return ''
  }
+}
+
+function normalizarHexCor(valor?: string | null, fallback = '#3f7cff') {
+ const texto = String(valor || '').trim()
+ return /^#[0-9a-f]{6}$/i.test(texto) ? texto : fallback
+}
+
+function ajustarTomHex(hex: string, fator: number) {
+ const cor = normalizarHexCor(hex).replace('#', '')
+ const canais = [0, 2, 4].map((inicio) => parseInt(cor.slice(inicio, inicio + 2), 16))
+ const ajustados = canais.map((canal) => {
+ const novo = fator < 0 ? canal * (1 + fator) : canal + (255 - canal) * fator
+ return Math.max(0, Math.min(255, Math.round(novo))).toString(16).padStart(2, '0')
+ })
+ return `#${ajustados.join('')}`
+}
+
+function indiceTomFase(faseNome?: string | null) {
+ const texto = String(faseNome || '')
+ let hash = 0
+ for (let i = 0; i < texto.length; i += 1) {
+ hash = (hash << 5) - hash + texto.charCodeAt(i)
+ hash |= 0
+ }
+ return Math.abs(hash) % 4
+}
+
+function corDaFase(base: string, faseNome?: string | null) {
+ const indice = indiceTomFase(faseNome)
+ return ajustarTomHex(base, -0.08 * indice)
 }
 
 function calcularSlotsDuracao(horario: HorarioKey, duracaoMin: number | null) {
@@ -249,6 +288,9 @@ function montarCalendarioDosJogos(
  const tituloBase = jogo.nome_bloco?.trim() || 'JOGO'
  const corPadrao = corDoEvento(`${nomeCampeonato}-${nomeFase}-${tituloBase}`)
  const corCustom = jogo.campeonato_id ? campeonatosCores[jogo.campeonato_id] : null
+ const corBase = corCustom?.bg || corPadrao.bg
+ const corTexto = corCustom?.text || corPadrao.text
+ const corBorda = corCustom?.border || ajustarTomHex(corBase, -0.2)
  const duracaoSlots = calcularSlotsDuracao(horarioInicio, jogo.duracao_estimada_min)
  const quedasLista = jogo.quedas ? Object.values(jogo.quedas).map(textoSeguroCalendario).filter(Boolean) : []
 
@@ -257,8 +299,9 @@ function montarCalendarioDosJogos(
  id: jogo.id,
  titulo: tituloBase,
  descricao: montarDescricao(jogo, nomeFase, nomeCampeonato),
- cor: corCustom?.bg || corPadrao.bg,
- texto: corCustom?.text || corPadrao.text,
+ cor: corDaFase(corBase, nomeFase),
+ texto: corTexto,
+ borda: corBorda,
  horarioInicio,
  duracaoSlots,
  faseNome: nomeFase,
@@ -291,6 +334,7 @@ function aplicarTarefasNoCalendario(dias: DiaCalendario[], tarefas: TarefaCalend
  descricao: tarefa.descricao || 'Tarefa pessoal',
  cor: tarefa.cor || '#00a884',
  texto: tarefa.texto || '#ffffff',
+ borda: ajustarTomHex(tarefa.cor || '#00a884', -0.2),
  horarioInicio: tarefa.horario,
  duracaoSlots: 1,
  tipo: 'tarefa',
@@ -417,6 +461,7 @@ export default function CalendariosPage() {
  const [campeonatosCores, setCampeonatosCores] = useState<Record<string, CampeonatoCor>>({})
  const [campeonatosAbertos, setCampeonatosAbertos] = useState<Record<string, boolean>>({})
  const [fasesAbertas, setFasesAbertas] = useState<Record<string, boolean>>({})
+ const [editorCoresCampeonato, setEditorCoresCampeonato] = useState<string | null>(null)
  const [loading, setLoading] = useState(true)
  const [erro, setErro] = useState<string | null>(null)
  const [eventoSelecionado, setEventoSelecionado] = useState<EventoCalendario | null>(null)
@@ -692,13 +737,15 @@ export default function CalendariosPage() {
  setFasesAbertas((prev) => ({ ...prev, [faseId]: !prev[faseId] }))
  }
 
- function atualizarCorCampeonato(campeonatoId: string, campo: 'bg' | 'text', valor: string) {
+ function atualizarCorCampeonato(campeonatoId: string, campo: 'bg' | 'text' | 'border', valor: string) {
  setCampeonatosCores((prev) => {
+ const atual = prev[campeonatoId] || {}
  const proximo = {
  ...prev,
  [campeonatoId]: {
- bg: prev[campeonatoId]?.bg || '#3f7cff',
- text: prev[campeonatoId]?.text || '#ffffff',
+ bg: atual.bg || '#3f7cff',
+ text: atual.text || '#ffffff',
+ border: atual.border || ajustarTomHex(atual.bg || '#3f7cff', -0.2),
  [campo]: valor,
  },
  }
@@ -909,6 +956,7 @@ export default function CalendariosPage() {
  style={{
  backgroundColor: evento.cor,
  color: evento.texto || '#ffffff',
+ border: `2px solid ${evento.borda || 'transparent'}`,
  }}
  >
  <span className="text-[8px] font-semibold uppercase tracking-[0.16em] opacity-90">
@@ -1075,65 +1123,69 @@ export default function CalendariosPage() {
  sidebarAgrupada.map((campeonato) => {
  const campeonatoId = campeonato.campeonatoId
  const aberto = campeonatosAbertos[campeonatoId] ?? true
- const cores = campeonatosCores[campeonatoId] || { bg: '#3f7cff', text: '#ffffff' }
+ const coresBase = campeonatosCores[campeonatoId] || { bg: '#3f7cff', text: '#ffffff', border: '#1d4ed8' }
+ const cores = {
+ bg: normalizarHexCor(coresBase.bg, '#3f7cff'),
+ text: normalizarHexCor(coresBase.text, '#ffffff'),
+ border: normalizarHexCor(coresBase.border, ajustarTomHex(coresBase.bg || '#3f7cff', -0.2)),
+ }
 
  return (
- <div key={campeonatoId} className=" border border-zinc-200 bg-zinc-500 overflow-hidden">
+ <div key={campeonatoId} className="overflow-hidden border bg-white" style={{ borderColor: cores.border }}>
+ <div className="flex w-full items-center gap-2 px-3 py-3" style={{ backgroundColor: ajustarTomHex(cores.bg, 0.86), color: cores.text }}>
  <button
  onClick={() => toggleCampeonato(campeonatoId)}
- className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors hover:bg-white"
+ className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
  >
  <div className="min-w-0">
- <p className="truncate text-sm font-semibold uppercase text-[#142340]">
+ <p className="truncate text-sm font-black uppercase">
  {campeonato.campeonatoNome}
  </p>
- <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+ <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] opacity-75">
  {campeonato.jogos.length} jogos
  </p>
  </div>
 
  <ChevronDown
  size={16}
- className={`shrink-0 text-zinc-500 transition-transform ${aberto ? 'rotate-180' : ''}`}
+ className={`shrink-0 opacity-75 transition-transform ${aberto ? 'rotate-180' : ''}`}
  />
  </button>
+ <button
+ type="button"
+ onClick={() => setEditorCoresCampeonato((atual) => (atual === campeonatoId ? null : campeonatoId))}
+ title="Editar cores do campeonato"
+ className="grid h-8 w-8 shrink-0 place-items-center border bg-white/70 text-[#142340] transition hover:bg-white"
+ style={{ borderColor: cores.border }}
+ >
+ <Palette size={14} />
+ </button>
+ </div>
 
  {aberto ? (
- <div className="border-t border-zinc-200 p-3 space-y-3">
- <div className=" border border-zinc-200 bg-white p-3">
- <div className="mb-2 flex items-center gap-2 text-cyan-400">
- <Palette size={14} />
- <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">
- Cores do campeonato
- </span>
+ <div className="space-y-3 border-t p-3" style={{ borderColor: cores.border }}>
+ {editorCoresCampeonato === campeonatoId ? (
+ <div className="grid gap-2 border bg-white p-2 md:grid-cols-3" style={{ borderColor: cores.border }}>
+ <MiniColorField label="Fundo" value={cores.bg} onChange={(valor) => atualizarCorCampeonato(campeonatoId, 'bg', valor)} />
+ <MiniColorField label="Borda" value={cores.border} onChange={(valor) => atualizarCorCampeonato(campeonatoId, 'border', valor)} />
+ <MiniColorField label="Letra" value={cores.text} onChange={(valor) => atualizarCorCampeonato(campeonatoId, 'text', valor)} />
  </div>
-
- <div className="grid grid-cols-2 gap-3">
- <ColorField
- label="Fundo"
- value={cores.bg}
- onChange={(valor) => atualizarCorCampeonato(campeonatoId, 'bg', valor)}
- />
- <ColorField
- label="Letra"
- value={cores.text}
- onChange={(valor) => atualizarCorCampeonato(campeonatoId, 'text', valor)}
- />
- </div>
- </div>
+ ) : null}
 
  {campeonato.fases.map((fase) => {
  const faseKey = `${campeonatoId}-${fase.faseId}`
  const faseAberta = fasesAbertas[faseKey] ?? true
+ const corFase = corDaFase(cores.bg, fase.faseNome)
 
  return (
- <div key={faseKey} className=" border border-zinc-200 bg-white overflow-hidden">
+ <div key={faseKey} className="overflow-hidden border bg-white" style={{ borderColor: cores.border }}>
  <button
  onClick={() => toggleFase(faseKey)}
- className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/40"
+ className="flex w-full items-center justify-between gap-3 border-l-4 px-3 py-2.5 text-left transition-colors hover:bg-zinc-50"
+ style={{ borderLeftColor: corFase }}
  >
  <div>
- <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-400">
+ <p className="text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: corFase }}>
  {fase.faseNome}
  </p>
  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
@@ -1148,11 +1200,12 @@ export default function CalendariosPage() {
  </button>
 
  {faseAberta ? (
- <div className="border-t border-zinc-200 p-2 space-y-2">
+ <div className="space-y-2 border-t border-zinc-200 p-2">
  {fase.jogos.map((jogo) => (
  <div
  key={jogo.id}
- className=" border border-zinc-200 bg-[#f7f7f7]/40 px-3 py-2"
+ className="border bg-[#f7f7f7]/40 px-3 py-2"
+ style={{ borderColor: cores.border }}
  >
  <div className="flex items-center justify-between gap-3">
  <div className="min-w-0">
@@ -1211,6 +1264,7 @@ export default function CalendariosPage() {
  style={{
  backgroundColor: eventoSelecionado.cor,
  color: eventoSelecionado.texto || '#ffffff',
+ border: `2px solid ${eventoSelecionado.borda || 'transparent'}`,
  }}
  >
  <p className="text-[11px] font-semibold uppercase tracking-[0.16em]">
@@ -1242,7 +1296,7 @@ export default function CalendariosPage() {
  key={`${queda}-${index}`}
  className=" border border-zinc-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase text-[#142340]"
  >
- {index + 1}. {queda}
+ {index + 1}. {textoSeguroCalendario(queda)}
  </span>
  ))}
  </div>
@@ -1283,7 +1337,7 @@ function MiniInfo({ icon, text }: { icon: React.ReactNode; text: string }) {
  )
 }
 
-function ColorField({
+function MiniColorField({
  label,
  value,
  onChange,
@@ -1293,21 +1347,21 @@ function ColorField({
  onChange: (valor: string) => void
 }) {
  return (
- <div>
- <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{label}</p>
- <div className="flex items-center gap-2 border border-zinc-200 bg-[#f7f7f7]/50 px-2 py-2">
+ <label>
+ <span className="mb-1 block text-[9px] font-black uppercase tracking-[0.12em] text-zinc-500">{label}</span>
+ <div className="flex items-center gap-2 border border-zinc-200 bg-[#f7f7f7]/50 px-2 py-1.5">
  <input
  type="color"
  value={value}
  onChange={(e) => onChange(e.target.value)}
- className="h-8 w-10 cursor-pointer border-0 bg-transparent"
+ className="h-7 w-8 cursor-pointer border-0 bg-transparent"
  />
  <input
  value={value}
  onChange={(e) => onChange(e.target.value)}
- className="w-full bg-transparent text-[11px] font-bold text-[#142340] outline-none"
+ className="min-w-0 flex-1 bg-transparent text-[10px] font-bold text-[#142340] outline-none"
  />
  </div>
- </div>
+ </label>
  )
 }
