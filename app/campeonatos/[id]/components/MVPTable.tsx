@@ -583,17 +583,17 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  className="font-medium uppercase"
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
- <th className="w-16 px-3 py-3 text-center text-[10px]">Rank</th>
- <th className="w-20 px-3 py-3 text-center text-[10px]">Logo</th>
- <th className="w-20 px-3 py-3 text-center text-[10px]">Foto</th>
- <th className="w-28 px-3 py-3 text-center text-[10px]">Tag</th>
- <th className="px-3 py-3 text-left text-[10px]">Nick</th>
- <th className="w-24 px-3 py-3 text-center text-[10px]">Bandeira</th>
- <th className="w-24 px-3 py-3 text-center text-[10px]">Função</th>
- <th className="w-24 px-3 py-3 text-center text-[10px]">Quedas</th>
- <th className="w-24 px-3 py-3 text-center text-[10px]">K.D</th>
+ <th className="hidden w-16 px-3 py-3 text-center text-[10px] sm:table-cell">Rank</th>
+ <th className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-20 sm:px-3 sm:py-3 sm:text-[10px]">Logo</th>
+ <th className="hidden w-20 px-3 py-3 text-center text-[10px] sm:table-cell">Foto</th>
+ <th className="hidden w-28 px-3 py-3 text-center text-[10px] sm:table-cell">Tag</th>
+ <th className="px-1.5 py-2 text-left text-[9px] sm:px-3 sm:py-3 sm:text-[10px]">Nick</th>
+ <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Bandeira</th>
+ <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Função</th>
+ <th className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]">Quedas</th>
+ <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">K.D</th>
  <th
- className="w-24 px-3 py-3 text-center text-[10px]"
+ className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]"
  style={{
  backgroundColor: layout.primary_color,
  color: layout.text_color,
@@ -640,12 +640,12 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  borderColor: `${layout.border_color}22`,
  }}
  >
- <td className="px-3 text-center text-[13px] font-semibold" style={{ color: layout.primary_color }}>
+<td className="hidden px-3 text-center text-[13px] font-semibold sm:table-cell" style={{ color: layout.primary_color }}>
  {index + 1}º
  </td>
 
- <td className="px-3 text-center">
- <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white">
+<td className="px-1.5 text-center sm:px-3">
+<div className="mx-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white sm:h-9 sm:w-9">
  <img
  src={item.equipe_avatar || '/placeholder.png'}
  className="h-full w-full object-cover"
@@ -654,7 +654,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </div>
  </td>
 
- <td className="px-3 text-center">
+<td className="hidden px-3 text-center sm:table-cell">
  <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white">
  <img
  src={item.avatar_url || '/placeholder.png'}
@@ -664,15 +664,15 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </div>
  </td>
 
- <td className="px-3 text-center text-[11px] font-semibold uppercase">
+<td className="hidden px-3 text-center text-[11px] font-semibold uppercase sm:table-cell">
  {item.tag}
  </td>
 
- <td className="px-3 text-left text-[12px] font-semibold uppercase">
- <span className="block max-w-[240px] truncate">{item.nome}</span>
+<td className="px-1.5 text-left text-[10px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
+<span className="block max-w-[120px] truncate sm:max-w-[240px]">{item.nome}</span>
  </td>
 
- <td className="px-3 text-center">
+<td className="hidden px-3 text-center sm:table-cell">
  {flagUrlFromPais(item.pais) ? (
  <img src={flagUrlFromPais(item.pais)} alt={paisIso(item.pais) || flagFromPais(item.pais)} className="mx-auto h-4 w-6 rounded-[2px] object-cover" />
  ) : (
@@ -680,7 +680,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  )}
  </td>
 
- <td className="px-3 text-center">
+<td className="hidden px-3 text-center sm:table-cell">
  <span
  className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[13px] font-semibold"
  style={{
@@ -693,16 +693,16 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </span>
  </td>
 
- <td className="px-3 text-center text-[13px] font-semibold" style={{ color: layout.primary_color }}>
+<td className="px-1.5 text-center text-[11px] font-semibold sm:px-3 sm:text-[13px]" style={{ color: layout.primary_color }}>
  {item.quedas || 0}
  </td>
 
- <td className="px-3 text-center text-[13px] font-semibold text-[#2563eb]">
+<td className="hidden px-3 text-center text-[13px] font-semibold text-[#2563eb] sm:table-cell">
  {Number(item.kd || 0).toFixed(2)}
  </td>
 
  <td
- className="px-3 text-center text-[14px] font-semibold"
+className="px-1.5 text-center text-[11px] font-semibold sm:px-3 sm:text-[14px]"
  style={{
  color: layout.primary_color,
  borderLeft: `1px solid ${layout.border_color}22`,
@@ -733,3 +733,4 @@ function MvpTopStat({ label, value, highlight = false, color = '#7cfc00' }: { la
  </div>
  )
 }
+

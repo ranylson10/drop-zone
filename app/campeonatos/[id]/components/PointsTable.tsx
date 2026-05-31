@@ -9,6 +9,7 @@ interface EquipeTabela {
  campeonato_equipe_id: string
  equipe_publica_id: string | null
  nome: string
+ tag: string
  avatar_url: string
  grupo: string
  partidas: number
@@ -295,12 +296,12 @@ export default function TabelaCampeonato() {
  { data: equipesAvulsasData, error: equipesAvulsasError },
  ] = await Promise.all([
  equipeIds.length > 0
- ? supabase.from('equipes').select('id, nome, logo_url').in('id', equipeIds)
+ ? supabase.from('equipes').select('id, nome, tag, logo_url').in('id', equipeIds)
  : Promise.resolve({ data: [], error: null }),
  equipeAvulsaIds.length > 0
  ? supabase
  .from('equipes_avulsas_campeonato')
- .select('id, nome, logo_url')
+ .select('id, nome, tag, logo_url')
  .in('id', equipeAvulsaIds)
  : Promise.resolve({ data: [], error: null }),
  ])
@@ -421,6 +422,7 @@ export default function TabelaCampeonato() {
  campeonato_equipe_id: campeonatoEquipeId,
  equipe_publica_id: equipePublicaId,
  nome: item?.nome_exibicao || equipeOficial?.nome || equipeAvulsa?.nome || 'Sem Nome',
+ tag: textoSeguro(equipeOficial?.tag || equipeAvulsa?.tag || item?.nome_exibicao || equipeOficial?.nome || equipeAvulsa?.nome, 'EQ').slice(0, 5),
  avatar_url: equipeOficial?.logo_url || equipeAvulsa?.logo_url || '',
  grupo: grupoNome,
  partidas: stats?.partidas || 0,
@@ -621,21 +623,22 @@ export default function TabelaCampeonato() {
  <table className='w-full border-collapse'>
  <thead>
  <tr style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}>
- <th className='px-3 py-3 text-[10px] font-semibold uppercase w-12 text-center'>POS</th>
- <th className='px-3 py-3 text-[10px] font-semibold uppercase text-left'>EQUIPE</th>
- <th className='px-2 py-3 text-[10px] font-semibold uppercase text-center w-14'>GRUPO</th>
- <th className='px-2 py-3 text-[10px] font-semibold uppercase text-center w-10'>QD</th>
- <th className='px-2 py-3 text-[10px] font-semibold uppercase text-center w-10'>B!</th>
- <th className='px-2 py-3 text-[10px] font-semibold uppercase text-center w-14'>KILL</th>
+ <th className='hidden px-3 py-3 text-[10px] font-semibold uppercase w-12 text-center sm:table-cell'>POS</th>
+ <th className='px-1.5 py-2 text-[9px] font-semibold uppercase text-left sm:px-3 sm:py-3 sm:text-[10px]'>EQUIPE</th>
+ <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-10 sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>GRUPO</th>
+ <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-9 sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>QD</th>
+ <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-9 sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>B!</th>
+ <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-10 sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>KILL</th>
  <th
- className='px-4 py-3 text-[11px] font-semibold uppercase text-center w-24 border-l-2'
+ className='px-1.5 py-2 text-[9px] font-semibold uppercase text-center w-12 border-l-2 sm:w-24 sm:px-4 sm:py-3 sm:text-[11px]'
  style={{
  backgroundColor: layout.primary_color,
  color: '#000',
  borderColor: layout.border_color,
  }}
  >
- TOTAL
+ <span className='sm:hidden'>PTS</span>
+ <span className='hidden sm:inline'>TOTAL</span>
  </th>
  </tr>
  </thead>
@@ -669,48 +672,51 @@ export default function TabelaCampeonato() {
  borderBottom: `${layout.border_width > 0 ? 1 : 0}px solid ${layout.border_color}22`,
  }}
  >
- <td className='text-center font-semibold text-sm'>{index + 1}º</td>
+ <td className='hidden text-center font-semibold text-sm sm:table-cell'>{index + 1}º</td>
 
- <td className='px-3'>
- <div className='flex items-center gap-2'>
+ <td className='px-1.5 sm:px-3'>
+ <div className='flex items-center gap-1.5 sm:gap-2'>
  {equipe.avatar_url ? (
  <img
  src={equipe.avatar_url}
- className='w-7 h-7 object-contain border border-zinc-200/10'
+ className='h-7 w-7 shrink-0 object-contain border border-zinc-200/10'
  alt='logo'
  />
  ) : (
- <div className='w-7 h-7 flex items-center justify-center border border-zinc-200/10 bg-white'>
+ <div className='flex h-7 w-7 shrink-0 items-center justify-center border border-zinc-200/10 bg-white'>
  <Users size={14} className='text-zinc-500' />
  </div>
  )}
 
- <span className='font-semibold uppercase text-[11px]'>
+ <span className='hidden font-semibold uppercase text-[11px] sm:inline'>
  {equipe.nome}
  </span>
+ <span className='max-w-[48px] truncate text-[9px] font-semibold uppercase sm:hidden'>
+ {equipe.tag}
+ </span>
  {classificado ? (
- <span className='border px-1.5 py-0.5 text-[8px] font-black uppercase' style={{ borderColor: layout.primary_color, color: layout.primary_color }}>
+ <span className='hidden border px-1.5 py-0.5 text-[8px] font-black uppercase sm:inline-flex' style={{ borderColor: layout.primary_color, color: layout.primary_color }}>
  Classificado
  </span>
  ) : null}
  </div>
  </td>
 
- <td className='text-center font-bold text-[10px] opacity-70'>{equipe.grupo}</td>
+ <td className='text-center text-[10px] font-semibold opacity-70 sm:font-bold'>{equipe.grupo}</td>
 
- <td className='text-center font-bold text-[11px]'>{equipe.partidas}</td>
+ <td className='text-center text-[10px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.partidas}</td>
 
  <td
- className='text-center font-semibold text-[12px]'
+ className='text-center text-[10px] font-semibold sm:text-[12px]'
  style={{ color: isEven ? '#ff4500' : 'inherit' }}
  >
  {equipe.booyahs}
  </td>
 
- <td className='text-center font-bold text-[11px]'>{equipe.abates}</td>
+ <td className='text-center text-[10px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.abates}</td>
 
  <td
- className='text-center font-semibold text-sm border-l-2'
+ className='text-center text-[10px] font-semibold border-l-2 sm:text-sm'
  style={{
  backgroundColor: `${layout.primary_color}33`,
  borderColor: layout.border_color,
@@ -738,3 +744,4 @@ function TopStat({ label, value, highlight = false, color = '#7cfc00' }: { label
  </div>
  )
 }
+
