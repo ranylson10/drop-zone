@@ -104,6 +104,8 @@ type TarefaCalendario = {
  descricao: string
  data_evento: string
  horario: HorarioKey
+ cor: string
+ texto: string
  origem: 'pessoal'
 }
 
@@ -147,6 +149,16 @@ function normalizarHorario(valor: string | null): HorarioKey | null {
  return valor.slice(0, 5) as HorarioKey
 }
 
+function textoSeguroCalendario(valor: unknown) {
+ if (valor === null || valor === undefined) return ''
+ if (typeof valor === 'string' || typeof valor === 'number' || typeof valor === 'boolean') return String(valor)
+ try {
+ return JSON.stringify(valor)
+ } catch {
+ return ''
+ }
+}
+
 function calcularSlotsDuracao(horario: HorarioKey, duracaoMin: number | null) {
  const indiceInicio = HORARIOS.indexOf(horario)
  if (indiceInicio < 0) return 1
@@ -179,7 +191,7 @@ function corDoEvento(chave: string) {
 }
 
 function montarDescricao(jogo: JogoRow, nomeFase: string, nomeCampeonato: string) {
- const quedasTexto = jogo.quedas ? Object.values(jogo.quedas).filter(Boolean).join(' • ') : ''
+ const quedasTexto = jogo.quedas ? Object.values(jogo.quedas).map(textoSeguroCalendario).filter(Boolean).join(' • ') : ''
 
  const partes = [
  nomeCampeonato ? `Campeonato: ${nomeCampeonato}` : '',
@@ -238,7 +250,7 @@ function montarCalendarioDosJogos(
  const corPadrao = corDoEvento(`${nomeCampeonato}-${nomeFase}-${tituloBase}`)
  const corCustom = jogo.campeonato_id ? campeonatosCores[jogo.campeonato_id] : null
  const duracaoSlots = calcularSlotsDuracao(horarioInicio, jogo.duracao_estimada_min)
- const quedasLista = jogo.quedas ? Object.values(jogo.quedas).filter(Boolean) : []
+ const quedasLista = jogo.quedas ? Object.values(jogo.quedas).map(textoSeguroCalendario).filter(Boolean) : []
 
  dia.eventos = dia.eventos || {}
  dia.eventos[horarioInicio] = {
@@ -277,8 +289,8 @@ function aplicarTarefasNoCalendario(dias: DiaCalendario[], tarefas: TarefaCalend
  id: tarefa.id,
  titulo: tarefa.titulo || 'Tarefa',
  descricao: tarefa.descricao || 'Tarefa pessoal',
- cor: '#00a884',
- texto: '#ffffff',
+ cor: tarefa.cor || '#00a884',
+ texto: tarefa.texto || '#ffffff',
  horarioInicio: tarefa.horario,
  duracaoSlots: 1,
  tipo: 'tarefa',
@@ -392,7 +404,14 @@ export default function CalendariosPage() {
  const [anoAtivo, setAnoAtivo] = useState(hoje.getFullYear())
  const [jogos, setJogos] = useState<JogoRow[]>([])
  const [tarefas, setTarefas] = useState<TarefaCalendario[]>([])
- const [novaTarefa, setNovaTarefa] = useState({ titulo: '', descricao: '', data_evento: hoje.toISOString().slice(0, 10), horario: '20:00' as HorarioKey })
+ const [novaTarefa, setNovaTarefa] = useState({
+ titulo: '',
+ descricao: '',
+ data_evento: hoje.toISOString().slice(0, 10),
+ horario: '20:00' as HorarioKey,
+ cor: '#00a884',
+ texto: '#ffffff',
+ })
  const [fasesMap, setFasesMap] = useState<Map<string, string>>(new Map())
  const [campeonatosMap, setCampeonatosMap] = useState<Map<string, string>>(new Map())
  const [campeonatosCores, setCampeonatosCores] = useState<Record<string, CampeonatoCor>>({})
@@ -698,6 +717,8 @@ export default function CalendariosPage() {
  descricao: novaTarefa.descricao.trim(),
  data_evento: novaTarefa.data_evento,
  horario: novaTarefa.horario,
+ cor: novaTarefa.cor,
+ texto: novaTarefa.texto,
  origem: 'pessoal',
  }
 
@@ -925,13 +946,13 @@ export default function CalendariosPage() {
 
  <aside className="sticky top-4 h-[calc(100vh-2rem)] overflow-hidden border border-zinc-200 bg-white ">
  <div className="flex h-full flex-col">
- <div className="border-b border-zinc-200 p-4">
+ <div className="border-b border-zinc-200 p-3">
  <div className="flex items-center gap-2 text-cyan-400">
  <Trophy size={16} />
  <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Resumo do mês</span>
  </div>
 
- <div className="mt-4 grid grid-cols-2 gap-3">
+ <div className="mt-3 grid grid-cols-4 gap-2">
  <MetricCard label="Jogos no mês" value={String(totalEventosDoMes)} />
  <MetricCard label="Ano ativo" value={String(anoAtivo)} />
  <MetricCard label="Minhas equipes" value={escopo === 'meu' ? String(resumoUsuario.equipes) : 'Todos'} />
@@ -939,7 +960,7 @@ export default function CalendariosPage() {
  </div>
  </div>
 
- <div className="border-b border-zinc-200 p-4">
+ <div className="border-b border-zinc-200 p-3">
  <div className="flex items-center gap-2 text-[#00a884]">
  <Plus size={16} />
  <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Adicionar tarefa</span>
@@ -972,6 +993,40 @@ export default function CalendariosPage() {
  placeholder="Descricao opcional"
  className="min-h-16 border border-zinc-200 bg-[#f7f7f7] px-3 py-2 text-xs font-semibold outline-none focus:border-[#00a884]"
  />
+ <div className="grid grid-cols-2 gap-2">
+ <label className="border border-zinc-200 bg-[#f7f7f7] p-2">
+ <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-zinc-500">Cor</span>
+ <div className="mt-2 flex items-center gap-2">
+ <input
+ type="color"
+ value={novaTarefa.cor}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, cor: event.target.value }))}
+ className="h-8 w-10 border border-zinc-200 bg-white"
+ />
+ <input
+ value={novaTarefa.cor}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, cor: event.target.value }))}
+ className="h-8 min-w-0 flex-1 border border-zinc-200 bg-white px-2 text-[11px] font-bold outline-none"
+ />
+ </div>
+ </label>
+ <label className="border border-zinc-200 bg-[#f7f7f7] p-2">
+ <span className="block text-[9px] font-black uppercase tracking-[0.14em] text-zinc-500">Letra</span>
+ <div className="mt-2 flex items-center gap-2">
+ <input
+ type="color"
+ value={novaTarefa.texto}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, texto: event.target.value }))}
+ className="h-8 w-10 border border-zinc-200 bg-white"
+ />
+ <input
+ value={novaTarefa.texto}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, texto: event.target.value }))}
+ className="h-8 min-w-0 flex-1 border border-zinc-200 bg-white px-2 text-[11px] font-bold outline-none"
+ />
+ </div>
+ </label>
+ </div>
  <button
  type="button"
  onClick={adicionarTarefa}
@@ -985,12 +1040,16 @@ export default function CalendariosPage() {
  {tarefas.length ? (
  <div className="mt-3 space-y-2">
  {tarefas.slice(0, 5).map((tarefa) => (
- <div key={tarefa.id} className="flex items-center gap-2 border border-emerald-100 bg-emerald-50 px-2 py-2">
+ <div
+ key={tarefa.id}
+ className="flex items-center gap-2 border border-zinc-200 px-2 py-2"
+ style={{ backgroundColor: tarefa.cor || '#00a884', color: tarefa.texto || '#ffffff' }}
+ >
  <div className="min-w-0 flex-1">
- <div className="truncate text-[11px] font-black uppercase text-[#142340]">{tarefa.titulo}</div>
- <div className="text-[10px] font-semibold text-zinc-500">{formatarDataCurta(tarefa.data_evento)} - {tarefa.horario}</div>
+ <div className="truncate text-[11px] font-black uppercase">{tarefa.titulo}</div>
+ <div className="text-[10px] font-semibold opacity-80">{formatarDataCurta(tarefa.data_evento)} - {tarefa.horario}</div>
  </div>
- <button type="button" onClick={() => removerTarefa(tarefa.id)} className="grid h-7 w-7 place-items-center text-red-600 hover:bg-white">
+ <button type="button" onClick={() => removerTarefa(tarefa.id)} className="grid h-7 w-7 place-items-center bg-white/15 text-current hover:bg-white/25">
  <Trash2 size={13} />
  </button>
  </div>
@@ -1208,9 +1267,9 @@ export default function CalendariosPage() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
  return (
- <div className=" border border-zinc-200 bg-[#f7f7f7]/40 p-3">
- <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{label}</p>
- <p className="mt-2 text-2xl font-semibold uppercase text-[#142340]">{value}</p>
+ <div className="border border-zinc-200 bg-[#f7f7f7]/40 px-2 py-2">
+ <p className="truncate text-[8px] font-black uppercase tracking-[0.12em] text-zinc-500">{label}</p>
+ <p className="mt-1 truncate text-[16px] font-black uppercase leading-none text-[#142340]">{value}</p>
  </div>
  )
 }
