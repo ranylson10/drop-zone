@@ -514,8 +514,47 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  )
  }
 
+ const topMvp = rows[0] || null
+
  return (
  <div className="w-full animate-in fade-in duration-500">
+ <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-center">
+ {topMvp ? (
+ <aside
+ className="hidden self-start overflow-hidden border bg-white xl:flex xl:flex-col"
+ style={{
+ borderColor: `${layout.border_color}33`,
+ boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
+ }}
+ >
+ <div className="p-4 text-black" style={{ backgroundColor: layout.primary_color }}>
+ <div className="text-[9px] font-black uppercase tracking-[0.24em] opacity-70">Top 1</div>
+ <div className="mt-1 text-xl font-black uppercase leading-none">MVP</div>
+ </div>
+
+ <div className="flex flex-1 flex-col items-center justify-center px-5 py-6 text-center">
+ <div className="relative h-28 w-28">
+ <div className="flex h-28 w-28 items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50">
+ <img src={topMvp.avatar_url || '/placeholder.png'} alt="" className="h-full w-full object-cover" />
+ </div>
+ {topMvp.equipe_avatar ? (
+ <div className="absolute -bottom-3 -right-3 flex h-12 w-12 items-center justify-center overflow-hidden border border-zinc-200 bg-white p-1">
+ <img src={topMvp.equipe_avatar} alt="" className="h-full w-full object-contain" />
+ </div>
+ ) : null}
+ </div>
+ <div className="mt-6 text-lg font-black uppercase leading-tight text-[#142340]">{topMvp.nome}</div>
+ <div className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{topMvp.equipe}</div>
+ </div>
+
+ <div className="grid grid-cols-2 border-t border-zinc-200 text-center">
+ <MvpTopStat label="Kills" value={topMvp.abates} highlight color={layout.primary_color} />
+ <MvpTopStat label="K.D" value={Number(topMvp.kd || 0).toFixed(2)} />
+ <MvpTopStat label="Quedas" value={topMvp.quedas} />
+ <MvpTopStat label="Função" value={getFuncaoIcone(topMvp.funcao)} />
+ </div>
+ </aside>
+ ) : null}
  <div
  className="overflow-hidden rounded-sm border border-zinc-200 bg-white shadow-sm"
  style={{
@@ -659,10 +698,20 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </tbody>
  </table>
  </div>
+ </div>
 
  <div className="mt-3 text-[8px] font-semibold uppercase text-zinc-500">
  * Ranking MVP agregado diretamente da tabela resultados_mvp.
  </div>
+ </div>
+ )
+}
+
+function MvpTopStat({ label, value, highlight = false, color = '#7cfc00' }: { label: string; value: string | number; highlight?: boolean; color?: string }) {
+ return (
+ <div className="border-r border-b border-zinc-200 p-3 last:border-r-0" style={highlight ? { backgroundColor: `${color}33` } : undefined}>
+ <div className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500">{label}</div>
+ <div className="mt-1 text-xl font-black text-[#142340]">{value}</div>
  </div>
  )
 }

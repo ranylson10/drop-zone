@@ -59,6 +59,7 @@ interface GrupoRow {
  id: string
  nome: string
  fase_id?: string | null
+ classificam?: number | null
 }
 
 interface JogoRow {
@@ -114,6 +115,7 @@ export default function TabelaCampeonato() {
  const [grupoSelecionado, setGrupoSelecionado] = useState<string>('todos')
  const [mapaSelecionado, setMapaSelecionado] = useState<string>('todos')
  const [jogoSelecionado, setJogoSelecionado] = useState<string>('todos')
+ const [filtroInicialAplicado, setFiltroInicialAplicado] = useState(false)
 
  const [layout, setLayout] = useState<LayoutSettings>({
  primary_color: '#7cfc00',
@@ -166,7 +168,7 @@ export default function TabelaCampeonato() {
  .eq('campeonato_id', id),
  supabase
  .from('campeonato_grupos')
- .select('id, nome, fase_id')
+ .select('id, nome, fase_id, classificam')
  .eq('campeonato_id', id)
  .order('nome', { ascending: true }),
  supabase
@@ -209,6 +211,18 @@ export default function TabelaCampeonato() {
  }
  return lista
  }, [jogos, faseSelecionada, grupoSelecionado])
+
+ useEffect(() => {
+ if (filtroInicialAplicado || grupos.length === 0) return
+ const primeiraFase = fases[0]?.id || grupos[0]?.fase_id || 'todas'
+ const primeiroGrupo =
+ grupos.find((grupo) => textoSeguro(grupo.fase_id) === textoSeguro(primeiraFase)) || grupos[0]
+
+ setFiltroTipo('grupo')
+ setFaseSelecionada(primeiraFase || 'todas')
+ setGrupoSelecionado(primeiroGrupo?.id || 'todos')
+ setFiltroInicialAplicado(true)
+ }, [filtroInicialAplicado, fases, grupos])
 
  const mapasDisponiveis = useMemo(() => {
  let base = resultados
@@ -474,6 +488,8 @@ export default function TabelaCampeonato() {
  }
 
  const topEquipe = equipes[0] || null
+ const grupoAtual = grupoSelecionado !== 'todos' ? grupos.find((grupo) => grupo.id === grupoSelecionado) : null
+ const limiteClassificados = grupoAtual ? Number(grupoAtual.classificam || 0) : 0
 
  return (
  <div className='w-full space-y-4'>
@@ -556,7 +572,7 @@ export default function TabelaCampeonato() {
  )}
  </div>
 
- <div className='grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-start'>
+ <div className='grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-center'>
  {topEquipe ? (
  <aside
  className='hidden xl:flex self-start flex-col overflow-hidden border bg-white'
@@ -570,7 +586,7 @@ export default function TabelaCampeonato() {
  style={{ backgroundColor: layout.primary_color }}
  >
  <div className='text-[9px] font-black uppercase tracking-[0.24em] opacity-70'>Top 1</div>
- <div className='mt-1 text-xl font-black uppercase leading-none'>Destaque</div>
+ <div className='mt-1 text-xl font-black uppercase leading-none'>{limiteClassificados > 0 ? 'Classificado' : 'Destaque'}</div>
  </div>
 
  <div className='flex flex-1 flex-col items-center justify-center px-5 py-6 text-center'>
@@ -637,6 +653,7 @@ export default function TabelaCampeonato() {
  ) : (
  equipes.map((equipe, index) => {
  const isEven = index % 2 === 0
+ const classificado = limiteClassificados > 0 && index < limiteClassificados
  const rowBg = layout.row_alt_bg
  ? isEven
  ? layout.row_bg_primary
@@ -647,7 +664,7 @@ export default function TabelaCampeonato() {
  <tr
  key={equipe.campeonato_equipe_id}
  style={{
- backgroundColor: rowBg,
+ backgroundColor: classificado ? `${layout.primary_color}16` : rowBg,
  height: `${layout.row_height}px`,
  borderBottom: `${layout.border_width > 0 ? 1 : 0}px solid ${layout.border_color}22`,
  }}
@@ -671,6 +688,11 @@ export default function TabelaCampeonato() {
  <span className='font-semibold uppercase text-[11px]'>
  {equipe.nome}
  </span>
+ {classificado ? (
+ <span className='border px-1.5 py-0.5 text-[8px] font-black uppercase' style={{ borderColor: layout.primary_color, color: layout.primary_color }}>
+ Classificado
+ </span>
+ ) : null}
  </div>
  </td>
 
