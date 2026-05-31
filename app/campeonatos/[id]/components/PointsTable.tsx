@@ -556,10 +556,10 @@ export default function TabelaCampeonato() {
  )}
  </div>
 
- <div className='grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]'>
+ <div className='grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-start'>
  {topEquipe ? (
  <aside
- className='hidden xl:flex min-h-[360px] flex-col justify-between overflow-hidden border bg-white'
+ className='hidden xl:flex self-start flex-col overflow-hidden border bg-white'
  style={{
  borderColor: `${layout.border_color}33`,
  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
