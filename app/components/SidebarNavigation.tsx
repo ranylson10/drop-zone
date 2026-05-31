@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   BarChart3,
+  CalendarDays,
   ChevronDown,
   Flame,
   Home,
@@ -45,6 +46,7 @@ const baseItems: NavItem[] = [
   { href: '/feed', label: 'Início', icon: <Home size={18} /> },
   { href: '/equipe', label: 'Equipes', icon: <Shield size={18} /> },
   { href: '/jogadores', label: 'Jogadores', icon: <Users size={18} /> },
+  { href: '/calendario', label: 'Calendario', icon: <CalendarDays size={18} /> },
   { href: '/ranking', label: 'Rankings', icon: <BarChart3 size={18} /> },
   {
     href: '/campeonatos',

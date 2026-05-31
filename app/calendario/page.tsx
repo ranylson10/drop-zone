@@ -15,6 +15,8 @@ import {
  Clock3,
  Swords,
  Palette,
+ Plus,
+ Trash2,
  X,
 } from 'lucide-react'
 
@@ -59,6 +61,7 @@ type EventoCalendario = {
  texto?: string
  horarioInicio: HorarioKey
  duracaoSlots: number
+ tipo?: 'jogo' | 'tarefa'
  faseNome?: string
  campeonatoNome?: string
  quantidadePartidas?: number | null
@@ -93,6 +96,17 @@ type CampeonatoCor = {
  text: string
 }
 
+type EscopoCalendario = 'meu' | 'todos'
+
+type TarefaCalendario = {
+ id: string
+ titulo: string
+ descricao: string
+ data_evento: string
+ horario: HorarioKey
+ origem: 'pessoal'
+}
+
 type CampeonatoAgrupado = {
  campeonatoId: string
  campeonatoNome: string
@@ -107,6 +121,7 @@ type CampeonatoAgrupado = {
 const HORARIOS: HorarioKey[] = ['13:00', '15:00', '16:00', '18:00', '19:00', '20:00', '21:00', '22:00']
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Quar', 'Quin', 'Sex', 'Sáb']
 const STORAGE_CORES_KEY = 'dropzone_calendario_cores_campeonato'
+const STORAGE_TAREFAS_KEY = 'dropzone_calendario_tarefas_pessoais'
 
 const MESES = [
  { chave: 'janeiro', nome: 'Janeiro', numero: 1 },
@@ -246,6 +261,39 @@ function montarCalendarioDosJogos(
  return dias
 }
 
+function aplicarTarefasNoCalendario(dias: DiaCalendario[], tarefas: TarefaCalendario[], ano: number, mesNumero: number) {
+ const diasMap = new Map(dias.map((dia) => [dia.dataIso, dia]))
+
+ tarefas.forEach((tarefa) => {
+ if (!tarefa.data_evento || !tarefa.horario) return
+ const [anoTarefa, mesTarefa] = tarefa.data_evento.split('-').map(Number)
+ if (anoTarefa !== ano || mesTarefa !== mesNumero) return
+
+ const dia = diasMap.get(tarefa.data_evento)
+ if (!dia) return
+
+ dia.eventos = dia.eventos || {}
+ dia.eventos[tarefa.horario] = {
+ id: tarefa.id,
+ titulo: tarefa.titulo || 'Tarefa',
+ descricao: tarefa.descricao || 'Tarefa pessoal',
+ cor: '#00a884',
+ texto: '#ffffff',
+ horarioInicio: tarefa.horario,
+ duracaoSlots: 1,
+ tipo: 'tarefa',
+ campeonatoNome: 'Meu cronograma',
+ faseNome: 'Tarefa pessoal',
+ dataIso: tarefa.data_evento,
+ quantidadePartidas: 0,
+ duracaoMin: 60,
+ quedas: [],
+ }
+ })
+
+ return dias
+}
+
 function obterSlotsOcupados(dia: DiaCalendario) {
  const ocupados = new Set<number>()
 
@@ -286,6 +334,22 @@ function salvarCores(corMap: Record<string, CampeonatoCor>) {
  window.localStorage.setItem(STORAGE_CORES_KEY, JSON.stringify(corMap))
 }
 
+function carregarTarefasSalvas(): TarefaCalendario[] {
+ if (typeof window === 'undefined') return []
+ try {
+ const bruto = window.localStorage.getItem(STORAGE_TAREFAS_KEY)
+ const parsed = bruto ? JSON.parse(bruto) : []
+ return Array.isArray(parsed) ? parsed : []
+ } catch {
+ return []
+ }
+}
+
+function salvarTarefas(tarefas: TarefaCalendario[]) {
+ if (typeof window === 'undefined') return
+ window.localStorage.setItem(STORAGE_TAREFAS_KEY, JSON.stringify(tarefas))
+}
+
 function agruparSidebarJogos(jogos: SidebarJogo[]) {
  const campeonatoMap = new Map<string, CampeonatoAgrupado>()
 
@@ -323,9 +387,12 @@ function agruparSidebarJogos(jogos: SidebarJogo[]) {
 export default function CalendariosPage() {
  const hoje = new Date()
  const [busca, setBusca] = useState('')
+ const [escopo, setEscopo] = useState<EscopoCalendario>('meu')
  const [mesAtivo, setMesAtivo] = useState(MESES[hoje.getMonth()].chave)
  const [anoAtivo, setAnoAtivo] = useState(hoje.getFullYear())
  const [jogos, setJogos] = useState<JogoRow[]>([])
+ const [tarefas, setTarefas] = useState<TarefaCalendario[]>([])
+ const [novaTarefa, setNovaTarefa] = useState({ titulo: '', descricao: '', data_evento: hoje.toISOString().slice(0, 10), horario: '20:00' as HorarioKey })
  const [fasesMap, setFasesMap] = useState<Map<string, string>>(new Map())
  const [campeonatosMap, setCampeonatosMap] = useState<Map<string, string>>(new Map())
  const [campeonatosCores, setCampeonatosCores] = useState<Record<string, CampeonatoCor>>({})
@@ -334,14 +401,16 @@ export default function CalendariosPage() {
  const [loading, setLoading] = useState(true)
  const [erro, setErro] = useState<string | null>(null)
  const [eventoSelecionado, setEventoSelecionado] = useState<EventoCalendario | null>(null)
+ const [resumoUsuario, setResumoUsuario] = useState({ equipes: 0, jogos: 0, campeonatos: 0 })
 
  const indiceMesAtual = Math.max(MESES.findIndex((mes) => mes.chave === mesAtivo), 0)
  const mesAtual = MESES[indiceMesAtual]
 
  useEffect(() => {
  setCampeonatosCores(carregarCoresSalvas())
+ setTarefas(carregarTarefasSalvas())
  carregarJogos()
- }, [])
+ }, [escopo])
 
  async function carregarJogos() {
  try {
@@ -370,7 +439,121 @@ export default function CalendariosPage() {
 
  if (jogosError) throw jogosError
 
- const listaJogos = (jogosData || []) as JogoRow[]
+ let listaJogos = (jogosData || []) as JogoRow[]
+
+ if (escopo === 'meu') {
+ const { data: authData } = await supabase.auth.getUser()
+ const user = authData?.user || null
+
+ if (!user) {
+ listaJogos = []
+ setResumoUsuario({ equipes: 0, jogos: 0, campeonatos: 0 })
+ } else {
+ const { data: perfisRows } = await supabase
+ .from('perfis_jogo')
+ .select('id')
+ .eq('user_id', user.id)
+ .eq('ativo', true)
+
+ const perfilIds = Array.from(new Set((perfisRows || []).map((item: any) => String(item.id)).filter(Boolean)))
+
+ const equipeIds = new Set<string>()
+
+ const { data: equipesCriadas } = await supabase
+ .from('equipes')
+ .select('id')
+ .eq('criado_por', user.id)
+
+ ;(equipesCriadas || []).forEach((item: any) => {
+ if (item?.id) equipeIds.add(String(item.id))
+ })
+
+ const { data: membrosUser } = await supabase
+ .from('membros_equipe')
+ .select('equipe_id')
+ .eq('user_id', user.id)
+ .eq('ativo', true)
+
+ ;(membrosUser || []).forEach((item: any) => {
+ if (item?.equipe_id) equipeIds.add(String(item.equipe_id))
+ })
+
+ if (perfilIds.length) {
+ const { data: membrosPerfil } = await supabase
+ .from('membros_equipe')
+ .select('equipe_id')
+ .in('perfil_jogo_id', perfilIds)
+ .eq('ativo', true)
+
+ ;(membrosPerfil || []).forEach((item: any) => {
+ if (item?.equipe_id) equipeIds.add(String(item.equipe_id))
+ })
+ }
+
+ const campeonatoEquipeIds = new Set<string>()
+ const campeonatoIds = new Set<string>()
+
+ if (equipeIds.size) {
+ const { data: inscricoesRows } = await supabase
+ .from('campeonato_equipes')
+ .select('id, campeonato_id')
+ .in('equipe_id', Array.from(equipeIds))
+
+ ;(inscricoesRows || []).forEach((item: any) => {
+ if (item?.id) campeonatoEquipeIds.add(String(item.id))
+ if (item?.campeonato_id) campeonatoIds.add(String(item.campeonato_id))
+ })
+ }
+
+ const { data: campeonatosCriados } = await supabase
+ .from('campeonatos')
+ .select('id')
+ .eq('criado_por', user.id)
+
+ ;(campeonatosCriados || []).forEach((item: any) => {
+ if (item?.id) campeonatoIds.add(String(item.id))
+ })
+
+ if (perfilIds.length) {
+ const { data: jogadoresCampeonato } = await supabase
+ .from('jogadores_campeonato')
+ .select('campeonato_id, campeonato_equipe_id')
+ .in('perfil_jogo_id', perfilIds)
+
+ ;(jogadoresCampeonato || []).forEach((item: any) => {
+ if (item?.campeonato_id) campeonatoIds.add(String(item.campeonato_id))
+ if (item?.campeonato_equipe_id) campeonatoEquipeIds.add(String(item.campeonato_equipe_id))
+ })
+ }
+
+ const jogoIds = new Set<string>()
+ if (campeonatoEquipeIds.size) {
+ const { data: jogoEquipesRows } = await supabase
+ .from('jogo_equipes')
+ .select('jogo_id')
+ .in('campeonato_equipe_id', Array.from(campeonatoEquipeIds))
+
+ ;(jogoEquipesRows || []).forEach((item: any) => {
+ if (item?.jogo_id) jogoIds.add(String(item.jogo_id))
+ })
+ }
+
+ listaJogos = listaJogos.filter((jogo) => {
+ const jogoId = String(jogo.id || '')
+ const campeonatoId = String(jogo.campeonato_id || '')
+ return jogoIds.has(jogoId) || campeonatoIds.has(campeonatoId)
+ })
+
+ setResumoUsuario({
+ equipes: equipeIds.size,
+ jogos: listaJogos.length,
+ campeonatos: campeonatoIds.size,
+ })
+ }
+ } else {
+ setResumoUsuario({ equipes: 0, jogos: listaJogos.length, campeonatos: 0 })
+ }
+
  setJogos(listaJogos)
 
  const faseIds = [...new Set(listaJogos.map((item) => item.fase_id).filter(Boolean))] as string[]
@@ -417,8 +600,9 @@ export default function CalendariosPage() {
  }
 
  const diasDoMes = useMemo(() => {
- return montarCalendarioDosJogos(jogos, fasesMap, campeonatosMap, campeonatosCores, anoAtivo, mesAtual.numero)
- }, [jogos, fasesMap, campeonatosMap, campeonatosCores, anoAtivo, mesAtual.numero])
+ const dias = montarCalendarioDosJogos(jogos, fasesMap, campeonatosMap, campeonatosCores, anoAtivo, mesAtual.numero)
+ return aplicarTarefasNoCalendario(dias, tarefas, anoAtivo, mesAtual.numero)
+ }, [jogos, fasesMap, campeonatosMap, campeonatosCores, anoAtivo, mesAtual.numero, tarefas])
 
  const diasFiltrados = useMemo(() => {
  const termo = busca.trim().toLowerCase()
@@ -504,6 +688,31 @@ export default function CalendariosPage() {
  })
  }
 
+ function adicionarTarefa() {
+ const titulo = novaTarefa.titulo.trim()
+ if (!titulo || !novaTarefa.data_evento || !novaTarefa.horario) return
+
+ const tarefa: TarefaCalendario = {
+ id: `tarefa-${Date.now()}`,
+ titulo,
+ descricao: novaTarefa.descricao.trim(),
+ data_evento: novaTarefa.data_evento,
+ horario: novaTarefa.horario,
+ origem: 'pessoal',
+ }
+
+ const proximas = [...tarefas, tarefa].sort((a, b) => `${a.data_evento} ${a.horario}`.localeCompare(`${b.data_evento} ${b.horario}`))
+ setTarefas(proximas)
+ salvarTarefas(proximas)
+ setNovaTarefa((prev) => ({ ...prev, titulo: '', descricao: '' }))
+ }
+
+ function removerTarefa(id: string) {
+ const proximas = tarefas.filter((tarefa) => tarefa.id !== id)
+ setTarefas(proximas)
+ salvarTarefas(proximas)
+ }
+
  return (
  <div className="h-screen overflow-hidden bg-white text-[#142340]">
  <div className="mx-auto h-full max-w-[1650px] px-4 py-4">
@@ -521,8 +730,27 @@ export default function CalendariosPage() {
  Agenda de Campeonatos
  </h1>
  <p className="mt-2 text-sm font-medium text-zinc-500">
- Calendário puxando diretamente da tabela de jogos do campeonato.
+ Calendario puxando diretamente dos jogos, equipes, inscricoes e tarefas pessoais.
  </p>
+ <div className="mt-4 flex flex-wrap gap-2">
+ {([
+ { id: 'meu', label: 'Meu cronograma' },
+ { id: 'todos', label: 'Todos os jogos' },
+ ] as Array<{ id: EscopoCalendario; label: string }>).map((item) => (
+ <button
+ key={item.id}
+ type="button"
+ onClick={() => setEscopo(item.id)}
+ className={`h-9 border px-3 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+ escopo === item.id
+ ? 'border-[#00a884] bg-[#00a884] text-white'
+ : 'border-zinc-200 bg-white text-zinc-600 hover:border-[#00a884] hover:text-[#00a884]'
+ }`}
+ >
+ {item.label}
+ </button>
+ ))}
+ </div>
  </div>
 
  <div className="flex flex-col gap-3 md:flex-row">
@@ -706,13 +934,75 @@ export default function CalendariosPage() {
  <div className="mt-4 grid grid-cols-2 gap-3">
  <MetricCard label="Jogos no mês" value={String(totalEventosDoMes)} />
  <MetricCard label="Ano ativo" value={String(anoAtivo)} />
+ <MetricCard label="Minhas equipes" value={escopo === 'meu' ? String(resumoUsuario.equipes) : 'Todos'} />
+ <MetricCard label="Campeonatos" value={escopo === 'meu' ? String(resumoUsuario.campeonatos) : String(campeonatosMap.size)} />
  </div>
+ </div>
+
+ <div className="border-b border-zinc-200 p-4">
+ <div className="flex items-center gap-2 text-[#00a884]">
+ <Plus size={16} />
+ <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Adicionar tarefa</span>
+ </div>
+ <div className="mt-3 grid gap-2">
+ <input
+ value={novaTarefa.titulo}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, titulo: event.target.value }))}
+ placeholder="Titulo da tarefa"
+ className="h-9 border border-zinc-200 bg-[#f7f7f7] px-3 text-xs font-bold outline-none focus:border-[#00a884]"
+ />
+ <div className="grid grid-cols-2 gap-2">
+ <input
+ type="date"
+ value={novaTarefa.data_evento}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, data_evento: event.target.value }))}
+ className="h-9 border border-zinc-200 bg-[#f7f7f7] px-3 text-xs font-bold outline-none focus:border-[#00a884]"
+ />
+ <select
+ value={novaTarefa.horario}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, horario: event.target.value as HorarioKey }))}
+ className="h-9 border border-zinc-200 bg-[#f7f7f7] px-3 text-xs font-bold outline-none focus:border-[#00a884]"
+ >
+ {HORARIOS.map((horario) => <option key={horario} value={horario}>{horario}</option>)}
+ </select>
+ </div>
+ <textarea
+ value={novaTarefa.descricao}
+ onChange={(event) => setNovaTarefa((prev) => ({ ...prev, descricao: event.target.value }))}
+ placeholder="Descricao opcional"
+ className="min-h-16 border border-zinc-200 bg-[#f7f7f7] px-3 py-2 text-xs font-semibold outline-none focus:border-[#00a884]"
+ />
+ <button
+ type="button"
+ onClick={adicionarTarefa}
+ disabled={!novaTarefa.titulo.trim()}
+ className="h-9 bg-[#00a884] px-3 text-[10px] font-black uppercase tracking-[0.14em] text-white disabled:cursor-not-allowed disabled:opacity-50"
+ >
+ Adicionar ao calendario
+ </button>
+ </div>
+
+ {tarefas.length ? (
+ <div className="mt-3 space-y-2">
+ {tarefas.slice(0, 5).map((tarefa) => (
+ <div key={tarefa.id} className="flex items-center gap-2 border border-emerald-100 bg-emerald-50 px-2 py-2">
+ <div className="min-w-0 flex-1">
+ <div className="truncate text-[11px] font-black uppercase text-[#142340]">{tarefa.titulo}</div>
+ <div className="text-[10px] font-semibold text-zinc-500">{formatarDataCurta(tarefa.data_evento)} - {tarefa.horario}</div>
+ </div>
+ <button type="button" onClick={() => removerTarefa(tarefa.id)} className="grid h-7 w-7 place-items-center text-red-600 hover:bg-white">
+ <Trash2 size={13} />
+ </button>
+ </div>
+ ))}
+ </div>
+ ) : null}
  </div>
 
  <div className="border-b border-zinc-200 p-4">
  <div className="flex items-center gap-2 text-cyan-400">
  <Layers3 size={16} />
- <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">Jogos do organizador</span>
+ <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">{escopo === 'meu' ? 'Meu cronograma' : 'Jogos do organizador'}</span>
  </div>
  <p className="mt-2 text-sm font-medium leading-relaxed text-zinc-500">
  Lista compacta por campeonato, fase e jogo.
