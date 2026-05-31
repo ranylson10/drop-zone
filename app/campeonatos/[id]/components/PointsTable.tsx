@@ -473,6 +473,8 @@ export default function TabelaCampeonato() {
  )
  }
 
+ const topEquipe = equipes[0] || null
+
  return (
  <div className='w-full space-y-4'>
  <div className='flex flex-wrap items-center gap-2'>
@@ -553,6 +555,44 @@ export default function TabelaCampeonato() {
  </select>
  )}
  </div>
+
+ <div className='grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]'>
+ {topEquipe ? (
+ <aside
+ className='hidden xl:flex min-h-[360px] flex-col justify-between overflow-hidden border bg-white'
+ style={{
+ borderColor: `${layout.border_color}33`,
+ boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
+ }}
+ >
+ <div
+ className='p-4 text-black'
+ style={{ backgroundColor: layout.primary_color }}
+ >
+ <div className='text-[9px] font-black uppercase tracking-[0.24em] opacity-70'>Top 1</div>
+ <div className='mt-1 text-xl font-black uppercase leading-none'>Destaque</div>
+ </div>
+
+ <div className='flex flex-1 flex-col items-center justify-center px-5 py-6 text-center'>
+ <div className='flex h-28 w-28 items-center justify-center border border-zinc-200 bg-zinc-50 p-3'>
+ {topEquipe.avatar_url ? (
+ <img src={topEquipe.avatar_url} alt='' className='h-full w-full object-contain' />
+ ) : (
+ <Users size={40} className='text-zinc-400' />
+ )}
+ </div>
+ <div className='mt-4 text-lg font-black uppercase leading-tight text-[#142340]'>{topEquipe.nome}</div>
+ <div className='mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500'>Grupo {topEquipe.grupo}</div>
+ </div>
+
+ <div className='grid grid-cols-2 border-t border-zinc-200 text-center'>
+ <TopStat label='Total' value={topEquipe.pontos} highlight color={layout.primary_color} />
+ <TopStat label='Kills' value={topEquipe.abates} />
+ <TopStat label='Booyah' value={topEquipe.booyahs} />
+ <TopStat label='Quedas' value={topEquipe.partidas} />
+ </div>
+ </aside>
+ ) : null}
 
  <div
  style={{
@@ -663,6 +703,16 @@ export default function TabelaCampeonato() {
  </tbody>
  </table>
  </div>
+ </div>
+ </div>
+ )
+}
+
+function TopStat({ label, value, highlight = false, color = '#7cfc00' }: { label: string; value: number; highlight?: boolean; color?: string }) {
+ return (
+ <div className='border-r border-b border-zinc-200 p-3 last:border-r-0' style={highlight ? { backgroundColor: `${color}33` } : undefined}>
+ <div className='text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500'>{label}</div>
+ <div className='mt-1 text-xl font-black text-[#142340]'>{value}</div>
  </div>
  )
 }
