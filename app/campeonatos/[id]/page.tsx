@@ -43,6 +43,7 @@ import { TableThemeProvider } from '@/app/contexts/TableThemeContext'
 import AvaliacaoCampeonato from '@/app/components/AvaliacaoCampeonato'
 import SocialActions from '@/app/components/SocialActions'
 import RankingTierBadge from '@/app/components/RankingTierBadge'
+import ServidorSelect from '@/app/components/ServidorSelect'
 import AbaJogadores from './components/AbaJogadores'
 import GerenciarEquipes from './components/GerenciarEquipes'
 import GerenciarGrupos from './components/GerenciarGrupos'
@@ -211,6 +212,11 @@ function bandeiraPais(iso: string) {
     .split('')
     .map((letra) => String.fromCodePoint(0x1f1e6 + letra.charCodeAt(0) - 65))
     .join('')
+}
+
+function flagUrlPais(iso: string) {
+  const codigo = String(iso || '').trim().toLowerCase()
+  return codigo.length === 2 ? `https://flagcdn.com/w40/${codigo}.png` : ''
 }
 
 const PAISES_WHATSAPP: PaisWhatsApp[] = [
@@ -2106,7 +2112,7 @@ function PainelConfiguracoesCampeonato({
                 <ConfigNumber label="Premiação" value={camp?.valor_premiacao || 0} min={0} step="0.01" onSave={(valor) => salvar('valor_premiacao', valor)} loading={salvandoCampo === 'valor_premiacao'} />
                 <ConfigNumber label="Número de quedas" value={camp?.quantidade_quedas || 0} min={0} onSave={(valor) => salvar('quantidade_quedas', valor)} loading={salvandoCampo === 'quantidade_quedas'} />
                 <ConfigText label="Plataforma" value={camp?.plataforma || ''} onSave={(valor) => salvar('plataforma', valor || null)} loading={salvandoCampo === 'plataforma'} />
-                <ConfigText label="Servidor" value={camp?.servidor || ''} onSave={(valor) => salvar('servidor', valor || null)} loading={salvandoCampo === 'servidor'} />
+                <ConfigServidorSelect label="Servidor" value={camp?.servidor || ''} onChange={(valor) => salvar('servidor', valor || null)} loading={salvandoCampo === 'servidor'} />
               </div>
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
@@ -2224,6 +2230,60 @@ function ConfigCard({ titulo, descricao, children }: { titulo: string; descricao
   )
 }
 
+function ConfigServidorSelect({ label, value, onChange, loading = false }: any) {
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <ServidorSelect
+        value={value || 'BR'}
+        disabled={loading}
+        onChange={onChange}
+        className="mt-2 h-9 rounded-none border-zinc-200 bg-zinc-50 px-2 text-xs font-bold uppercase focus:border-[#2563eb]"
+      />
+    </label>
+  )
+}
+
+function PaisWhatsAppSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [aberto, setAberto] = useState(false)
+  const paisAtual = paisWhatsAppPorCodigo(value)
+
+  return (
+    <div className="relative">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Pais</span>
+      <button
+        type="button"
+        onClick={() => setAberto((atual) => !atual)}
+        className="mt-2 flex h-9 w-full items-center justify-between border border-zinc-200 bg-zinc-50 px-2 text-xs font-black text-[#142340] outline-none focus:border-[#2563eb]"
+      >
+        <span className="flex items-center gap-2">
+          <img src={flagUrlPais(paisAtual.iso)} alt={paisAtual.nome} className="h-4 w-6 object-cover" />
+          <span>+{paisAtual.codigo}</span>
+        </span>
+        <span className="text-[10px] text-zinc-400">▼</span>
+      </button>
+      {aberto ? (
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-56 w-full overflow-y-auto border border-zinc-200 bg-white shadow-lg">
+          {PAISES_WHATSAPP.map((pais) => (
+            <button
+              key={pais.codigo}
+              type="button"
+              onClick={() => {
+                onChange(pais.codigo)
+                setAberto(false)
+              }}
+              className="flex h-9 w-full items-center gap-2 px-2 text-left text-xs font-black text-[#142340] hover:bg-blue-50"
+            >
+              <img src={flagUrlPais(pais.iso)} alt={pais.nome} className="h-4 w-6 object-cover" />
+              <span>+{pais.codigo}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
   value: WhatsContato[]
   onSave: (contatos: WhatsContato[]) => Promise<void>
@@ -2274,20 +2334,10 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
                 className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]"
               />
             </label>
-            <label className="block">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Pais</span>
-              <select
-                value={contato.codigoPais}
-                onChange={(event) => atualizarContato(index, 'codigoPais', event.target.value)}
-                className="mt-2 h-9 w-full border border-zinc-200 bg-zinc-50 px-2 text-xs font-black text-[#142340] outline-none focus:border-[#2563eb]"
-              >
-                {PAISES_WHATSAPP.map((pais) => (
-                  <option key={pais.codigo} value={pais.codigo}>
-                    {bandeiraPais(pais.iso)} +{pais.codigo}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <PaisWhatsAppSelect
+              value={contato.codigoPais}
+              onChange={(valor) => atualizarContato(index, 'codigoPais', valor)}
+            />
             <label className="block">
               <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">WhatsApp</span>
               <input
