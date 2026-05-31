@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -33,6 +33,8 @@ import {
   MessageCircle,
   ExternalLink,
   Trash2,
+  Image as ImageIcon,
+  Upload,
 } from 'lucide-react'
 import Draggable from 'react-draggable'
 
@@ -196,24 +198,24 @@ type ComprovanteCompra = {
 
 const STATUS_CAMPEONATO_OPTIONS = [
   { value: 'rascunho', label: 'Rascunho', classes: 'border-zinc-200 bg-zinc-50 text-zinc-700' },
-  { value: 'inscricoes', label: 'Inscrições', classes: 'border-blue-200 bg-blue-50 text-blue-700' },
+  { value: 'inscricoes', label: 'InscriÃ§Ãµes', classes: 'border-blue-200 bg-blue-50 text-blue-700' },
   { value: 'em_andamento', label: 'Em andamento', classes: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   { value: 'finalizado', label: 'Finalizado', classes: 'border-red-200 bg-red-50 text-red-700' },
   { value: 'cancelado', label: 'Cancelado', classes: 'border-zinc-200 bg-zinc-50 text-zinc-700' },
 ]
 
 const PAISES_WHATSAPP: PaisWhatsApp[] = [
-  { nome: 'Brasil', codigo: '55', bandeira: '🇧🇷' },
-  { nome: 'Estados Unidos', codigo: '1', bandeira: '🇺🇸' },
-  { nome: 'Portugal', codigo: '351', bandeira: '🇵🇹' },
-  { nome: 'Angola', codigo: '244', bandeira: '🇦🇴' },
-  { nome: 'Mocambique', codigo: '258', bandeira: '🇲🇿' },
-  { nome: 'Argentina', codigo: '54', bandeira: '🇦🇷' },
-  { nome: 'Paraguai', codigo: '595', bandeira: '🇵🇾' },
-  { nome: 'Uruguai', codigo: '598', bandeira: '🇺🇾' },
-  { nome: 'Chile', codigo: '56', bandeira: '🇨🇱' },
-  { nome: 'Colombia', codigo: '57', bandeira: '🇨🇴' },
-  { nome: 'Mexico', codigo: '52', bandeira: '🇲🇽' },
+  { nome: 'Brasil', codigo: '55', bandeira: 'ðŸ‡§ðŸ‡·' },
+  { nome: 'Estados Unidos', codigo: '1', bandeira: 'ðŸ‡ºðŸ‡¸' },
+  { nome: 'Portugal', codigo: '351', bandeira: 'ðŸ‡µðŸ‡¹' },
+  { nome: 'Angola', codigo: '244', bandeira: 'ðŸ‡¦ðŸ‡´' },
+  { nome: 'Mocambique', codigo: '258', bandeira: 'ðŸ‡²ðŸ‡¿' },
+  { nome: 'Argentina', codigo: '54', bandeira: 'ðŸ‡¦ðŸ‡·' },
+  { nome: 'Paraguai', codigo: '595', bandeira: 'ðŸ‡µðŸ‡¾' },
+  { nome: 'Uruguai', codigo: '598', bandeira: 'ðŸ‡ºðŸ‡¾' },
+  { nome: 'Chile', codigo: '56', bandeira: 'ðŸ‡¨ðŸ‡±' },
+  { nome: 'Colombia', codigo: '57', bandeira: 'ðŸ‡¨ðŸ‡´' },
+  { nome: 'Mexico', codigo: '52', bandeira: 'ðŸ‡²ðŸ‡½' },
 ]
 
 function normalizarStatusCampeonato(status?: string | null) {
@@ -361,17 +363,17 @@ function normalizarStatusDenuncia(status?: string | null) {
       }
     case 'em_analise':
       return {
-        label: 'Em análise',
+        label: 'Em anÃ¡lise',
         classes: 'bg-yellow-100 text-yellow-800 border-yellow-300',
       }
     case 'aguardando_resposta_usuario':
       return {
-        label: 'Aguardando usuário',
+        label: 'Aguardando usuÃ¡rio',
         classes: 'bg-orange-100 text-orange-800 border-orange-300',
       }
     case 'aguardando_resposta_organizacao':
       return {
-        label: 'Aguardando organização',
+        label: 'Aguardando organizaÃ§Ã£o',
         classes: 'bg-blue-100 text-blue-800 border-blue-300',
       }
     case 'resolvida':
@@ -403,7 +405,7 @@ function normalizarPrioridadeDenuncia(prioridade?: string | null) {
   switch (base) {
     case 'critica':
       return {
-        label: 'Crítica',
+        label: 'CrÃ­tica',
         classes: 'bg-red-600 text-white border-red-700',
       }
     case 'alta':
@@ -413,7 +415,7 @@ function normalizarPrioridadeDenuncia(prioridade?: string | null) {
       }
     case 'media':
       return {
-        label: 'Média',
+        label: 'MÃ©dia',
         classes: 'bg-yellow-300 text-black border-yellow-400',
       }
     case 'baixa':
@@ -476,7 +478,7 @@ function obterSeloReputacao(score: number) {
   if (score >= 90) {
     return {
       nome: 'Elite',
-      descricao: 'Operação muito acima do padrão',
+      descricao: 'OperaÃ§Ã£o muito acima do padrÃ£o',
       classes: 'bg-lime-300 text-black border-lime-500',
     }
   }
@@ -484,7 +486,7 @@ function obterSeloReputacao(score: number) {
   if (score >= 80) {
     return {
       nome: 'Excelente',
-      descricao: 'Alta confiança e boa resposta',
+      descricao: 'Alta confianÃ§a e boa resposta',
       classes: 'bg-emerald-200 text-emerald-900 border-emerald-400',
     }
   }
@@ -492,7 +494,7 @@ function obterSeloReputacao(score: number) {
   if (score >= 70) {
     return {
       nome: 'Boa',
-      descricao: 'Boa reputação geral',
+      descricao: 'Boa reputaÃ§Ã£o geral',
       classes: 'bg-blue-200 text-blue-900 border-blue-400',
     }
   }
@@ -500,14 +502,14 @@ function obterSeloReputacao(score: number) {
   if (score >= 55) {
     return {
       nome: 'Regular',
-      descricao: 'Precisa evoluir em consistência',
+      descricao: 'Precisa evoluir em consistÃªncia',
       classes: 'bg-yellow-200 text-yellow-900 border-yellow-400',
     }
   }
 
   return {
-    nome: 'Em atenção',
-    descricao: 'Necessita melhorar transparência e resposta',
+    nome: 'Em atenÃ§Ã£o',
+    descricao: 'Necessita melhorar transparÃªncia e resposta',
     classes: 'bg-red-200 text-red-900 border-red-400',
   }
 }
@@ -626,7 +628,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     try {
       console.error(`${titulo} | json:`, JSON.stringify(err, null, 2))
     } catch {
-      console.error(`${titulo} | json: não foi possível serializar`)
+      console.error(`${titulo} | json: nÃ£o foi possÃ­vel serializar`)
     }
   }
 
@@ -639,7 +641,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       return 'Erro ao salvar contatos. A coluna whatsapp_contatos ainda nao existe no banco de producao. Rode a migration do Supabase e tente novamente.'
     }
 
-    return partes[0] || 'Erro ao salvar alteração.'
+    return partes[0] || 'Erro ao salvar alteraÃ§Ã£o.'
   }
 
   useEffect(() => {
@@ -676,7 +678,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const linkDepositoPixCompra = `/carteira/deposito?metodo=pix&redirect=${encodeURIComponent(redirectCompraAtual)}`
   const linkDepositoPaypalCompra = `/carteira/deposito?metodo=paypal&redirect=${encodeURIComponent(redirectCompraAtual)}`
   const whatsappCompraLimpo = String(camp?.whatsapp_suporte || camp?.whatsapp_contato || '').replace(/\D/g, '')
-  const mensagemWhatsAppCompra = `Olá, vim pelo Drop Zone e quero comprar vaga no campeonato ${camp?.nome || ''}.`
+  const mensagemWhatsAppCompra = `OlÃ¡, vim pelo Drop Zone e quero comprar vaga no campeonato ${camp?.nome || ''}.`
   const linkWhatsAppCompra = whatsappCompraLimpo
     ? `https://wa.me/${whatsappCompraLimpo}?text=${encodeURIComponent(mensagemWhatsAppCompra)}`
     : ''
@@ -686,7 +688,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       const { data: authData, error: authError } = await supabase.auth.getUser()
 
       if (authError) {
-        logErroSupabase('Erro ao buscar usuário para compra de vaga', authError)
+        logErroSupabase('Erro ao buscar usuÃ¡rio para compra de vaga', authError)
       }
 
       const user = authData?.user || null
@@ -737,7 +739,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         .order('nome', { ascending: true })
 
       if (equipesCriadasError) {
-        logErroSupabase('Erro ao buscar equipes criadas pelo usuário', equipesCriadasError)
+        logErroSupabase('Erro ao buscar equipes criadas pelo usuÃ¡rio', equipesCriadasError)
       }
 
       setMinhasEquipesCriadasCompra((equipesCriadas || []).length)
@@ -771,7 +773,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         .eq('user_id', user.id)
 
       if (membrosUsuarioError) {
-        logErroSupabase('Erro ao buscar equipes vinculadas ao perfil do usuÃ¡rio', membrosUsuarioError)
+        logErroSupabase('Erro ao buscar equipes vinculadas ao perfil do usuÃƒÂ¡rio', membrosUsuarioError)
       }
 
       ;((membrosUsuarioData || []) as any[]).forEach((membro) => {
@@ -792,7 +794,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
         .eq('user_id', user.id)
 
       if (perfisError) {
-        logErroSupabase('Erro ao buscar perfis de jogo do usuário', perfisError)
+        logErroSupabase('Erro ao buscar perfis de jogo do usuÃ¡rio', perfisError)
       }
 
       const perfilIds = ((perfisData || []) as any[])
@@ -819,7 +821,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           .in('perfil_jogo_id', perfilIds)
 
         if (membrosError) {
-          logErroSupabase('Erro ao buscar equipes vinculadas ao usuário', membrosError)
+          logErroSupabase('Erro ao buscar equipes vinculadas ao usuÃ¡rio', membrosError)
         }
 
         ;((membrosData || []) as any[]).forEach((membro) => {
@@ -854,19 +856,19 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     setComprovanteCompra(null)
 
     if (!usuarioAtual) {
-      setMensagemCompraVaga('Faça login para comprar uma vaga.')
+      setMensagemCompraVaga('FaÃ§a login para comprar uma vaga.')
       return
     }
 
     if (!equipeCompraId || !equipeSelecionadaCompra) {
-      setMensagemCompraVaga('Você ainda não tem equipe ou line pronta. Use as opções abaixo para criar/vincular e depois finalize a compra.')
+      setMensagemCompraVaga('VocÃª ainda nÃ£o tem equipe ou line pronta. Use as opÃ§Ãµes abaixo para criar/vincular e depois finalize a compra.')
       setSenhaCompra('')
       setModalConfirmacaoCompraAberto(true)
       return
     }
 
     if (vagasRestantesCompra <= 0) {
-      setMensagemCompraVaga('Não existem vagas disponíveis neste campeonato.')
+      setMensagemCompraVaga('NÃ£o existem vagas disponÃ­veis neste campeonato.')
       return
     }
 
@@ -885,7 +887,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     setMensagemCompraVaga('')
 
     if (!usuarioAtual) {
-      setMensagemCompraVaga('Faça login para comprar uma vaga.')
+      setMensagemCompraVaga('FaÃ§a login para comprar uma vaga.')
       return
     }
 
@@ -900,7 +902,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     }
 
     if (!usuarioAtual.email) {
-      setMensagemCompraVaga('Seu usuário não possui e-mail válido para validar a senha.')
+      setMensagemCompraVaga('Seu usuÃ¡rio nÃ£o possui e-mail vÃ¡lido para validar a senha.')
       return
     }
 
@@ -940,7 +942,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             p_seed: null,
             p_tipo_origem: 'oficial',
             p_status: 'ativa',
-            p_observacoes: 'Inscrição gratuita pelo painel de compra',
+            p_observacoes: 'InscriÃ§Ã£o gratuita pelo painel de compra',
             p_alocar_em_slot: true,
           }
 
@@ -971,7 +973,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           p_user_id: usuarioAtual.id,
           p_plataforma: camp?.plataforma || 'mobile',
         })
-        if (lineError) console.warn('Não foi possível vincular line automática na vaga:', lineError)
+        if (lineError) console.warn('NÃ£o foi possÃ­vel vincular line automÃ¡tica na vaga:', lineError)
       }
 
       if (referenciaId) {
@@ -999,7 +1001,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           .eq('referencia_id', referenciaId)
 
         if (updateTransacaoError) {
-          logErroSupabase('Erro ao atualizar descrição do histórico da carteira', updateTransacaoError)
+          logErroSupabase('Erro ao atualizar descriÃ§Ã£o do histÃ³rico da carteira', updateTransacaoError)
         }
       }
 
@@ -1025,7 +1027,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       const mensagem =
         err?.message ||
         err?.details ||
-        'Não foi possível concluir a compra da vaga agora.'
+        'NÃ£o foi possÃ­vel concluir a compra da vaga agora.'
 
       setMensagemCompraVaga(mensagem)
     } finally {
@@ -1203,15 +1205,15 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       ])
 
       if (avaliacoesError) {
-        logErroSupabase('Erro ao carregar resumo de avaliações', avaliacoesError)
+        logErroSupabase('Erro ao carregar resumo de avaliaÃ§Ãµes', avaliacoesError)
       }
 
       if (metricasError) {
-        logErroSupabase('Erro ao carregar métricas de denúncias', metricasError)
+        logErroSupabase('Erro ao carregar mÃ©tricas de denÃºncias', metricasError)
       }
 
       if (denunciasError) {
-        logErroSupabase('Erro ao carregar denúncias públicas', denunciasError)
+        logErroSupabase('Erro ao carregar denÃºncias pÃºblicas', denunciasError)
       }
 
       const notas = ((avaliacoesRows || []) as any[])
@@ -1228,7 +1230,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       setDenunciaMetricas((metricasRows as DenunciaMetrica | null) || null)
       setDenunciasPublicas(((denunciasRows || []) as DenunciaResumo[]).filter((item) => item.publica))
     } catch (err) {
-      logErroSupabase('Erro ao carregar painel de transparência', err)
+      logErroSupabase('Erro ao carregar painel de transparÃªncia', err)
     } finally {
       setLoadingPainelTransparencia(false)
     }
@@ -1280,7 +1282,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           .maybeSingle()
 
         if (xtreinoError) {
-          logErroSupabase('Erro ao buscar configuração do xtreino', xtreinoError)
+          logErroSupabase('Erro ao buscar configuraÃ§Ã£o do xtreino', xtreinoError)
         }
 
         setXtreinoConfig(xtreinoData || null)
@@ -1445,13 +1447,13 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       const { error } = await supabase.from('campeonatos').update({ [campo]: valorFinal }).eq('id', id)
 
       if (error) {
-        logErroSupabase('Erro ao salvar alteração', error)
+        logErroSupabase('Erro ao salvar alteraÃ§Ã£o', error)
         throw error
       }
 
       setCamp((prev: any) => ({ ...prev, [campo]: valorFinal }))
     } catch (err) {
-      logErroSupabase('Erro ao salvar alteração', err)
+      logErroSupabase('Erro ao salvar alteraÃ§Ã£o', err)
       alert(mensagemErroSupabase(err))
       throw err
     }
@@ -1465,13 +1467,13 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
       const { error } = await supabase.from('campeonatos').update(payload).eq('id', id)
 
       if (error) {
-        logErroSupabase('Erro ao salvar alterações', error)
+        logErroSupabase('Erro ao salvar alteraÃ§Ãµes', error)
         throw error
       }
 
       setCamp((prev: any) => ({ ...prev, ...payload }))
     } catch (err) {
-      logErroSupabase('Erro ao salvar alterações', err)
+      logErroSupabase('Erro ao salvar alteraÃ§Ãµes', err)
       alert(mensagemErroSupabase(err))
       throw err
     }
@@ -1512,27 +1514,27 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
   const abasVisiveis = usaAbasCopa
     ? [
-        { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+        { id: 'informacoes', label: 'AvaliaÃ§Ãµes', icon: <Star size={14} /> },
         { id: 'equipes', label: 'Equipes' },
         { id: 'jogadores', label: 'Jogadores' },
         { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
         { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-        ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
+        ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'ConfiguraÃ§Ãµes', icon: <Settings size={14} /> }] : []),
       ]
     : usaAbasLiga
       ? [
-          { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+          { id: 'informacoes', label: 'AvaliaÃ§Ãµes', icon: <Star size={14} /> },
           { id: 'equipes', label: 'Equipes' },
           { id: 'jogadores', label: 'Jogadores' },
           { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
           { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
-          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'ConfiguraÃ§Ãµes', icon: <Settings size={14} /> }] : []),
         ]
       : [
-          { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
-          { id: 'reputacao', label: 'Reputação', icon: <BadgeCheck size={14} /> },
-          { id: 'denuncias', label: 'Denúncias', icon: <ShieldAlert size={14} /> },
+          { id: 'informacoes', label: 'AvaliaÃ§Ãµes', icon: <Star size={14} /> },
+          { id: 'reputacao', label: 'ReputaÃ§Ã£o', icon: <BadgeCheck size={14} /> },
+          { id: 'denuncias', label: 'DenÃºncias', icon: <ShieldAlert size={14} /> },
           { id: 'equipes', label: 'Equipes' },
           { id: 'jogadores', label: 'Jogadores' },
           { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
@@ -1540,7 +1542,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           { id: 'tabela', label: 'Tabela & MVP', icon: <List size={14} /> },
           { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
           { id: 'regras', label: 'Regras' },
-          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
+          ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'ConfiguraÃ§Ãµes', icon: <Settings size={14} /> }] : []),
         ]
 
   async function copiarLinkPontuador() {
@@ -1622,7 +1624,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             <div className="fixed top-20 right-5 z-[100] w-[450px] dz-panel overflow-hidden">
               <div className="handle-drag bg-slate-950 text-white px-3 py-2 flex justify-between items-center cursor-move">
                 <span className="text-[10px] font-black uppercase flex items-center gap-2">
-                  <Move size={14} className="text-[#7cfc00]" /> Painel de Edição Rápida
+                  <Move size={14} className="text-[#7cfc00]" /> Painel de EdiÃ§Ã£o RÃ¡pida
                 </span>
                 <button onClick={() => setShowFloatingEditor(false)}>
                   <X size={18} className="hover:text-[#7cfc00] transition-colors" />
@@ -1642,7 +1644,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
                 <div className="flex items-center gap-3">
                   <div className="grid h-10 w-10 place-items-center border border-cyan-200 bg-cyan-50 text-cyan-700"><LockKeyhole size={18} /></div>
-                  <div><div className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">Confirmação de compra</div><div className="text-xl font-black uppercase italic">Comprar vaga</div></div>
+                  <div><div className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-500">ConfirmaÃ§Ã£o de compra</div><div className="text-xl font-black uppercase italic">Comprar vaga</div></div>
                 </div>
                 <button type="button" onClick={() => { if (comprandoVaga) return; setModalConfirmacaoCompraAberto(false); setSenhaCompra('') }} className="border border-slate-200 bg-white p-2 hover:bg-zinc-200"><X size={18} /></button>
               </div>
@@ -1652,15 +1654,15 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                     <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Campeonato</span><span className="text-right font-black uppercase">{camp?.nome || '---'}</span></div>
                     <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Vagas restantes</span><span className="text-right font-black uppercase">{vagasRestantesCompra}</span></div>
                     <div className="flex items-center justify-between gap-4 border-b border-zinc-300 pb-2"><span className="text-zinc-500">Equipe / line</span><span className="text-right font-black uppercase">{equipeSelecionadaCompra ? `${equipeSelecionadaCompra.tag ? `[${equipeSelecionadaCompra.tag}] ` : ''}${equipeSelecionadaCompra.nome}` : 'Pendente'}</span></div>
-                    <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">Valor</span><span className="text-right text-2xl font-black text-[#18b54a]">{valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'GRÁTIS'}</span></div>
+                    <div className="flex items-center justify-between gap-4"><span className="text-zinc-500">Valor</span><span className="text-right text-2xl font-black text-[#18b54a]">{valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'GRÃTIS'}</span></div>
                   </div>
                 </div>
 
                 {!equipeSelecionadaCompra ? (
                   <div className="border border-amber-200 bg-amber-50 p-4">
-                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-800">Equipe ou line necessária</div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-800">Equipe ou line necessÃ¡ria</div>
                     <p className="mt-2 text-xs font-semibold leading-5 text-[#142340]/75">
-                      Para finalizar a vaga, crie ou vincule uma equipe/line. Depois volte para esta mesma página e clique em comprar vaga novamente.
+                      Para finalizar a vaga, crie ou vincule uma equipe/line. Depois volte para esta mesma pÃ¡gina e clique em comprar vaga novamente.
                     </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                       {podeCriarEquipeCompra ? (
@@ -1697,7 +1699,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                     <div>
                       <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-zinc-500">Digite sua senha para pagar com carteira</label>
                       <input type="password" value={senhaCompra} onChange={(event) => setSenhaCompra(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !comprandoVaga) comprarVagaComCarteira() }} className="w-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-lime-50" placeholder="Sua senha do login" autoFocus />
-                      <p className="mt-2 text-[11px] font-semibold text-zinc-500">A senha é conferida pelo Supabase Auth antes de debitar a carteira.</p>
+                      <p className="mt-2 text-[11px] font-semibold text-zinc-500">A senha Ã© conferida pelo Supabase Auth antes de debitar a carteira.</p>
                     </div>
                   </>
                 )}
@@ -1719,7 +1721,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               <div className="space-y-3 p-5 text-sm font-bold">
                 <LinhaComprovante label="Campeonato" value={comprovanteCompra.campeonato} />
                 <LinhaComprovante label="Equipe" value={comprovanteCompra.equipe} />
-                <LinhaComprovante label="Valor" value={comprovanteCompra.valor > 0 ? formatarMoeda(comprovanteCompra.valor) : 'Grátis'} />
+                <LinhaComprovante label="Valor" value={comprovanteCompra.valor > 0 ? formatarMoeda(comprovanteCompra.valor) : 'GrÃ¡tis'} />
                 <LinhaComprovante label="Data" value={formatarDataBanner(comprovanteCompra.data)} />
                 <LinhaComprovante label="ID da compra" value={comprovanteCompra.referenciaId || '---'} mono />
               </div>
@@ -1743,7 +1745,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 onClick={() => setAbaAtiva('configuracoes')}
                 className="mb-3 inline-flex h-9 items-center gap-2 border border-zinc-200 bg-white px-3 text-[11px] font-black uppercase tracking-wide text-[#142340] transition hover:border-[#2563eb] hover:text-[#2563eb]"
               >
-                <Settings size={14} /> Configurações
+                <Settings size={14} /> ConfiguraÃ§Ãµes
               </button>
             )}
           </div>
@@ -1782,10 +1784,10 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 </div>
               </div>
 
-              <HeaderStat label={isCopa ? 'Formato' : isLiga ? 'Rodadas' : isXtreino ? 'Modo' : 'Formato'} value={isCopa ? (camp?.formato || 'Mata-mata') : isLiga ? String(camp?.quantidade_rodadas || xtreinoConfig?.quantidade_rodadas || 1) : isXtreino ? (xtreinoConfig?.modo_xtreino || 'Flexível') : (camp?.formato || '4x4')} />
+              <HeaderStat label={isCopa ? 'Formato' : isLiga ? 'Rodadas' : isXtreino ? 'Modo' : 'Formato'} value={isCopa ? (camp?.formato || 'Mata-mata') : isLiga ? String(camp?.quantidade_rodadas || xtreinoConfig?.quantidade_rodadas || 1) : isXtreino ? (xtreinoConfig?.modo_xtreino || 'FlexÃ­vel') : (camp?.formato || '4x4')} />
               <HeaderStat label="Vagas" value={`${vagasPreenchidas} / ${camp?.vagas || camp?.quantidade_equipes || 0}`} />
-              <HeaderStat label="Premiação" value={formatarMoeda(camp?.valor_premiacao)} />
-              <HeaderStat label="Inscrição" value={valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'Grátis'} />
+              <HeaderStat label="PremiaÃ§Ã£o" value={formatarMoeda(camp?.valor_premiacao)} />
+              <HeaderStat label="InscriÃ§Ã£o" value={valorVagaCompra > 0 ? formatarMoeda(valorVagaCompra) : 'GrÃ¡tis'} />
             </div>
           </div>
 
@@ -1793,13 +1795,13 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px_170px] lg:items-end">
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 <LealtMiniInfo label="Status" value={normalizarStatusCampeonato(camp?.status).label} />
-                <LealtMiniInfo label="Início" value={formatarDataBanner(camp?.data_inicio)} />
+                <LealtMiniInfo label="InÃ­cio" value={formatarDataBanner(camp?.data_inicio)} />
                 <LealtMiniInfo label="Saldo" value={formatarMoeda(saldoCarteira)} />
                 <LealtMiniInfo label="Restantes" value={String(vagasRestantesCompra)} />
               </div>
 
               <div>
-                <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Equipe / line do usuário</label>
+                <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Equipe / line do usuÃ¡rio</label>
                 {minhasEquipesCompra.length > 0 ? (
                   <select
                     value={equipeCompraId}
@@ -1900,7 +1902,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 <div className="sticky top-[108px] z-30 border border-zinc-200 bg-white p-2">
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     {[
-                      { id: 'classificacao', label: 'Classificação', icon: <Trophy size={14} /> },
+                      { id: 'classificacao', label: 'ClassificaÃ§Ã£o', icon: <Trophy size={14} /> },
                       { id: 'mvp', label: 'Ranking MVP', icon: <Target size={14} /> },
                       { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
                       { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
@@ -2020,13 +2022,39 @@ function PainelConfiguracoesCampeonato({
     }
   }
 
+  async function salvarLogoCampeonato(file: File) {
+    const extensao = file.name.split('.').pop() || 'png'
+    const nomeArquivo = `${campeonatoId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${extensao}`
+    const caminho = `logos/${nomeArquivo}`
+
+    setSalvandoCampo('logo_url')
+    try {
+      const { data, error } = await supabase.storage
+        .from('imagem_campeonatos')
+        .upload(caminho, file, { upsert: false })
+
+      if (error) throw error
+
+      const { data: publicData } = supabase.storage
+        .from('imagem_campeonatos')
+        .getPublicUrl(data.path)
+
+      await onSalvar('logo_url', publicData.publicUrl)
+    } catch (err) {
+      alert(mensagemErroSupabase(err))
+      throw err
+    } finally {
+      setSalvandoCampo(null)
+    }
+  }
+
   async function copiarLink() {
     try {
       await navigator.clipboard.writeText(linkMobile)
       setCopiado(true)
       setTimeout(() => setCopiado(false), 1800)
     } catch {
-      alert('Não foi possível copiar o link. Copie manualmente pelo campo.')
+      alert('NÃ£o foi possÃ­vel copiar o link. Copie manualmente pelo campo.')
     }
   }
 
@@ -2036,7 +2064,7 @@ function PainelConfiguracoesCampeonato({
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#2563eb]">Central do organizador</div>
-            <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-[#142340]">Configurações do campeonato</h2>
+            <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-[#142340]">ConfiguraÃ§Ãµes do campeonato</h2>
             <p className="mt-1 text-xs font-semibold text-zinc-500">Altere status, vagas, limite de jogadores, datas e link mobile sem mexer no banco.</p>
           </div>
           <div className={`inline-flex h-9 items-center border px-3 text-[10px] font-black uppercase tracking-wide ${statusAtual.classes}`}>
@@ -2047,8 +2075,54 @@ function PainelConfiguracoesCampeonato({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="space-y-4">
-          <ConfigCard titulo="Status e inscrições" descricao="Controle se o campeonato está com vagas abertas, em andamento ou finalizado.">
-            <div className="grid gap-3 md:grid-cols-3">
+          <ConfigCard titulo="Dados do campeonato" descricao="Informações principais que aparecem no topo, nas listas públicas e no link de inscrição.">
+            <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+              <ConfigImageUpload
+                label="Logo"
+                value={camp?.logo_url || ''}
+                onSave={salvarLogoCampeonato}
+                loading={salvandoCampo === 'logo_url'}
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <ConfigText label="Nome do campeonato" value={camp?.nome || ''} onSave={(valor) => salvar('nome', valor)} loading={salvandoCampo === 'nome'} />
+                <ConfigSelect
+                  label="Status público"
+                  value={statusAtual.value}
+                  options={STATUS_CAMPEONATO_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
+                  onChange={(valor) => salvar('status', valor)}
+                  loading={salvandoCampo === 'status'}
+                />
+                <ConfigNumber label="Valor da vaga" value={valorVagaCompra} min={0} step="0.01" onSave={(valor) => salvar('valor_vaga', valor)} loading={salvandoCampo === 'valor_vaga'} />
+                <ConfigNumber label="Quantidade de vagas" value={camp?.vagas || camp?.quantidade_equipes || 0} min={0} onSave={(valor) => salvar('vagas', valor)} loading={salvandoCampo === 'vagas'} />
+                <ConfigNumber label="Premiação" value={camp?.valor_premiacao || 0} min={0} step="0.01" onSave={(valor) => salvar('valor_premiacao', valor)} loading={salvandoCampo === 'valor_premiacao'} />
+                <ConfigNumber label="Número de quedas" value={camp?.quantidade_quedas || 0} min={0} onSave={(valor) => salvar('quantidade_quedas', valor)} loading={salvandoCampo === 'quantidade_quedas'} />
+                <ConfigText label="Plataforma" value={camp?.plataforma || ''} onSave={(valor) => salvar('plataforma', valor || null)} loading={salvandoCampo === 'plataforma'} />
+                <ConfigText label="Servidor" value={camp?.servidor || ''} onSave={(valor) => salvar('servidor', valor || null)} loading={salvandoCampo === 'servidor'} />
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
+              <ConfigToggle label="Tem live oficial" checked={Boolean(camp?.transmissao_ao_vivo)} onChange={(valor) => salvar('transmissao_ao_vivo', valor)} loading={salvandoCampo === 'transmissao_ao_vivo'} />
+              <ConfigTextArea
+                label="Distribuição da premiação"
+                value={formatarDistribuicaoPremiacao(camp?.distribuicao_premiacao_json)}
+                placeholder={'Ex: 1º lugar - R$ 700\n2º lugar - R$ 300'}
+                onSave={(valor) => salvarDistribuicaoPremiacao(valor, salvar)}
+                loading={salvandoCampo === 'distribuicao_premiacao_json'}
+              />
+            </div>
+          </ConfigCard>
+
+          <ConfigCard titulo="Contatos" descricao="WhatsApps que aparecem para equipes comprarem vagas pelo link mobile.">
+            <ConfigWhatsAppContatos
+              key={JSON.stringify(contatosWhatsAppIniciais(camp))}
+              value={contatosWhatsAppIniciais(camp)}
+              onSave={salvarContatosWhatsApp}
+              loading={salvandoCampo === 'whatsapp_contatos'}
+            />
+          </ConfigCard>
+
+          <ConfigCard titulo="Datas do campeonato" descricao="Controle início e encerramento das inscrições e período geral do campeonato.">
+            <div className="grid gap-3 md:grid-cols-2">
               <ConfigSelect
                 label="Status público"
                 value={statusAtual.value}
@@ -2068,24 +2142,12 @@ function PainelConfiguracoesCampeonato({
                 onChange={(valor) => salvar('data_encerramento_inscricoes', valor)}
                 loading={salvandoCampo === 'data_encerramento_inscricoes'}
               />
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <ConfigNumber label="Vagas/equipes" value={camp?.vagas || camp?.quantidade_equipes || 0} min={0} onSave={(valor) => salvar('vagas', valor)} loading={salvandoCampo === 'vagas'} />
-              <ConfigNumber label="Valor da vaga" value={valorVagaCompra} min={0} step="0.01" onSave={(valor) => salvar('valor_vaga', valor)} loading={salvandoCampo === 'valor_vaga'} />
-              <ConfigNumber label="Premiação" value={camp?.valor_premiacao || 0} min={0} step="0.01" onSave={(valor) => salvar('valor_premiacao', valor)} loading={salvandoCampo === 'valor_premiacao'} />
+              <ConfigDateTime label="Início do campeonato" value={camp?.data_inicio} onChange={(valor) => salvar('data_inicio', valor)} loading={salvandoCampo === 'data_inicio'} />
+              <ConfigDateTime label="Final do campeonato" value={camp?.data_fim} onChange={(valor) => salvar('data_fim', valor)} loading={salvandoCampo === 'data_fim'} />
             </div>
           </ConfigCard>
 
-          <ConfigCard titulo="Contatos de venda" descricao="Cadastre os WhatsApps que aparecem para equipes comprarem vagas pelo link mobile.">
-            <ConfigWhatsAppContatos
-              key={JSON.stringify(contatosWhatsAppIniciais(camp))}
-              value={contatosWhatsAppIniciais(camp)}
-              onSave={salvarContatosWhatsApp}
-              loading={salvandoCampo === 'whatsapp_contatos'}
-            />
-          </ConfigCard>
-
-          <ConfigCard titulo="Limite de jogadores" descricao="Esses campos já existem na tabela campeonatos. Não foi criada tabela duplicada.">
+          <ConfigCard titulo="Elenco e acesso" descricao="Regras de jogadores e controles operacionais do campeonato.">
             <div className="grid gap-3 md:grid-cols-3">
               <ConfigNumber label="Titulares por equipe" value={camp?.jogadores_por_equipe || 0} min={0} onSave={(valor) => salvar('jogadores_por_equipe', valor)} loading={salvandoCampo === 'jogadores_por_equipe'} />
               <ConfigNumber label="Reservas permitidos" value={camp?.reservas_permitidos || 0} min={0} onSave={(valor) => salvar('reservas_permitidos', valor)} loading={salvandoCampo === 'reservas_permitidos'} />
@@ -2107,22 +2169,12 @@ function PainelConfiguracoesCampeonato({
               <ConfigToggle label="Check-in obrigatório" checked={Boolean(camp?.checkin_obrigatorio)} onChange={(valor) => salvar('checkin_obrigatorio', valor)} loading={salvandoCampo === 'checkin_obrigatorio'} />
             </div>
           </ConfigCard>
-
-          <ConfigCard titulo="Dados principais" descricao="Ajustes rápidos que aparecem no topo e nas listas públicas.">
-            <div className="grid gap-3 md:grid-cols-2">
-              <ConfigText label="Nome do campeonato" value={camp?.nome || ''} onSave={(valor) => salvar('nome', valor)} loading={salvandoCampo === 'nome'} />
-              <ConfigText label="Plataforma" value={camp?.plataforma || ''} onSave={(valor) => salvar('plataforma', valor || null)} loading={salvandoCampo === 'plataforma'} />
-              <ConfigDateTime label="Início" value={camp?.data_inicio} onChange={(valor) => salvar('data_inicio', valor)} loading={salvandoCampo === 'data_inicio'} />
-              <ConfigDateTime label="Fim" value={camp?.data_fim} onChange={(valor) => salvar('data_fim', valor)} loading={salvandoCampo === 'data_fim'} />
-            </div>
-          </ConfigCard>
         </div>
-
         <aside className="space-y-4">
           <div className="border border-zinc-200 bg-white p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#2563eb]">Link mobile</div>
-            <div className="mt-1 text-lg font-black uppercase text-[#142340]">Inscrição e escalação</div>
-            <p className="mt-1 text-xs font-semibold text-zinc-500">Use esse link na descrição dos grupos. Ele abre a página mobile do campeonato para WhatsApp usando o ID real do campeonato.</p>
+            <div className="mt-1 text-lg font-black uppercase text-[#142340]">InscriÃ§Ã£o e escalaÃ§Ã£o</div>
+            <p className="mt-1 text-xs font-semibold text-zinc-500">Use esse link na descriÃ§Ã£o dos grupos. Ele abre a pÃ¡gina mobile do campeonato para WhatsApp usando o ID real do campeonato.</p>
             <input readOnly value={linkMobile} className="mt-3 h-10 w-full border border-zinc-200 bg-zinc-50 px-3 text-xs font-bold text-[#142340] outline-none" />
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button type="button" onClick={copiarLink} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase tracking-wide text-white">
@@ -2143,7 +2195,7 @@ function PainelConfiguracoesCampeonato({
 
           <div className="border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-900">
             <div className="text-[10px] font-black uppercase tracking-[0.2em]">Importante</div>
-            <p className="mt-2">Para pausar novas inscrições agora, altere o status para rascunho, em andamento, finalizado ou ajuste a data de encerramento. A trava manual separada só deve ser criada depois do SQL confirmar que não existe campo equivalente.</p>
+            <p className="mt-2">Para pausar novas inscriÃ§Ãµes agora, altere o status para rascunho, em andamento, finalizado ou ajuste a data de encerramento. A trava manual separada sÃ³ deve ser criada depois do SQL confirmar que nÃ£o existe campo equivalente.</p>
           </div>
         </aside>
       </div>
@@ -2283,6 +2335,59 @@ function ConfigMetric({ label, value }: { label: string; value: string }) {
   )
 }
 
+function formatarDistribuicaoPremiacao(valor: unknown) {
+  if (!valor) return ''
+  if (typeof valor === 'string') return valor
+  try {
+    return JSON.stringify(valor, null, 2)
+  } catch {
+    return String(valor)
+  }
+}
+
+async function salvarDistribuicaoPremiacao(valor: string, salvar: (campo: string, valor: any) => Promise<void>) {
+  const texto = valor.trim()
+  if (!texto) {
+    await salvar('distribuicao_premiacao_json', null)
+    return
+  }
+
+  try {
+    await salvar('distribuicao_premiacao_json', JSON.parse(texto))
+  } catch {
+    await salvar('distribuicao_premiacao_json', texto)
+  }
+}
+
+function ConfigImageUpload({ label, value, onSave, loading = false }: any) {
+  const inputId = `upload-${String(label || 'imagem').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
+  return (
+    <div className="border border-zinc-200 bg-white p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+      <div className="mt-2 flex aspect-square items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50">
+        {value ? <img src={value} alt="" className="h-full w-full object-contain" /> : <ImageIcon size={28} className="text-zinc-300" />}
+      </div>
+      <label htmlFor={inputId} className="mt-2 flex h-9 cursor-pointer items-center justify-center gap-2 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white">
+        <Upload size={13} />
+        {loading ? 'Enviando...' : 'Trocar logo'}
+      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept="image/*"
+        disabled={loading}
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          if (file) void onSave(file)
+          event.currentTarget.value = ''
+        }}
+      />
+    </div>
+  )
+}
+
 function ConfigNumber({ label, value, onSave, min = 0, step = '1', loading = false }: any) {
   const [local, setLocal] = useState(String(value ?? ''))
 
@@ -2316,6 +2421,31 @@ function ConfigText({ label, value, onSave, loading = false }: any) {
       <div className="mt-2 flex gap-2">
         <input value={local} onChange={(event) => setLocal(event.target.value)} className="h-9 min-w-0 flex-1 border border-zinc-200 bg-zinc-50 px-2 text-sm font-bold text-[#142340] outline-none focus:border-[#2563eb]" />
         <button type="button" disabled={loading} onClick={() => onSave(local.trim())} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white disabled:opacity-60">
+          {loading ? '...' : 'Salvar'}
+        </button>
+      </div>
+    </label>
+  )
+}
+
+function ConfigTextArea({ label, value, onSave, placeholder = '', loading = false }: any) {
+  const [local, setLocal] = useState(String(value ?? ''))
+
+  useEffect(() => {
+    setLocal(String(value ?? ''))
+  }, [value])
+
+  return (
+    <label className="block border border-zinc-200 bg-white p-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</span>
+      <textarea
+        value={local}
+        placeholder={placeholder}
+        onChange={(event) => setLocal(event.target.value)}
+        className="mt-2 min-h-28 w-full resize-y border border-zinc-200 bg-zinc-50 p-2 text-xs font-bold leading-5 text-[#142340] outline-none focus:border-[#2563eb]"
+      />
+      <div className="mt-2 flex justify-end">
+        <button type="button" disabled={loading} onClick={() => onSave(local)} className="h-9 border border-[#2563eb] bg-[#2563eb] px-3 text-[10px] font-black uppercase text-white disabled:opacity-60">
           {loading ? '...' : 'Salvar'}
         </button>
       </div>
@@ -2413,7 +2543,7 @@ function PainelReputacaoCampeonato({
             <BadgeCheck size={18} className="text-[#18b54a]" />
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">
-                Reputação do campeonato
+                ReputaÃ§Ã£o do campeonato
               </div>
               <div className="text-2xl font-black uppercase italic">{camp?.nome || 'Campeonato'}</div>
             </div>
@@ -2423,7 +2553,7 @@ function PainelReputacaoCampeonato({
             <div>
               <div className="text-[64px] leading-none font-black italic">{formatarDecimal(reputacaoScore, 1)}</div>
               <div className="text-[12px] uppercase font-black text-zinc-400 tracking-[0.25em]">
-                Score de confiança
+                Score de confianÃ§a
               </div>
             </div>
 
@@ -2435,30 +2565,30 @@ function PainelReputacaoCampeonato({
           </div>
 
           <p className="mt-5 text-[14px] leading-7 text-zinc-600 font-semibold">
-            {reputacaoSelo.descricao}. O score considera avaliações, volume de feedback, denúncias em aberto,
-            taxa de resposta e taxa de resolução.
+            {reputacaoSelo.descricao}. O score considera avaliaÃ§Ãµes, volume de feedback, denÃºncias em aberto,
+            taxa de resposta e taxa de resoluÃ§Ã£o.
           </p>
         </div>
 
         <div className="bg-zinc-50 border-2 border-black p-6">
           <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400 mb-4">
-            Resumo rápido
+            Resumo rÃ¡pido
           </div>
 
           <div className="space-y-3">
-            <LinhaResumo titulo="Nota média das avaliações" valor={formatarDecimal(avaliacaoResumo.media, 1)} />
-            <LinhaResumo titulo="Total de avaliações" valor={String(avaliacaoResumo.total)} />
-            <LinhaResumo titulo="Denúncias totais" valor={String(totalDenuncias)} />
-            <LinhaResumo titulo="Denúncias abertas" valor={String(abertas)} />
-            <LinhaResumo titulo="Denúncias resolvidas" valor={String(resolvidas)} />
+            <LinhaResumo titulo="Nota mÃ©dia das avaliaÃ§Ãµes" valor={formatarDecimal(avaliacaoResumo.media, 1)} />
+            <LinhaResumo titulo="Total de avaliaÃ§Ãµes" valor={String(avaliacaoResumo.total)} />
+            <LinhaResumo titulo="DenÃºncias totais" valor={String(totalDenuncias)} />
+            <LinhaResumo titulo="DenÃºncias abertas" valor={String(abertas)} />
+            <LinhaResumo titulo="DenÃºncias resolvidas" valor={String(resolvidas)} />
             <LinhaResumo titulo="Taxa de resposta" valor={`${formatarDecimal(taxaResposta, 1)}%`} />
-            <LinhaResumo titulo="Taxa de resolução" valor={`${formatarDecimal(taxaResolucao, 1)}%`} />
-            <LinhaResumo titulo="Tempo médio 1ª resposta" valor={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
+            <LinhaResumo titulo="Taxa de resoluÃ§Ã£o" valor={`${formatarDecimal(taxaResolucao, 1)}%`} />
+            <LinhaResumo titulo="Tempo mÃ©dio 1Âª resposta" valor={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
           </div>
 
           {loading && (
             <div className="mt-5 text-[11px] font-black uppercase text-zinc-500">
-              Atualizando transparência...
+              Atualizando transparÃªncia...
             </div>
           )}
         </div>
@@ -2467,43 +2597,43 @@ function PainelReputacaoCampeonato({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           icon={<Star size={16} />}
-          label="Média avaliações"
+          label="MÃ©dia avaliaÃ§Ãµes"
           value={formatarDecimal(avaliacaoResumo.media, 1)}
         />
         <MetricCard
           icon={<MessageSquareWarning size={16} />}
-          label="Denúncias abertas"
+          label="DenÃºncias abertas"
           value={String(abertas)}
         />
         <MetricCard icon={<BadgeCheck size={16} />} label="Taxa resposta" value={`${formatarDecimal(taxaResposta, 1)}%`} />
-        <MetricCard icon={<Clock3 size={16} />} label="1ª resposta" value={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
+        <MetricCard icon={<Clock3 size={16} />} label="1Âª resposta" value={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
       </div>
 
       <div className="bg-white border-2 border-black p-6">
         <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400 mb-3">
-          Leitura da reputação
+          Leitura da reputaÃ§Ã£o
         </div>
 
         <div className="grid md:grid-cols-3 gap-4 text-[13px] font-semibold text-zinc-700">
           <div className="border border-zinc-200 p-4 bg-zinc-50">
             <div className="font-black uppercase text-[11px] tracking-[0.2em] text-zinc-400 mb-2">
-              Avaliações
+              AvaliaÃ§Ãµes
             </div>
-            A nota média e o volume de avaliações ajudam a mostrar consistência real do campeonato.
+            A nota mÃ©dia e o volume de avaliaÃ§Ãµes ajudam a mostrar consistÃªncia real do campeonato.
           </div>
 
           <div className="border border-zinc-200 p-4 bg-zinc-50">
             <div className="font-black uppercase text-[11px] tracking-[0.2em] text-zinc-400 mb-2">
-              Transparência
+              TransparÃªncia
             </div>
-            Muitas denúncias abertas derrubam o score. Resolver rápido reduz o impacto negativo.
+            Muitas denÃºncias abertas derrubam o score. Resolver rÃ¡pido reduz o impacto negativo.
           </div>
 
           <div className="border border-zinc-200 p-4 bg-zinc-50">
             <div className="font-black uppercase text-[11px] tracking-[0.2em] text-zinc-400 mb-2">
               Atendimento
             </div>
-            Taxa de resposta e tempo da primeira resposta influenciam diretamente na confiança da página.
+            Taxa de resposta e tempo da primeira resposta influenciam diretamente na confianÃ§a da pÃ¡gina.
           </div>
         </div>
       </div>
@@ -2541,7 +2671,7 @@ function PainelDenunciasCampeonato({
         <MetricCard icon={<ShieldAlert size={16} />} label="Total" value={String(total)} />
         <MetricCard icon={<MessageSquareWarning size={16} />} label="Abertas" value={String(abertas)} />
         <MetricCard icon={<BadgeCheck size={16} />} label="Resolvidas" value={String(resolvidas)} />
-        <MetricCard icon={<Clock3 size={16} />} label="1ª resposta" value={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
+        <MetricCard icon={<Clock3 size={16} />} label="1Âª resposta" value={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
         <MetricCard icon={<BadgeCheck size={16} />} label="Taxa resposta" value={`${formatarDecimal(taxaResposta, 1)}%`} />
       </div>
 
@@ -2550,30 +2680,30 @@ function PainelDenunciasCampeonato({
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">
-                Transparência pública
+                TransparÃªncia pÃºblica
               </div>
-              <div className="text-2xl font-black uppercase italic">Denúncias do campeonato</div>
+              <div className="text-2xl font-black uppercase italic">DenÃºncias do campeonato</div>
             </div>
 
             <button className="px-4 py-2 border-2 border-black bg-black text-[#7cfc00] text-[11px] font-black uppercase tracking-[0.2em]">
-              Abrir denúncia
+              Abrir denÃºncia
             </button>
           </div>
 
           {loading && (
             <div className="mb-4 text-[11px] font-black uppercase text-zinc-500">
-              Atualizando denúncias...
+              Atualizando denÃºncias...
             </div>
           )}
 
           {denuncias.length === 0 ? (
             <div className="border-2 border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
               <div className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-2">
-                Nenhuma denúncia pública
+                Nenhuma denÃºncia pÃºblica
               </div>
               <p className="text-[14px] text-zinc-600 font-semibold">
-                Quando houver registros públicos, eles aparecem aqui com status, prioridade, tempo de resposta e
-                volume de interação.
+                Quando houver registros pÃºblicos, eles aparecem aqui com status, prioridade, tempo de resposta e
+                volume de interaÃ§Ã£o.
               </p>
             </div>
           ) : (
@@ -2588,21 +2718,21 @@ function PainelDenunciasCampeonato({
         <div className="space-y-6">
           <div className="bg-zinc-50 border-2 border-black p-6">
             <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400 mb-4">
-              Resumo da operação
+              Resumo da operaÃ§Ã£o
             </div>
 
             <div className="space-y-3">
               <LinhaResumo titulo="Taxa de resposta" valor={`${formatarDecimal(taxaResposta, 1)}%`} />
-              <LinhaResumo titulo="Taxa de resolução" valor={`${formatarDecimal(taxaResolucao, 1)}%`} />
-              <LinhaResumo titulo="Denúncias resolvidas" valor={String(resolvidas)} />
-              <LinhaResumo titulo="Denúncias abertas" valor={String(abertas)} />
-              <LinhaResumo titulo="Tempo médio 1ª resposta" valor={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
+              <LinhaResumo titulo="Taxa de resoluÃ§Ã£o" valor={`${formatarDecimal(taxaResolucao, 1)}%`} />
+              <LinhaResumo titulo="DenÃºncias resolvidas" valor={String(resolvidas)} />
+              <LinhaResumo titulo="DenÃºncias abertas" valor={String(abertas)} />
+              <LinhaResumo titulo="Tempo mÃ©dio 1Âª resposta" valor={`${formatarDecimal(mediaPrimeiraResposta, 1)}h`} />
             </div>
           </div>
 
           <div className="bg-white border-2 border-black p-6">
             <div className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400 mb-3">
-              Impacto na reputação
+              Impacto na reputaÃ§Ã£o
             </div>
 
             <div className="flex items-end justify-between gap-4">
@@ -2619,8 +2749,8 @@ function PainelDenunciasCampeonato({
             </div>
 
             <p className="mt-4 text-[13px] leading-6 text-zinc-600 font-semibold">
-              O histórico de denúncias ajuda a medir transparência real, capacidade de resposta e consistência da
-              organização.
+              O histÃ³rico de denÃºncias ajuda a medir transparÃªncia real, capacidade de resposta e consistÃªncia da
+              organizaÃ§Ã£o.
             </p>
           </div>
         </div>
@@ -2642,7 +2772,7 @@ function CardDenuncia({ item }: { item: DenunciaResumo }) {
               {textoSeguro(item.categoria, 'Sem categoria')}
             </div>
             <h3 className="text-[20px] font-black uppercase italic leading-tight mt-1">
-              {textoSeguro(item.titulo, 'Denúncia sem título')}
+              {textoSeguro(item.titulo, 'DenÃºncia sem tÃ­tulo')}
             </h3>
           </div>
 
@@ -2659,7 +2789,7 @@ function CardDenuncia({ item }: { item: DenunciaResumo }) {
         </div>
 
         <p className="text-[14px] text-zinc-700 font-semibold leading-7">
-          {textoSeguro(item.descricao, 'Sem descrição pública.')}
+          {textoSeguro(item.descricao, 'Sem descriÃ§Ã£o pÃºblica.')}
         </p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
@@ -2669,13 +2799,13 @@ function CardDenuncia({ item }: { item: DenunciaResumo }) {
           <MiniInfo titulo="Respostas" valor={String(formatarNumero(item.total_respostas_publicas))} />
           <MiniInfo titulo="Provas" valor={String(formatarNumero(item.total_provas))} />
           <MiniInfo
-            titulo="1ª resposta"
+            titulo="1Âª resposta"
             valor={`${formatarDecimal(formatarNumero(item.horas_ate_primeira_resposta), 1)}h`}
           />
-          <MiniInfo titulo="Resolução" value={`${formatarDecimal(formatarNumero(item.horas_ate_resolucao), 1)}h`} />
+          <MiniInfo titulo="ResoluÃ§Ã£o" value={`${formatarDecimal(formatarNumero(item.horas_ate_resolucao), 1)}h`} />
           <MiniInfo
-            titulo="Autor público"
-            valor={item.anonima_para_publico ? 'Anônimo' : 'Identificado'}
+            titulo="Autor pÃºblico"
+            valor={item.anonima_para_publico ? 'AnÃ´nimo' : 'Identificado'}
           />
         </div>
       </div>
