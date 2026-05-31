@@ -200,6 +200,9 @@ export default function GerenciarGrupos({
   const [showModalTroca, setShowModalTroca] = useState(false);
 
   const [nomeFase, setNomeFase] = useState("");
+  const [grupoEditando, setGrupoEditando] = useState<GrupoComSlots | null>(
+    null,
+  );
   const [nomeGrupo, setNomeGrupo] = useState("");
   const [faseSelecionadaParaGrupo, setFaseSelecionadaParaGrupo] = useState("");
   const [quantidadeEquipesGrupo, setQuantidadeEquipesGrupo] = useState("12");
@@ -286,6 +289,7 @@ export default function GerenciarGrupos({
   };
 
   const resetModalGrupo = () => {
+    setGrupoEditando(null);
     setNomeGrupo("");
     setFaseSelecionadaParaGrupo("");
     setQuantidadeEquipesGrupo("12");
@@ -933,6 +937,169 @@ export default function GerenciarGrupos({
     }
   };
 
+  const ajustarQuantidadeSlotsGrupo = async (
+    grupo: GrupoComSlots,
+    quantidade: number,
+    faseId: string,
+  ) => {
+    const slotsAtuais = [...grupo.slots].sort(
+      (a, b) => Number(a.slot_numero || 0) - Number(b.slot_numero || 0),
+    );
+    const totalAtual = slotsAtuais.length;
+
+    if (quantidade === totalAtual) return;
+
+    if (quantidade < totalAtual) {
+      const slotsRemover = slotsAtuais.filter(
+        (slot) => Number(slot.slot_numero || 0) > quantidade,
+      );
+      const ocupados = slotsRemover.filter((slot) => slot.campeonato_equipe_id);
+      if (ocupados.length > 0) {
+        throw new Error(
+          "Não dá para reduzir os slots porque existem equipes nas últimas vagas. Remova ou mova essas equipes primeiro.",
+        );
+      }
+
+      const idsRemover = slotsRemover.map((slot) => slot.id);
+      if (idsRemover.length > 0) {
+        const { error } = await supabase
+          .from("campeonato_grupo_slots")
+          .delete()
+          .in("id", idsRemover);
+        if (error) throw error;
+      }
+      return;
+    }
+
+    const existentes = new Set(slotsAtuais.map((slot) => Number(slot.slot_numero || 0)));
+    const novosSlots = [];
+    for (let numero = 1; numero <= quantidade; numero += 1) {
+      if (!existentes.has(numero)) {
+        novosSlots.push({
+          campeonato_id: campeonatoId,
+          fase_id: faseId,
+          grupo_id: grupo.id,
+          slot_numero: numero,
+        });
+      }
+    }
+
+    if (novosSlots.length > 0) {
+      const { error } = await supabase
+        .from("campeonato_grupo_slots")
+        .insert(novosSlots);
+      if (error) throw error;
+    }
+  };
+
+  const handleSalvarGrupo = async () => {
+    if (!grupoEditando) {
+      await handleCriarGrupo();
+      return;
+    }
+
+    const letra = extrairLetraGrupo(nomeGrupo);
+    const nome = montarNomeGrupo(letra);
+
+    if (!nome) {
+      toast.error("Informe o nome do grupo");
+      return;
+    }
+
+    if (!faseSelecionadaParaGrupo) {
+      toast.error("Selecione a fase");
+      return;
+    }
+
+    const quantidade = Number(quantidadeEquipesGrupo);
+    if (!Number.isFinite(quantidade) || quantidade <= 0) {
+      toast.error("Informe uma quantidade válida de equipes");
+      return;
+    }
+
+    const qtdQuedas = Number(quantidadeQuedasGrupo);
+    if (!Number.isFinite(qtdQuedas) || qtdQuedas <= 0) {
+      toast.error("Informe uma quantidade válida de partidas");
+      return;
+    }
+
+    const intervalo = Number(intervaloGrupo);
+    if (!Number.isFinite(intervalo) || intervalo < 0) {
+      toast.error("Informe um intervalo válido");
+      return;
+    }
+
+    const mapas = mapasGrupoSelecionados.slice(0, qtdQuedas).filter(Boolean);
+    if (mapas.length !== qtdQuedas) {
+      toast.error("Selecione o mapa de todas as partidas");
+      return;
+    }
+
+    const duplicado = grupos.some(
+      (grupo) =>
+        grupo.id !== grupoEditando.id &&
+        grupo.fase_id === faseSelecionadaParaGrupo &&
+        grupo.nome.trim().toLowerCase() === nome.toLowerCase(),
+    );
+
+    if (duplicado) {
+      toast.error("Já existe um grupo com esse nome nessa fase");
+      return;
+    }
+
+    setSalvando(true);
+
+    try {
+      await ajustarQuantidadeSlotsGrupo(
+        grupoEditando,
+        quantidade,
+        faseSelecionadaParaGrupo,
+      );
+
+      const configuracaoAtual = (grupoEditando.configuracao || {}) as Record<
+        string,
+        any
+      >;
+      const configuracao = {
+        ...configuracaoAtual,
+        classificam: Number(classificamGrupo || 0),
+        hora_jogo: horaJogoGrupo || null,
+        data_jogo: dataJogoGrupo || null,
+        intervalo_minutos: intervalo,
+        quantidade_partidas: qtdQuedas,
+        qtd_quedas: qtdQuedas,
+        mapas,
+      };
+
+      const { error } = await supabase
+        .from("campeonato_grupos")
+        .update({
+          nome,
+          slug: normalizarSlug(nome),
+          quantidade_equipes: quantidade,
+          classificam: Number(classificamGrupo || 0),
+          horario_inicio: horaJogoGrupo || null,
+          qtd_quedas: qtdQuedas,
+          mapas,
+          configuracao,
+        })
+        .eq("id", grupoEditando.id);
+
+      if (error) throw error;
+
+      toast.success("Grupo atualizado com sucesso");
+      setGruposAbertos((prev) =>
+        prev.includes(grupoEditando.id) ? prev : [...prev, grupoEditando.id],
+      );
+      resetModalGrupo();
+      await carregarDados(false);
+    } catch (error: any) {
+      toast.error(error?.message || "Erro ao atualizar grupo");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const handleExcluirFase = async (fase: FaseComGrupos) => {
     const temGrupos = fase.grupos.length > 0;
     if (temGrupos) {
@@ -998,6 +1165,7 @@ export default function GerenciarGrupos({
   };
 
   const abrirCriarGrupoNaFase = (faseId: string) => {
+    setGrupoEditando(null);
     setFaseSelecionadaParaGrupo(faseId);
     setNomeGrupo(proximaLetraGrupo(faseId));
     setQuantidadeEquipesGrupo("12");
@@ -1007,6 +1175,30 @@ export default function GerenciarGrupos({
     setHoraJogoGrupo("");
     setClassificamGrupo("1");
     setMapasGrupoSelecionados(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
+    setShowModalGrupo(true);
+  };
+
+  const abrirEditarGrupo = (grupo: GrupoComSlots) => {
+    const cfg = (grupo.configuracao || {}) as Record<string, any>;
+    const mapas = Array.isArray(grupo.mapas)
+      ? grupo.mapas
+      : Array.isArray(cfg.mapas)
+        ? cfg.mapas
+        : ["Bermuda", "Purgatório", "Alpine", "Kalahari"];
+    const qtdQuedas = Number(
+      grupo.qtd_quedas || cfg.qtd_quedas || cfg.quantidade_partidas || mapas.length || 4,
+    );
+
+    setGrupoEditando(grupo);
+    setFaseSelecionadaParaGrupo(grupo.fase_id || "");
+    setNomeGrupo(extrairLetraGrupo(grupo.nome));
+    setQuantidadeEquipesGrupo(String(grupo.quantidade_equipes || grupo.vagas_totais || grupo.slots.length || 12));
+    setQuantidadeQuedasGrupo(String(qtdQuedas || 4));
+    setIntervaloGrupo(String(cfg.intervalo_minutos ?? 15));
+    setDataJogoGrupo(String(cfg.data_jogo || ""));
+    setHoraJogoGrupo(String(grupo.horario_inicio || cfg.horario_inicio || cfg.hora_jogo || ""));
+    setClassificamGrupo(String(grupo.classificam || cfg.classificam || 0));
+    setMapasGrupoSelecionados(mapas.slice(0, qtdQuedas || mapas.length || 4));
     setShowModalGrupo(true);
   };
 
@@ -1774,15 +1966,26 @@ export default function GerenciarGrupos({
                                     </div>
 
                                     {canEdit ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleExcluirGrupo(grupo);
-                                        }}
-                                        className="px-3 py-1 bg-white text-black text-[8px] font-black uppercase italic border border-black"
-                                      >
-                                        Excluir
-                                      </button>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            abrirEditarGrupo(grupo);
+                                          }}
+                                          className="px-3 py-1 bg-[#7cfc00] text-black text-[8px] font-black uppercase italic border border-black"
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleExcluirGrupo(grupo);
+                                          }}
+                                          className="px-3 py-1 bg-white text-black text-[8px] font-black uppercase italic border border-black"
+                                        >
+                                          Excluir
+                                        </button>
+                                      </div>
                                     ) : null}
                                   </div>
                                 </div>
@@ -2225,10 +2428,12 @@ export default function GerenciarGrupos({
             <div className="flex items-center justify-between border-b-2 border-black bg-black px-5 py-4">
               <div>
                 <h3 className="text-sm font-black uppercase italic text-[#7cfc00]">
-                  Novo grupo
+                  {grupoEditando ? "Editar grupo" : "Novo grupo"}
                 </h3>
                 <p className="mt-1 text-[10px] font-black uppercase italic text-zinc-400">
-                  Vincule o grupo a uma fase e defina os slots
+                  {grupoEditando
+                    ? "Ajuste agenda, slots, partidas e mapas do grupo"
+                    : "Vincule o grupo a uma fase e defina os slots"}
                 </p>
               </div>
 
@@ -2245,6 +2450,7 @@ export default function GerenciarGrupos({
                 <select
                   value={faseSelecionadaParaGrupo}
                   onChange={(e) => setFaseSelecionadaParaGrupo(e.target.value)}
+                  disabled={Boolean(grupoEditando)}
                   className="w-full border-2 border-black bg-white px-4 py-3 text-[11px] font-black uppercase outline-none"
                 >
                   <option value="">Selecione</option>
@@ -2269,6 +2475,7 @@ export default function GerenciarGrupos({
                     const nomeCompleto = montarNomeGrupo(letra);
                     const usada = grupos.some(
                       (grupo) =>
+                        grupo.id !== grupoEditando?.id &&
                         grupo.fase_id === faseSelecionadaParaGrupo &&
                         extrairLetraGrupo(grupo.nome) === letra,
                     );
@@ -2405,11 +2612,15 @@ export default function GerenciarGrupos({
 
               <div className="flex gap-2">
                 <button
-                  onClick={handleCriarGrupo}
+                  onClick={handleSalvarGrupo}
                   disabled={salvando}
                   className="flex-1 bg-[#7cfc00] text-black p-3 text-[10px] font-black uppercase italic border border-black"
                 >
-                  {salvando ? "SALVANDO..." : "CRIAR GRUPO"}
+                  {salvando
+                    ? "SALVANDO..."
+                    : grupoEditando
+                      ? "SALVAR GRUPO"
+                      : "CRIAR GRUPO"}
                 </button>
 
                 <button
