@@ -405,6 +405,29 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return m
  }, [vinculos])
 
+ useEffect(() => {
+ if (mvpItems.length === 0) return
+
+ setMvpEquipe((atual) => {
+ const proximo = { ...atual }
+ let mudou = false
+
+ mvpItems.forEach((item) => {
+ const gameId = String(item?.game_id || '').trim()
+ const raw = String(item?.team_raw || '').trim()
+ const rawNorm = normalizeText(raw)
+ const equipePeloRaw = rawNorm ? String(teamRawToEquipeId[rawNorm] || '').trim() : ''
+
+ if (gameId && equipePeloRaw && proximo[gameId] !== equipePeloRaw) {
+ proximo[gameId] = equipePeloRaw
+ mudou = true
+ }
+ })
+
+ return mudou ? proximo : atual
+ })
+ }, [mvpItems, teamRawToEquipeId])
+
 
  
  const getGrupoIdDoJogo = useCallback((jogo: any) => {
@@ -1597,7 +1620,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const nomeRaw = String(team?.nome_equipe || '').trim()
  if (!nomeRaw) continue
 
- const equipeIdPorVinculo = teamRawToEquipeId[nomeRaw] || ''
+ const equipeIdPorVinculo = teamRawToEquipeId[normalizeText(nomeRaw)] || ''
  const equipeIdPorNome = guessCampeonatoEquipeIdByRaw(nomeRaw)
  const equipeIdFinal = equipeIdPorVinculo || equipeIdPorNome
 
@@ -2118,6 +2141,28 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  total_pontos: resultadosCalculados[getVagaKey(i)].total,
  }))
 
+ const publicarClassificacaoNoBanco = async (jogoIdAtual: string, rows: any[]) => {
+ const response = await fetch('/api/stream/publish-score', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ projectId: projectIdOverride || null,
+ streamKey: streamKeyOverride || null,
+ campeonatoId,
+ jogoId: jogoIdAtual,
+ mapa: quedaAtiva?.mapa,
+ rows,
+ }),
+ })
+
+ const result = await response.json().catch(() => null)
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel salvar a classificacao no banco.')
+ }
+
+ return result
+ }
+
  const salvarClassificacaoLive = async () => {
  if (!quedaAtiva || !blocoSelecionado) return
 
@@ -2160,11 +2205,8 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  setLoading(true)
  try {
  const jogoIdAtual = getJogoIdAtual()
- await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
-
  const inserts = montarInsertsClassificacao(jogoIdAtual)
-
- await supabase.from('resultados_jogos').insert(inserts)
+ await publicarClassificacaoNoBanco(jogoIdAtual, inserts)
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
 
  await supabase.rpc('lock_sumula', {
@@ -2230,30 +2272,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const jogoIdAtual = getJogoIdAtual()
  const insertsClassificacao = montarInsertsClassificacao(jogoIdAtual)
 
- if (projectIdOverride || streamKeyOverride) {
- const response = await fetch('/api/stream/publish-score', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({
- projectId: projectIdOverride || null,
- streamKey: streamKeyOverride || null,
- campeonatoId,
- jogoId: jogoIdAtual,
- mapa: quedaAtiva.mapa,
- rows: insertsClassificacao,
- }),
- })
- const result = await response.json()
- if (!response.ok || !result?.ok) {
- throw new Error(result?.error || 'Nao foi possivel publicar no site.')
- }
- }
-
- await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)
-
- if (insertsClassificacao.length > 0) {
- await supabase.from('resultados_jogos').insert(insertsClassificacao)
- }
+ await publicarClassificacaoNoBanco(jogoIdAtual, insertsClassificacao)
 
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
 

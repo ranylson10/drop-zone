@@ -25,12 +25,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const project = await resolveProject(cleanText(body.projectId), cleanText(body.streamKey), cleanText(body.campeonatoId))
+    const campeonatoIdBody = cleanText(body.campeonatoId)
 
-    if (!project?.id) {
+    if (!project?.id && !campeonatoIdBody) {
       return NextResponse.json({ ok: false, error: 'Projeto de stream nao encontrado.' }, { status: 404 })
     }
 
-    const campeonatoId = cleanText(body.campeonatoId || project.campeonato_id)
+    const campeonatoId = cleanText(campeonatoIdBody || project?.campeonato_id)
     const jogoId = cleanText(body.jogoId)
     const mapa = cleanText(body.mapa)
     const rows = (Array.isArray(body.rows) ? body.rows : []).map((row: any) => ({
