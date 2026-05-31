@@ -675,6 +675,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     0,
     Number(camp?.vagas || camp?.quantidade_equipes || 0) - vagasPreenchidas
   )
+  const statusPermiteCompraVaga = normalizarStatusCampeonato(camp?.status).value === 'inscricoes'
 
   const equipeSelecionadaCompra = useMemo(() => {
     return minhasEquipesCompra.find((equipe) => equipe.id === equipeCompraId) || null
@@ -870,6 +871,11 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     setMensagemCompraVaga('')
     setComprovanteCompra(null)
 
+    if (!statusPermiteCompraVaga) {
+      setMensagemCompraVaga('A compra de vagas esta disponivel apenas quando o campeonato esta com inscricoes abertas.')
+      return
+    }
+
     if (!usuarioAtual) {
       setMensagemCompraVaga('Faça login para comprar uma vaga.')
       return
@@ -900,6 +906,11 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     if (!id || !camp) return
 
     setMensagemCompraVaga('')
+
+    if (!statusPermiteCompraVaga) {
+      setMensagemCompraVaga('A compra de vagas esta disponivel apenas quando o campeonato esta com inscricoes abertas.')
+      return
+    }
 
     if (!usuarioAtual) {
       setMensagemCompraVaga('Faça login para comprar uma vaga.')
@@ -1813,7 +1824,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
           </div>
 
           <div className="border-b border-zinc-200 bg-white px-4 py-3 md:px-6">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px_170px] lg:items-end">
+            <div className={`grid gap-3 lg:items-end ${statusPermiteCompraVaga ? 'lg:grid-cols-[minmax(0,1fr)_300px_170px]' : 'lg:grid-cols-[minmax(0,1fr)_300px]'}`}>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 <LealtMiniInfo label="Status" value={normalizarStatusCampeonato(camp?.status).label} />
                 <LealtMiniInfo label="Início" value={formatarDataBanner(camp?.data_inicio)} />
@@ -1842,14 +1853,16 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={abrirConfirmacaoCompra}
-                disabled={comprandoVaga || !usuarioAtual || vagasRestantesCompra <= 0}
-                className={`h-10 border px-4 text-[11px] font-black uppercase tracking-wide transition disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-200 disabled:text-zinc-500 ${tipoVisual.button}`}
-              >
-                {comprandoVaga ? 'Processando...' : 'Comprar vaga'}
-              </button>
+              {statusPermiteCompraVaga ? (
+                <button
+                  type="button"
+                  onClick={abrirConfirmacaoCompra}
+                  disabled={comprandoVaga || !usuarioAtual || vagasRestantesCompra <= 0}
+                  className={`h-10 border px-4 text-[11px] font-black uppercase tracking-wide transition disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-200 disabled:text-zinc-500 ${tipoVisual.button}`}
+                >
+                  {comprandoVaga ? 'Processando...' : 'Comprar vaga'}
+                </button>
+              ) : null}
             </div>
 
           </div>

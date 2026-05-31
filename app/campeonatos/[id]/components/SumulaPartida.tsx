@@ -1723,12 +1723,14 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
 
  const jogoIdAtual = String(quedaAtiva?.jogo_id || blocoSelecionado?.id || '').trim()
  if (!jogoIdAtual) return null
+ const numeroPartida = Number(quedaAtiva.numero_partida || 0)
+ const mapaPartida = String(quedaAtiva.mapa || '').trim()
 
  const { data, error } = await supabase
  .from('partidas')
  .select('id, numero, mapa')
  .eq('jogo_id', jogoIdAtual)
- .eq('numero', Number(quedaAtiva.numero_partida || 0))
+ .eq('numero', numeroPartida)
  .maybeSingle()
 
  if (error) {
@@ -1736,8 +1738,30 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return null
  }
 
- return data || null
- }, [blocoSelecionado, quedaAtiva])
+ if (data?.id) return data
+
+ const grupoId = String(blocoSelecionado?.grupo_id || getGrupoIdDoJogo(blocoSelecionado) || '').trim()
+ const { data: criada, error: criarError } = await supabase
+ .from('partidas')
+ .insert([{
+ campeonato_id: campeonatoId,
+ jogo_id: jogoIdAtual,
+ grupo_id: grupoId || null,
+ numero: numeroPartida || 1,
+ mapa: mapaPartida || null,
+ status: 'finalizada',
+ ordem_exibicao: numeroPartida || 1,
+ }])
+ .select('id, numero, mapa')
+ .single()
+
+ if (criarError) {
+ console.error('Erro ao criar partida para MVP:', criarError)
+ return null
+ }
+
+ return criada || null
+ }, [blocoSelecionado, quedaAtiva, campeonatoId, getGrupoIdDoJogo])
 
  const salvarResultadosJogadores = useCallback(async () => {
  if (!campeonatoId || !blocoSelecionado || !quedaAtiva) return
@@ -1746,7 +1770,9 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  if (!jogoIdAtual) return
 
  const partidaAtual = await buscarPartidaAtual()
- if (!partidaAtual?.id) return
+ if (!partidaAtual?.id) {
+ throw new Error('Nao foi possivel localizar ou criar a partida desta queda para salvar o MVP.')
+ }
 
  const { error: deleteError } = await supabase
  .from('resultados_mvp')
@@ -2221,12 +2247,6 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  if (!response.ok || !result?.ok) {
  throw new Error(result?.error || 'Nao foi possivel publicar no site.')
  }
-
- salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
- await carregarVinculosDoJogo(jogoIdAtual)
- await handleSelecionarQueda({ ...quedaAtiva, jogo_id: jogoIdAtual }, blocoSelecionado, equipes)
- alert('Classificacao publicada no site. MVP fica para publicar pela sumula autorizada do dono/ajudante.')
- return
  }
 
  await supabase.from('resultados_jogos').delete().eq('jogo_id', jogoIdAtual).eq('mapa', quedaAtiva.mapa)

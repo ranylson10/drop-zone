@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import SocialActions from "@/app/components/SocialActions";
 import {
   X,
   Loader2,
@@ -15,6 +17,7 @@ import {
   Upload,
   Image as ImageIcon,
   CalendarClock,
+  ExternalLink,
 } from "lucide-react";
 
 type TipoFiltro =
@@ -129,6 +132,7 @@ export default function GerenciarEquipes({
 
   const [showModalNovaEquipe, setShowModalNovaEquipe] = useState(false);
   const [showModalTroca, setShowModalTroca] = useState(false);
+  const [equipeDetalhe, setEquipeDetalhe] = useState<EquipeLista | null>(null);
 
   const [modoCadastro, setModoCadastro] = useState<"app" | "avulsa">("app");
   const [statusNovaVaga, setStatusNovaVaga] = useState<"ativa" | "agendada">(
@@ -826,6 +830,8 @@ export default function GerenciarEquipes({
   const gridCols = canManage
     ? "grid-cols-[minmax(240px,1.6fr)_110px_110px_130px_150px_180px]"
     : "grid-cols-[minmax(240px,1.6fr)_120px_120px_130px]";
+  const perfilEquipeDetalheId =
+    equipeDetalhe?.equipe_id || equipeDetalhe?.equipe_oficial_id_vinculada || null;
 
   return (
     <div className="space-y-5">
@@ -921,7 +927,16 @@ export default function GerenciarEquipes({
               return (
                 <div
                   key={item.inscricao_id}
-                  className={`grid ${gridCols} items-center border-b border-zinc-200 px-4 py-3 last:border-b-0`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEquipeDetalhe(item)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setEquipeDetalhe(item);
+                    }
+                  }}
+                  className={`grid ${gridCols} cursor-pointer items-center border-b border-zinc-200 px-4 py-3 transition last:border-b-0 hover:bg-emerald-50/50`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="h-12 w-12 shrink-0 overflow-hidden border border-zinc-200 bg-zinc-100">
@@ -1028,7 +1043,10 @@ export default function GerenciarEquipes({
                     <div className="flex items-center justify-end gap-2">
                     {podeTrocar && (
                       <button
-                        onClick={() => abrirTrocaParaEquipeDoApp(item)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          abrirTrocaParaEquipeDoApp(item);
+                        }}
                         className="inline-flex h-9 items-center gap-2 border border-zinc-200 bg-white px-3 text-[9px] font-semibold uppercase text-[#142340]"
                       >
                         <ArrowRightLeft size={13} />
@@ -1040,9 +1058,10 @@ export default function GerenciarEquipes({
                         item.status === "agendada") && (
                         <>
                           <button
-                            onClick={() =>
+                            onClick={(event) => {
+                              event.stopPropagation();
                               handleConfirmarPagamentoAgendado(item)
-                            }
+                            }}
                             disabled={salvando}
                             className="inline-flex h-9 items-center gap-2 border border-zinc-200 bg-[#2563eb] px-3 text-[9px] font-semibold uppercase text-[#142340]"
                           >
@@ -1050,7 +1069,10 @@ export default function GerenciarEquipes({
                           </button>
 
                           <button
-                            onClick={() => handleCancelarVagaAgendada(item)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleCancelarVagaAgendada(item);
+                            }}
                             disabled={salvando}
                             className="inline-flex h-9 items-center gap-2 border border-zinc-200 bg-orange-400 px-3 text-[9px] font-semibold uppercase text-[#142340]"
                           >
@@ -1060,7 +1082,10 @@ export default function GerenciarEquipes({
                       )}
 
                     <button
-                        onClick={() => handleRemoverEquipe(item)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRemoverEquipe(item);
+                        }}
                         disabled={!podeRemover || salvando}
                         className={`inline-flex h-9 items-center gap-2 border border-zinc-200 px-3 text-[9px] font-semibold uppercase ${
                           podeRemover && !salvando
@@ -1089,6 +1114,128 @@ export default function GerenciarEquipes({
         Exibindo {equipesFiltradas.length} de {equipes.length} equipes
         carregadas
       </div>
+
+      {equipeDetalhe && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          onClick={() => setEquipeDetalhe(null)}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden border border-zinc-200 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,0.22)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-zinc-200 bg-gradient-to-r from-emerald-50 via-white to-sky-50 p-5">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-zinc-200 bg-white">
+                  {equipeDetalhe.logo_url ? (
+                    <img
+                      src={equipeDetalhe.logo_url}
+                      alt={equipeDetalhe.nome_exibicao}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-lg font-black uppercase text-zinc-400">
+                      {(equipeDetalhe.tag || equipeDetalhe.nome_exibicao || "EQ").slice(0, 3)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600">
+                    Equipe do campeonato
+                  </div>
+                  <h3 className="mt-1 truncate text-2xl font-black uppercase text-[#142340]">
+                    {equipeDetalhe.nome_exibicao}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {equipeDetalhe.tag ? (
+                      <span className="border border-zinc-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-[#2563eb]">
+                        {equipeDetalhe.tag}
+                      </span>
+                    ) : null}
+                    <span className="border border-zinc-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-zinc-600">
+                      {equipeDetalhe.tipo_origem === "app" ? "Equipe do app" : "Equipe avulsa"}
+                    </span>
+                    <span className="border border-zinc-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-zinc-600">
+                      {equipeDetalhe.status_pagamento === "agendado" || equipeDetalhe.status === "agendada"
+                        ? "Agendada"
+                        : equipeDetalhe.status || "Ativa"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEquipeDetalhe(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center border border-zinc-200 bg-white text-[#142340]"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <div className="border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Jogadores</div>
+                  <div className="mt-2 text-xl font-black text-[#142340]">{equipeDetalhe.jogadores_escalados}</div>
+                </div>
+                <div className="border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Pais</div>
+                  <div className="mt-2 truncate text-sm font-black uppercase text-[#142340]">{equipeDetalhe.pais || "Nao informado"}</div>
+                </div>
+                <div className="border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Origem</div>
+                  <div className="mt-2 text-sm font-black uppercase text-[#142340]">
+                    {equipeDetalhe.origem_inscricao === "site" ? "Site" : "Organizador"}
+                  </div>
+                </div>
+                <div className="border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Vaga</div>
+                  <div className="mt-2 text-sm font-black uppercase text-[#142340]">
+                    {equipeDetalhe.numero_vaga ? `#${equipeDetalhe.numero_vaga}` : "---"}
+                  </div>
+                </div>
+              </div>
+
+              <SocialActions
+                entityId={perfilEquipeDetalheId}
+                entityType="equipe"
+                variant="light"
+                title="Torcida da equipe"
+              />
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEquipeDetalhe(null)}
+                  className="h-11 border border-zinc-200 bg-white px-4 text-[10px] font-black uppercase tracking-wide text-[#142340]"
+                >
+                  Fechar
+                </button>
+                {perfilEquipeDetalheId ? (
+                  <Link
+                    href={`/equipe/${perfilEquipeDetalheId}`}
+                    className="inline-flex h-11 items-center justify-center gap-2 border border-emerald-700 bg-emerald-600 px-5 text-[10px] font-black uppercase tracking-wide text-white"
+                  >
+                    Visitar perfil
+                    <ExternalLink size={13} />
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="h-11 cursor-not-allowed border border-zinc-200 bg-zinc-100 px-5 text-[10px] font-black uppercase tracking-wide text-zinc-400"
+                  >
+                    Sem perfil no app
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModalNovaEquipe && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 p-4">

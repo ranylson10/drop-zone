@@ -1,12 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import SocialActions from "@/app/components/SocialActions";
 import {
   ArrowRightLeft,
   Check,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   LayoutGrid,
   Loader2,
   Plus,
@@ -198,6 +201,7 @@ export default function GerenciarGrupos({
   const [showModalGrupo, setShowModalGrupo] = useState(false);
   const [showModalEquipe, setShowModalEquipe] = useState(false);
   const [showModalTroca, setShowModalTroca] = useState(false);
+  const [equipeDetalhe, setEquipeDetalhe] = useState<EquipeBase | null>(null);
 
   const [nomeFase, setNomeFase] = useState("");
   const [grupoEditando, setGrupoEditando] = useState<GrupoComSlots | null>(
@@ -1904,45 +1908,56 @@ export default function GerenciarGrupos({
                                     </div>
 
                                     {isCopa ? (
-                                      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                                        <div className="border border-slate-200 bg-white px-3 py-2">
-                                          <div className="text-[8px] font-black uppercase italic text-slate-400">
-                                            Agenda
+                                      <details
+                                        className="mt-3 w-full border border-slate-200 bg-white"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-[8px] font-black uppercase italic tracking-[0.16em] text-slate-500">
+                                          Informacoes do grupo
+                                          <span className="text-slate-400">
+                                            agenda, partidas, classificacao e mapas
+                                          </span>
+                                        </summary>
+                                        <div className="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-2 xl:grid-cols-4">
+                                          <div className="border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <div className="text-[8px] font-black uppercase italic text-slate-400">
+                                              Agenda
+                                            </div>
+                                            <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
+                                              {formatarAgendaGrupo(grupo)}
+                                            </div>
                                           </div>
-                                          <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
-                                            {formatarAgendaGrupo(grupo)}
-                                          </div>
-                                        </div>
 
-                                        <div className="border border-slate-200 bg-white px-3 py-2">
-                                          <div className="text-[8px] font-black uppercase italic text-slate-400">
-                                            Partidas
+                                          <div className="border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <div className="text-[8px] font-black uppercase italic text-slate-400">
+                                              Partidas
+                                            </div>
+                                            <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
+                                              {Number(grupo.qtd_quedas || grupo.configuracao?.qtd_quedas || grupo.configuracao?.quantidade_partidas || 0)}{" "}
+                                              partida(s)
+                                            </div>
                                           </div>
-                                          <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
-                                            {Number(grupo.qtd_quedas || grupo.configuracao?.qtd_quedas || grupo.configuracao?.quantidade_partidas || 0)}{" "}
-                                            partida(s)
-                                          </div>
-                                        </div>
 
-                                        <div className="border border-slate-200 bg-white px-3 py-2">
-                                          <div className="text-[8px] font-black uppercase italic text-slate-400">
-                                            Classificam
+                                          <div className="border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <div className="text-[8px] font-black uppercase italic text-slate-400">
+                                              Classificam
+                                            </div>
+                                            <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
+                                              {Number(grupo.classificam || grupo.configuracao?.classificam || 0)}{" "}
+                                              equipe(s)
+                                            </div>
                                           </div>
-                                          <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800">
-                                            {Number(grupo.classificam || grupo.configuracao?.classificam || 0)}{" "}
-                                            equipe(s)
-                                          </div>
-                                        </div>
 
-                                        <div className="border border-slate-200 bg-white px-3 py-2">
-                                          <div className="text-[8px] font-black uppercase italic text-slate-400">
-                                            Mapas
-                                          </div>
-                                          <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800 line-clamp-2">
-                                            {formatarMapasGrupo(grupo)}
+                                          <div className="border border-slate-200 bg-slate-50 px-3 py-2">
+                                            <div className="text-[8px] font-black uppercase italic text-slate-400">
+                                              Mapas
+                                            </div>
+                                            <div className="mt-1 text-[10px] font-black uppercase italic text-slate-800 line-clamp-2">
+                                              {formatarMapasGrupo(grupo)}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
+                                      </details>
                                     ) : null}
                                   </div>
 
@@ -1993,7 +2008,7 @@ export default function GerenciarGrupos({
 
                               {abertoGrupo && (
                                 <div className="p-4">
-                                  <div className="space-y-2">
+                                  <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
                                     {grupo.slots.map((slot) => {
                                       const slotAberto = slotsAbertos.includes(
                                         slot.id,
@@ -2007,9 +2022,9 @@ export default function GerenciarGrupos({
                                           <div
                                             role="button"
                                             tabIndex={0}
-                                            onClick={() =>
-                                              slot.equipe && toggleSlot(slot.id)
-                                            }
+                                            onClick={() => {
+                                              if (slot.equipe) setEquipeDetalhe(slot.equipe);
+                                            }}
                                             onKeyDown={(e) => {
                                               if (!slot.equipe) return;
                                               if (
@@ -2017,7 +2032,7 @@ export default function GerenciarGrupos({
                                                 e.key === " "
                                               ) {
                                                 e.preventDefault();
-                                                toggleSlot(slot.id);
+                                                setEquipeDetalhe(slot.equipe);
                                               }
                                             }}
                                             className={`flex items-center justify-between gap-3 p-3 ${slot.equipe ? "cursor-pointer hover:bg-slate-100" : ""}`}
@@ -2223,7 +2238,16 @@ export default function GerenciarGrupos({
                 return (
                   <div
                     key={equipe.inscricao_id}
-                    className="border border-slate-200 bg-slate-50 p-4"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setEquipeDetalhe(equipe)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setEquipeDetalhe(equipe);
+                      }
+                    }}
+                    className="cursor-pointer border border-slate-200 bg-slate-50 p-4 transition hover:bg-emerald-50"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 border border-slate-200 bg-white overflow-hidden flex items-center justify-center shrink-0">
@@ -2367,6 +2391,121 @@ export default function GerenciarGrupos({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {equipeDetalhe && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+          onClick={() => setEquipeDetalhe(null)}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden border border-slate-200 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,0.22)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-gradient-to-r from-emerald-50 via-white to-sky-50 p-5">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-white">
+                  {equipeDetalhe.logo_url ? (
+                    <img
+                      src={equipeDetalhe.logo_url}
+                      alt={equipeDetalhe.nome_exibicao || equipeDetalhe.nome}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Users size={24} className="text-slate-300" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600">
+                    Equipe do grupo
+                  </div>
+                  <h3 className="mt-1 truncate text-2xl font-black uppercase text-slate-900">
+                    {equipeDetalhe.nome_exibicao || equipeDetalhe.nome}
+                  </h3>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {equipeDetalhe.tag ? (
+                      <span className="bg-black px-2 py-1 text-[9px] font-black uppercase text-[#7cfc00]">
+                        {equipeDetalhe.tag}
+                      </span>
+                    ) : null}
+                    {equipeDetalhe.line_nome ? (
+                      <span className="border border-slate-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-[#2563eb]">
+                        {equipeDetalhe.line_nome}
+                      </span>
+                    ) : null}
+                    <span className="border border-slate-200 bg-white px-2 py-1 text-[9px] font-black uppercase text-slate-600">
+                      {equipeDetalhe.tipo_origem === "oficial" ? "Equipe app" : "Avulsa"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEquipeDetalhe(null)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center border border-slate-200 bg-white text-slate-900"
+                aria-label="Fechar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <div className="border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</div>
+                  <div className="mt-2 text-sm font-black uppercase text-slate-900">{equipeDetalhe.status || "Ativa"}</div>
+                </div>
+                <div className="border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grupo</div>
+                  <div className="mt-2 text-sm font-black uppercase text-slate-900">{equipeDetalhe.grupo_id ? "Vinculada" : "Sem grupo"}</div>
+                </div>
+                <div className="border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Origem</div>
+                  <div className="mt-2 text-sm font-black uppercase text-slate-900">{equipeDetalhe.tipo_origem === "oficial" ? "App" : "Avulsa"}</div>
+                </div>
+                <div className="border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Vaga</div>
+                  <div className="mt-2 text-sm font-black uppercase text-slate-900">#{equipeDetalhe.numero_repeticao || 1}</div>
+                </div>
+              </div>
+
+              <SocialActions
+                entityId={equipeDetalhe.equipe_id || null}
+                entityType="equipe"
+                variant="light"
+                title="Torcida da equipe"
+              />
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEquipeDetalhe(null)}
+                  className="h-11 border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-wide text-slate-900"
+                >
+                  Fechar
+                </button>
+                {equipeDetalhe.equipe_id ? (
+                  <Link
+                    href={`/equipe/${equipeDetalhe.equipe_id}`}
+                    className="inline-flex h-11 items-center justify-center gap-2 border border-emerald-700 bg-emerald-600 px-5 text-[10px] font-black uppercase tracking-wide text-white"
+                  >
+                    Visitar perfil
+                    <ExternalLink size={13} />
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="h-11 cursor-not-allowed border border-slate-200 bg-slate-100 px-5 text-[10px] font-black uppercase tracking-wide text-slate-400"
+                  >
+                    Sem perfil no app
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
