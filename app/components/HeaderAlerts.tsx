@@ -9,6 +9,8 @@ import {
   Heart,
   MessageSquare,
   ShieldAlert,
+  Trophy,
+  Wallet,
   Check,
   Loader2,
   X,
@@ -132,10 +134,64 @@ function iconePorTipo(tipo: string, origem: AlertaUnificado['origem']) {
   const t = tipo.toLowerCase()
   if (origem === 'chat') return <MessageCircle size={15} />
   if (origem === 'convite_equipe' || origem === 'pedido_equipe' || t.includes('equipe')) return <Users size={15} />
+  if (t.includes('campeonato') || t.includes('inscricao') || t.includes('partida')) return <Trophy size={15} />
+  if (t.includes('pagamento') || t.includes('carteira') || t.includes('saque') || t.includes('pix')) return <Wallet size={15} />
   if (t.includes('curt') || t.includes('torcedor') || t.includes('segu')) return <Heart size={15} />
   if (t.includes('coment') || t.includes('resposta')) return <MessageSquare size={15} />
   if (t.includes('denuncia') || t.includes('moderacao')) return <ShieldAlert size={15} />
   return <Bell size={15} />
+}
+
+function estiloPorAlerta(alerta: AlertaUnificado) {
+  const t = alerta.tipo.toLowerCase()
+  if (alerta.origem === 'convite_equipe' || alerta.origem === 'pedido_equipe' || t.includes('equipe')) {
+    return {
+      item: alerta.lido ? 'border-transparent hover:border-emerald-100 hover:bg-emerald-50/30' : 'border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50',
+      icon: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      action: 'text-emerald-700',
+      dot: 'bg-emerald-500',
+      badge: 'bg-emerald-100 text-emerald-700',
+      label: alerta.origem === 'pedido_equipe' ? 'Pedido' : 'Equipe',
+    }
+  }
+  if (t.includes('denuncia') || t.includes('moderacao')) {
+    return {
+      item: alerta.lido ? 'border-transparent hover:border-rose-100 hover:bg-rose-50/30' : 'border-rose-200 bg-rose-50/70 hover:bg-rose-50',
+      icon: 'border-rose-200 bg-rose-50 text-rose-700',
+      action: 'text-rose-700',
+      dot: 'bg-rose-500',
+      badge: 'bg-rose-100 text-rose-700',
+      label: 'Moderação',
+    }
+  }
+  if (t.includes('pagamento') || t.includes('carteira') || t.includes('saque') || t.includes('pix')) {
+    return {
+      item: alerta.lido ? 'border-transparent hover:border-amber-100 hover:bg-amber-50/30' : 'border-amber-200 bg-amber-50/75 hover:bg-amber-50',
+      icon: 'border-amber-200 bg-amber-50 text-amber-700',
+      action: 'text-amber-700',
+      dot: 'bg-amber-500',
+      badge: 'bg-amber-100 text-amber-700',
+      label: 'Financeiro',
+    }
+  }
+  if (t.includes('campeonato') || t.includes('inscricao') || t.includes('partida')) {
+    return {
+      item: alerta.lido ? 'border-transparent hover:border-violet-100 hover:bg-violet-50/30' : 'border-violet-200 bg-violet-50/70 hover:bg-violet-50',
+      icon: 'border-violet-200 bg-violet-50 text-violet-700',
+      action: 'text-violet-700',
+      dot: 'bg-violet-500',
+      badge: 'bg-violet-100 text-violet-700',
+      label: 'Campeonato',
+    }
+  }
+  return {
+    item: alerta.lido ? 'border-transparent hover:border-sky-100 hover:bg-sky-50/30' : 'border-sky-200 bg-sky-50/70 hover:bg-sky-50',
+    icon: 'border-sky-200 bg-sky-50 text-sky-700',
+    action: 'text-sky-700',
+    dot: 'bg-sky-500',
+    badge: 'bg-sky-100 text-sky-700',
+    label: 'Aviso',
+  }
 }
 
 export default function HeaderAlerts() {
@@ -302,7 +358,7 @@ export default function HeaderAlerts() {
   }, [mensagensRecentes, participantes, userId])
 
   const alertas = useMemo<AlertaUnificado[]>(() => {
-    const diretas: AlertaUnificado[] = notificacoes.map((n) => ({
+    const diretas: AlertaUnificado[] = notificacoes.filter((n) => !n.lido).map((n) => ({
       id: n.id,
       origem: 'notificacao',
       titulo: n.titulo || 'Notificação',
@@ -371,6 +427,12 @@ export default function HeaderAlerts() {
     }
   }
 
+  async function marcarAlertaComoLido(alerta: AlertaUnificado) {
+    if (!userId || alerta.origem !== 'notificacao' || alerta.lido) return
+    setNotificacoes((atuais) => atuais.map((n) => (n.id === alerta.id ? { ...n, lido: true } : n)))
+    await supabase.from('notificacoes').update({ lido: true }).eq('id', alerta.id).eq('user_id', userId)
+  }
+
   async function marcarConversaLida(conversaId: string) {
     if (!userId) return
     const agora = new Date().toISOString()
@@ -422,7 +484,7 @@ export default function HeaderAlerts() {
                   </button>
                 </div>
                 <div className="max-h-[440px] overflow-y-auto p-2">
-                  {loading ? <LoadingLine /> : alertas.length ? alertas.map((alerta) => <AlertaItem key={`${alerta.origem}-${alerta.id}`} alerta={alerta} />) : <EmptyState texto="Nenhuma notificação encontrada." />}
+                  {loading ? <LoadingLine /> : alertas.length ? alertas.map((alerta) => <AlertaItem key={`${alerta.origem}-${alerta.id}`} alerta={alerta} onAbrir={() => void marcarAlertaComoLido(alerta)} />) : <EmptyState texto="Nenhuma notificação encontrada." />}
                 </div>
               </div>
             ) : (
@@ -463,29 +525,33 @@ function AlertButton({ children, count, label, ativo, onClick }: { children: Rea
   )
 }
 
-function AlertaItem({ alerta }: { alerta: AlertaUnificado }) {
+function AlertaItem({ alerta, onAbrir }: { alerta: AlertaUnificado; onAbrir?: () => void }) {
+  const estilo = estiloPorAlerta(alerta)
   const body = (
-    <div className={["flex gap-3 border p-3 transition", alerta.lido ? 'border-transparent hover:border-zinc-200 hover:bg-zinc-50' : 'border-blue-100 bg-blue-50/50 hover:bg-blue-50'].join(' ')}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white text-[#2563eb]">
+    <div className={["flex gap-3 border p-3 transition", estilo.item].join(' ')}>
+      <div className={["flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border", estilo.icon].join(' ')}>
         {alerta.avatar_url ? <img src={alerta.avatar_url} alt="" className="h-full w-full object-cover" /> : iconePorTipo(alerta.tipo, alerta.origem)}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <div className="truncate text-[12px] font-black uppercase tracking-[0.08em] text-[#142340]">{alerta.titulo}</div>
+          <div className="min-w-0">
+            <div className="truncate text-[12px] font-black uppercase tracking-[0.08em] text-[#142340]">{alerta.titulo}</div>
+            <span className={["mt-1 inline-flex px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em]", estilo.badge].join(' ')}>{estilo.label}</span>
+          </div>
           <div className="shrink-0 text-[10px] font-bold text-zinc-400">{tempoRelativo(alerta.created_at)}</div>
         </div>
         <p className="mt-1 text-[11px] font-medium leading-4 text-zinc-600">{cortar(alerta.descricao)}</p>
-        {alerta.acaoLabel ? <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#2563eb]">{alerta.acaoLabel}<ExternalLink size={11} /></div> : null}
+        {alerta.acaoLabel ? <div className={["mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em]", estilo.action].join(' ')}>{alerta.acaoLabel}<ExternalLink size={11} /></div> : null}
       </div>
-      {!alerta.lido ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#2563eb]" /> : null}
+      {!alerta.lido ? <span className={["mt-1 h-2 w-2 shrink-0 rounded-full", estilo.dot].join(' ')} /> : null}
     </div>
   )
 
   if (alerta.link) {
-    return <Link href={alerta.link}>{body}</Link>
+    return <Link href={alerta.link} onClick={onAbrir}>{body}</Link>
   }
 
-  return body
+  return <button type="button" onClick={onAbrir} className="block w-full text-left">{body}</button>
 }
 
 function LoadingLine() {
