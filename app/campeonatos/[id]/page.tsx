@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -1909,7 +1909,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
             {abaAtiva === 'equipes' && <GerenciarEquipes campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
             {abaAtiva === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
-            {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} />}
+            {abaAtiva === 'grupos' && <GerenciarGrupos campeonatoId={id} canEdit={podeGerenciarCampeonato} />}
             {abaAtiva === 'jogos' && <GerenciarJogos campeonatoId={id} />}
 
             {abaAtiva === 'tabela' && (
