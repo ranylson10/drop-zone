@@ -1527,6 +1527,12 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     }
   }, [usaAbasCopa, usaAbasLiga, abaAtiva])
 
+  useEffect(() => {
+    if (!podeGerenciarCampeonato && (subAbaTabela === 'sumula' || subAbaTabela === 'config')) {
+      setSubAbaTabela('classificacao')
+    }
+  }, [podeGerenciarCampeonato, subAbaTabela])
+
   const abasVisiveis = usaAbasCopa
     ? [
         { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
@@ -1647,7 +1653,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
               </div>
 
               <div className="max-h-[500px] overflow-y-auto p-3 bg-white">
-                <TableEditor />
+                <TableEditor canEdit={podeGerenciarCampeonato} />
               </div>
             </div>
           </Draggable>
@@ -1919,8 +1925,12 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                     {[
                       { id: 'classificacao', label: 'Classificação', icon: <Trophy size={14} /> },
                       { id: 'mvp', label: 'Ranking MVP', icon: <Target size={14} /> },
-                      { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
-                      { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
+                      ...(podeGerenciarCampeonato
+                        ? [
+                            { id: 'sumula', label: 'Registrar Pontuador', icon: <FileText size={14} /> },
+                            { id: 'config', label: 'Ajuste Manual', icon: <Settings size={14} /> },
+                          ]
+                        : []),
                     ].map((sub) => (
                       <button
                         key={sub.id}
@@ -1951,10 +1961,10 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
                 <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                   {subAbaTabela === 'classificacao' && <PointsTable data={equipesParticipantes} />}
                   {subAbaTabela === 'mvp' && <MVPTable data={rankingMvp} />}
-                  {subAbaTabela === 'sumula' && <SumulaPartida canEdit={podeGerenciarCampeonato} />}
-                  {subAbaTabela === 'config' && (
+                  {subAbaTabela === 'sumula' && podeGerenciarCampeonato && <SumulaPartida canEdit={podeGerenciarCampeonato} />}
+                  {subAbaTabela === 'config' && podeGerenciarCampeonato && (
                     <div className="max-w-4xl dz-card p-2">
-                      <TableEditor />
+                      <TableEditor canEdit={podeGerenciarCampeonato} />
                     </div>
                   )}
                 </div>
