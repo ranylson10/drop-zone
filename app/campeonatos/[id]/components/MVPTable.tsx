@@ -115,6 +115,20 @@ function getFuncaoIcone(funcao?: string | null) {
  return funcaoIcone[key] || '◎'
 }
 
+function paisIso(pais?: string | null) {
+ const value = String(pais || '').trim().toLowerCase()
+ if (!value) return 'BR'
+ if (['br', 'bra', 'brasil', 'brazil'].includes(value)) return 'BR'
+ if (['pt', 'prt', 'portugal'].includes(value)) return 'PT'
+ if (['us', 'usa', 'eua', 'estados unidos'].includes(value)) return 'US'
+ return value.length === 2 ? value.toUpperCase() : ''
+}
+
+function flagUrlFromPais(pais?: string | null) {
+ const iso = paisIso(pais).toLowerCase()
+ return iso.length === 2 ? `https://flagcdn.com/w40/${iso}.png` : ''
+}
+
 function calcKd(abates: number, quedas: number) {
  const q = Number(quedas || 0)
  if (!q) return 0
@@ -514,11 +528,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  )
  }
 
- const topMvp = rows[0] || null
+ const topMvp = null
 
  return (
  <div className="w-full animate-in fade-in duration-500">
- <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-center">
+ <div className="mx-auto max-w-6xl">
  {topMvp ? (
  <aside
  className="hidden self-start overflow-hidden border bg-white xl:flex xl:flex-col"
@@ -566,7 +580,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  <table className="w-full border-collapse">
  <thead>
  <tr
- className="font-semibold uppercase"
+ className="font-medium uppercase"
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
  <th className="w-16 px-3 py-3 text-center text-[10px]">Rank</th>
@@ -626,7 +640,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  borderColor: `${layout.border_color}22`,
  }}
  >
- <td className="px-3 text-center text-[14px] font-black" style={{ color: layout.primary_color }}>
+ <td className="px-3 text-center text-[13px] font-semibold" style={{ color: layout.primary_color }}>
  {index + 1}º
  </td>
 
@@ -650,21 +664,25 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </div>
  </td>
 
- <td className="px-3 text-center text-[11px] font-black uppercase">
+ <td className="px-3 text-center text-[11px] font-semibold uppercase">
  {item.tag}
  </td>
 
- <td className="px-3 text-left text-[12px] font-black uppercase">
+ <td className="px-3 text-left text-[12px] font-semibold uppercase">
  <span className="block max-w-[240px] truncate">{item.nome}</span>
  </td>
 
- <td className="px-3 text-center text-lg">
- {flagFromPais(item.pais)}
+ <td className="px-3 text-center">
+ {flagUrlFromPais(item.pais) ? (
+ <img src={flagUrlFromPais(item.pais)} alt={paisIso(item.pais) || flagFromPais(item.pais)} className="mx-auto h-4 w-6 rounded-[2px] object-cover" />
+ ) : (
+ <span className="text-[10px] font-medium uppercase text-zinc-500">{flagFromPais(item.pais)}</span>
+ )}
  </td>
 
  <td className="px-3 text-center">
  <span
- className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[14px] font-black"
+ className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[13px] font-semibold"
  style={{
  borderColor: layout.primary_color,
  color: layout.primary_color,
@@ -675,16 +693,16 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </span>
  </td>
 
- <td className="px-3 text-center text-[13px] font-black" style={{ color: layout.primary_color }}>
+ <td className="px-3 text-center text-[13px] font-semibold" style={{ color: layout.primary_color }}>
  {item.quedas || 0}
  </td>
 
- <td className="px-3 text-center text-[13px] font-black text-[#2563eb]">
+ <td className="px-3 text-center text-[13px] font-semibold text-[#2563eb]">
  {Number(item.kd || 0).toFixed(2)}
  </td>
 
  <td
- className="px-3 text-center text-[14px] font-black"
+ className="px-3 text-center text-[14px] font-semibold"
  style={{
  color: layout.primary_color,
  borderLeft: `1px solid ${layout.border_color}22`,
