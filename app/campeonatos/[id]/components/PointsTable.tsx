@@ -620,17 +620,20 @@ export default function TabelaCampeonato() {
  }}
  className='overflow-hidden'
  >
- <table className='w-full border-collapse'>
+ <table className='w-full table-fixed border-collapse sm:table-auto'>
  <thead>
  <tr style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}>
  <th className='hidden px-3 py-3 text-[10px] font-semibold uppercase w-12 text-center sm:table-cell'>POS</th>
- <th className='px-1.5 py-2 text-[9px] font-semibold uppercase text-left sm:px-3 sm:py-3 sm:text-[10px]'>EQUIPE</th>
- <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-10 sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>GRUPO</th>
- <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-9 sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>QD</th>
- <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-9 sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>B!</th>
- <th className='px-1 py-2 text-[9px] font-semibold uppercase text-center w-10 sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>KILL</th>
+ <th className='w-[36%] px-1 py-1.5 text-left text-[8px] font-semibold uppercase sm:w-auto sm:px-3 sm:py-3 sm:text-[10px]'>EQUIPE</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>
+ <span className='sm:hidden'>G</span>
+ <span className='hidden sm:inline'>GRUPO</span>
+ </th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>QD</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>B!</th>
+ <th className='w-[14%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>KILL</th>
  <th
- className='px-1.5 py-2 text-[9px] font-semibold uppercase text-center w-12 border-l-2 sm:w-24 sm:px-4 sm:py-3 sm:text-[11px]'
+ className='w-[20%] border-l-2 px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-24 sm:px-4 sm:py-3 sm:text-[11px]'
  style={{
  backgroundColor: layout.primary_color,
  color: '#000',
@@ -666,32 +669,33 @@ export default function TabelaCampeonato() {
  return (
  <tr
  key={equipe.campeonato_equipe_id}
+ className='h-9 sm:h-[var(--ranking-row-height)]'
  style={{
  backgroundColor: classificado ? `${layout.primary_color}16` : rowBg,
- height: `${layout.row_height}px`,
+ '--ranking-row-height': `${layout.row_height}px`,
  borderBottom: `${layout.border_width > 0 ? 1 : 0}px solid ${layout.border_color}22`,
- }}
+ } as React.CSSProperties}
  >
  <td className='hidden text-center font-semibold text-sm sm:table-cell'>{index + 1}º</td>
 
- <td className='px-1.5 sm:px-3'>
- <div className='flex items-center gap-1.5 sm:gap-2'>
+ <td className='px-1 sm:px-3'>
+ <div className='flex min-w-0 items-center gap-1 sm:gap-2'>
  {equipe.avatar_url ? (
  <img
  src={equipe.avatar_url}
- className='h-7 w-7 shrink-0 object-contain border border-zinc-200/10'
+ className='h-5 w-5 shrink-0 object-contain border border-zinc-200/10 sm:h-7 sm:w-7'
  alt='logo'
  />
  ) : (
- <div className='flex h-7 w-7 shrink-0 items-center justify-center border border-zinc-200/10 bg-white'>
- <Users size={14} className='text-zinc-500' />
+ <div className='flex h-5 w-5 shrink-0 items-center justify-center border border-zinc-200/10 bg-white sm:h-7 sm:w-7'>
+ <Users size={12} className='text-zinc-500 sm:size-3.5' />
  </div>
  )}
 
  <span className='hidden font-semibold uppercase text-[11px] sm:inline'>
  {equipe.nome}
  </span>
- <span className='max-w-[48px] truncate text-[9px] font-semibold uppercase sm:hidden'>
+ <span className='min-w-0 truncate text-[8px] font-semibold uppercase sm:hidden'>
  {equipe.tag}
  </span>
  {classificado ? (
@@ -702,21 +706,21 @@ export default function TabelaCampeonato() {
  </div>
  </td>
 
- <td className='text-center text-[10px] font-semibold opacity-70 sm:font-bold'>{equipe.grupo}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold opacity-70 sm:text-[10px] sm:font-bold'>{equipe.grupo}</td>
 
- <td className='text-center text-[10px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.partidas}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.partidas}</td>
 
  <td
- className='text-center text-[10px] font-semibold sm:text-[12px]'
+ className='px-0.5 text-center text-[9px] font-semibold sm:text-[12px]'
  style={{ color: isEven ? '#ff4500' : 'inherit' }}
  >
  {equipe.booyahs}
  </td>
 
- <td className='text-center text-[10px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.abates}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.abates}</td>
 
  <td
- className='text-center text-[10px] font-semibold border-l-2 sm:text-sm'
+ className='border-l-2 px-0.5 text-center text-[9px] font-semibold sm:text-sm'
  style={{
  backgroundColor: `${layout.primary_color}33`,
  borderColor: layout.border_color,

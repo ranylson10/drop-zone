@@ -577,23 +577,23 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  backgroundColor: layout.row_bg_primary,
  }}
  >
- <table className="w-full border-collapse">
+ <table className="w-full table-fixed border-collapse sm:table-auto">
  <thead>
  <tr
  className="font-medium uppercase"
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
  <th className="hidden w-16 px-3 py-3 text-center text-[10px] sm:table-cell">Rank</th>
- <th className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-20 sm:px-3 sm:py-3 sm:text-[10px]">Logo</th>
+ <th className="w-[16%] px-1 py-1.5 text-center text-[8px] sm:w-20 sm:px-3 sm:py-3 sm:text-[10px]">Logo</th>
  <th className="hidden w-20 px-3 py-3 text-center text-[10px] sm:table-cell">Foto</th>
  <th className="hidden w-28 px-3 py-3 text-center text-[10px] sm:table-cell">Tag</th>
- <th className="px-1.5 py-2 text-left text-[9px] sm:px-3 sm:py-3 sm:text-[10px]">Nick</th>
+ <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:w-auto sm:px-3 sm:py-3 sm:text-[10px]">Nick</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Bandeira</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Função</th>
- <th className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]">Quedas</th>
+ <th className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]">Quedas</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">K.D</th>
  <th
- className="w-12 px-1.5 py-2 text-center text-[9px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]"
+ className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]"
  style={{
  backgroundColor: layout.primary_color,
  color: layout.text_color,
@@ -633,19 +633,19 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  return (
  <tr
  key={item.key}
- className="border-b"
+ className="h-9 border-b sm:h-[var(--mvp-row-height)]"
  style={{
  backgroundColor: rowBg,
- height: `${layout.row_height}px`,
+ '--mvp-row-height': `${layout.row_height}px`,
  borderColor: `${layout.border_color}22`,
- }}
+ } as React.CSSProperties}
  >
 <td className="hidden px-3 text-center text-[13px] font-semibold sm:table-cell" style={{ color: layout.primary_color }}>
  {index + 1}º
  </td>
 
-<td className="px-1.5 text-center sm:px-3">
-<div className="mx-auto flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white sm:h-9 sm:w-9">
+<td className="px-1 text-center sm:px-3">
+<div className="mx-auto flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white sm:h-9 sm:w-9">
  <img
  src={item.equipe_avatar || '/placeholder.png'}
  className="h-full w-full object-cover"
@@ -668,8 +668,8 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  {item.tag}
  </td>
 
-<td className="px-1.5 text-left text-[10px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
-<span className="block max-w-[120px] truncate sm:max-w-[240px]">{item.nome}</span>
+<td className="px-1 text-left text-[9px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
+<span className="block min-w-0 truncate sm:max-w-[240px]">{item.nome}</span>
  </td>
 
 <td className="hidden px-3 text-center sm:table-cell">
@@ -693,7 +693,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </span>
  </td>
 
-<td className="px-1.5 text-center text-[11px] font-semibold sm:px-3 sm:text-[13px]" style={{ color: layout.primary_color }}>
+<td className="px-0.5 text-center text-[9px] font-semibold sm:px-3 sm:text-[13px]" style={{ color: layout.primary_color }}>
  {item.quedas || 0}
  </td>
 
@@ -702,7 +702,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </td>
 
  <td
-className="px-1.5 text-center text-[11px] font-semibold sm:px-3 sm:text-[14px]"
+className="px-0.5 text-center text-[9px] font-semibold sm:px-3 sm:text-[14px]"
  style={{
  color: layout.primary_color,
  borderLeft: `1px solid ${layout.border_color}22`,
