@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -305,8 +305,8 @@ export default function GerenciarGrupos({
     setShowModalTroca(false);
   };
 
-  const carregarDados = useCallback(async () => {
-    setLoading(true);
+  const carregarDados = useCallback(async (mostrarLoading = true) => {
+    if (mostrarLoading) setLoading(true);
 
     try {
       const [
@@ -541,12 +541,12 @@ export default function GerenciarGrupos({
       console.error(error);
       toast.error("Erro ao carregar estrutura de grupos");
     } finally {
-      setLoading(false);
+      if (mostrarLoading) setLoading(false);
     }
   }, [campeonatoId, fasesAbertas.length]);
 
   useEffect(() => {
-    carregarDados();
+    carregarDados(true);
   }, [carregarDados]);
 
   const estrutura = useMemo<FaseComGrupos[]>(() => {
@@ -644,6 +644,33 @@ export default function GerenciarGrupos({
         );
       });
   }, [slotSelecionado, slots, equipesBase, buscaEquipe]);
+
+  const atualizarSlotLocal = useCallback((slotId: string, equipe: EquipeBase | null) => {
+    setSlots((prev) =>
+      prev.map((slot) =>
+        slot.id === slotId
+          ? {
+              ...slot,
+              campeonato_equipe_id: equipe?.inscricao_id || null,
+              equipe,
+            }
+          : slot,
+      ),
+    );
+  }, []);
+
+  const atualizarVagaLocal = useCallback(
+    (campeonatoEquipeId: string, dados: Partial<Pick<EquipeBase, "grupo_id" | "fase_id">>) => {
+      setEquipesBase((prev) =>
+        prev.map((equipe) =>
+          equipe.inscricao_id === campeonatoEquipeId
+            ? { ...equipe, ...dados }
+            : equipe,
+        ),
+      );
+    },
+    [],
+  );
 
   const gruposDisponiveisTroca = useMemo(() => {
     if (!slotTrocaSelecionado) return [];
@@ -753,7 +780,7 @@ export default function GerenciarGrupos({
 
       toast.success("Fase criada com sucesso");
       resetModalFase();
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao criar fase");
     } finally {
@@ -891,7 +918,7 @@ export default function GerenciarGrupos({
       );
       setGruposAbertos((prev) => [...prev, grupoCriado.id]);
       resetModalGrupo();
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao criar grupo");
     } finally {
@@ -919,7 +946,7 @@ export default function GerenciarGrupos({
       if (error) throw error;
 
       toast.success("Fase removida com sucesso");
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao remover fase");
     } finally {
@@ -955,7 +982,7 @@ export default function GerenciarGrupos({
       if (deleteGrupoError) throw deleteGrupoError;
 
       toast.success("Grupo removido com sucesso");
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao remover grupo");
     } finally {
@@ -1135,9 +1162,19 @@ export default function GerenciarGrupos({
         }
       }
 
+      atualizarSlotLocal(slotSelecionado.id, {
+        ...vagaSelecionada!,
+        grupo_id: slotSelecionado.grupo_id,
+        fase_id: slotSelecionado.fase_id,
+      });
+      atualizarVagaLocal(campeonatoEquipeId, {
+        grupo_id: slotSelecionado.grupo_id,
+        fase_id: slotSelecionado.fase_id,
+      });
+
       toast.success(`${nomeVaga} adicionada ao slot`);
       resetModalEquipe();
-      await carregarDados();
+      carregarDados(false);
     } catch (error: any) {
       console.error(
         "Erro ao adicionar equipe no slot:",
@@ -1225,8 +1262,13 @@ export default function GerenciarGrupos({
         }
       }
 
+      atualizarSlotLocal(slot.id, null);
+      if (!aindaUsadaEmOutroSlot) {
+        atualizarVagaLocal(campeonatoEquipeId, { grupo_id: null, fase_id: null });
+      }
+
       toast.success("Equipe removida do slot");
-      await carregarDados();
+      carregarDados(false);
     } catch (error: any) {
       console.error(
         "Erro ao remover equipe do slot:",
@@ -1278,7 +1320,7 @@ export default function GerenciarGrupos({
 
       toast.success("SolicitaÃ§Ã£o de troca criada com sucesso");
       resetModalTroca();
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao criar solicitaÃ§Ã£o de troca");
     } finally {
@@ -1348,7 +1390,7 @@ export default function GerenciarGrupos({
 
       toast.success("Troca concluÃ­da com sucesso");
       resetModalTroca();
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao aceitar troca");
     } finally {
@@ -1370,7 +1412,7 @@ export default function GerenciarGrupos({
       if (error) throw error;
 
       toast.success("SolicitaÃ§Ã£o cancelada");
-      await carregarDados();
+      await carregarDados(false);
     } catch (error: any) {
       toast.error(error?.message || "Erro ao cancelar solicitaÃ§Ã£o");
     } finally {
@@ -1456,7 +1498,7 @@ export default function GerenciarGrupos({
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={carregarDados}
+            onClick={() => carregarDados(true)}
             className="px-4 py-2 bg-white text-black text-[9px] font-black uppercase italic border border-black flex items-center gap-2"
           >
             <RefreshCw size={12} />
@@ -2033,7 +2075,7 @@ export default function GerenciarGrupos({
             </div>
 
             <button
-              onClick={carregarDados}
+              onClick={() => carregarDados(true)}
               className="px-4 py-2 bg-white text-black text-[9px] font-black uppercase italic border border-black flex items-center gap-2"
             >
               <RefreshCw size={12} />

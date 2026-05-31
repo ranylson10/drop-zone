@@ -142,7 +142,7 @@ function ChatShellInner() {
   const contextoProcessadoRef = useRef<string | null>(null)
 
   const nomeUsuario = useMemo(() => {
-    return perfilAtivo?.nome || perfilAtivo?.nome_exibicao || perfilAtivo?.username || 'UsuÃ¡rio'
+    return perfilAtivo?.nome || perfilAtivo?.nome_exibicao || perfilAtivo?.username || 'Usuário'
   }, [perfilAtivo])
 
   const conversasFiltradas = useMemo(() => {
@@ -626,7 +626,7 @@ function ChatShellInner() {
     return (
       <main className="flex min-h-[calc(100vh-80px)] items-center justify-center bg-[#f7f7f7] px-4 text-[#142340]">
         <div className="w-full max-w-sm bg-white p-4 text-center text-[13px]">
-          FaÃ§a login para acessar o chat.
+          Faça login para acessar o chat.
         </div>
       </main>
     )
@@ -874,7 +874,7 @@ function ChatShellInner() {
                               {remetentes[msg.remetente_user_id]?.nome_exibicao || remetentes[msg.remetente_user_id]?.username || 'Usuario'}
                             </div>
                             <div className="hidden">
-                              UsuÃ¡rio
+                              Usuário
                             </div>
                           </>)}
                           <p className="whitespace-pre-wrap break-words">{msg.texto}</p>
