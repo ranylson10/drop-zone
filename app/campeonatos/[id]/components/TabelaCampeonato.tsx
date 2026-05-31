@@ -85,6 +85,12 @@ interface ResultadoJogoRow {
 
 const PONTOS_PADRAO = [12, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0]
 
+function letraGrupo(nome: any) {
+ const texto = String(nome || '').trim()
+ if (!texto) return '-'
+ return texto.replace(/^GRUPO\s+/i, '').trim().slice(0, 2) || texto
+}
+
 export default function TabelaCampeonato() {
  const params = useParams()
  const campeonatoId = params?.id as string
@@ -232,7 +238,7 @@ export default function TabelaCampeonato() {
  setJogos(jogosRows)
 
  const grupoNomeMap = new Map<string, string>(
- gruposRows.map((row) => [String(row.id), String(row.nome || '')])
+ gruposRows.map((row) => [String(row.id), letraGrupo(row.nome)])
  )
 
  const idsEquipesOficiais = inscricoesRows

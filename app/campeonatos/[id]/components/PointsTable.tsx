@@ -85,6 +85,12 @@ function textoSeguro(v: any, fallback = '') {
  return s || fallback
 }
 
+function letraGrupo(nome: any) {
+ const texto = textoSeguro(nome, '-')
+ if (texto === '-') return '-'
+ return texto.replace(/^GRUPO\s+/i, '').trim().slice(0, 2) || texto
+}
+
 function normalizarMapa(v: any) {
  const raw = textoSeguro(v).toLowerCase()
  return MAPA_LABELS[raw] || textoSeguro(v, '-')
@@ -288,7 +294,7 @@ export default function TabelaCampeonato() {
  if (equipesOficiaisError) throw equipesOficiaisError
  if (equipesAvulsasError) throw equipesAvulsasError
 
- const gruposMap = new Map<string, string>(grupos.map((row) => [textoSeguro(row.id), textoSeguro(row.nome, '-')]))
+ const gruposMap = new Map<string, string>(grupos.map((row) => [textoSeguro(row.id), letraGrupo(row.nome)]))
  const gruposById = new Map<string, GrupoRow>(grupos.map((row) => [textoSeguro(row.id), row]))
  const jogosById = new Map<string, JogoRow>(jogos.map((row) => [textoSeguro(row.id), row]))
 
