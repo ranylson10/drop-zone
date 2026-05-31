@@ -178,7 +178,7 @@ type WhatsContato = {
 type PaisWhatsApp = {
   nome: string
   codigo: string
-  bandeira: string
+  iso: string
 }
 
 type WhatsContatoForm = {
@@ -204,18 +204,27 @@ const STATUS_CAMPEONATO_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado', classes: 'border-zinc-200 bg-zinc-50 text-zinc-700' },
 ]
 
+function bandeiraPais(iso: string) {
+  const codigo = String(iso || '').trim().toUpperCase()
+  if (codigo.length !== 2) return ''
+  return codigo
+    .split('')
+    .map((letra) => String.fromCodePoint(0x1f1e6 + letra.charCodeAt(0) - 65))
+    .join('')
+}
+
 const PAISES_WHATSAPP: PaisWhatsApp[] = [
-  { nome: 'Brasil', codigo: '55', bandeira: 'ðŸ‡§ðŸ‡·' },
-  { nome: 'Estados Unidos', codigo: '1', bandeira: 'ðŸ‡ºðŸ‡¸' },
-  { nome: 'Portugal', codigo: '351', bandeira: 'ðŸ‡µðŸ‡¹' },
-  { nome: 'Angola', codigo: '244', bandeira: 'ðŸ‡¦ðŸ‡´' },
-  { nome: 'Mocambique', codigo: '258', bandeira: 'ðŸ‡²ðŸ‡¿' },
-  { nome: 'Argentina', codigo: '54', bandeira: 'ðŸ‡¦ðŸ‡·' },
-  { nome: 'Paraguai', codigo: '595', bandeira: 'ðŸ‡µðŸ‡¾' },
-  { nome: 'Uruguai', codigo: '598', bandeira: 'ðŸ‡ºðŸ‡¾' },
-  { nome: 'Chile', codigo: '56', bandeira: 'ðŸ‡¨ðŸ‡±' },
-  { nome: 'Colombia', codigo: '57', bandeira: 'ðŸ‡¨ðŸ‡´' },
-  { nome: 'Mexico', codigo: '52', bandeira: 'ðŸ‡²ðŸ‡½' },
+  { nome: 'Brasil', codigo: '55', iso: 'BR' },
+  { nome: 'Estados Unidos', codigo: '1', iso: 'US' },
+  { nome: 'Portugal', codigo: '351', iso: 'PT' },
+  { nome: 'Angola', codigo: '244', iso: 'AO' },
+  { nome: 'Mocambique', codigo: '258', iso: 'MZ' },
+  { nome: 'Argentina', codigo: '54', iso: 'AR' },
+  { nome: 'Paraguai', codigo: '595', iso: 'PY' },
+  { nome: 'Uruguai', codigo: '598', iso: 'UY' },
+  { nome: 'Chile', codigo: '56', iso: 'CL' },
+  { nome: 'Colombia', codigo: '57', iso: 'CO' },
+  { nome: 'Mexico', codigo: '52', iso: 'MX' },
 ]
 
 function normalizarStatusCampeonato(status?: string | null) {
@@ -2274,7 +2283,7 @@ function ConfigWhatsAppContatos({ value, onSave, loading = false }: {
               >
                 {PAISES_WHATSAPP.map((pais) => (
                   <option key={pais.codigo} value={pais.codigo}>
-                    {pais.bandeira} +{pais.codigo}
+                    {bandeiraPais(pais.iso)} +{pais.codigo}
                   </option>
                 ))}
               </select>
