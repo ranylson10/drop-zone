@@ -1792,6 +1792,72 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const jogoIdAtual = String(quedaAtiva?.jogo_id || blocoSelecionado?.id || '').trim()
  if (!jogoIdAtual) return
 
+ const grupoIdPadrao = String(quedaAtiva?.grupo_id || blocoSelecionado?.grupo_id || getGrupoIdDoJogo(blocoSelecionado) || '').trim()
+ const jogadoresPayload = Object.entries(mvpEdits)
+ .map(([gameId, v]) => {
+ const original = mvpItems.find((x) => x.game_id === gameId)
+ const rawOriginal = String(original?.team_raw || '').trim()
+ const rawOriginalNorm = normalizeText(rawOriginal)
+ const campeonatoEquipeId = String(
+ mvpEquipe[gameId] ||
+ teamRawToEquipeId[rawOriginalNorm] ||
+ guessCampeonatoEquipeIdByRaw(rawOriginal) ||
+ ''
+ ).trim()
+
+ if (!campeonatoEquipeId) {
+ console.warn('MVP ignorado sem equipe vinculada', {
+ gameId,
+ team_raw: rawOriginal,
+ nick: String(v?.nick || original?.nick || '').trim(),
+ })
+ return null
+ }
+
+ const nickFinal = String(v?.nick || '').trim() || String(original?.nick || '').trim() || 'SEM NICK'
+ const uidJogoFinal =
+ String(mvpMeta[gameId]?.uid_jogo || '').trim() ||
+ String(gameId || '').trim()
+
+ return {
+ gameId: uidJogoFinal,
+ nick: nickFinal,
+ abates: Number(v?.abates || 0),
+ campeonatoEquipeId,
+ teamRaw: rawOriginal,
+ }
+ })
+ .filter(Boolean)
+
+ if (jogadoresPayload.length === 0) {
+ throw new Error('Nenhum jogador do MatchResult ficou vinculado a uma equipe. Confira os vinculos TeamName na aba Equipes.')
+ }
+
+ const response = await fetch('/api/campeonatos/sumula/mvp', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ campeonatoId,
+ faseId: faseSelecionadaId || blocoSelecionado?.fase_id || null,
+ jogoId: jogoIdAtual,
+ grupoId: grupoIdPadrao || null,
+ mapa: String(quedaAtiva.mapa || ''),
+ numeroPartida: Number(quedaAtiva.numero_partida || 1),
+ jogadores: jogadoresPayload,
+ }),
+ })
+
+ const result = await response.json().catch(() => null)
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel salvar o MVP da sumula.')
+ }
+
+ if (Number(result.count || 0) <= 0) {
+ throw new Error('A sumula nao gravou nenhum jogador no MVP. Confira os vinculos dos jogadores.')
+ }
+
+ return
+
  const partidaAtual = await buscarPartidaAtual()
  if (!partidaAtual?.id) {
  throw new Error('Nao foi possivel localizar ou criar a partida desta queda para salvar o MVP.')
@@ -2124,7 +2190,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  } else {
  console.warn('Nenhum jogador do MVP gerou insert em resultados_mvp.')
  }
- }, [campeonatoId, blocoSelecionado, quedaAtiva, buscarPartidaAtual, mvpEdits, mvpItems, mvpEquipe, teamRawToEquipeId, equipes, mvpMeta, faseSelecionadaId])
+ }, [campeonatoId, blocoSelecionado, quedaAtiva, getGrupoIdDoJogo, buscarPartidaAtual, mvpEdits, mvpItems, mvpEquipe, teamRawToEquipeId, equipes, mvpMeta, faseSelecionadaId, guessCampeonatoEquipeIdByRaw])
 
  // ---------------- Salvar CLASSIFICAÇÃO ----------------
  const montarInsertsClassificacao = (jogoIdAtual: string) => equipes
