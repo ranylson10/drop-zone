@@ -420,7 +420,11 @@ export default function HeaderAlerts() {
     if (!userId) return
     try {
       setMarcando(true)
-      await supabase.from('notificacoes').update({ lido: true }).eq('user_id', userId).eq('lido', false)
+      await supabase
+        .from('notificacoes')
+        .update({ lido: true })
+        .eq('user_id', userId)
+        .or('lido.is.null,lido.eq.false')
       setNotificacoes((atuais) => atuais.map((n) => ({ ...n, lido: true })))
     } finally {
       setMarcando(false)
