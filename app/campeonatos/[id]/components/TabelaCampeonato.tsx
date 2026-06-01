@@ -81,6 +81,7 @@ interface ResultadoJogoRow {
  mapa: string | null
  abates: number | null
  posicao: number | null
+ total_pontos?: number | null
 }
 
 const PONTOS_PADRAO = [12, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0]
@@ -218,7 +219,7 @@ export default function TabelaCampeonato() {
  .order('created_at', { ascending: true }),
  supabase
  .from('resultados_jogos')
- .select('campeonato_id, fase_id, jogo_id, equipe_id, grupo_id, mapa, abates, posicao')
+ .select('campeonato_id, fase_id, jogo_id, equipe_id, grupo_id, mapa, abates, posicao, total_pontos')
  .eq('campeonato_id', campeonatoId),
  supabase.from('campeonato_grupos').select('id, nome').eq('campeonato_id', campeonatoId),
  ])
@@ -358,7 +359,11 @@ export default function TabelaCampeonato() {
 
  const abates = Number(row.abates || 0)
  const posicao = Number(row.posicao || 0)
- const pontos = abates * pontosAbate + calcularPontosColocacao(posicao)
+ const pontosSalvos = row.total_pontos
+ const pontos =
+ pontosSalvos !== null && pontosSalvos !== undefined
+ ? Number(pontosSalvos || 0)
+ : abates * pontosAbate + calcularPontosColocacao(posicao)
 
  atual.partidas += 1
  atual.booyahs += posicao === 1 ? 1 : 0

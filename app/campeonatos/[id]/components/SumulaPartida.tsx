@@ -34,6 +34,7 @@ type Jogo = {
  quedas?: Record<string, string> | any
  grupos_ids?: any
  grupo_id?: string | null
+ quantidade_partidas?: number | null
  numero_queda?: number | null
  mapa?: string | null
  configuracao?: any
@@ -62,6 +63,16 @@ type SnapshotQueda = {
 
 const tabelaPontos: Record<number, number> = {
  1: 12, 2: 9, 3: 8, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2, 10: 1, 11: 0, 12: 0,
+}
+
+function parseConfig(value: any): Record<string, any> {
+ if (!value) return {}
+ if (typeof value === 'object') return value
+ try {
+ return JSON.parse(String(value))
+ } catch {
+ return {}
+ }
 }
 
 // ----------- Parser fallback -----------
@@ -300,6 +311,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const [faseSelecionadaId, setFaseSelecionadaId] = useState<string>('')
  const [blocos, setBlocos] = useState<Jogo[]>([])
  const [blocoSelecionado, setBlocoSelecionado] = useState<Jogo | null>(null)
+ const [grupoConfiguracoes, setGrupoConfiguracoes] = useState<Record<string, any>>({})
 
  // Quedas
  const [quedasProcessadas, setQuedasProcessadas] = useState<any[]>([])
@@ -1188,11 +1200,27 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  if (!faseSelecionadaId) return
  ;(async () => {
  setIsChanging(true)
- const { data } = await supabase
+ const [{ data }, { data: gruposData }] = await Promise.all([
+ supabase
  .from('jogos')
  .select('*')
  .eq('fase_id', faseSelecionadaId)
- .order('created_at', { ascending: true })
+ .order('created_at', { ascending: true }),
+ supabase
+ .from('campeonato_grupos')
+ .select('id, qtd_quedas, mapas, configuracao')
+ .eq('campeonato_id', campeonatoId),
+ ])
+
+ const configs: Record<string, any> = {}
+ ;(gruposData || []).forEach((grupo: any) => {
+ configs[String(grupo.id)] = {
+ ...parseConfig(grupo.configuracao),
+ qtd_quedas: grupo.qtd_quedas,
+ mapas: grupo.mapas,
+ }
+ })
+ setGrupoConfiguracoes(configs)
 
  if (data?.length) {
  setBlocos(data as any)
@@ -1209,7 +1237,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  setIsChanging(false)
  })()
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [faseSelecionadaId])
+ }, [faseSelecionadaId, campeonatoId])
 
  // ---------------- Selecionar jogo ----------------
  const handleSelecionarBloco = useCallback(async (bloco: Jogo) => {
@@ -1449,7 +1477,56 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  // eslint-disable-next-line react-hooks/exhaustive-deps
 
  // ---------------- Cálculo classificação ----------------
+ const killDobroAtivaNaQueda = useMemo(() => {
+ if (!blocoSelecionado || !quedaAtiva) return false
+
+ const grupoId = getGrupoIdDoJogo(blocoSelecionado)
+ const grupoCfg = grupoId ? (grupoConfiguracoes[grupoId] || {}) : {}
+ const jogoCfg = parseConfig(blocoSelecionado.configuracao)
+ const habilitado = Boolean(
+ jogoCfg.kill_dobro_ultima_queda || grupoCfg.kill_dobro_ultima_queda
+ )
+
+ if (!habilitado) return false
+
+ const jogosDoMesmoGrupo = grupoId
+ ? (blocos || []).filter((item: any) => getGrupoIdDoJogo(item) === grupoId)
+ : []
+
+ let quedasObj: Record<string, string> = {}
+ try {
+ quedasObj =
+ typeof blocoSelecionado.quedas === 'string'
+ ? JSON.parse(blocoSelecionado.quedas)
+ : (blocoSelecionado.quedas || {})
+ } catch {
+ quedasObj = {}
+ }
+
+ const totalQuedas = Number(
+ (jogosDoMesmoGrupo.length > 1 ? jogosDoMesmoGrupo.length : 0) ||
+ blocoSelecionado.quantidade_partidas ||
+ grupoCfg.qtd_quedas ||
+ jogoCfg.qtd_quedas ||
+ jogoCfg.quantidade_partidas ||
+ Object.keys(quedasObj).length ||
+ quedasProcessadas.length ||
+ 0
+ )
+ const numeroQueda = Number(quedaAtiva.numero_partida || quedaAtiva.numero_queda || 0)
+
+ return totalQuedas > 0 && numeroQueda === totalQuedas
+ }, [
+ blocoSelecionado,
+ blocos,
+ getGrupoIdDoJogo,
+ grupoConfiguracoes,
+ quedaAtiva,
+ quedasProcessadas.length,
+ ])
+
  const resultadosCalculados = useMemo(() => {
+ const multiplicadorAbateEquipe = killDobroAtivaNaQueda ? 2 : 1
  const res: Record<string, any> = {}
  equipes.forEach((item) => {
  if (!item.equipe) return
@@ -1460,10 +1537,19 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
 
  const abates = log ? Number(log.abates_total || 0) : Number(resultadosManuais[vagaKey]?.abates || 0)
  const rank = log ? Number(log.posicao || 12) : Number(resultadosManuais[vagaKey]?.posicao || 12)
- res[vagaKey] = { abates, rank, total: (tabelaPontos[rank] || 0) + abates }
+ const pontosColocacao = tabelaPontos[rank] || 0
+ const pontosAbates = abates * multiplicadorAbateEquipe
+ res[vagaKey] = {
+ abates,
+ rank,
+ pontosColocacao,
+ pontosAbates,
+ total: pontosColocacao + pontosAbates,
+ killDobroAtiva: killDobroAtivaNaQueda,
+ }
  })
  return res
- }, [equipes, vinculos, dadosRawLog, resultadosManuais])
+ }, [equipes, vinculos, dadosRawLog, resultadosManuais, killDobroAtivaNaQueda])
 
  const ranksDuplicados = useMemo(() => {
  const freq: Record<number, number> = {}

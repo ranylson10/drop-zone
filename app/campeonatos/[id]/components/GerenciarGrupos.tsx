@@ -215,6 +215,8 @@ export default function GerenciarGrupos({
   const [dataJogoGrupo, setDataJogoGrupo] = useState("");
   const [horaJogoGrupo, setHoraJogoGrupo] = useState("");
   const [classificamGrupo, setClassificamGrupo] = useState("1");
+  const [killDobroUltimaQuedaGrupo, setKillDobroUltimaQuedaGrupo] =
+    useState(false);
   const [mapasGrupoSelecionados, setMapasGrupoSelecionados] = useState<
     string[]
   >(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
@@ -302,6 +304,7 @@ export default function GerenciarGrupos({
     setDataJogoGrupo("");
     setHoraJogoGrupo("");
     setClassificamGrupo("1");
+    setKillDobroUltimaQuedaGrupo(false);
     setMapasGrupoSelecionados(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
     setShowModalGrupo(false);
   };
@@ -893,6 +896,7 @@ export default function GerenciarGrupos({
               data_jogo: dataJogoGrupo || null,
               intervalo_minutos: intervalo,
               quantidade_partidas: qtdQuedas,
+              kill_dobro_ultima_queda: killDobroUltimaQuedaGrupo,
               mapas,
             },
           })
@@ -1072,6 +1076,7 @@ export default function GerenciarGrupos({
         intervalo_minutos: intervalo,
         quantidade_partidas: qtdQuedas,
         qtd_quedas: qtdQuedas,
+        kill_dobro_ultima_queda: killDobroUltimaQuedaGrupo,
         mapas,
       };
 
@@ -1178,6 +1183,7 @@ export default function GerenciarGrupos({
     setDataJogoGrupo("");
     setHoraJogoGrupo("");
     setClassificamGrupo("1");
+    setKillDobroUltimaQuedaGrupo(false);
     setMapasGrupoSelecionados(["Bermuda", "Purgatório", "Alpine", "Kalahari"]);
     setShowModalGrupo(true);
   };
@@ -1202,6 +1208,7 @@ export default function GerenciarGrupos({
     setDataJogoGrupo(String(cfg.data_jogo || ""));
     setHoraJogoGrupo(String(grupo.horario_inicio || cfg.horario_inicio || cfg.hora_jogo || ""));
     setClassificamGrupo(String(grupo.classificam || cfg.classificam || 0));
+    setKillDobroUltimaQuedaGrupo(Boolean(cfg.kill_dobro_ultima_queda));
     setMapasGrupoSelecionados(mapas.slice(0, qtdQuedas || mapas.length || 4));
     setShowModalGrupo(true);
   };
@@ -1734,6 +1741,7 @@ export default function GerenciarGrupos({
                 setDataJogoGrupo("");
                 setHoraJogoGrupo("");
                 setClassificamGrupo("1");
+                setKillDobroUltimaQuedaGrupo(false);
                 setMapasGrupoSelecionados([
                   "Bermuda",
                   "Purgatório",
@@ -2711,6 +2719,26 @@ export default function GerenciarGrupos({
                       className="w-full border-2 border-black bg-white px-4 py-3 text-[11px] font-black uppercase outline-none"
                     />
                   </div>
+
+                  <label className="md:col-span-2 flex items-start gap-3 border-2 border-black bg-amber-50 p-3">
+                    <input
+                      type="checkbox"
+                      checked={killDobroUltimaQuedaGrupo}
+                      onChange={(e) =>
+                        setKillDobroUltimaQuedaGrupo(e.target.checked)
+                      }
+                      className="mt-1 h-4 w-4 accent-[#7cfc00]"
+                    />
+                    <span>
+                      <span className="block text-[10px] font-black uppercase italic text-slate-900">
+                        Kill em dobro na última partida
+                      </span>
+                      <span className="block text-[9px] font-bold uppercase text-slate-500">
+                        Aplica somente na pontuação da equipe. MVP continua com
+                        abates reais.
+                      </span>
+                    </span>
+                  </label>
 
                   <div className="md:col-span-2">
                     <label className="block text-[10px] font-black uppercase italic text-slate-500 mb-2">

@@ -70,6 +70,7 @@ type Jogo = {
  duracao_estimada_min?: number | null;
  quantidade_partidas?: number | null;
  quedas?: Record<string, string> | null;
+ configuracao?: Record<string, any> | null;
 };
 
 type JogoGrupo = {
@@ -113,6 +114,7 @@ type FormState = {
  duracao_estimada_min: number;
  quantidade_partidas: number;
  mapas: string[];
+ killDobroUltimaQueda?: boolean;
  gruposSelecionados: string[];
  observacoes: string;
 };
@@ -179,6 +181,7 @@ export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit
  duracao_estimada_min: 180,
  quantidade_partidas: 6,
  mapas: ['Bermuda', 'Purgatório', 'Kalahari', 'Alpes', 'Nova Terra', 'Solara'],
+ killDobroUltimaQueda: false,
  gruposSelecionados: [],
  observacoes: ''
  });
@@ -398,6 +401,7 @@ export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit
  (_, i) => mapasArray[i] || 'Bermuda'
  );
  const houveSorteio = mapasArray.length > 0;
+ const configuracaoJogo = (jogo.configuracao || {}) as Record<string, any>;
 
  setModoEscolha(houveSorteio ? 'sorteio' : 'manual');
 
@@ -410,6 +414,7 @@ export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit
  mapas: mapasPreenchidos.length > 0
  ? mapasPreenchidos
  : ['Bermuda', 'Purgatório', 'Kalahari', 'Alpes', 'Nova Terra', 'Solara'],
+ killDobroUltimaQueda: Boolean(configuracaoJogo.kill_dobro_ultima_queda),
  gruposSelecionados,
  observacoes: jogo.observacoes || ''
  });
@@ -660,6 +665,10 @@ export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit
  acc[String(index + 1)] = mapa;
  return acc;
  }, {}),
+ configuracao: {
+ ...(jogoEdicao?.configuracao || {}),
+ kill_dobro_ultima_queda: Boolean(form.killDobroUltimaQueda),
+ },
  observacoes: form.observacoes?.trim() || null,
 
  // compatibilidade com estrutura antiga
@@ -983,6 +992,28 @@ export default function GerenciarJogos({ campeonatoId: campeonatoIdProp, canEdit
  />
  </div>
  </div>
+
+ <label className="flex items-start gap-2 border border-amber-200 bg-amber-50 p-3">
+ <input
+ type="checkbox"
+ checked={Boolean(form.killDobroUltimaQueda)}
+ onChange={(e) =>
+ setForm((prev) => ({
+ ...prev,
+ killDobroUltimaQueda: e.target.checked
+ }))
+ }
+ className="mt-0.5 h-4 w-4 accent-emerald-500"
+ />
+ <span>
+ <span className="block text-[9px] font-semibold uppercase text-[#142340]">
+ Kill em dobro na última partida
+ </span>
+ <span className="block text-[8px] font-semibold uppercase text-zinc-500">
+ Soma em dobro apenas para equipes. MVP usa abates reais.
+ </span>
+ </span>
+ </label>
 
  {/* MODO MAPAS */}
  <div className="space-y-3 border-t pt-3">
