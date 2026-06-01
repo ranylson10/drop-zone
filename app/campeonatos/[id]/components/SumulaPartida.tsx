@@ -1278,8 +1278,28 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  .filter((item: any) => getGrupoIdDoJogo(item) === grupoRef)
  .sort((a: any, b: any) => Number(a?.numero_queda || 0) - Number(b?.numero_queda || 0))
 
+ const quedasDoBloco = (() => {
+ let quedasObj: Record<string, string> = {}
+ try {
+ quedasObj =
+ typeof bloco.quedas === 'string'
+ ? JSON.parse(bloco.quedas)
+ : (bloco.quedas || {})
+  } catch {
+  quedasObj = {}
+  }
+
+  return Object.entries(quedasObj).map(([numero, mapa]) => ({
+  id: `${bloco.id}-${numero}`,
+  jogo_id: String(bloco.id),
+  numero_partida: parseInt(numero),
+  mapa: String(mapa),
+  nome_bloco: String(bloco?.nome_bloco || ''),
+  }))
+  })()
+
  const formatadas =
- jogosDoMesmoGrupo.length > 0
+ jogosDoMesmoGrupo.length > 1
  ? jogosDoMesmoGrupo.map((j: any, idx: number) => ({
  id: String(j.id),
  jogo_id: String(j.id),
@@ -1287,25 +1307,15 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  mapa: String(j?.mapa || 'Bermuda'),
  nome_bloco: String(j?.nome_bloco || ''),
  }))
- : (() => {
- let quedasObj: Record<string, string> = {}
- try {
- quedasObj =
- typeof bloco.quedas === 'string'
- ? JSON.parse(bloco.quedas)
- : (bloco.quedas || {})
- } catch {
- quedasObj = {}
- }
-
- return Object.entries(quedasObj).map(([numero, mapa]) => ({
- id: `${bloco.id}-${numero}`,
+ : quedasDoBloco.length > 0
+ ? quedasDoBloco
+ : [{
+ id: String(bloco.id),
  jogo_id: String(bloco.id),
- numero_partida: parseInt(numero),
- mapa: String(mapa),
+ numero_partida: Number(bloco?.numero_queda || 1),
+ mapa: String(bloco?.mapa || 'Bermuda'),
  nome_bloco: String(bloco?.nome_bloco || ''),
- }))
- })()
+ }]
 
  setQuedasProcessadas(formatadas)
 
