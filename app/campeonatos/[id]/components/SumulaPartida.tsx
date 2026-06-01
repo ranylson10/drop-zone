@@ -1514,10 +1514,22 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  getGrupoIdDoJogo(blocoSelecionado) ||
  String(quedaAtiva?.grupo_id || '').trim() ||
  String(equipes.find((item) => String(item?.grupo_id || '').trim())?.grupo_id || '').trim()
- const grupoCfg = grupoId ? (grupoConfiguracoes[grupoId] || {}) : {}
+ const grupoIdsDaSumula = Array.from(
+ new Set([
+ grupoId,
+ ...equipes.map((item) => String(item?.grupo_id || '').trim()),
+ ].filter(Boolean))
+ )
+ const grupoCfg =
+ grupoIdsDaSumula
+ .map((id) => grupoConfiguracoes[id])
+ .find((cfg) => cfg?.kill_dobro_ultima_queda) ||
+ (grupoId ? (grupoConfiguracoes[grupoId] || {}) : {})
  const jogoCfg = parseConfig(blocoSelecionado.configuracao)
  const habilitado = Boolean(
- jogoCfg.kill_dobro_ultima_queda || grupoCfg.kill_dobro_ultima_queda
+ jogoCfg.kill_dobro_ultima_queda ||
+ grupoCfg.kill_dobro_ultima_queda ||
+ Object.values(grupoConfiguracoes).some((cfg: any) => cfg?.kill_dobro_ultima_queda)
  )
 
  if (!habilitado) return false
@@ -1536,19 +1548,34 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  quedasObj = {}
  }
 
+ const mapasConfig = Array.isArray(grupoCfg.mapas)
+ ? grupoCfg.mapas
+ : Array.isArray(jogoCfg.mapas)
+ ? jogoCfg.mapas
+ : Object.values(quedasObj)
+
  const totalQuedas = Number(
  (jogosDoMesmoGrupo.length > 1 ? jogosDoMesmoGrupo.length : 0) ||
- blocoSelecionado.quantidade_partidas ||
  grupoCfg.qtd_quedas ||
+ grupoCfg.quantidade_partidas ||
+ Object.keys(quedasObj).length ||
+ mapasConfig.length ||
+ blocoSelecionado.quantidade_partidas ||
  jogoCfg.qtd_quedas ||
  jogoCfg.quantidade_partidas ||
- Object.keys(quedasObj).length ||
  quedasProcessadas.length ||
  0
  )
  const numeroQueda = Number(quedaAtiva.numero_partida || quedaAtiva.numero_queda || 0)
+ const mapaAtual = String(quedaAtiva.mapa || '').trim()
+ const ultimoMapa = String(mapasConfig[Math.max(totalQuedas - 1, 0)] || '').trim()
+ const idUltimaQueda = totalQuedas > 0 ? `${String(blocoSelecionado.id)}-${totalQuedas}` : ''
 
- return totalQuedas > 0 && numeroQueda === totalQuedas
+ return totalQuedas > 0 && (
+ numeroQueda === totalQuedas ||
+ String(quedaAtiva.id || '') === idUltimaQueda ||
+ (!!mapaAtual && !!ultimoMapa && mapaAtual === ultimoMapa)
+ )
  }, [
  blocoSelecionado,
  blocos,
@@ -1556,6 +1583,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  grupoConfiguracoes,
  equipes,
  quedaAtiva,
+ quedasProcessadas,
  quedasProcessadas.length,
  ])
 
