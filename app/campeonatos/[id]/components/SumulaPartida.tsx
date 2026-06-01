@@ -1500,7 +1500,10 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const killDobroAtivaNaQueda = useMemo(() => {
  if (!blocoSelecionado || !quedaAtiva) return false
 
- const grupoId = getGrupoIdDoJogo(blocoSelecionado)
+ const grupoId =
+ getGrupoIdDoJogo(blocoSelecionado) ||
+ String(quedaAtiva?.grupo_id || '').trim() ||
+ String(equipes.find((item) => String(item?.grupo_id || '').trim())?.grupo_id || '').trim()
  const grupoCfg = grupoId ? (grupoConfiguracoes[grupoId] || {}) : {}
  const jogoCfg = parseConfig(blocoSelecionado.configuracao)
  const habilitado = Boolean(
@@ -1541,6 +1544,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  blocos,
  getGrupoIdDoJogo,
  grupoConfiguracoes,
+ equipes,
  quedaAtiva,
  quedasProcessadas.length,
  ])
