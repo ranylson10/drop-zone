@@ -598,6 +598,10 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 
  const rows = campeonatoId ? rowsDb : rowsFromProps
 
+ const atualizarLinhaLocal = (key: string, patch: Partial<Row>) => {
+ setRowsDb((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)))
+ }
+
  const salvarNickAvulso = async (item: Row) => {
  if (!item.jogador_avulso_id) return
  const novoNick = String(editingNick[item.key] ?? item.nome).trim()
@@ -608,33 +612,28 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 
  setSavingKey(item.key)
  try {
- const { error: avulsoError } = await supabase
- .from('jogadores_avulsos_campeonato')
- .update({ nick: novoNick })
- .eq('id', item.jogador_avulso_id)
-
- if (avulsoError) throw avulsoError
-
- let update = supabase
- .from('resultados_mvp')
- .update({ nick_snapshot: novoNick })
- .eq('campeonato_id', campeonatoId)
-
- if (item.jogador_campeonato_id) {
- update = update.eq('jogador_campeonato_id', item.jogador_campeonato_id)
- } else if (item.uid_jogo) {
- update = update.eq('uid_jogo_snapshot', item.uid_jogo)
+ const response = await fetch('/api/campeonatos/mvp-avulso', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ campeonatoId,
+ jogadorAvulsoId: item.jogador_avulso_id,
+ jogadorCampeonatoId: item.jogador_campeonato_id,
+ uidJogo: item.uid_jogo,
+ nick: novoNick,
+ }),
+ })
+ const result = await response.json().catch(() => null)
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel salvar o nick.')
  }
-
- const { error: mvpError } = await update
- if (mvpError) throw mvpError
 
  setEditingNick((prev) => {
  const next = { ...prev }
  delete next[item.key]
  return next
  })
- await carregarMvpDb()
+ atualizarLinhaLocal(item.key, { nome: novoNick })
  } catch (error: any) {
  window.alert(`Erro ao salvar nick: ${error?.message || error}`)
  } finally {
@@ -661,13 +660,23 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  data: { publicUrl },
  } = supabase.storage.from(BUCKET_AVATAR_JOGADOR).getPublicUrl(fileName)
 
- const { error: updateError } = await supabase
- .from('jogadores_avulsos_campeonato')
- .update({ foto_url: publicUrl })
- .eq('id', item.jogador_avulso_id)
- if (updateError) throw updateError
+ const response = await fetch('/api/campeonatos/mvp-avulso', {
+ method: 'POST',
+ headers: { 'Content-Type': 'application/json' },
+ body: JSON.stringify({
+ campeonatoId,
+ jogadorAvulsoId: item.jogador_avulso_id,
+ jogadorCampeonatoId: item.jogador_campeonato_id,
+ uidJogo: item.uid_jogo,
+ fotoUrl: publicUrl,
+ }),
+ })
+ const result = await response.json().catch(() => null)
+ if (!response.ok || !result?.ok) {
+ throw new Error(result?.error || 'Nao foi possivel salvar a foto.')
+ }
 
- await carregarMvpDb()
+ atualizarLinhaLocal(item.key, { avatar_url: publicUrl })
  } catch (error: any) {
  window.alert(`Erro ao trocar foto: ${error?.message || error}`)
  } finally {
@@ -775,7 +784,6 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  <th className="hidden w-16 px-3 py-3 text-center text-[10px] sm:table-cell">Rank</th>
  <th className="w-[16%] px-1 py-1.5 text-center text-[8px] sm:w-20 sm:px-3 sm:py-3 sm:text-[10px]">Logo</th>
  <th className="hidden w-20 px-3 py-3 text-center text-[10px] sm:table-cell">Foto</th>
- <th className="hidden w-28 px-3 py-3 text-center text-[10px] sm:table-cell">Tag</th>
  <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:w-auto sm:px-3 sm:py-3 sm:text-[10px]">Nick</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Bandeira</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Função</th>
@@ -798,7 +806,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  {rows.length === 0 && (
  <tr>
  <td
- colSpan={10}
+ colSpan={9}
  className="text-center text-[10px] font-semibold uppercase"
  style={{
  backgroundColor: layout.row_bg_secondary,
@@ -870,10 +878,6 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  ) : null}
  </td>
 
-<td className="hidden px-3 text-center text-[11px] font-semibold uppercase sm:table-cell">
- {item.tag}
- </td>
-
 <td className="px-1 text-left text-[9px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
 <span className="block min-w-0 truncate sm:hidden">{item.nome}</span>
 <div className="hidden min-w-0 sm:block">
@@ -900,7 +904,6 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  {item.uid_jogo ? (
  <span className="border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700">ID: {item.uid_jogo}</span>
  ) : null}
- <span className="border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-700">Avulso</span>
  </div>
  {item.perfil_sugerido_id ? (
  <div className="flex flex-wrap items-center gap-2 border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.06em] text-amber-800">
