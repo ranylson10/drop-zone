@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { AlertTriangle, Camera, Loader2, Save, UserCheck } from 'lucide-react'
 
 interface MVPData {
  nome_jogador?: string
@@ -55,6 +55,11 @@ type Row = {
  equipe_id: string | null
  campeonato_equipe_id: string | null
  jogador_campeonato_id: string | null
+ jogador_avulso_id: string | null
+ uid_jogo: string | null
+ perfil_sugerido_id: string | null
+ perfil_sugerido_nick: string | null
+ perfil_sugerido_avatar: string | null
 }
 
 type ResultadoMvpRow = {
@@ -88,6 +93,16 @@ type JogadorAvulsoRow = {
  funcao?: string | null
  pais?: string | null
 }
+
+type PerfilJogoRow = {
+ id: string
+ nick?: string | null
+ uid_jogo?: string | null
+ foto_capa?: string | null
+ funcao?: string | null
+}
+
+const BUCKET_AVATAR_JOGADOR = 'avatars'
 
 const funcaoIcone: Record<string, string> = {
  rush: '⚡',
@@ -154,6 +169,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  })
 
  const [rowsDb, setRowsDb] = useState<Row[]>([])
+ const [editingNick, setEditingNick] = useState<Record<string, string>>({})
+ const [savingKey, setSavingKey] = useState<string | null>(null)
+ const [uploadingKey, setUploadingKey] = useState<string | null>(null)
 
  const normalizeNick = (nick: any) => String(nick || '').trim()
  const safeText = (v: any, fallback: string) => {
@@ -251,6 +269,36 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 
  const jogadoresAvulsosMap = new Map<string, JogadorAvulsoRow>(
  ((jogadoresAvulsosRows || []) as JogadorAvulsoRow[]).map((row) => [String(row.id), row])
+ )
+
+ const uidAvulsos = Array.from(
+ new Set(
+ resultados
+ .map((r) => {
+ const jogador = r?.jogador_campeonato_id
+ ? jogadoresCampeonatoMap.get(String(r.jogador_campeonato_id))
+ : null
+ const avulso = jogador?.jogador_avulso_id
+ ? jogadoresAvulsosMap.get(String(jogador.jogador_avulso_id))
+ : null
+ const perfilId = String(r?.perfil_jogo_id || jogador?.perfil_jogo_id || '').trim()
+ return perfilId ? '' : String(r?.uid_jogo_snapshot || avulso?.uid_jogo || '').trim()
+ })
+ .filter(Boolean)
+ )
+ )
+
+ const { data: perfisPorUidRows, error: perfisPorUidErr } =
+ uidAvulsos.length > 0
+ ? await supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa, funcao').in('uid_jogo', uidAvulsos)
+ : { data: [], error: null }
+
+ if (perfisPorUidErr) {
+ console.error('Erro ao buscar perfis_jogo por UID do MVP:', perfisPorUidErr)
+ }
+
+ const perfisPorUidMap = new Map<string, PerfilJogoRow>(
+ ((perfisPorUidRows || []) as PerfilJogoRow[]).map((row) => [String(row.uid_jogo || '').trim(), row])
  )
 
  const equipeIds = Array.from(
@@ -356,6 +404,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  equipe_id: string | null
  campeonato_equipe_id: string | null
  jogador_campeonato_id: string | null
+ jogador_avulso_id: string | null
+ uid_jogo: string | null
+ perfil_sugerido_id: string | null
+ perfil_sugerido_nick: string | null
+ perfil_sugerido_avatar: string | null
  nome: string
  equipe: string
  tag: string
@@ -379,6 +432,9 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 
  const perfilId =
  String(row?.perfil_jogo_id || jogadorCampeonato?.perfil_jogo_id || '').trim() || null
+ const jogadorAvulsoId = String(jogadorCampeonato?.jogador_avulso_id || '').trim() || null
+ const uidJogo = String(row?.uid_jogo_snapshot || jogadorAvulso?.uid_jogo || '').trim() || null
+ const perfilSugerido = !perfilId && uidJogo ? perfisPorUidMap.get(uidJogo) : null
 
  const campeonatoEquipeId =
  String(row?.campeonato_equipe_id || jogadorCampeonato?.campeonato_equipe_id || row?.equipe_id || '').trim() || null
@@ -417,6 +473,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  equipe_id: equipeId,
  campeonato_equipe_id: campeonatoEquipeId,
  jogador_campeonato_id: jogadorCampeonatoId,
+ jogador_avulso_id: jogadorAvulsoId,
+ uid_jogo: uidJogo,
+ perfil_sugerido_id: perfilSugerido?.id || null,
+ perfil_sugerido_nick: perfilSugerido?.nick || null,
+ perfil_sugerido_avatar: perfilSugerido?.foto_capa || null,
  nome,
  equipe: equipeNome,
  tag: equipeTag,
@@ -446,6 +507,13 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  if (!atual.jogador_campeonato_id && jogadorCampeonatoId) {
  atual.jogador_campeonato_id = jogadorCampeonatoId
  }
+ if (!atual.jogador_avulso_id && jogadorAvulsoId) atual.jogador_avulso_id = jogadorAvulsoId
+ if (!atual.uid_jogo && uidJogo) atual.uid_jogo = uidJogo
+ if (!atual.perfil_sugerido_id && perfilSugerido?.id) {
+ atual.perfil_sugerido_id = perfilSugerido.id
+ atual.perfil_sugerido_nick = perfilSugerido.nick || null
+ atual.perfil_sugerido_avatar = perfilSugerido.foto_capa || null
+ }
 
  acumuladoMap.set(chave, atual)
  }
@@ -467,6 +535,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  equipe_id: item.equipe_id,
  campeonato_equipe_id: item.campeonato_equipe_id,
  jogador_campeonato_id: item.jogador_campeonato_id,
+ jogador_avulso_id: item.jogador_avulso_id,
+ uid_jogo: item.uid_jogo,
+ perfil_sugerido_id: item.perfil_sugerido_id,
+ perfil_sugerido_nick: item.perfil_sugerido_nick,
+ perfil_sugerido_avatar: item.perfil_sugerido_avatar,
  }))
  .sort((a, b) => b.abates - a.abates || b.kd - a.kd || b.quedas - a.quedas || a.nome.localeCompare(b.nome))
 
@@ -511,6 +584,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  equipe_id: equipeId,
  jogador_campeonato_id: null,
           campeonato_equipe_id: null,
+ jogador_avulso_id: null,
+ uid_jogo: item.game_id_raw || null,
+ perfil_sugerido_id: null,
+ perfil_sugerido_nick: null,
+ perfil_sugerido_avatar: null,
  }
  }) || []
 
@@ -519,6 +597,117 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  }, [data])
 
  const rows = campeonatoId ? rowsDb : rowsFromProps
+
+ const salvarNickAvulso = async (item: Row) => {
+ if (!item.jogador_avulso_id) return
+ const novoNick = String(editingNick[item.key] ?? item.nome).trim()
+ if (!novoNick) {
+ window.alert('Informe o nick do jogador.')
+ return
+ }
+
+ setSavingKey(item.key)
+ try {
+ const { error: avulsoError } = await supabase
+ .from('jogadores_avulsos_campeonato')
+ .update({ nick: novoNick })
+ .eq('id', item.jogador_avulso_id)
+
+ if (avulsoError) throw avulsoError
+
+ let update = supabase
+ .from('resultados_mvp')
+ .update({ nick_snapshot: novoNick })
+ .eq('campeonato_id', campeonatoId)
+
+ if (item.jogador_campeonato_id) {
+ update = update.eq('jogador_campeonato_id', item.jogador_campeonato_id)
+ } else if (item.uid_jogo) {
+ update = update.eq('uid_jogo_snapshot', item.uid_jogo)
+ }
+
+ const { error: mvpError } = await update
+ if (mvpError) throw mvpError
+
+ setEditingNick((prev) => {
+ const next = { ...prev }
+ delete next[item.key]
+ return next
+ })
+ await carregarMvpDb()
+ } catch (error: any) {
+ window.alert(`Erro ao salvar nick: ${error?.message || error}`)
+ } finally {
+ setSavingKey(null)
+ }
+ }
+
+ const trocarFotoAvulso = async (item: Row, input: HTMLInputElement) => {
+ const file = input.files?.[0]
+ if (!file || !item.jogador_avulso_id) return
+
+ setUploadingKey(item.key)
+ try {
+ const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
+ const fileName = `${campeonatoId}/mvp-avulsos/${item.jogador_avulso_id}-${Date.now()}.${ext}`
+ const { error: uploadError } = await supabase.storage.from(BUCKET_AVATAR_JOGADOR).upload(fileName, file, {
+ upsert: true,
+ cacheControl: '3600',
+ contentType: file.type || undefined,
+ })
+ if (uploadError) throw uploadError
+
+ const {
+ data: { publicUrl },
+ } = supabase.storage.from(BUCKET_AVATAR_JOGADOR).getPublicUrl(fileName)
+
+ const { error: updateError } = await supabase
+ .from('jogadores_avulsos_campeonato')
+ .update({ foto_url: publicUrl })
+ .eq('id', item.jogador_avulso_id)
+ if (updateError) throw updateError
+
+ await carregarMvpDb()
+ } catch (error: any) {
+ window.alert(`Erro ao trocar foto: ${error?.message || error}`)
+ } finally {
+ setUploadingKey(null)
+ input.value = ''
+ }
+ }
+
+ const trocarAvulsoPorPerfil = async (item: Row) => {
+ if (!item.perfil_sugerido_id) return
+ if (!item.jogador_campeonato_id) {
+ window.alert('Esse MVP não tem vínculo de jogador do campeonato para trocar automaticamente.')
+ return
+ }
+
+ setSavingKey(item.key)
+ try {
+ const { error: jogadorError } = await supabase
+ .from('jogadores_campeonato')
+ .update({ perfil_jogo_id: item.perfil_sugerido_id, jogador_avulso_id: null })
+ .eq('id', item.jogador_campeonato_id)
+ if (jogadorError) throw jogadorError
+
+ const { error: mvpError } = await supabase
+ .from('resultados_mvp')
+ .update({
+ perfil_jogo_id: item.perfil_sugerido_id,
+ nick_snapshot: item.perfil_sugerido_nick || item.nome,
+ })
+ .eq('campeonato_id', campeonatoId)
+ .eq('jogador_campeonato_id', item.jogador_campeonato_id)
+ if (mvpError) throw mvpError
+
+ await carregarMvpDb()
+ } catch (error: any) {
+ window.alert(`Erro ao trocar pelo perfil de jogo: ${error?.message || error}`)
+ } finally {
+ setSavingKey(null)
+ }
+ }
 
  if (loading) {
  return (
@@ -662,6 +851,23 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  alt=""
  />
  </div>
+ {item.jogador_avulso_id ? (
+ <label
+ className={`mx-auto mt-1 inline-flex cursor-pointer items-center gap-1 border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
+ uploadingKey === item.key ? 'pointer-events-none opacity-60' : ''
+ }`}
+ title="Adicionar ou trocar foto do jogador avulso"
+ >
+ <Camera size={10} />
+ {uploadingKey === item.key ? 'Enviando' : 'Foto'}
+ <input
+ type="file"
+ accept="image/*"
+ className="hidden"
+ onChange={(event) => trocarFotoAvulso(item, event.currentTarget)}
+ />
+ </label>
+ ) : null}
  </td>
 
 <td className="hidden px-3 text-center text-[11px] font-semibold uppercase sm:table-cell">
@@ -669,7 +875,56 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </td>
 
 <td className="px-1 text-left text-[9px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
-<span className="block min-w-0 truncate sm:max-w-[240px]">{item.nome}</span>
+<span className="block min-w-0 truncate sm:hidden">{item.nome}</span>
+<div className="hidden min-w-0 sm:block">
+ {item.jogador_avulso_id ? (
+ <div className="space-y-1">
+ <div className="flex min-w-0 items-center gap-2">
+ <input
+ value={editingNick[item.key] ?? item.nome}
+ onChange={(event) => setEditingNick((prev) => ({ ...prev, [item.key]: event.target.value }))}
+ className="min-w-0 flex-1 border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold uppercase outline-none focus:border-blue-500"
+ aria-label={`Editar nick de ${item.nome}`}
+ />
+ <button
+ type="button"
+ onClick={() => salvarNickAvulso(item)}
+ disabled={savingKey === item.key}
+ className="inline-flex h-7 w-7 items-center justify-center bg-blue-600 text-white disabled:opacity-60"
+ title="Salvar nick do jogador avulso"
+ >
+ {savingKey === item.key ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+ </button>
+ </div>
+ <div className="flex flex-wrap items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.06em]">
+ {item.uid_jogo ? (
+ <span className="border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700">ID: {item.uid_jogo}</span>
+ ) : null}
+ <span className="border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-700">Avulso</span>
+ </div>
+ {item.perfil_sugerido_id ? (
+ <div className="flex flex-wrap items-center gap-2 border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.06em] text-amber-800">
+ <span className="inline-flex items-center gap-1">
+ <AlertTriangle size={11} />
+ Perfil encontrado: {item.perfil_sugerido_nick || 'perfil de jogo'}
+ </span>
+ <button
+ type="button"
+ onClick={() => trocarAvulsoPorPerfil(item)}
+ disabled={savingKey === item.key}
+ className="inline-flex items-center gap-1 border border-amber-300 bg-white px-2 py-0.5 text-[8px] font-bold text-amber-900 disabled:opacity-60"
+ title="Trocar jogador avulso pelo perfil de jogo cadastrado"
+ >
+ <UserCheck size={10} />
+ Usar perfil
+ </button>
+ </div>
+ ) : null}
+ </div>
+ ) : (
+ <span className="block min-w-0 truncate sm:max-w-[240px]">{item.nome}</span>
+ )}
+</div>
  </td>
 
 <td className="hidden px-3 text-center sm:table-cell">
