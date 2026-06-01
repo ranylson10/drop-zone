@@ -1334,13 +1334,26 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
   quedasObj = {}
   }
 
-  return Object.entries(quedasObj).map(([numero, mapa]) => ({
-  id: `${bloco.id}-${numero}`,
+  if (Array.isArray(quedasObj)) {
+  return quedasObj.map((mapa, index) => ({
+  id: `${bloco.id}-${index + 1}`,
   jogo_id: String(bloco.id),
-  numero_partida: parseInt(numero),
+  numero_partida: index + 1,
   mapa: String(mapa),
   nome_bloco: String(bloco?.nome_bloco || ''),
   }))
+  }
+
+  return Object.entries(quedasObj).map(([numero, mapa], index) => {
+  const numeroNormalizado = Number.parseInt(numero, 10)
+  return {
+  id: `${bloco.id}-${numero}`,
+  jogo_id: String(bloco.id),
+  numero_partida: Number.isFinite(numeroNormalizado) && numeroNormalizado > 0 ? numeroNormalizado : index + 1,
+  mapa: String(mapa),
+  nome_bloco: String(bloco?.nome_bloco || ''),
+  }
+  })
   })()
 
  const formatadas =
