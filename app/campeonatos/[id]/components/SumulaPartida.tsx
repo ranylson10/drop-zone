@@ -446,6 +446,26 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  if (!jogo) return ''
  const direto = String(jogo?.grupo_id || '').trim()
  if (direto) return direto
+
+ const gruposIds =
+ typeof jogo?.grupos_ids === 'string'
+ ? (() => {
+ try {
+ return JSON.parse(jogo.grupos_ids)
+ } catch {
+ return jogo.grupos_ids
+ }
+ })()
+ : jogo?.grupos_ids
+
+ if (Array.isArray(gruposIds)) {
+ const primeiroGrupo = String(gruposIds[0] || '').trim()
+ if (primeiroGrupo) return primeiroGrupo
+ } else if (gruposIds) {
+ const primeiroGrupo = String(gruposIds).split(',')[0]?.trim()
+ if (primeiroGrupo) return primeiroGrupo
+ }
+
  try {
  const cfg = typeof jogo?.configuracao === 'string' ? JSON.parse(jogo.configuracao) : (jogo?.configuracao || {})
  return String(cfg?.grupo_id || '').trim()
