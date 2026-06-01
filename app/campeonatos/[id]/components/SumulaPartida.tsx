@@ -620,8 +620,53 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return vazios
  }
 
+ const { data: jogoAtual } = await supabase
+ .from('jogos')
+ .select('grupo_id')
+ .eq('id', jogoId)
+ .maybeSingle()
+
+ const gruposDoJogo = Array.from(
+ new Set([
+ String(jogoAtual?.grupo_id || '').trim(),
+ ...(jogoEquipes || []).map((row: any) => String(row?.grupo_id || '').trim()),
+ ].filter(Boolean))
+ )
+
+ const { data: slotsDoGrupo, error: slotsDoGrupoError } = gruposDoJogo.length > 0
+ ? await supabase
+ .from('campeonato_grupo_slots')
+ .select('id, slot_numero, grupo_id, campeonato_equipe_id')
+ .in('grupo_id', gruposDoJogo)
+ : { data: [], error: null as any }
+
+ if (slotsDoGrupoError) {
+ console.error('Erro ao carregar slots do grupo para a sumula:', slotsDoGrupoError)
+ }
+
+ const jogoEquipesComSlotsDoGrupo = [...(jogoEquipes || [])]
+ const chavesJaCarregadas = new Set(
+ jogoEquipesComSlotsDoGrupo
+ .map((row: any) => String(row?.origem_slot_id || row?.campeonato_equipe_id || '').trim())
+ .filter(Boolean)
+ )
+
+ ;(slotsDoGrupo || []).forEach((slot: any) => {
+ const origemSlotId = String(slot?.id || '').trim()
+ const campeonatoEquipeId = String(slot?.campeonato_equipe_id || '').trim()
+ const key = origemSlotId || campeonatoEquipeId
+ if (!campeonatoEquipeId || !key || chavesJaCarregadas.has(key)) return
+
+ jogoEquipesComSlotsDoGrupo.push({
+ campeonato_equipe_id: campeonatoEquipeId,
+ grupo_id: slot?.grupo_id || null,
+ origem_slot_id: origemSlotId || null,
+ })
+ chavesJaCarregadas.add(key)
+ })
+
  const jogoEquipesUnicosMap = new Map<string, any>()
- ;(jogoEquipes || []).forEach((row: any) => {
+ ;(jogoEquipesComSlotsDoGrupo || []).forEach((row: any) => {
  const campeonatoEquipeId = String(row?.campeonato_equipe_id || '').trim()
  const origemSlotId = String(row?.origem_slot_id || '').trim()
  const key = origemSlotId || campeonatoEquipeId
