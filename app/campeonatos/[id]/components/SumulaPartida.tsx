@@ -1534,6 +1534,18 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
 
  if (!habilitado) return false
 
+ const indiceQuedaAtiva = quedasProcessadas.findIndex((queda: any) => {
+ const mesmoId = String(queda?.id || '') === String(quedaAtiva?.id || '')
+ const mesmoJogo = String(queda?.jogo_id || '') === String(quedaAtiva?.jogo_id || '')
+ const mesmoNumero = Number(queda?.numero_partida || 0) === Number(quedaAtiva?.numero_partida || 0)
+ const mesmoMapa = String(queda?.mapa || '').trim() === String(quedaAtiva?.mapa || '').trim()
+ return mesmoId || (mesmoJogo && mesmoNumero) || (mesmoNumero && mesmoMapa)
+ })
+
+ if (indiceQuedaAtiva >= 0) {
+ return indiceQuedaAtiva === quedasProcessadas.length - 1
+ }
+
  const jogosDoMesmoGrupo = grupoId
  ? (blocos || []).filter((item: any) => getGrupoIdDoJogo(item) === grupoId)
  : []
