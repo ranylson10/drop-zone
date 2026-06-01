@@ -2439,6 +2439,8 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return result
  }
 
+ const temMvpParaSalvar = () => Object.keys(mvpEdits || {}).length > 0
+
  const salvarClassificacaoLive = async () => {
  if (!quedaAtiva || !blocoSelecionado) return
 
@@ -2465,7 +2467,10 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  }
 
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
- alert('Live atualizada. A tabela do site continua congelada ate publicar no site.')
+ if (temMvpParaSalvar()) {
+ await salvarResultadosJogadores()
+ }
+ alert('Live atualizada. MVP da queda tambem foi salvo quando havia MatchResult carregado.')
  } catch (e: any) {
  console.error(e)
  alert(`Erro ao atualizar a live: ${e?.message || e?.details || 'veja console'}`)
@@ -2484,6 +2489,9 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  const inserts = montarInsertsClassificacao(jogoIdAtual)
  await publicarClassificacaoNoBanco(jogoIdAtual, inserts)
  salvarSnapshotQueda(jogoIdAtual, quedaAtiva.mapa)
+ if (temMvpParaSalvar()) {
+ await salvarResultadosJogadores()
+ }
 
  await supabase.rpc('lock_sumula', {
  p_campeonato_id: campeonatoId,
@@ -2495,7 +2503,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  await carregarVinculosDoJogo(jogoIdAtual)
  await handleSelecionarQueda({ ...quedaAtiva, jogo_id: jogoIdAtual }, blocoSelecionado, equipes)
 
- alert('✅ Resultados da queda (Classificação) salvos e TRAVADOS!')
+ alert('✅ Resultados da queda salvos com Classificação e MVP, e TRAVADOS!')
  } catch (e) {
  console.error(e)
  alert('❌ Erro ao salvar classificação.')
