@@ -1798,6 +1798,11 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  return
  }
 
+ if (!/^MatchResult_/i.test(file.name)) {
+ if (inputEl) inputEl.value = ''
+ return alert('Selecione apenas arquivos MatchResult_*.log ou MatchResult_*.txt.')
+ }
+
  const jogoIdAtual = String(quedaAtiva?.jogo_id || blocoSelecionado?.id || '').trim()
  if (!jogoIdAtual) {
  if (inputEl) inputEl.value = ''
@@ -2745,6 +2750,7 @@ export default function SumulaPartida({ faseInicialId, jogoInicialId, quedaInici
  <input
  type="file"
  id="log-up"
+ accept=".log,.txt,text/plain"
  onChange={handleFileUpload}
  onClick={(e) => {
  ;(e.currentTarget as HTMLInputElement).value = ''
