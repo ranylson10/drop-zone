@@ -42,12 +42,14 @@ interface LayoutSettings {
  row_height: number
  table_width?: number
  column_widths?: Record<string, number>
+ column_styles?: Record<string, { bg?: string; color?: string }>
  row_bg_image_url?: string | null
  row_bg_image_opacity?: number | null
 }
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
  pos: 52,
+ logo: 72,
  equipe: 360,
  grupo: 70,
  quedas: 56,
@@ -58,6 +60,15 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
 
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
+ const style = layout.column_styles?.[key] || {}
+ return {
+ ...fallback,
+ ...(style.bg ? { backgroundColor: style.bg } : {}),
+ ...(style.color ? { color: style.color } : {}),
+ }
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -77,8 +88,8 @@ function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
  return {
  backgroundColor: rowBg,
  backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
- backgroundSize: 'cover',
- backgroundPosition: 'center',
+ backgroundSize: '100% 100%',
+ backgroundPosition: 'left center',
  }
 }
 
@@ -164,6 +175,7 @@ export default function TabelaCampeonato() {
  row_height: 45,
  table_width: 100,
  column_widths: DEFAULT_COLUMN_WIDTHS,
+ column_styles: {},
  row_bg_image_url: '',
  row_bg_image_opacity: 100,
  })
@@ -198,6 +210,7 @@ export default function TabelaCampeonato() {
  ...current,
  ...(data as LayoutSettings),
  column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((data as any).column_widths || {}) },
+ column_styles: ((data as any).column_styles || {}),
  }))
  }
  }, [campeonatoId])
@@ -676,15 +689,16 @@ export default function TabelaCampeonato() {
  color: layout.header_text_color,
  }}
  >
- <th className="px-3 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'pos', 52) }}>POS</th>
- <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'equipe', 360) }}>EQUIPE</th>
- <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'grupo', 70) }}>GRUPO</th>
- <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'quedas', 56) }}>QD</th>
- <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'booyah', 56) }}>B!</th>
- <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'kill', 70) }}>KILL</th>
+ <th className="px-3 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'pos', { width: getColumnWidth(layout, 'pos', 52) })}>POS</th>
+ <th className="px-3 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'logo', { width: getColumnWidth(layout, 'logo', 72) })}>LOGO</th>
+ <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'equipe', { width: getColumnWidth(layout, 'equipe', 360) })}>EQUIPE</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'grupo', { width: getColumnWidth(layout, 'grupo', 70) })}>GRUPO</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'quedas', { width: getColumnWidth(layout, 'quedas', 56) })}>QD</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'booyah', { width: getColumnWidth(layout, 'booyah', 56) })}>B!</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'kill', { width: getColumnWidth(layout, 'kill', 70) })}>KILL</th>
  <th
  className="px-2 py-3 text-center text-[10px] font-semibold uppercase"
- style={{ width: getColumnWidth(layout, 'total', 96), backgroundColor: layout.primary_color, color: layout.text_color }}
+ style={getColumnStyle(layout, 'total', { width: getColumnWidth(layout, 'total', 96), backgroundColor: layout.primary_color, color: layout.text_color })}
  >
  TOTAL
  </th>
@@ -695,7 +709,7 @@ export default function TabelaCampeonato() {
  {equipes.length === 0 ? (
  <tr>
  <td
- colSpan={7}
+ colSpan={8}
  className="px-4 py-8 text-center text-[10px] font-semibold uppercase text-zinc-500"
  >
  Nenhuma equipe inscrita encontrada em campeonato_equipes
@@ -714,36 +728,38 @@ export default function TabelaCampeonato() {
  height: `${layout.row_height}px`,
  }}
  >
- <td className="px-3 py-2 text-center text-[11px] font-semibold">{index + 1}</td>
+ <td className="px-3 py-2 text-center text-[11px] font-semibold" style={getColumnStyle(layout, 'pos')}>{index + 1}</td>
 
- <td className="px-3 py-2">
- <div className="flex items-center gap-2">
- <div className="flex h-7 w-7 items-center justify-center border border-zinc-200 bg-white">
+ <td className="px-3 py-2 text-center" style={getColumnStyle(layout, 'logo')}>
+ <div className="mx-auto flex h-7 w-7 items-center justify-center border border-zinc-200 bg-white">
  {equipe.avatar_url ? (
- <img src={equipe.avatar_url} alt="" className="h-full w-full object-cover" />
+ <img src={equipe.avatar_url} alt="" className="h-full w-full object-contain" />
  ) : (
  <Users size={14} className="text-zinc-500" />
  )}
  </div>
+ </td>
 
+ <td className="px-3 py-2" style={getColumnStyle(layout, 'equipe')}>
+ <div className="flex items-center gap-2">
  <span className="truncate text-[10px] font-semibold uppercase ">
  {equipe.nome}
  </span>
  </div>
  </td>
 
- <td className="px-2 py-2 text-center text-[10px] font-semibold uppercase">
+ <td className="px-2 py-2 text-center text-[10px] font-semibold uppercase" style={getColumnStyle(layout, 'grupo')}>
  {equipe.grupo || '-'}
  </td>
- <td className="px-2 py-2 text-center text-[10px] font-semibold">{equipe.partidas}</td>
- <td className="px-2 py-2 text-center text-[10px] font-semibold">{equipe.booyahs}</td>
- <td className="px-2 py-2 text-center text-[10px] font-semibold">{equipe.abates}</td>
+ <td className="px-2 py-2 text-center text-[10px] font-semibold" style={getColumnStyle(layout, 'quedas')}>{equipe.partidas}</td>
+ <td className="px-2 py-2 text-center text-[10px] font-semibold" style={getColumnStyle(layout, 'booyah')}>{equipe.booyahs}</td>
+ <td className="px-2 py-2 text-center text-[10px] font-semibold" style={getColumnStyle(layout, 'kill')}>{equipe.abates}</td>
  <td
  className="px-2 py-2 text-center text-[12px] font-semibold "
- style={{
+ style={getColumnStyle(layout, 'total', {
  backgroundColor: `${layout.primary_color}22`,
  color: layout.text_color,
- }}
+ })}
  >
  {equipe.pontos}
  </td>

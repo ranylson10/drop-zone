@@ -39,23 +39,33 @@ interface LayoutSettings {
  row_height: number
  table_width?: number
  column_widths?: Record<string, number>
+ column_styles?: Record<string, { bg?: string; color?: string }>
  row_bg_image_url?: string | null
  row_bg_image_opacity?: number | null
 }
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
- mvp_logo: 72,
- mvp_foto: 72,
- mvp_nick: 300,
- mvp_bandeira: 86,
- mvp_funcao: 78,
+ pos: 52,
+ logo: 72,
+ equipe: 360,
+ grupo: 70,
  quedas: 56,
- mvp_kd: 78,
+ booyah: 56,
  kill: 70,
+ total: 96,
 }
 
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
+ const style = layout.column_styles?.[key] || {}
+ return {
+ ...fallback,
+ ...(style.bg ? { backgroundColor: style.bg } : {}),
+ ...(style.color ? { color: style.color } : {}),
+ }
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -75,8 +85,8 @@ function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
  return {
  backgroundColor: rowBg,
  backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
- backgroundSize: 'cover',
- backgroundPosition: 'center',
+ backgroundSize: '100% 100%',
+ backgroundPosition: 'left center',
  }
 }
 
@@ -209,6 +219,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  row_height: 46,
  table_width: 100,
  column_widths: DEFAULT_COLUMN_WIDTHS,
+ column_styles: {},
  row_bg_image_url: '',
  row_bg_image_opacity: 100,
  })
@@ -238,6 +249,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  ...current,
  ...(config as LayoutSettings),
  column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((config as any).column_widths || {}) },
+ column_styles: ((config as any).column_styles || {}),
  }))
  }
  } catch (err) {
@@ -834,22 +846,19 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  className="font-medium uppercase"
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
- <th className="hidden w-16 px-3 py-3 text-center text-[10px] sm:table-cell">Rank</th>
- <th className="w-[16%] px-1 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'mvp_logo', 72) }}>Logo</th>
- <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_foto', 72) }}>Foto</th>
- <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'mvp_nick', 300) }}>Nick</th>
- <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_bandeira', 86) }}>Bandeira</th>
- <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Função</th>
- <th className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'quedas', 56) }}>Quedas</th>
- <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_kd', 78) }}>K.D</th>
+ <th className="px-1 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={getColumnStyle(layout, 'pos', { width: getColumnWidth(layout, 'pos', 52) })}>Rank</th>
+ <th className="px-1 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={getColumnStyle(layout, 'logo', { width: getColumnWidth(layout, 'logo', 72) })}>Logo</th>
+ <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={getColumnStyle(layout, 'equipe', { width: getColumnWidth(layout, 'equipe', 360) })}>Nick</th>
+ <th className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={getColumnStyle(layout, 'booyah', { width: getColumnWidth(layout, 'booyah', 56) })}>Quedas</th>
+ <th className="px-3 py-3 text-center text-[10px]" style={getColumnStyle(layout, 'kill', { width: getColumnWidth(layout, 'kill', 70) })}>K.D</th>
  <th
  className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]"
- style={{
- width: getColumnWidth(layout, 'kill', 70),
+ style={getColumnStyle(layout, 'total', {
+ width: getColumnWidth(layout, 'total', 96),
  backgroundColor: layout.primary_color,
  color: layout.text_color,
  borderLeft: `1px solid ${layout.border_color}22`,
- }}
+ })}
  >
  Kill
  </th>
@@ -860,7 +869,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  {rows.length === 0 && (
  <tr>
  <td
- colSpan={9}
+ colSpan={6}
  className="text-center text-[10px] font-semibold uppercase"
  style={{
  backgroundColor: layout.row_bg_secondary,
@@ -891,11 +900,11 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  borderColor: `${layout.border_color}22`,
  } as React.CSSProperties}
  >
-<td className="hidden px-3 text-center text-[13px] font-semibold sm:table-cell" style={{ color: layout.primary_color }}>
+<td className="px-1 text-center text-[9px] font-semibold sm:px-3 sm:text-[13px]" style={getColumnStyle(layout, 'pos', { color: layout.primary_color })}>
  {index + 1}º
  </td>
 
-<td className="px-1 text-center sm:px-3">
+<td className="px-1 text-center sm:px-3" style={getColumnStyle(layout, 'logo')}>
 <div className="mx-auto flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white sm:h-9 sm:w-9">
  <img
  src={item.equipe_avatar || '/placeholder.png'}
@@ -905,34 +914,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </div>
  </td>
 
-<td className="hidden px-3 text-center sm:table-cell">
- <div className="mx-auto flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white">
- <img
- src={item.avatar_url || '/placeholder.png'}
- className="h-full w-full object-cover"
- alt=""
- />
- </div>
- {item.jogador_avulso_id ? (
- <label
- className={`mx-auto mt-1 inline-flex cursor-pointer items-center gap-1 border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.08em] ${
- uploadingKey === item.key ? 'pointer-events-none opacity-60' : ''
- }`}
- title="Adicionar ou trocar foto do jogador avulso"
- >
- <Camera size={10} />
- {uploadingKey === item.key ? 'Enviando' : 'Foto'}
- <input
- type="file"
- accept="image/*"
- className="hidden"
- onChange={(event) => trocarFotoAvulso(item, event.currentTarget)}
- />
- </label>
- ) : null}
- </td>
-
-<td className="px-1 text-left text-[9px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold">
+<td className="px-1 text-left text-[9px] font-medium uppercase sm:px-3 sm:text-[12px] sm:font-semibold" style={getColumnStyle(layout, 'equipe')}>
 <span className="block min-w-0 truncate sm:hidden">{item.nome}</span>
 <div className="hidden min-w-0 sm:block">
  {item.jogador_avulso_id ? (
@@ -984,41 +966,20 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
 </div>
  </td>
 
-<td className="hidden px-3 text-center sm:table-cell">
- {flagUrlFromPais(item.pais) ? (
- <img src={flagUrlFromPais(item.pais)} alt={paisIso(item.pais) || flagFromPais(item.pais)} className="mx-auto h-4 w-6 rounded-[2px] object-cover" />
- ) : (
- <span className="text-[10px] font-medium uppercase text-zinc-500">{flagFromPais(item.pais)}</span>
- )}
- </td>
-
-<td className="hidden px-3 text-center sm:table-cell">
- <span
- className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[13px] font-semibold"
- style={{
- borderColor: layout.primary_color,
- color: layout.primary_color,
- }}
- title={item.funcao}
- >
- {getFuncaoIcone(item.funcao)}
- </span>
- </td>
-
-<td className="px-0.5 text-center text-[9px] font-semibold sm:px-3 sm:text-[13px]" style={{ color: layout.primary_color }}>
+<td className="px-0.5 text-center text-[9px] font-semibold sm:px-3 sm:text-[13px]" style={getColumnStyle(layout, 'booyah', { color: layout.primary_color })}>
  {item.quedas || 0}
  </td>
 
-<td className="hidden px-3 text-center text-[13px] font-semibold text-[#2563eb] sm:table-cell">
+<td className="px-0.5 text-center text-[9px] font-semibold text-[#2563eb] sm:px-3 sm:text-[13px]" style={getColumnStyle(layout, 'kill')}>
  {Number(item.kd || 0).toFixed(2)}
  </td>
 
  <td
 className="px-0.5 text-center text-[9px] font-semibold sm:px-3 sm:text-[14px]"
- style={{
+ style={getColumnStyle(layout, 'total', {
  color: layout.primary_color,
  borderLeft: `1px solid ${layout.border_color}22`,
- }}
+ })}
  >
  {item.abates}
  </td>

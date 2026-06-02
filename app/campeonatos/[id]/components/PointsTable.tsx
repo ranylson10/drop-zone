@@ -31,12 +31,14 @@ interface LayoutSettings {
  row_height: number
  table_width?: number
  column_widths?: Record<string, number>
+ column_styles?: Record<string, { bg?: string; color?: string }>
  row_bg_image_url?: string | null
  row_bg_image_opacity?: number | null
 }
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
  pos: 52,
+ logo: 72,
  equipe: 360,
  grupo: 70,
  quedas: 56,
@@ -47,6 +49,15 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
 
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
+ const style = layout.column_styles?.[key] || {}
+ return {
+ ...fallback,
+ ...(style.bg ? { backgroundColor: style.bg } : {}),
+ ...(style.color ? { color: style.color } : {}),
+ }
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -66,8 +77,8 @@ function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
  return {
  backgroundColor: rowBg,
  backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
- backgroundSize: 'cover',
- backgroundPosition: 'center',
+ backgroundSize: '100% 100%',
+ backgroundPosition: 'left center',
  }
 }
 
@@ -171,6 +182,7 @@ export default function TabelaCampeonato() {
  row_height: 45,
  table_width: 100,
  column_widths: DEFAULT_COLUMN_WIDTHS,
+ column_styles: {},
  row_bg_image_url: '',
  row_bg_image_opacity: 100,
  })
@@ -194,6 +206,7 @@ export default function TabelaCampeonato() {
  ...current,
  ...(data as LayoutSettings),
  column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((data as any).column_widths || {}) },
+ column_styles: ((data as any).column_styles || {}),
  }))
  }
  }, [id])
@@ -539,7 +552,6 @@ export default function TabelaCampeonato() {
  )
  }
 
- const topEquipe = equipes[0] || null
  const grupoAtual = grupoSelecionado !== 'todos' ? grupos.find((grupo) => grupo.id === grupoSelecionado) : null
  const limiteClassificados = grupoAtual ? Number(grupoAtual.classificam || 0) : 0
 
@@ -624,44 +636,7 @@ export default function TabelaCampeonato() {
  )}
  </div>
 
- <div className='grid gap-4 xl:grid-cols-[340px_minmax(0,0.8fr)] xl:justify-center'>
- {topEquipe ? (
- <aside
- className='hidden xl:flex self-start flex-col overflow-hidden border bg-white'
- style={{
- borderColor: `${layout.border_color}33`,
- boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
- }}
- >
- <div
- className='p-4 text-black'
- style={{ backgroundColor: layout.primary_color }}
- >
- <div className='text-[9px] font-black uppercase tracking-[0.24em] opacity-70'>Top 1</div>
- <div className='mt-1 text-xl font-black uppercase leading-none'>{limiteClassificados > 0 ? 'Classificado' : 'Destaque'}</div>
- </div>
-
- <div className='flex flex-1 flex-col items-center justify-center px-5 py-6 text-center'>
- <div className='flex h-28 w-28 items-center justify-center border border-zinc-200 bg-zinc-50 p-3'>
- {topEquipe.avatar_url ? (
- <img src={topEquipe.avatar_url} alt='' className='h-full w-full object-contain' />
- ) : (
- <Users size={40} className='text-zinc-400' />
- )}
- </div>
- <div className='mt-4 text-lg font-black uppercase leading-tight text-[#142340]'>{topEquipe.nome}</div>
- <div className='mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500'>Grupo {topEquipe.grupo}</div>
- </div>
-
- <div className='grid grid-cols-2 border-t border-zinc-200 text-center'>
- <TopStat label='Total' value={topEquipe.pontos} highlight color={layout.primary_color} />
- <TopStat label='Kills' value={topEquipe.abates} />
- <TopStat label='Booyah' value={topEquipe.booyahs} />
- <TopStat label='Quedas' value={topEquipe.partidas} />
- </div>
- </aside>
- ) : null}
-
+ <div className='flex justify-center'>
  <div
  style={{
  border: `1px solid ${layout.border_color}22`,
@@ -675,23 +650,24 @@ export default function TabelaCampeonato() {
  <table className='w-full table-fixed border-collapse sm:table-auto'>
  <thead>
  <tr style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}>
- <th className='hidden px-3 py-3 text-[10px] font-semibold uppercase text-center sm:table-cell' style={{ width: getColumnWidth(layout, 'pos', 52) }}>POS</th>
- <th className='w-[36%] px-1 py-1.5 text-left text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'equipe', 360) }}>EQUIPE</th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'grupo', 70) }}>
+ <th className='px-1 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'pos', { width: getColumnWidth(layout, 'pos', 52) })}>POS</th>
+ <th className='px-1 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'logo', { width: getColumnWidth(layout, 'logo', 72) })}>LOGO</th>
+ <th className='w-[36%] px-1 py-1.5 text-left text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'equipe', { width: getColumnWidth(layout, 'equipe', 360) })}>EQUIPE</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'grupo', { width: getColumnWidth(layout, 'grupo', 70) })}>
  <span className='sm:hidden'>G</span>
  <span className='hidden sm:inline'>GRUPO</span>
  </th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'quedas', 56) }}>QD</th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'booyah', 56) }}>B!</th>
- <th className='w-[14%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'kill', 70) }}>KILL</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'quedas', { width: getColumnWidth(layout, 'quedas', 56) })}>QD</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'booyah', { width: getColumnWidth(layout, 'booyah', 56) })}>B!</th>
+ <th className='w-[14%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'kill', { width: getColumnWidth(layout, 'kill', 70) })}>KILL</th>
  <th
  className='w-[20%] border-l-2 px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-4 sm:py-3 sm:text-[11px]'
- style={{
+ style={getColumnStyle(layout, 'total', {
  width: getColumnWidth(layout, 'total', 96),
  backgroundColor: layout.primary_color,
  color: '#000',
  borderColor: layout.border_color,
- }}
+ })}
  >
  <span className='sm:hidden'>PTS</span>
  <span className='hidden sm:inline'>TOTAL</span>
@@ -703,7 +679,7 @@ export default function TabelaCampeonato() {
  {equipes.length === 0 ? (
  <tr>
  <td
- colSpan={7}
+ colSpan={8}
  className='px-4 py-10 text-center text-[10px] font-semibold uppercase text-zinc-500'
  >
  Nenhuma equipe encontrada para este filtro.
@@ -729,22 +705,20 @@ export default function TabelaCampeonato() {
  borderBottom: `${layout.border_width > 0 ? 1 : 0}px solid ${layout.border_color}22`,
  } as React.CSSProperties}
  >
- <td className='hidden text-center font-semibold text-sm sm:table-cell'>{index + 1}º</td>
+ <td className='text-center text-[9px] font-semibold sm:text-sm' style={getColumnStyle(layout, 'pos')}>{index + 1}º</td>
 
- <td className='px-1 sm:px-3'>
- <div className='flex min-w-0 items-center gap-1 sm:gap-2'>
+ <td className='px-1 text-center sm:px-3' style={getColumnStyle(layout, 'logo')}>
+ <div className='mx-auto flex h-5 w-5 shrink-0 items-center justify-center border border-zinc-200/10 bg-white sm:h-7 sm:w-7'>
  {equipe.avatar_url ? (
- <img
- src={equipe.avatar_url}
- className='h-5 w-5 shrink-0 object-contain border border-zinc-200/10 sm:h-7 sm:w-7'
- alt='logo'
- />
+ <img src={equipe.avatar_url} className='h-full w-full object-contain' alt='logo' />
  ) : (
- <div className='flex h-5 w-5 shrink-0 items-center justify-center border border-zinc-200/10 bg-white sm:h-7 sm:w-7'>
  <Users size={12} className='text-zinc-500 sm:size-3.5' />
- </div>
  )}
+ </div>
+ </td>
 
+ <td className='px-1 sm:px-3' style={getColumnStyle(layout, 'equipe')}>
+ <div className='flex min-w-0 items-center gap-1 sm:gap-2'>
  <span className='hidden font-semibold uppercase text-[11px] sm:inline'>
  {equipe.nome}
  </span>
@@ -759,25 +733,25 @@ export default function TabelaCampeonato() {
  </div>
  </td>
 
- <td className='px-0.5 text-center text-[9px] font-semibold opacity-70 sm:text-[10px] sm:font-bold'>{equipe.grupo}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold opacity-70 sm:text-[10px] sm:font-bold' style={getColumnStyle(layout, 'grupo')}>{equipe.grupo}</td>
 
- <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.partidas}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold' style={getColumnStyle(layout, 'quedas')}>{equipe.partidas}</td>
 
  <td
  className='px-0.5 text-center text-[9px] font-semibold sm:text-[12px]'
- style={{ color: isEven ? '#ff4500' : 'inherit' }}
+ style={getColumnStyle(layout, 'booyah', { color: isEven ? '#ff4500' : 'inherit' })}
  >
  {equipe.booyahs}
  </td>
 
- <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold'>{equipe.abates}</td>
+ <td className='px-0.5 text-center text-[9px] font-semibold sm:text-[11px] sm:font-bold' style={getColumnStyle(layout, 'kill')}>{equipe.abates}</td>
 
  <td
  className='border-l-2 px-0.5 text-center text-[9px] font-semibold sm:text-sm'
- style={{
+ style={getColumnStyle(layout, 'total', {
  backgroundColor: `${layout.primary_color}33`,
  borderColor: layout.border_color,
- }}
+ })}
  >
  {equipe.pontos}
  </td>
