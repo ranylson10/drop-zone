@@ -40,6 +40,46 @@ interface LayoutSettings {
  border_width: number
  border_color: string
  row_height: number
+ table_width?: number
+ column_widths?: Record<string, number>
+ row_bg_image_url?: string | null
+ row_bg_image_opacity?: number | null
+}
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+ pos: 52,
+ equipe: 360,
+ grupo: 70,
+ quedas: 56,
+ booyah: 56,
+ kill: 70,
+ total: 96,
+}
+
+function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
+ return Number(layout.column_widths?.[key] || fallback)
+}
+
+function hexToRgba(hex: string, alpha: number) {
+ const clean = String(hex || '#ffffff').replace('#', '')
+ const value = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean
+ const r = parseInt(value.slice(0, 2), 16)
+ const g = parseInt(value.slice(2, 4), 16)
+ const b = parseInt(value.slice(4, 6), 16)
+ if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(255,255,255,${alpha})`
+ return `rgba(${r},${g},${b},${alpha})`
+}
+
+function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
+ const image = String(layout.row_bg_image_url || '').trim()
+ if (!image) return { backgroundColor: rowBg }
+ const opacity = Math.max(0, Math.min(100, Number(layout.row_bg_image_opacity ?? 100))) / 100
+ return {
+ backgroundColor: rowBg,
+ backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
+ backgroundSize: 'cover',
+ backgroundPosition: 'center',
+ }
 }
 
 interface Fase {
@@ -122,6 +162,10 @@ export default function TabelaCampeonato() {
  border_width: 2,
  border_color: '#000000',
  row_height: 45,
+ table_width: 100,
+ column_widths: DEFAULT_COLUMN_WIDTHS,
+ row_bg_image_url: '',
+ row_bg_image_opacity: 100,
  })
 
  const [pontosColocacao, setPontosColocacao] = useState<number[]>(PONTOS_PADRAO)
@@ -149,7 +193,13 @@ export default function TabelaCampeonato() {
  .eq('campeonato_id', campeonatoId)
  .maybeSingle()
 
- if (data) setLayout(data as LayoutSettings)
+ if (data) {
+ setLayout((current) => ({
+ ...current,
+ ...(data as LayoutSettings),
+ column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((data as any).column_widths || {}) },
+ }))
+ }
  }, [campeonatoId])
 
  const carregarPontuacao = useCallback(async () => {
@@ -614,6 +664,8 @@ export default function TabelaCampeonato() {
  border: `${layout.border_width}px solid ${layout.border_color}`,
  backgroundColor: layout.row_bg_primary,
  boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)',
+ width: `${Number(layout.table_width || 100)}%`,
+ marginInline: 'auto',
  }}
  >
  <table className="w-full border-collapse">
@@ -624,15 +676,15 @@ export default function TabelaCampeonato() {
  color: layout.header_text_color,
  }}
  >
- <th className="w-12 px-3 py-3 text-center text-[10px] font-semibold uppercase">POS</th>
- <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase">EQUIPE</th>
- <th className="w-16 px-2 py-3 text-center text-[10px] font-semibold uppercase">GRUPO</th>
- <th className="w-12 px-2 py-3 text-center text-[10px] font-semibold uppercase">QD</th>
- <th className="w-12 px-2 py-3 text-center text-[10px] font-semibold uppercase">B!</th>
- <th className="w-14 px-2 py-3 text-center text-[10px] font-semibold uppercase">KILL</th>
+ <th className="px-3 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'pos', 52) }}>POS</th>
+ <th className="px-3 py-3 text-left text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'equipe', 360) }}>EQUIPE</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'grupo', 70) }}>GRUPO</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'quedas', 56) }}>QD</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'booyah', 56) }}>B!</th>
+ <th className="px-2 py-3 text-center text-[10px] font-semibold uppercase" style={{ width: getColumnWidth(layout, 'kill', 70) }}>KILL</th>
  <th
- className="w-24 px-2 py-3 text-center text-[10px] font-semibold uppercase"
- style={{ backgroundColor: layout.primary_color, color: layout.text_color }}
+ className="px-2 py-3 text-center text-[10px] font-semibold uppercase"
+ style={{ width: getColumnWidth(layout, 'total', 96), backgroundColor: layout.primary_color, color: layout.text_color }}
  >
  TOTAL
  </th>
@@ -655,10 +707,10 @@ export default function TabelaCampeonato() {
  key={equipe.campeonato_equipe_id}
  className="border-t border-zinc-200"
  style={{
- backgroundColor:
- layout.row_alt_bg && index % 2 === 1
- ? layout.row_bg_secondary
- : layout.row_bg_primary,
+ ...rowBackgroundStyle(
+ layout,
+ layout.row_alt_bg && index % 2 === 1 ? layout.row_bg_secondary : layout.row_bg_primary
+ ),
  height: `${layout.row_height}px`,
  }}
  >

@@ -29,6 +29,46 @@ interface LayoutSettings {
  border_width: number
  border_color: string
  row_height: number
+ table_width?: number
+ column_widths?: Record<string, number>
+ row_bg_image_url?: string | null
+ row_bg_image_opacity?: number | null
+}
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+ pos: 52,
+ equipe: 360,
+ grupo: 70,
+ quedas: 56,
+ booyah: 56,
+ kill: 70,
+ total: 96,
+}
+
+function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
+ return Number(layout.column_widths?.[key] || fallback)
+}
+
+function hexToRgba(hex: string, alpha: number) {
+ const clean = String(hex || '#ffffff').replace('#', '')
+ const value = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean
+ const r = parseInt(value.slice(0, 2), 16)
+ const g = parseInt(value.slice(2, 4), 16)
+ const b = parseInt(value.slice(4, 6), 16)
+ if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(255,255,255,${alpha})`
+ return `rgba(${r},${g},${b},${alpha})`
+}
+
+function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
+ const image = String(layout.row_bg_image_url || '').trim()
+ if (!image) return { backgroundColor: rowBg }
+ const opacity = Math.max(0, Math.min(100, Number(layout.row_bg_image_opacity ?? 100))) / 100
+ return {
+ backgroundColor: rowBg,
+ backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
+ backgroundSize: 'cover',
+ backgroundPosition: 'center',
+ }
 }
 
 interface CampeonatoEquipeRow {
@@ -129,6 +169,10 @@ export default function TabelaCampeonato() {
  border_width: 2,
  border_color: '#000000',
  row_height: 45,
+ table_width: 100,
+ column_widths: DEFAULT_COLUMN_WIDTHS,
+ row_bg_image_url: '',
+ row_bg_image_opacity: 100,
  })
 
  const carregarLayout = useCallback(async () => {
@@ -145,7 +189,13 @@ export default function TabelaCampeonato() {
  return
  }
 
- if (data) setLayout(data as LayoutSettings)
+ if (data) {
+ setLayout((current) => ({
+ ...current,
+ ...(data as LayoutSettings),
+ column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((data as any).column_widths || {}) },
+ }))
+ }
  }, [id])
 
  const carregarDadosBase = useCallback(async () => {
@@ -617,24 +667,27 @@ export default function TabelaCampeonato() {
  border: `1px solid ${layout.border_color}22`,
  backgroundColor: layout.row_bg_primary,
  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
+ width: `${Number(layout.table_width || 100)}%`,
+ marginInline: 'auto',
  }}
  className='overflow-hidden'
  >
  <table className='w-full table-fixed border-collapse sm:table-auto'>
  <thead>
  <tr style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}>
- <th className='hidden px-3 py-3 text-[10px] font-semibold uppercase w-12 text-center sm:table-cell'>POS</th>
- <th className='w-[36%] px-1 py-1.5 text-left text-[8px] font-semibold uppercase sm:w-auto sm:px-3 sm:py-3 sm:text-[10px]'>EQUIPE</th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>
+ <th className='hidden px-3 py-3 text-[10px] font-semibold uppercase text-center sm:table-cell' style={{ width: getColumnWidth(layout, 'pos', 52) }}>POS</th>
+ <th className='w-[36%] px-1 py-1.5 text-left text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'equipe', 360) }}>EQUIPE</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'grupo', 70) }}>
  <span className='sm:hidden'>G</span>
  <span className='hidden sm:inline'>GRUPO</span>
  </th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>QD</th>
- <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-10 sm:px-2 sm:py-3 sm:text-[10px]'>B!</th>
- <th className='w-[14%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-14 sm:px-2 sm:py-3 sm:text-[10px]'>KILL</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'quedas', 56) }}>QD</th>
+ <th className='w-[10%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'booyah', 56) }}>B!</th>
+ <th className='w-[14%] px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-2 sm:py-3 sm:text-[10px]' style={{ width: getColumnWidth(layout, 'kill', 70) }}>KILL</th>
  <th
- className='w-[20%] border-l-2 px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:w-24 sm:px-4 sm:py-3 sm:text-[11px]'
+ className='w-[20%] border-l-2 px-0.5 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-4 sm:py-3 sm:text-[11px]'
  style={{
+ width: getColumnWidth(layout, 'total', 96),
  backgroundColor: layout.primary_color,
  color: '#000',
  borderColor: layout.border_color,
@@ -671,7 +724,7 @@ export default function TabelaCampeonato() {
  key={equipe.campeonato_equipe_id}
  className='h-9 sm:h-[var(--ranking-row-height)]'
  style={{
- backgroundColor: classificado ? `${layout.primary_color}16` : rowBg,
+ ...rowBackgroundStyle(layout, classificado ? `${layout.primary_color}16` : rowBg),
  '--ranking-row-height': `${layout.row_height}px`,
  borderBottom: `${layout.border_width > 0 ? 1 : 0}px solid ${layout.border_color}22`,
  } as React.CSSProperties}

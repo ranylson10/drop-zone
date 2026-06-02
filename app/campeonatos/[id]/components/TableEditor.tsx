@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 import { 
- Save, Loader2, Palette, Layout, Type, 
- Maximize2, Layers, MousePointer2, Check
+ Save, Loader2, Palette, Layout,
+ Maximize2, Layers, MousePointer2, Upload, X
 } from 'lucide-react'
 
 const DEFAULT_SETTINGS = {
@@ -19,6 +19,24 @@ const DEFAULT_SETTINGS = {
  border_color: '#000000',
  row_height: 45,
  default_tab: 'geral',
+ table_width: 100,
+ column_widths: {
+ pos: 52,
+ equipe: 360,
+ grupo: 70,
+ quedas: 56,
+ booyah: 56,
+ kill: 70,
+ total: 96,
+ mvp_logo: 72,
+ mvp_foto: 72,
+ mvp_nick: 300,
+ mvp_bandeira: 86,
+ mvp_funcao: 78,
+ mvp_kd: 78,
+ },
+ row_bg_image_url: '',
+ row_bg_image_opacity: 100,
 }
 
 function pickLayoutSettings(data: any) {
@@ -34,6 +52,13 @@ function pickLayoutSettings(data: any) {
  border_color: data?.border_color ?? DEFAULT_SETTINGS.border_color,
  row_height: Number(data?.row_height ?? DEFAULT_SETTINGS.row_height),
  default_tab: data?.default_tab ?? DEFAULT_SETTINGS.default_tab,
+ table_width: Number(data?.table_width ?? DEFAULT_SETTINGS.table_width),
+ column_widths: {
+ ...DEFAULT_SETTINGS.column_widths,
+ ...(data?.column_widths && typeof data.column_widths === 'object' ? data.column_widths : {}),
+ },
+ row_bg_image_url: data?.row_bg_image_url ?? DEFAULT_SETTINGS.row_bg_image_url,
+ row_bg_image_opacity: Number(data?.row_bg_image_opacity ?? DEFAULT_SETTINGS.row_bg_image_opacity),
  }
 }
 
@@ -43,8 +68,47 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  
  const [loading, setLoading] = useState(true)
  const [saving, setSaving] = useState(false)
+ const [uploadingBg, setUploadingBg] = useState(false)
  
  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
+
+ function setColumnWidth(key: string, value: number) {
+ setSettings({
+ ...settings,
+ column_widths: {
+ ...settings.column_widths,
+ [key]: value,
+ },
+ })
+ }
+
+ async function uploadRowBackground(event: React.ChangeEvent<HTMLInputElement>) {
+ const file = event.currentTarget.files?.[0]
+ if (!file || !campeonatoId) return
+
+ setUploadingBg(true)
+ try {
+ const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
+ const fileName = `${campeonatoId}/table-rows/${Date.now()}.${ext}`
+ const { error } = await supabase.storage.from('avatars').upload(fileName, file, {
+ upsert: true,
+ cacheControl: '3600',
+ contentType: file.type || undefined,
+ })
+ if (error) throw error
+
+ const {
+ data: { publicUrl },
+ } = supabase.storage.from('avatars').getPublicUrl(fileName)
+
+ setSettings({ ...settings, row_bg_image_url: publicUrl })
+ } catch (error: any) {
+ alert(error?.message || 'Erro ao enviar imagem de fundo.')
+ } finally {
+ setUploadingBg(false)
+ event.currentTarget.value = ''
+ }
+ }
 
  useEffect(() => {
  if (campeonatoId) carregarConfiguracoes()
@@ -208,6 +272,36 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  {settings.row_alt_bg && (
  <ColorInput label="Fundo Linha Alternada" value={settings.row_bg_secondary} onChange={(v) => setSettings({...settings, row_bg_secondary: v})} />
  )}
+
+ <div className="space-y-2 border-t border-zinc-100 pt-3">
+ <label className="text-[9px] text-zinc-500">Imagem de Fundo das Linhas</label>
+ <div className="flex flex-wrap gap-2">
+ <label className="inline-flex cursor-pointer items-center gap-2 border border-zinc-200 px-3 py-2 text-[9px] font-semibold uppercase">
+ {uploadingBg ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+ Enviar Imagem
+ <input type="file" accept="image/*" className="hidden" onChange={uploadRowBackground} />
+ </label>
+ {settings.row_bg_image_url ? (
+ <button
+ type="button"
+ onClick={() => setSettings({ ...settings, row_bg_image_url: '' })}
+ className="inline-flex items-center gap-2 border border-red-200 px-3 py-2 text-[9px] font-semibold uppercase text-red-600"
+ >
+ <X size={13} />
+ Remover
+ </button>
+ ) : null}
+ </div>
+ {settings.row_bg_image_url ? (
+ <div className="h-16 overflow-hidden border border-zinc-200 bg-zinc-100">
+ <img src={settings.row_bg_image_url} alt="" className="h-full w-full object-cover" />
+ </div>
+ ) : null}
+ <div className="space-y-1">
+ <label>Intensidade da Imagem ({settings.row_bg_image_opacity}%)</label>
+ <input type="range" min="0" max="100" value={settings.row_bg_image_opacity} onChange={(e) => setSettings({...settings, row_bg_image_opacity: Number(e.target.value)})} className="w-full accent-black" />
+ </div>
+ </div>
  
  <div className="space-y-1">
  <label>Altura das Linhas ({settings.row_height}px)</label>
@@ -228,6 +322,8 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  
  <ColorInput label="Cor do Traçado" value={settings.border_color} onChange={(v) => setSettings({...settings, border_color: v})} />
 
+ <NumberInput label="Largura Total da Tabela (%)" value={settings.table_width} min={55} max={100} onChange={(v) => setSettings({...settings, table_width: v})} />
+
  <div className="space-y-2 pt-2 border-t-2 border-zinc-100">
  <label className="text-blue-600 flex items-center gap-1"><MousePointer2 size={12}/> Aba Padrão ao Abrir</label>
  <select 
@@ -242,21 +338,51 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  </div>
  </div>
  </section>
+
+ <section className="bg-white border border-zinc-200 p-4 space-y-4 lg:col-span-3">
+ <h3 className="border-b-2 border-zinc-200 pb-1 flex items-center gap-2"><Layout size={14}/> Largura das Colunas</h3>
+ <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+ <NumberInput label="Pos" value={settings.column_widths.pos} min={36} max={120} onChange={(v) => setColumnWidth('pos', v)} />
+ <NumberInput label="Equipe" value={settings.column_widths.equipe} min={180} max={620} onChange={(v) => setColumnWidth('equipe', v)} />
+ <NumberInput label="Grupo" value={settings.column_widths.grupo} min={46} max={140} onChange={(v) => setColumnWidth('grupo', v)} />
+ <NumberInput label="Quedas" value={settings.column_widths.quedas} min={42} max={120} onChange={(v) => setColumnWidth('quedas', v)} />
+ <NumberInput label="Booyah" value={settings.column_widths.booyah} min={42} max={120} onChange={(v) => setColumnWidth('booyah', v)} />
+ <NumberInput label="Kill" value={settings.column_widths.kill} min={46} max={140} onChange={(v) => setColumnWidth('kill', v)} />
+ <NumberInput label="Total" value={settings.column_widths.total} min={58} max={180} onChange={(v) => setColumnWidth('total', v)} />
+ <NumberInput label="MVP Logo" value={settings.column_widths.mvp_logo} min={48} max={140} onChange={(v) => setColumnWidth('mvp_logo', v)} />
+ <NumberInput label="MVP Foto" value={settings.column_widths.mvp_foto} min={48} max={140} onChange={(v) => setColumnWidth('mvp_foto', v)} />
+ <NumberInput label="MVP Nick" value={settings.column_widths.mvp_nick} min={160} max={620} onChange={(v) => setColumnWidth('mvp_nick', v)} />
+ <NumberInput label="Bandeira" value={settings.column_widths.mvp_bandeira} min={56} max={150} onChange={(v) => setColumnWidth('mvp_bandeira', v)} />
+ <NumberInput label="Função" value={settings.column_widths.mvp_funcao} min={54} max={140} onChange={(v) => setColumnWidth('mvp_funcao', v)} />
+ <NumberInput label="MVP K.D" value={settings.column_widths.mvp_kd} min={54} max={140} onChange={(v) => setColumnWidth('mvp_kd', v)} />
+ </div>
+ </section>
  </div>
 
  {/* PREVIEW EM TEMPO REAL */}
  <div className="bg-white border-4 border-zinc-200 p-4">
  <p className="text-[9px] font-semibold mb-2 opacity-50">Preview em Tempo Real:</p>
- <div style={{ borderColor: settings.border_color, borderWidth: settings.border_width }} className="border-solid overflow-hidden">
+ <div style={{ borderColor: settings.border_color, borderWidth: settings.border_width, width: `${settings.table_width}%` }} className="border-solid overflow-hidden">
  <div style={{ backgroundColor: settings.header_bg_color, color: settings.header_text_color, height: '35px' }} className="flex items-center px-4 font-semibold">
- <div className="flex-1">EQUIPE</div>
- <div className="w-12 text-center">B!</div>
- <div className="w-16 text-center" style={{ backgroundColor: settings.primary_color, color: '#000' }}>PONTOS</div>
+ <div style={{ width: settings.column_widths.equipe }}>EQUIPE</div>
+ <div className="text-center" style={{ width: settings.column_widths.booyah }}>B!</div>
+ <div className="text-center" style={{ width: settings.column_widths.total, backgroundColor: settings.primary_color, color: '#000' }}>PONTOS</div>
  </div>
- <div style={{ backgroundColor: settings.row_bg_primary, color: settings.text_color, height: `${settings.row_height}px` }} className="flex items-center px-4 border-t" >
- <div className="flex-1 flex items-center gap-2"><div className="w-6 h-6 bg-zinc-200" /> Equipe Exemplo</div>
- <div className="w-12 text-center text-xs">1</div>
- <div className="w-16 text-center font-semibold">150</div>
+ <div
+ style={{
+ backgroundColor: settings.row_bg_primary,
+ color: settings.text_color,
+ height: `${settings.row_height}px`,
+ backgroundImage: settings.row_bg_image_url ? `url(${settings.row_bg_image_url})` : undefined,
+ backgroundSize: 'cover',
+ backgroundPosition: 'center',
+ opacity: settings.row_bg_image_url ? Math.max(0.2, settings.row_bg_image_opacity / 100) : 1,
+ }}
+ className="flex items-center px-4 border-t"
+ >
+ <div style={{ width: settings.column_widths.equipe }} className="flex items-center gap-2"><div className="w-6 h-6 bg-zinc-200" /> Equipe Exemplo</div>
+ <div className="text-center text-xs" style={{ width: settings.column_widths.booyah }}>1</div>
+ <div className="text-center font-semibold" style={{ width: settings.column_widths.total }}>150</div>
  </div>
  </div>
  </div>
@@ -272,6 +398,22 @@ function ColorInput({ label, value, onChange }: { label: string, value: string, 
  <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="w-8 h-8 border border-zinc-200 cursor-pointer bg-white p-0.5" />
  <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 border border-zinc-200 px-2 text-[10px] uppercase font-mono" />
  </div>
+ </div>
+ )
+}
+
+function NumberInput({ label, value, min, max, onChange }: { label: string, value: number, min: number, max: number, onChange: (v: number) => void }) {
+ return (
+ <div className="flex flex-col gap-1">
+ <label className="text-[9px] text-zinc-500">{label}</label>
+ <input
+ type="number"
+ min={min}
+ max={max}
+ value={Number(value || 0)}
+ onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value || min))))}
+ className="border border-zinc-200 px-2 py-2 text-[10px] font-mono"
+ />
  </div>
  )
 }

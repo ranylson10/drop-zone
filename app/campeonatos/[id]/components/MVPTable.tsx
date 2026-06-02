@@ -37,6 +37,47 @@ interface LayoutSettings {
  border_width: number
  border_color: string
  row_height: number
+ table_width?: number
+ column_widths?: Record<string, number>
+ row_bg_image_url?: string | null
+ row_bg_image_opacity?: number | null
+}
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+ mvp_logo: 72,
+ mvp_foto: 72,
+ mvp_nick: 300,
+ mvp_bandeira: 86,
+ mvp_funcao: 78,
+ quedas: 56,
+ mvp_kd: 78,
+ kill: 70,
+}
+
+function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
+ return Number(layout.column_widths?.[key] || fallback)
+}
+
+function hexToRgba(hex: string, alpha: number) {
+ const clean = String(hex || '#ffffff').replace('#', '')
+ const value = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean
+ const r = parseInt(value.slice(0, 2), 16)
+ const g = parseInt(value.slice(2, 4), 16)
+ const b = parseInt(value.slice(4, 6), 16)
+ if ([r, g, b].some((n) => Number.isNaN(n))) return `rgba(255,255,255,${alpha})`
+ return `rgba(${r},${g},${b},${alpha})`
+}
+
+function rowBackgroundStyle(layout: LayoutSettings, rowBg: string) {
+ const image = String(layout.row_bg_image_url || '').trim()
+ if (!image) return { backgroundColor: rowBg }
+ const opacity = Math.max(0, Math.min(100, Number(layout.row_bg_image_opacity ?? 100))) / 100
+ return {
+ backgroundColor: rowBg,
+ backgroundImage: `linear-gradient(${hexToRgba(rowBg, 1 - opacity)}, ${hexToRgba(rowBg, 1 - opacity)}), url(${image})`,
+ backgroundSize: 'cover',
+ backgroundPosition: 'center',
+ }
 }
 
 type Row = {
@@ -166,6 +207,10 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  border_width: 2,
  border_color: '#000000',
  row_height: 46,
+ table_width: 100,
+ column_widths: DEFAULT_COLUMN_WIDTHS,
+ row_bg_image_url: '',
+ row_bg_image_opacity: 100,
  })
 
  const [rowsDb, setRowsDb] = useState<Row[]>([])
@@ -188,7 +233,13 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  .eq('campeonato_id', campeonatoId)
  .maybeSingle()
 
- if (config) setLayout(config as LayoutSettings)
+ if (config) {
+ setLayout((current) => ({
+ ...current,
+ ...(config as LayoutSettings),
+ column_widths: { ...DEFAULT_COLUMN_WIDTHS, ...((config as any).column_widths || {}) },
+ }))
+ }
  } catch (err) {
  console.error('Erro ao carregar layout MVP:', err)
  }
@@ -773,6 +824,8 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  border: `1px solid ${layout.border_color}22`,
  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
  backgroundColor: layout.row_bg_primary,
+ width: `${Number(layout.table_width || 100)}%`,
+ marginInline: 'auto',
  }}
  >
  <table className="w-full table-fixed border-collapse sm:table-auto">
@@ -782,16 +835,17 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}
  >
  <th className="hidden w-16 px-3 py-3 text-center text-[10px] sm:table-cell">Rank</th>
- <th className="w-[16%] px-1 py-1.5 text-center text-[8px] sm:w-20 sm:px-3 sm:py-3 sm:text-[10px]">Logo</th>
- <th className="hidden w-20 px-3 py-3 text-center text-[10px] sm:table-cell">Foto</th>
- <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:w-auto sm:px-3 sm:py-3 sm:text-[10px]">Nick</th>
- <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Bandeira</th>
+ <th className="w-[16%] px-1 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'mvp_logo', 72) }}>Logo</th>
+ <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_foto', 72) }}>Foto</th>
+ <th className="w-[50%] px-1 py-1.5 text-left text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'mvp_nick', 300) }}>Nick</th>
+ <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_bandeira', 86) }}>Bandeira</th>
  <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">Função</th>
- <th className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]">Quedas</th>
- <th className="hidden w-24 px-3 py-3 text-center text-[10px] sm:table-cell">K.D</th>
+ <th className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]" style={{ width: getColumnWidth(layout, 'quedas', 56) }}>Quedas</th>
+ <th className="hidden px-3 py-3 text-center text-[10px] sm:table-cell" style={{ width: getColumnWidth(layout, 'mvp_kd', 78) }}>K.D</th>
  <th
- className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:w-24 sm:px-3 sm:py-3 sm:text-[10px]"
+ className="w-[17%] px-0.5 py-1.5 text-center text-[8px] sm:px-3 sm:py-3 sm:text-[10px]"
  style={{
+ width: getColumnWidth(layout, 'kill', 70),
  backgroundColor: layout.primary_color,
  color: layout.text_color,
  borderLeft: `1px solid ${layout.border_color}22`,
@@ -832,7 +886,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  key={item.key}
  className="h-9 border-b sm:h-[var(--mvp-row-height)]"
  style={{
- backgroundColor: rowBg,
+ ...rowBackgroundStyle(layout, rowBg),
  '--mvp-row-height': `${layout.row_height}px`,
  borderColor: `${layout.border_color}22`,
  } as React.CSSProperties}
