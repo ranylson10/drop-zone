@@ -4,8 +4,9 @@ import { supabase } from '@/lib/supabase'
 import { useParams } from 'next/navigation'
 import { 
  Save, Loader2, Palette, Layout,
- Maximize2, Layers, MousePointer2, Upload, X, Download
+ Maximize2, Layers, MousePointer2, Download
 } from 'lucide-react'
+import ImageGalleryPicker from '@/app/components/ImageGalleryPicker'
 
 const DEFAULT_COLUMN_STYLES: Record<string, { bg: string; color: string }> = {
  pos: { bg: '', color: '' },
@@ -84,8 +85,6 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  
  const [loading, setLoading] = useState(true)
  const [saving, setSaving] = useState(false)
- const [uploadingBg, setUploadingBg] = useState(false)
- 
  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
 
  function setColumnWidth(key: string, value: number) {
@@ -170,34 +169,6 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
  link.href = canvas.toDataURL('image/png')
  link.download = `modelo-linha-tabela-${campeonatoId || 'campeonato'}.png`
  link.click()
- }
-
- async function uploadRowBackground(event: React.ChangeEvent<HTMLInputElement>) {
- const file = event.currentTarget.files?.[0]
- if (!file || !campeonatoId) return
-
- setUploadingBg(true)
- try {
- const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
- const fileName = `${campeonatoId}/table-rows/${Date.now()}.${ext}`
- const { error } = await supabase.storage.from('avatars').upload(fileName, file, {
- upsert: true,
- cacheControl: '3600',
- contentType: file.type || undefined,
- })
- if (error) throw error
-
- const {
- data: { publicUrl },
- } = supabase.storage.from('avatars').getPublicUrl(fileName)
-
- setSettings({ ...settings, row_bg_image_url: publicUrl })
- } catch (error: any) {
- alert(error?.message || 'Erro ao enviar imagem de fundo.')
- } finally {
- setUploadingBg(false)
- event.currentTarget.value = ''
- }
  }
 
  useEffect(() => {
@@ -365,23 +336,15 @@ export default function TableEditor({ canEdit = false }: { canEdit?: boolean } =
 
  <div className="space-y-2 border-t border-zinc-100 pt-3">
  <label className="text-[9px] text-zinc-500">Imagem de Fundo das Linhas</label>
- <div className="flex flex-wrap gap-2">
- <label className="inline-flex cursor-pointer items-center gap-2 border border-zinc-200 px-3 py-2 text-[9px] font-semibold uppercase">
- {uploadingBg ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
- Enviar Imagem
- <input type="file" accept="image/*" className="hidden" onChange={uploadRowBackground} />
- </label>
- {settings.row_bg_image_url ? (
- <button
- type="button"
- onClick={() => setSettings({ ...settings, row_bg_image_url: '' })}
- className="inline-flex items-center gap-2 border border-red-200 px-3 py-2 text-[9px] font-semibold uppercase text-red-600"
- >
- <X size={13} />
- Remover
- </button>
- ) : null}
- </div>
+ <ImageGalleryPicker
+ label="Galeria"
+ bucket="avatars"
+ folder="table-rows"
+ context="table-row-background"
+ value={settings.row_bg_image_url}
+ onSelect={(url) => setSettings({ ...settings, row_bg_image_url: url })}
+ onClear={() => setSettings({ ...settings, row_bg_image_url: '' })}
+ />
  {settings.row_bg_image_url ? (
  <div className="h-16 overflow-hidden border border-zinc-200 bg-zinc-100">
  <img src={settings.row_bg_image_url} alt="" className="h-full w-full object-cover" />
