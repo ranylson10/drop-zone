@@ -47,8 +47,14 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
  total: 96,
 }
 
+const TABLE_COLUMN_KEYS = ['pos', 'logo', 'equipe', 'grupo', 'quedas', 'booyah', 'kill', 'total']
+
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getTablePixelWidth(layout: LayoutSettings) {
+ return TABLE_COLUMN_KEYS.reduce((total, key) => total + getColumnWidth(layout, key, DEFAULT_COLUMN_WIDTHS[key] || 60), 0)
 }
 
 function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
@@ -642,12 +648,13 @@ export default function TabelaCampeonato() {
  border: `1px solid ${layout.border_color}22`,
  backgroundColor: layout.row_bg_primary,
  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
- width: `${Number(layout.table_width || 100)}%`,
+ width: 'fit-content',
+ maxWidth: '100%',
  marginInline: 'auto',
  }}
- className='overflow-hidden'
+ className='overflow-x-auto'
  >
- <table className='w-full table-fixed border-collapse sm:table-auto'>
+ <table className='table-fixed border-collapse' style={{ width: getTablePixelWidth(layout), minWidth: getTablePixelWidth(layout) }}>
  <thead>
  <tr style={{ backgroundColor: layout.header_bg_color, color: layout.header_text_color }}>
  <th className='px-1 py-1.5 text-center text-[8px] font-semibold uppercase sm:px-3 sm:py-3 sm:text-[10px]' style={getColumnStyle(layout, 'pos', { width: getColumnWidth(layout, 'pos', 52) })}>POS</th>
@@ -708,7 +715,7 @@ export default function TabelaCampeonato() {
  <td className='text-center text-[9px] font-semibold sm:text-sm' style={getColumnStyle(layout, 'pos')}>{index + 1}º</td>
 
  <td className='px-1 text-center sm:px-3' style={getColumnStyle(layout, 'logo')}>
- <div className='mx-auto flex h-5 w-5 shrink-0 items-center justify-center border border-zinc-200/10 bg-white sm:h-7 sm:w-7'>
+ <div className='mx-auto flex h-5 w-5 shrink-0 items-center justify-center sm:h-7 sm:w-7'>
  {equipe.avatar_url ? (
  <img src={equipe.avatar_url} className='h-full w-full object-contain' alt='logo' />
  ) : (

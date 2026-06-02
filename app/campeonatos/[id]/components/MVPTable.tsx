@@ -55,8 +55,14 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
  total: 96,
 }
 
+const MVP_COLUMN_KEYS = ['pos', 'logo', 'equipe', 'booyah', 'kill', 'total']
+
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getTablePixelWidth(layout: LayoutSettings) {
+ return MVP_COLUMN_KEYS.reduce((total, key) => total + getColumnWidth(layout, key, DEFAULT_COLUMN_WIDTHS[key] || 60), 0)
 }
 
 function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
@@ -813,7 +819,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  <img src={topMvp.avatar_url || '/placeholder.png'} alt="" className="h-full w-full object-cover" />
  </div>
  {topMvp.equipe_avatar ? (
- <div className="absolute -bottom-3 -right-3 flex h-12 w-12 items-center justify-center overflow-hidden border border-zinc-200 bg-white p-1">
+ <div className="absolute -bottom-3 -right-3 flex h-12 w-12 items-center justify-center overflow-hidden p-1">
  <img src={topMvp.equipe_avatar} alt="" className="h-full w-full object-contain" />
  </div>
  ) : null}
@@ -831,16 +837,17 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </aside>
  ) : null}
  <div
- className="overflow-hidden rounded-sm border border-zinc-200 bg-white shadow-sm"
+ className="overflow-x-auto rounded-sm border border-zinc-200 bg-white shadow-sm"
  style={{
  border: `1px solid ${layout.border_color}22`,
  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
  backgroundColor: layout.row_bg_primary,
- width: `${Number(layout.table_width || 100)}%`,
+ width: 'fit-content',
+ maxWidth: '100%',
  marginInline: 'auto',
  }}
  >
- <table className="w-full table-fixed border-collapse sm:table-auto">
+ <table className="table-fixed border-collapse" style={{ width: getTablePixelWidth(layout), minWidth: getTablePixelWidth(layout) }}>
  <thead>
  <tr
  className="font-medium uppercase"
@@ -905,7 +912,7 @@ export default function MVPTable({ data }: { data: MVPData[] }) {
  </td>
 
 <td className="px-1 text-center sm:px-3" style={getColumnStyle(layout, 'logo')}>
-<div className="mx-auto flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white sm:h-9 sm:w-9">
+<div className="mx-auto flex h-6 w-6 items-center justify-center overflow-hidden rounded-full sm:h-9 sm:w-9">
  <img
  src={item.equipe_avatar || '/placeholder.png'}
  className="h-full w-full object-cover"

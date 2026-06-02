@@ -58,8 +58,14 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
  total: 96,
 }
 
+const TABLE_COLUMN_KEYS = ['pos', 'logo', 'equipe', 'grupo', 'quedas', 'booyah', 'kill', 'total']
+
 function getColumnWidth(layout: LayoutSettings, key: string, fallback: number) {
  return Number(layout.column_widths?.[key] || fallback)
+}
+
+function getTablePixelWidth(layout: LayoutSettings) {
+ return TABLE_COLUMN_KEYS.reduce((total, key) => total + getColumnWidth(layout, key, DEFAULT_COLUMN_WIDTHS[key] || 60), 0)
 }
 
 function getColumnStyle(layout: LayoutSettings, key: string, fallback: React.CSSProperties = {}) {
@@ -672,16 +678,17 @@ export default function TabelaCampeonato() {
  </div>
 
  <div
- className="overflow-hidden"
+ className="overflow-x-auto"
  style={{
  border: `${layout.border_width}px solid ${layout.border_color}`,
  backgroundColor: layout.row_bg_primary,
  boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)',
- width: `${Number(layout.table_width || 100)}%`,
+ width: 'fit-content',
+ maxWidth: '100%',
  marginInline: 'auto',
  }}
  >
- <table className="w-full border-collapse">
+ <table className="table-fixed border-collapse" style={{ width: getTablePixelWidth(layout), minWidth: getTablePixelWidth(layout) }}>
  <thead>
  <tr
  style={{
@@ -731,7 +738,7 @@ export default function TabelaCampeonato() {
  <td className="px-3 py-2 text-center text-[11px] font-semibold" style={getColumnStyle(layout, 'pos')}>{index + 1}</td>
 
  <td className="px-3 py-2 text-center" style={getColumnStyle(layout, 'logo')}>
- <div className="mx-auto flex h-7 w-7 items-center justify-center border border-zinc-200 bg-white">
+ <div className="mx-auto flex h-7 w-7 items-center justify-center">
  {equipe.avatar_url ? (
  <img src={equipe.avatar_url} alt="" className="h-full w-full object-contain" />
  ) : (
