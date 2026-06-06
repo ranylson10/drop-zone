@@ -121,6 +121,7 @@ const adminItem: NavItem = {
     { href: '/admin/administradores', label: 'Administradores' },
     { href: '/admin/moderacao', label: 'Moderação' },
     { href: '/admin/kyc', label: 'KYC' },
+    { href: '/admin/configuracoes/pagamentos', label: 'Pagamentos' },
   ],
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getMercadoPagoConfig } from '@/lib/payment-provider-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,8 +23,7 @@ function getPaymentIdFromBody(body: any, url: URL) {
  * - se não configurar secret, aceita e valida pelo GET /v1/payments/:id
  * - se configurar secret e a assinatura não bater, bloqueia
  */
-function validateSignature(req: NextRequest, paymentId: string | null) {
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET
+function validateSignature(req: NextRequest, paymentId: string | null, secret: string) {
   if (!secret) return true
 
   const xSignature = req.headers.get('x-signature')
@@ -51,10 +51,11 @@ function validateSignature(req: NextRequest, paymentId: string | null) {
 
 export async function POST(req: NextRequest) {
   try {
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    const mercadoPago = await getMercadoPagoConfig()
+    const accessToken = mercadoPago.accessToken
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'MERCADOPAGO_ACCESS_TOKEN não configurado' }, { status: 500 })
+    if (!mercadoPago.enabled || !accessToken) {
+      return NextResponse.json({ error: 'Mercado Pago não está configurado ou ativo.' }, { status: 503 })
     }
 
     const url = new URL(req.url)
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, ignored: 'sem payment id' })
     }
 
-    if (!validateSignature(req, paymentId)) {
+    if (!validateSignature(req, paymentId, mercadoPago.webhookSecret)) {
       return NextResponse.json({ error: 'assinatura inválida' }, { status: 401 })
     }
 

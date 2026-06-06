@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getMercadoPagoConfig } from '@/lib/payment-provider-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,10 +20,11 @@ export async function POST(req: NextRequest) {
   try {
     const { supabaseAdmin } = await import('@/lib/supabase-admin')
 
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN
+    const mercadoPago = await getMercadoPagoConfig()
+    const accessToken = mercadoPago.accessToken
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'MERCADOPAGO_ACCESS_TOKEN não configurado' }, { status: 500 })
+    if (!mercadoPago.enabled || !accessToken) {
+      return NextResponse.json({ error: 'Mercado Pago PIX não está configurado ou ativo.' }, { status: 503 })
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: depError?.message || 'erro ao criar depósito' }, { status: 500 })
     }
 
-    const notificationUrl = process.env.MERCADOPAGO_WEBHOOK_URL
+    const notificationUrl = mercadoPago.webhookUrl
 
     const mpPayload: any = {
       transaction_amount: valor,

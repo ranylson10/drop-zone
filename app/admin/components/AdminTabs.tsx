@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Users,
+  WalletCards,
 } from 'lucide-react'
 
 const tabs = [
@@ -26,6 +27,7 @@ const tabs = [
   { href: '/admin/administradores', label: 'Admins', icon: Database },
   { href: '/admin/moderacao', label: 'Moderação', icon: BarChart3 },
   { href: '/admin/configuracoes/taxas', label: 'Taxas', icon: CircleDollarSign },
+  { href: '/admin/configuracoes/pagamentos', label: 'Pagamentos', icon: WalletCards },
 ]
 
 export default function AdminTabs() {
