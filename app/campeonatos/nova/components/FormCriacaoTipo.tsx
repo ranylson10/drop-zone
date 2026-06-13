@@ -32,6 +32,53 @@ type FaseEstrutura = {
 
 type WhatsContato = { nome: string; numero: string }
 
+type ImagemCropTipo = 'logo' | 'banner' | 'foto'
+
+type ImagemCropConfig = {
+  tipo: ImagemCropTipo
+  titulo: string
+  ajuda: string
+  largura: number
+  altura: number
+  pasta: 'logos' | 'banners' | 'fotos'
+}
+
+type ImagemCropState = ImagemCropConfig & {
+  file: File
+  preview: string
+  zoom: number
+  offsetX: number
+  offsetY: number
+}
+
+const IMAGEM_CROP_CONFIGS: Record<ImagemCropTipo, ImagemCropConfig> = {
+  logo: {
+    tipo: 'logo',
+    titulo: 'Ajustar logo',
+    ajuda: 'A logo será salva em 500 x 500 pixels.',
+    largura: 500,
+    altura: 500,
+    pasta: 'logos',
+  },
+  banner: {
+    tipo: 'banner',
+    titulo: 'Ajustar banner do campeonato',
+    ajuda: 'O banner será salvo em 1080 x 1440 pixels.',
+    largura: 1080,
+    altura: 1440,
+    pasta: 'banners',
+  },
+  foto: {
+    tipo: 'foto',
+    titulo: 'Ajustar foto',
+    ajuda: 'Fotos de jogadores/perfis serão salvas em 500 x 600 pixels.',
+    largura: 500,
+    altura: 600,
+    pasta: 'fotos',
+  },
+}
+
+
 const LETRAS_GRUPO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
 function extrairLetraGrupo(nome?: string | null) {
@@ -118,6 +165,125 @@ function toNullableNumber(value: string) {
   return Number.isFinite(n) ? n : null
 }
 
+
+
+function carregarImagem(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Não foi possível carregar a imagem.'))
+    img.src = src
+  })
+}
+
+async function recortarImagemParaArquivo(params: {
+  file: File
+  largura: number
+  altura: number
+  zoom: number
+  offsetX: number
+  offsetY: number
+}) {
+  const url = URL.createObjectURL(params.file)
+
+  try {
+    const img = await carregarImagem(url)
+    const canvas = document.createElement('canvas')
+    canvas.width = params.largura
+    canvas.height = params.altura
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Não foi possível preparar a imagem.')
+
+    ctx.clearRect(0, 0, params.largura, params.altura)
+    const escalaBase = Math.max(params.largura / img.naturalWidth, params.altura / img.naturalHeight)
+    const escala = escalaBase * params.zoom
+    const larguraDesenho = img.naturalWidth * escala
+    const alturaDesenho = img.naturalHeight * escala
+    const limiteX = Math.max(0, (larguraDesenho - params.largura) / 2)
+    const limiteY = Math.max(0, (alturaDesenho - params.altura) / 2)
+    const x = (params.largura - larguraDesenho) / 2 + (params.offsetX / 100) * limiteX
+    const y = (params.altura - alturaDesenho) / 2 + (params.offsetY / 100) * limiteY
+
+    ctx.drawImage(img, x, y, larguraDesenho, alturaDesenho)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((resultado) => {
+        if (resultado) resolve(resultado)
+        else reject(new Error('Não foi possível salvar a imagem recortada.'))
+      }, 'image/png')
+    })
+
+    const nomeBase = params.file.name.replace(/\.[^.]+$/, '') || 'imagem'
+    return new File([blob], `${nomeBase}-${params.largura}x${params.altura}.png`, {
+      type: 'image/png',
+    })
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+type StatusAutomaticoCampeonato = {
+  banco: string
+  label: string
+  descricao: string
+}
+
+function calcularStatusAutomaticoCampeonato(params: {
+  abertura?: string
+  encerramento?: string
+  vagas?: string
+  inscritos?: number
+}): StatusAutomaticoCampeonato {
+  const agora = new Date()
+  const abertura = params.abertura ? new Date(params.abertura) : null
+  const encerramento = params.encerramento ? new Date(params.encerramento) : null
+  const vagas = Number(params.vagas || 0)
+  const inscritos = Number(params.inscritos || 0)
+
+  const aberturaValida = abertura && !Number.isNaN(abertura.getTime())
+  const encerramentoValido = encerramento && !Number.isNaN(encerramento.getTime())
+  const lotouVagas = vagas > 0 && inscritos >= vagas
+
+  if (lotouVagas) {
+    return {
+      banco: 'inscricoes',
+      label: 'Vagas encerradas',
+      descricao: 'As inscrições ficam fechadas automaticamente porque todas as vagas foram preenchidas.',
+    }
+  }
+
+  if (aberturaValida && agora < abertura) {
+    return {
+      banco: 'rascunho',
+      label: 'Previsto',
+      descricao: 'As inscrições ainda não abriram.',
+    }
+  }
+
+  if (aberturaValida && encerramentoValido && agora >= abertura && agora <= encerramento) {
+    return {
+      banco: 'inscricoes',
+      label: 'Vagas abertas',
+      descricao: 'As inscrições estão dentro do período configurado.',
+    }
+  }
+
+  if (encerramentoValido && agora > encerramento) {
+    return {
+      banco: 'rascunho',
+      label: 'Vagas encerradas',
+      descricao: 'As inscrições ficam fechadas automaticamente porque a data de encerramento já passou.',
+    }
+  }
+
+  return {
+    banco: 'rascunho',
+    label: 'Previsto',
+    descricao: 'Informe a abertura e o encerramento das inscrições para o status abrir automaticamente.',
+  }
+}
+
 function FormCriacaoTipoInner({ tipo }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -177,6 +343,9 @@ function FormCriacaoTipoInner({ tipo }: Props) {
   const [openServidor, setOpenServidor] = useState(false)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState('')
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [bannerPreview, setBannerPreview] = useState('')
+  const [cropAberto, setCropAberto] = useState<ImagemCropState | null>(null)
 
   useEffect(() => {
     let ativo = true
@@ -270,6 +439,17 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     xtreino_tipo_inscricao: 'gratuito',
     xtreino_tem_premiacao: 'nao',
   })
+
+  const statusAutomatico = useMemo(
+    () =>
+      calcularStatusAutomaticoCampeonato({
+        abertura: form.data_abertura_inscricoes,
+        encerramento: form.data_encerramento_inscricoes,
+        vagas: isCopa ? '0' : form.vagas,
+        inscritos: 0,
+      }),
+    [form.data_abertura_inscricoes, form.data_encerramento_inscricoes, form.vagas, isCopa]
+  )
 
   const [fasesEstrutura, setFasesEstrutura] = useState<FaseEstrutura[]>([
     {
@@ -387,7 +567,58 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     )
   }
 
-  async function uploadImagemCampeonato(file: File, pasta: 'logos' | 'banners') {
+  function abrirRecorteImagem(tipoImagem: ImagemCropTipo, file: File | null) {
+    if (!file) return
+    const config = IMAGEM_CROP_CONFIGS[tipoImagem]
+    setCropAberto({
+      ...config,
+      file,
+      preview: URL.createObjectURL(file),
+      zoom: 1,
+      offsetX: 0,
+      offsetY: 0,
+    })
+  }
+
+  function fecharRecorteImagem() {
+    if (cropAberto?.preview) URL.revokeObjectURL(cropAberto.preview)
+    setCropAberto(null)
+  }
+
+  async function aplicarRecorteImagem() {
+    if (!cropAberto) return
+
+    try {
+      const arquivoRecortado = await recortarImagemParaArquivo({
+        file: cropAberto.file,
+        largura: cropAberto.largura,
+        altura: cropAberto.altura,
+        zoom: cropAberto.zoom,
+        offsetX: cropAberto.offsetX,
+        offsetY: cropAberto.offsetY,
+      })
+
+      const preview = URL.createObjectURL(arquivoRecortado)
+
+      if (cropAberto.tipo === 'logo') {
+        if (logoPreview) URL.revokeObjectURL(logoPreview)
+        setLogoFile(arquivoRecortado)
+        setLogoPreview(preview)
+      }
+
+      if (cropAberto.tipo === 'banner') {
+        if (bannerPreview) URL.revokeObjectURL(bannerPreview)
+        setBannerFile(arquivoRecortado)
+        setBannerPreview(preview)
+      }
+
+      fecharRecorteImagem()
+    } catch (err) {
+      setErro(extrairMensagemErro(err))
+    }
+  }
+
+  async function uploadImagemCampeonato(file: File, pasta: 'logos' | 'banners' | 'fotos') {
     const extensao = file.name.split('.').pop()?.toLowerCase() || 'png'
     const nomeArquivo = `${tipo}/${pasta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extensao}`
 
@@ -481,6 +712,10 @@ function FormCriacaoTipoInner({ tipo }: Props) {
         logoUrl = await uploadImagemCampeonato(logoFile, 'logos')
       }
 
+      if (bannerFile) {
+        bannerUrl = await uploadImagemCampeonato(bannerFile, 'banners')
+      }
+
       const quantidadeQuedasPayload =
         isConfronto
           ? 1
@@ -529,7 +764,7 @@ function FormCriacaoTipoInner({ tipo }: Props) {
         slug: slugify(`${form.nome}-${meta?.slug}-${Date.now()}`),
         descricao: toNullableText(form.descricao),
         edicao: String(form.edicao || '1'),
-        status: form.status || 'rascunho',
+        status: statusAutomatico.banco,
         jogo: 'Free Fire',
         logo_url: logoUrl,
         banner_url: bannerUrl,
@@ -917,8 +1152,8 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
           <form onSubmit={handleSubmit} className="p-4 md:p-5">
             <>
-            <div className="mb-6">
-              <label className="block max-w-[260px] space-y-2">
+            <div className="mb-6 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+              <div className="space-y-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Logo do {String(tituloTela || 'campeonato').toLowerCase()}
                 </span>
@@ -930,14 +1165,14 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   className="sr-only"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null
-                    setLogoFile(file)
-                    setLogoPreview(file ? URL.createObjectURL(file) : '')
+                    abrirRecorteImagem('logo', file)
+                    e.currentTarget.value = ''
                   }}
                 />
 
                 <label
                   htmlFor="logo-campeonato"
-                  className="group flex aspect-square w-[150px] cursor-pointer items-center justify-center overflow-hidden rounded-[18px] border border-zinc-200 bg-zinc-50 shadow-sm transition hover:border-[#2563eb] hover:bg-[#2563eb]/5"
+                  className="group flex aspect-square w-[170px] cursor-pointer items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50 shadow-sm transition hover:border-[#2563eb] hover:bg-[#2563eb]/5"
                 >
                   {logoPreview ? (
                     <img
@@ -952,25 +1187,97 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                         Adicionar logo
                       </span>
                       <span className="mt-1 text-[10px] font-medium text-zinc-500">
-                        PNG ou JPG
+                        500 x 500 px
                       </span>
                     </div>
                   )}
                 </label>
 
                 {logoFile ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLogoFile(null)
-                      setLogoPreview('')
-                    }}
-                    className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:text-red-500"
-                  >
-                    Remover logo
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => abrirRecorteImagem('logo', logoFile)}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2563eb] transition hover:text-blue-500"
+                    >
+                      Ajustar recorte
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoFile(null)
+                        setLogoPreview('')
+                      }}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:text-red-500"
+                    >
+                      Remover
+                    </button>
+                  </div>
                 ) : null}
-              </label>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Banner do campeonato
+                </span>
+
+                <input
+                  id="banner-campeonato"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    abrirRecorteImagem('banner', file)
+                    e.currentTarget.value = ''
+                  }}
+                />
+
+                <label
+                  htmlFor="banner-campeonato"
+                  className="group flex aspect-[3/4] min-h-[220px] w-full cursor-pointer items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50 shadow-sm transition hover:border-[#2563eb] hover:bg-[#2563eb]/5"
+                >
+                  {bannerPreview ? (
+                    <img
+                      src={bannerPreview}
+                      alt="Preview do banner"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center px-4 text-center">
+                      <Plus size={30} className="mb-2 text-[#2563eb]" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#142340]">
+                        Adicionar banner
+                      </span>
+                      <span className="mt-1 text-[10px] font-medium text-zinc-500">
+                        1080 x 1440 px
+                      </span>
+                    </div>
+                  )}
+                </label>
+
+                {bannerFile ? (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => abrirRecorteImagem('banner', bannerFile)}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#2563eb] transition hover:text-blue-500"
+                    >
+                      Ajustar recorte
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBannerFile(null)
+                        setBannerPreview('')
+                      }}
+                      className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500 transition hover:text-red-500"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -996,22 +1303,19 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                 />
               </label>
 
-              <label className="space-y-2">
+              <div className="space-y-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                   Status público
                 </span>
-                <select
-                  value={form.status}
-                  onChange={(e) => update('status', e.target.value)}
-                  className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
-                >
-                  <option value="rascunho">Rascunho</option>
-                  <option value="inscricoes">Inscrições abertas</option>
-                  <option value="em_andamento">Em andamento</option>
-                  <option value="finalizado">Finalizado</option>
-                  <option value="cancelado">Cancelado</option>
-                </select>
-              </label>
+                <div className="border border-zinc-200 bg-zinc-50 px-3 py-2">
+                  <div className="text-sm font-black uppercase tracking-[0.12em] text-[#142340]">
+                    {statusAutomatico.label}
+                  </div>
+                  <div className="mt-1 text-[11px] font-medium leading-4 text-zinc-500">
+                    {statusAutomatico.descricao}
+                  </div>
+                </div>
+              </div>
 
               <label className="space-y-2 md:col-span-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
@@ -1968,6 +2272,106 @@ function FormCriacaoTipoInner({ tipo }: Props) {
             </div>
           </form>
         </div>
+
+
+        {cropAberto ? (
+          <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/70 px-4 py-6 backdrop-blur-md">
+            <div className="w-full max-w-4xl border border-zinc-200 bg-white shadow-[0_28px_90px_rgba(0,0,0,0.35)]">
+              <div className="border-b border-zinc-200 px-5 py-4">
+                <h3 className="text-sm font-black uppercase tracking-[0.18em] text-[#142340]">
+                  {cropAberto.titulo}
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-zinc-500">{cropAberto.ajuda}</p>
+              </div>
+
+              <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1fr)_260px]">
+                <div className="flex min-h-[360px] items-center justify-center bg-zinc-100 p-4">
+                  <div
+                    className="relative max-h-[70vh] w-full max-w-[420px] overflow-hidden bg-black/5 shadow-inner"
+                    style={{ aspectRatio: `${cropAberto.largura} / ${cropAberto.altura}` }}
+                  >
+                    <img
+                      src={cropAberto.preview}
+                      alt="Imagem para recorte"
+                      className="absolute left-1/2 top-1/2 h-full w-full select-none object-cover"
+                      style={{
+                        transform: `translate(-50%, -50%) translate(${cropAberto.offsetX}%, ${cropAberto.offsetY}%) scale(${cropAberto.zoom})`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                      Zoom
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.01"
+                      value={cropAberto.zoom}
+                      onChange={(e) => setCropAberto((prev) => prev ? { ...prev, zoom: Number(e.target.value) } : prev)}
+                      className="mt-2 w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                      Mover horizontal
+                    </label>
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
+                      step="1"
+                      value={cropAberto.offsetX}
+                      onChange={(e) => setCropAberto((prev) => prev ? { ...prev, offsetX: Number(e.target.value) } : prev)}
+                      className="mt-2 w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                      Mover vertical
+                    </label>
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
+                      step="1"
+                      value={cropAberto.offsetY}
+                      onChange={(e) => setCropAberto((prev) => prev ? { ...prev, offsetY: Number(e.target.value) } : prev)}
+                      className="mt-2 w-full"
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs font-semibold leading-5 text-zinc-600">
+                    Saída final: {cropAberto.largura} x {cropAberto.altura} pixels em PNG.
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={aplicarRecorteImagem}
+                      className="h-11 bg-[#2563eb] px-4 text-xs font-black uppercase tracking-[0.16em] text-white hover:bg-blue-500"
+                    >
+                      Usar imagem ajustada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={fecharRecorteImagem}
+                      className="h-11 border border-zinc-200 bg-white px-4 text-xs font-black uppercase tracking-[0.16em] text-zinc-600 hover:bg-zinc-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {produtoraModalAberto ? (
           <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/60 px-4 py-6 backdrop-blur-md">
