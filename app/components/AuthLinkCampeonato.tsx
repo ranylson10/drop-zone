@@ -114,7 +114,7 @@ export default function AuthLinkCampeonato({
 
         <div className="relative mb-6 text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center p-1">
-            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
+            <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
           </div>
           <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-400">Drop Zone</div>
           <h1 className="mt-2 text-4xl font-black uppercase text-white">{titulo}</h1>

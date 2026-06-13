@@ -179,7 +179,7 @@ function ConfirmarContaPageInner() {
         <section className="hidden border border-slate-200 bg-white/80 p-8 lg:block">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 items-center justify-center border border-orange-200 bg-orange-50">
-              <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
+              <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
             </div>
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-600">
@@ -214,7 +214,7 @@ function ConfirmarContaPageInner() {
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-3">
               <div className="flex h-14 w-14 items-center justify-center border border-orange-200 bg-orange-50 lg:hidden">
-                <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
+                <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
               </div>
               <div>
                 <div className="flex items-center gap-2 text-blue-600">

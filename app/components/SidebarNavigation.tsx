@@ -216,7 +216,7 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
           className="group flex min-h-[118px] flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition hover:border-blue-200"
         >
           <div className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 p-2 shadow-[0_8px_20px_rgba(37,99,235,0.10)]">
-            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
+            <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
           </div>
           <div className="text-center leading-none">
             <div className="text-[17px] font-extrabold uppercase tracking-[-0.03em] text-slate-950">

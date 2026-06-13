@@ -90,7 +90,7 @@ export default function Login() {
       <AuthCard>
         <div className="relative mb-7 text-center">
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/25 bg-slate-950/28 p-3 shadow-[0_18px_50px_rgba(2,6,23,0.32)]">
-            <img src="/brand/dropzone-icon.png" alt="Drop Zone" className="h-full w-full object-contain" />
+            <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
           </div>
           <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-200">Drop Zone</div>
           <h1 className="mt-2 text-4xl font-black uppercase text-white">Entrar</h1>
