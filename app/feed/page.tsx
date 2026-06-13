@@ -127,6 +127,14 @@ function relationOne(value: any) {
   return Array.isArray(value) ? value[0] : value
 }
 
+function createUuid() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const value = Math.floor(Math.random() * 16)
+    return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16)
+  })
+}
+
 function authorKey(story: Story) {
   if (story.equipe_id) return `equipe:${story.equipe_id}`
   if (story.produtora_id) return `produtora:${story.produtora_id}`
@@ -604,7 +612,10 @@ export default function Feed() {
     if (!selectedStory || !user?.id || selectedStory.user_id === user.id || selectedIndex < 0) return
     ;(supabase as any)
       .from('story_visualizacoes')
-      .upsert({ story_id: selectedStory.id, user_id: user.id }, { onConflict: 'story_id,user_id' })
+      .upsert(
+        { id: createUuid(), story_id: selectedStory.id, user_id: user.id },
+        { onConflict: 'story_id,user_id', ignoreDuplicates: true }
+      )
       .then(({ error }: any) => {
         if (error) return
         setStats((current) => ({
@@ -638,7 +649,10 @@ export default function Feed() {
           .eq('user_id', user!.id)
       : await (supabase as any)
           .from('story_curtidas')
-          .upsert({ story_id: storyId, user_id: user!.id }, { onConflict: 'story_id,user_id' })
+          .upsert(
+            { id: createUuid(), story_id: storyId, user_id: user!.id },
+            { onConflict: 'story_id,user_id', ignoreDuplicates: true }
+          )
     setSaving(null)
     if (error) return alert(error.message)
     setStats((previous) => ({
@@ -655,6 +669,7 @@ export default function Feed() {
     if (!selectedStory || !commentText.trim() || !requireUser() || saving) return
     setSaving(`comment:${selectedStory.id}`)
     const { error } = await (supabase as any).from('story_comentarios').insert({
+      id: createUuid(),
       story_id: selectedStory.id,
       user_id: user!.id,
       comentario: commentText.trim(),
