@@ -222,7 +222,7 @@ export default function EquipePage() {
   const [equipes, setEquipes] = useState<Equipe[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [busca, setBusca] = useState("");
-  const [aba, setAba] = useState<"equipes" | "lines">("equipes");
+  const [aba, setAba] = useState<"equipes" | "lines" | "minhas">("equipes");
   const [filtroLine, setFiltroLine] = useState<"todas" | "com_equipe" | "sem_equipe">("todas");
   const [rankingEquipesExpandido, setRankingEquipesExpandido] = useState(false);
   const [modoEdicao, setModoEdicao] = useState(false);
@@ -605,7 +605,9 @@ export default function EquipePage() {
     }
   }
 
-  const equipesFiltradas = equipes.filter((equipe) => {
+  const minhasEquipes = equipes.filter((equipe) => Boolean(equipe.minha_funcao || (user?.id && equipe.criado_por === user.id)));
+  const equipesBase = aba === "minhas" ? minhasEquipes : equipes;
+  const equipesFiltradas = equipesBase.filter((equipe) => {
     const termo = busca.trim().toLowerCase();
     if (!termo) return true;
 
@@ -731,14 +733,14 @@ export default function EquipePage() {
 
         <section className="mb-4 border border-slate-200 bg-white">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setAba("equipes")}
                 className={`h-9 border px-4 text-[12px] font-black uppercase tracking-[0.1em] ${
                   aba === "equipes" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-500"
                 }`}
               >
-                Equipes
+                Todas as equipes
               </button>
               <button
                 onClick={() => setAba("lines")}
@@ -746,7 +748,15 @@ export default function EquipePage() {
                   aba === "lines" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-500"
                 }`}
               >
-                Lines
+                Todas as lines
+              </button>
+              <button
+                onClick={() => setAba("minhas")}
+                className={`h-9 border px-4 text-[12px] font-black uppercase tracking-[0.1em] ${
+                  aba === "minhas" ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-200 bg-white text-slate-500"
+                }`}
+              >
+                Minha equipe
               </button>
             </div>
 
@@ -1017,7 +1027,7 @@ export default function EquipePage() {
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                 <div className="flex items-center gap-2 text-[13px] font-semibold uppercase text-slate-800">
                   <Users size={15} className="text-sky-500" />
-                  Todas as equipes
+                  {aba === "minhas" ? "Minha equipe" : "Todas as equipes"}
                 </div>
                 <span className="text-[11px] uppercase text-zinc-500">{equipesFiltradas.length} resultado(s)</span>
               </div>
@@ -1111,7 +1121,7 @@ export default function EquipePage() {
                 </>
               ) : (
                 <div className="border-t border-slate-200 py-10 text-center text-[12px] uppercase tracking-[0.12em] text-zinc-500">
-                  Nenhuma equipe encontrada.
+                  {aba === "minhas" ? "Você ainda não possui equipe vinculada." : "Nenhuma equipe encontrada."}
                 </div>
               )}
             </section>

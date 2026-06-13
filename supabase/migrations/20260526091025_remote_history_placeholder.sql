@@ -1,0 +1,1 @@
+-- Placeholder for a migration version already applied in the remote Supabase project.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
 import {
@@ -530,31 +531,6 @@ function obterSeloReputacao(score: number) {
 }
 
 function HeaderStat({ label, value }: { label: string; value: any }) {
-  async function excluirCampeonato() {
-    const nomeCampeonato = String(camp?.nome || '').trim()
-    if (!nomeCampeonato || textoExclusao.trim() !== nomeCampeonato) return
-
-    setErroExclusao('')
-    setExcluindo(true)
-    try {
-      const { error } = await supabase.from('campeonatos').delete().eq('id', campeonatoId)
-
-      if (error) throw error
-
-      router.push('/campeonatos')
-    } catch (error: any) {
-      console.error('Erro ao excluir campeonato:', error)
-      const mensagem = String(error?.message || error?.details || '')
-      if (mensagem.toLowerCase().includes('foreign key') || mensagem.toLowerCase().includes('violates')) {
-        setErroExclusao('Nao foi possivel apagar porque existem equipes, jogos, grupos ou registros vinculados a este campeonato. Remova os vinculos antes de tentar novamente.')
-      } else {
-        setErroExclusao(mensagem || 'Nao foi possivel apagar o campeonato agora.')
-      }
-    } finally {
-      setExcluindo(false)
-    }
-  }
-
   return (
     <div className="border-l border-white/15 pl-4">
       <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/60">{label}</div>
@@ -1526,17 +1502,33 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
     }
   }, [avaliacaoResumo, denunciaMetricas])
 
+  const abasComunsCampeonato = useMemo(
+    () => [
+      'informacoes',
+      'reputacao',
+      'denuncias',
+      'equipes',
+      'jogadores',
+      'grupos',
+      'tabela',
+      'watchparty',
+      'regras',
+      'configuracoes',
+    ],
+    []
+  )
+
   useEffect(() => {
-    if (usaAbasCopa && !['informacoes', 'equipes', 'jogadores', 'grupos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
+    if (usaAbasCopa && !abasComunsCampeonato.includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
     }
 
-    if (usaAbasLiga && !['informacoes', 'equipes', 'jogadores', 'grupos', 'jogos', 'tabela', 'configuracoes'].includes(abaAtiva)) {
+    if (usaAbasLiga && ![...abasComunsCampeonato, 'jogos'].includes(abaAtiva)) {
       setAbaAtiva('informacoes')
       return
     }
-  }, [usaAbasCopa, usaAbasLiga, abaAtiva])
+  }, [usaAbasCopa, usaAbasLiga, abaAtiva, abasComunsCampeonato])
 
   useEffect(() => {
     if (!podeGerenciarCampeonato && (subAbaTabela === 'sumula' || subAbaTabela === 'config')) {
@@ -1547,20 +1539,28 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
   const abasVisiveis = usaAbasCopa
     ? [
         { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+        { id: 'reputacao', label: 'Reputacao', icon: <BadgeCheck size={14} /> },
+        { id: 'denuncias', label: 'Denuncias', icon: <ShieldAlert size={14} /> },
         { id: 'equipes', label: 'Equipes' },
         { id: 'jogadores', label: 'Jogadores' },
         { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
         { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
+        { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
+        { id: 'regras', label: 'Regras' },
         ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
       ]
     : usaAbasLiga
       ? [
           { id: 'informacoes', label: 'Avaliações', icon: <Star size={14} /> },
+          { id: 'reputacao', label: 'Reputacao', icon: <BadgeCheck size={14} /> },
+          { id: 'denuncias', label: 'Denuncias', icon: <ShieldAlert size={14} /> },
           { id: 'equipes', label: 'Equipes' },
           { id: 'jogadores', label: 'Jogadores' },
           { id: 'grupos', label: 'Grupos', icon: <Users size={14} /> },
           { id: 'jogos', label: 'Jogos', icon: <LayoutGrid size={14} /> },
           { id: 'tabela', label: 'Tabela', icon: <List size={14} /> },
+          { id: 'watchparty', label: 'Watch Party', icon: <Youtube size={14} /> },
+          { id: 'regras', label: 'Regras' },
           ...(podeGerenciarCampeonato ? [{ id: 'configuracoes', label: 'Configurações', icon: <Settings size={14} /> }] : []),
         ]
       : [
@@ -1918,6 +1918,7 @@ export default function CampeonatoDetalhePage({ tipoForcado }: { tipoForcado?: s
 
             {abaAtiva === 'denuncias' && (
               <PainelDenunciasCampeonato
+                camp={camp}
                 metricas={denunciaMetricas}
                 denuncias={denunciasPublicas}
                 reputacaoScore={reputacaoCalculada.score}
@@ -2022,13 +2023,8 @@ function PainelConfiguracoesCampeonato({
   onSalvar: (campo: string, valor: any) => Promise<void>
   onSalvarCampos: (campos: Record<string, any>) => Promise<void>
 }) {
-  const router = useRouter()
   const [salvandoCampo, setSalvandoCampo] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
-  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
-  const [textoExclusao, setTextoExclusao] = useState('')
-  const [erroExclusao, setErroExclusao] = useState('')
-  const [excluindo, setExcluindo] = useState(false)
 
   const origem = typeof window !== 'undefined' ? window.location.origin : ''
   const linkMobile = `${origem}/escala/${campeonatoId}`
@@ -2724,12 +2720,14 @@ function PainelReputacaoCampeonato({
 }
 
 function PainelDenunciasCampeonato({
+  camp,
   metricas,
   denuncias,
   reputacaoScore,
   reputacaoSelo,
   loading,
 }: {
+  camp: any
   metricas: DenunciaMetrica | null
   denuncias: DenunciaResumo[]
   reputacaoScore: number
@@ -2767,9 +2765,12 @@ function PainelDenunciasCampeonato({
               <div className="text-2xl font-black uppercase italic">Denúncias do campeonato</div>
             </div>
 
-            <button className="px-4 py-2 border-2 border-black bg-black text-[#7cfc00] text-[11px] font-black uppercase tracking-[0.2em]">
+            <Link
+              href={`/denunciar?tipo=campeonato&id=${encodeURIComponent(String(camp?.id || ''))}`}
+              className="px-4 py-2 border-2 border-black bg-black text-[#7cfc00] text-[11px] font-black uppercase tracking-[0.2em]"
+            >
               Abrir denúncia
-            </button>
+            </Link>
           </div>
 
           {loading && (

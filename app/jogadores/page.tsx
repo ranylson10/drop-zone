@@ -292,13 +292,19 @@ export default function JogadoresPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/jogadores/convites"
+              href="/jogadores"
               className="border border-zinc-300 px-4 py-2 text-[11px] font-semibold uppercase  text-[#142340] transition hover:bg-[#2563eb] hover:text-black"
             >
-              Convites
+              Jogadores
             </Link>
             <Link
-              href="/meu-perfil"
+              href="/perfil?tab=gamer"
+              className="border border-zinc-300 px-4 py-2 text-[11px] font-semibold uppercase  text-[#142340] transition hover:bg-[#2563eb] hover:text-black"
+            >
+              Meu perfil
+            </Link>
+            <Link
+              href="/perfil?tab=gamer"
               className="bg-[#2563eb] px-3 py-2 text-[11px] font-medium uppercase text-white transition hover:bg-[#1d4ed8]"
             >
               + Novo jogador

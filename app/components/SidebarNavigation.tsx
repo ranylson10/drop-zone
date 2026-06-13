@@ -44,6 +44,7 @@ type SidebarNavigationProps = {
 
 const baseItems: NavItem[] = [
   { href: '/feed', label: 'Início', icon: <Home size={18} /> },
+  { href: '/perfil', label: 'Meu Perfil', icon: <User size={18} /> },
   { href: '/equipe', label: 'Equipes', icon: <Shield size={18} /> },
   { href: '/jogadores', label: 'Jogadores', icon: <Users size={18} /> },
   { href: '/calendario', label: 'Calendario', icon: <CalendarDays size={18} /> },

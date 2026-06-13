@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { Search, Trophy, Users, Gamepad2, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import RankingTierBadge, { formatScore } from '@/app/components/RankingTierBadge'
+import { getCampeonatoHref } from '@/app/campeonatos/utils/getCampeonatoHref'
 
 type TabKey = 'jogadores' | 'equipes' | 'campeonatos' | 'tiers'
 
@@ -34,7 +35,26 @@ export default function RankingPage() {
 
       if (!jogadoresRes.error) setJogadores(jogadoresRes.data || [])
       if (!equipesRes.error) setEquipes(equipesRes.data || [])
-      if (!campeonatosRes.error) setCampeonatos(campeonatosRes.data || [])
+      if (!campeonatosRes.error) {
+        const rankingCampeonatos = campeonatosRes.data || []
+        const campeonatoIds = rankingCampeonatos.map((item: any) => item.campeonato_id).filter(Boolean)
+        const { data: campeonatosBase } = campeonatoIds.length
+          ? await supabase
+              .from('campeonatos')
+              .select('id, tipo_competicao, modelo_competicao, formato, tipo')
+              .in('id', campeonatoIds)
+          : { data: [] as any[] }
+        const tipoPorCampeonato = new Map<string, any>()
+        ;(campeonatosBase || []).forEach((camp: any) => {
+          tipoPorCampeonato.set(String(camp.id), camp)
+        })
+        setCampeonatos(
+          rankingCampeonatos.map((item: any) => ({
+            ...item,
+            campeonato: tipoPorCampeonato.get(String(item.campeonato_id)) || null,
+          }))
+        )
+      }
       setLoading(false)
     }
 
@@ -129,7 +149,13 @@ export default function RankingPage() {
                   ? `/jogadores/${item.perfil_jogo_id}`
                   : tab === 'equipes'
                     ? `/equipe/${item.equipe_id}`
-                    : `/campeonatos/${item.campeonato_id}`
+                    : getCampeonatoHref(
+                        item.campeonato_id,
+                        item.campeonato?.tipo_competicao ||
+                          item.campeonato?.modelo_competicao ||
+                          item.campeonato?.formato ||
+                          item.campeonato?.tipo
+                      )
 
               const avatar = tab === 'jogadores' ? item.foto_capa || item.foto_url : tab === 'equipes' ? item.logo_url : item.logo_url
               const nome = tab === 'jogadores' ? item.nick : item.nome

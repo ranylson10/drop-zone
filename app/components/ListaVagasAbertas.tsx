@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { Trophy, Users } from 'lucide-react'
+import { getCampeonatoHref } from '@/app/campeonatos/utils/getCampeonatoHref'
 
 export default function ListaVagasAbertas() {
  const [campeonatos, setCampeonatos] = useState<any[]>([])
@@ -52,7 +53,7 @@ export default function ListaVagasAbertas() {
  {campeonatos.map((camp) => (
  <Link 
  key={camp.id} 
- href={`/campeonatos/${camp.id}`}
+ href={getCampeonatoHref(camp.id, camp.tipo_competicao || camp.modelo_competicao || camp.tipo)}
  draggable="false"
  className="flex-none w-[280px] group relative aspect-video bg-white overflow-hidden border border-zinc-200 hover:border-[#2563eb]/50 transition-all duration-300"
  >

@@ -104,18 +104,19 @@ export default function FormRegistroManual({
  // ETAPA 1: Criar o perfil do jogo
  // (Melhor confiar na UNIQUE e tratar erro 23505 do que depender de select com RLS)
  const { data: novoPerfil, error: errPerfil } = await supabase
- .from('perfil_jogo')
+ .from('perfis_jogo')
  .insert([
  {
- nome: nome.toUpperCase(),
- game_id: String(gameId),
- funcao,
- avatar_url: avatarUrl ?? null,
- is_capitao: false,
- perfil_id: userId, // ✅ ESSENCIAL se a policy exigir
+ nick: nome.toUpperCase(),
+ uid_jogo: String(gameId),
+ funcao: funcao?.toLowerCase() || null,
+ foto_capa: avatarUrl ?? null,
+ equipe_id: equipeSelecionada,
+ user_id: userId,
+ ativo: true,
  },
  ])
- .select()
+ .select('id')
  .single()
 
  if (errPerfil) {
@@ -132,8 +133,10 @@ export default function FormRegistroManual({
  const { error: errMembro } = await supabase.from('membros_equipe').insert([
  {
  equipe_id: equipeSelecionada,
- perfil_id: novoPerfil.id,
- status: 'ativo',
+ perfil_jogo_id: novoPerfil.id,
+ user_id: userId,
+ tipo: 'membro',
+ ativo: true,
  },
  ])
 
@@ -147,9 +150,11 @@ export default function FormRegistroManual({
  {
  campeonato_id: campeonatoId,
  equipe_id: equipeSelecionada,
- perfil_id: novoPerfil.id,
- metodo_inscricao: 'manual',
- tipo_inscricao: 'titular',
+ perfil_jogo_id: novoPerfil.id,
+ nick_snapshot: nome.toUpperCase(),
+ uid_jogo_snapshot: String(gameId),
+ status: 'ativo',
+ origem: 'manual',
  },
  ])
 

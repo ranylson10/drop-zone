@@ -72,19 +72,19 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  const { data: { user } } = await supabase.auth.getUser()
  if (!user) throw new Error("Sessão expirada. Faça login novamente.")
 
- // 1. Criar o Perfil do Jogador na tabela 'perfil_jogo'
+ // 1. Criar o Perfil do Jogador na tabela atual
  const { data: novoPerfil, error: errorPerfil } = await supabase
- .from('perfil_jogo')
+ .from('perfis_jogo')
  .insert([{
- perfil_id: user.id, 
- nome: formData.nick.toUpperCase(), 
- game_id: formData.id_jogo,
- funcao: formData.funcao, 
- is_capitao: formData.is_capitao,
- avatar_url: formData.foto_url || "EMPTY", 
- bio: formData.bio
+ user_id: user.id,
+ nick: formData.nick.toUpperCase(),
+ uid_jogo: formData.id_jogo,
+ funcao: formData.funcao?.toLowerCase() || null,
+ foto_capa: formData.foto_url || null,
+ equipe_id: equipeId || null,
+ ativo: true
  }])
- .select()
+ .select('id')
  .single()
 
  if (errorPerfil) throw errorPerfil
@@ -95,8 +95,10 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  .from('membros_equipe')
  .insert([{
  equipe_id: equipeId,
- usuario_id: novoPerfil.id,
- status: 'ativo'
+ perfil_jogo_id: novoPerfil.id,
+ user_id: user.id,
+ tipo: formData.is_capitao ? 'capitao' : 'membro',
+ ativo: true
  }])
 
  if (errorVinculo) throw errorVinculo
@@ -107,13 +109,11 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  await supabase.from('jogadores_campeonato').insert([{
  campeonato_id: campeonatoId,
  equipe_id: equipeId,
- perfil_id: novoPerfil.id,
- nick_jogo: formData.nick.toUpperCase(),
- foto_url: formData.foto_url,
- funcao: formData.funcao.toLowerCase(),
- is_capitao: formData.is_capitao,
- id_jogo: formData.id_jogo,
- metodo_inscricao: 'manual'
+ perfil_jogo_id: novoPerfil.id,
+ nick_snapshot: formData.nick.toUpperCase(),
+ uid_jogo_snapshot: formData.id_jogo,
+ status: 'ativo',
+ origem: 'manual'
  }])
  }
 
@@ -134,10 +134,10 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  setPerfilEncontrado(null)
  try {
  const { data, error } = await supabase
- .from("perfil_jogo")
+ .from("perfis_jogo")
  .select("*")
  .eq("link_token", tokenInput.toUpperCase())
- .is("perfil_id", null) 
+ .is("user_id", null)
  .single()
 
  if (error || !data) {
@@ -160,9 +160,9 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  if (!user) return
 
  const { error: errorUpdate } = await supabase
- .from("perfil_jogo")
+ .from("perfis_jogo")
  .update({ 
- perfil_id: user.id,
+ user_id: user.id,
  link_token: null 
  })
  .eq("id", perfilEncontrado.id)
@@ -172,8 +172,10 @@ export default function FormCriarJogador({ equipeId, campeonatoId, onCancel, onS
  if (equipeId) {
  await supabase.from('membros_equipe').insert([{
  equipe_id: equipeId,
- usuario_id: perfilEncontrado.id,
- status: 'ativo'
+ perfil_jogo_id: perfilEncontrado.id,
+ user_id: user.id,
+ tipo: 'membro',
+ ativo: true
  }])
  }
 

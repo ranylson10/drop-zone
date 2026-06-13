@@ -16,9 +16,17 @@ import {
   Send,
   BarChart3,
   Activity,
+  Star,
+  Youtube,
+  FileText,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getTipoVisual } from '@/lib/getTipoVisual'
+import AvaliacaoCampeonato from '@/app/components/AvaliacaoCampeonato'
+import AbaJogadores from '@/app/campeonatos/[id]/components/AbaJogadores'
+import GerenciarGrupos from '@/app/campeonatos/[id]/components/GerenciarGrupos'
+import RegrasCampeonato from '@/app/campeonatos/[id]/components/RegrasCampeonato'
+import GerenciarWatchParty from '@/app/campeonatos/[id]/components/GerenciarWatchParty'
 import SumulaPartida from '@/app/campeonatos/[id]/components/SumulaPartida'
 
 type Campeonato = {
@@ -216,6 +224,8 @@ type QuedaResumo = {
   ordem: number
 }
 
+type AbaPrincipalDiario = 'horarios' | 'avaliacoes' | 'jogadores' | 'grupos' | 'watchparty' | 'regras'
+
 function formatarHora(hora?: string | null) {
   if (!hora) return '--:--'
   return String(hora).slice(0, 5)
@@ -337,6 +347,7 @@ export default function CampeonatoDiarioDetalhePage() {
 
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [grupoId, setGrupoId] = useState('')
+  const [abaPrincipal, setAbaPrincipal] = useState<AbaPrincipalDiario>('horarios')
   const [abaDireita, setAbaDireita] = useState<'equipes' | 'tabela' | 'sumula' | 'mvp'>('equipes')
   const [abaLateral, setAbaLateral] = useState<'estatisticas' | 'chat'>('estatisticas')
 
@@ -1351,6 +1362,18 @@ export default function CampeonatoDiarioDetalhePage() {
     }
   }, [grupoAtivo, slotsComEquipe])
 
+  const abasPrincipais = useMemo(
+    () => [
+      { id: 'horarios' as const, label: 'Horarios', icon: Grid3X3 },
+      { id: 'avaliacoes' as const, label: 'Avaliacoes', icon: Star },
+      { id: 'jogadores' as const, label: 'Jogadores', icon: Users },
+      { id: 'grupos' as const, label: 'Grupos', icon: Trophy },
+      { id: 'watchparty' as const, label: 'Watch Party', icon: Youtube },
+      { id: 'regras' as const, label: 'Regras', icon: FileText },
+    ],
+    []
+  )
+
   const visual = getTipoVisual('diario')
 
   if (loading) {
@@ -1429,6 +1452,33 @@ export default function CampeonatoDiarioDetalhePage() {
         </div>
       ) : null}
 
+      <div className="sticky top-[60px] z-30 mb-4 border border-zinc-200 bg-white/95 p-2 backdrop-blur-sm">
+        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto">
+          {abasPrincipais.map((aba) => {
+            const Icon = aba.icon
+            const ativa = abaPrincipal === aba.id
+
+            return (
+              <button
+                key={aba.id}
+                type="button"
+                onClick={() => setAbaPrincipal(aba.id)}
+                className={`inline-flex h-9 shrink-0 items-center justify-center gap-1.5 border px-3 text-[11px] font-medium uppercase tracking-wide transition ${
+                  ativa
+                    ? 'border-sky-600 bg-sky-600 text-white'
+                    : 'border-zinc-200 bg-white text-[#142340] hover:bg-sky-50 hover:text-sky-700'
+                }`}
+              >
+                <Icon size={14} />
+                <span className="whitespace-nowrap">{aba.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {abaPrincipal === 'horarios' ? (
+        <>
       <div className="mb-4 flex flex-wrap gap-1">
         {grupos.map((g) => (
           <button
@@ -2022,6 +2072,39 @@ export default function CampeonatoDiarioDetalhePage() {
         <div className="border border-dashed border-zinc-200 bg-white px-4 py-10 text-center text-sm text-zinc-500">
           Nenhum horário encontrado neste diário.
         </div>
+      )}
+
+        </>
+      ) : null}
+
+      {abaPrincipal === 'avaliacoes' && (
+        <section className="border border-zinc-200 bg-white p-3">
+          <AvaliacaoCampeonato campeonatoId={campeonatoId} />
+        </section>
+      )}
+
+      {abaPrincipal === 'jogadores' && (
+        <section className="border border-zinc-200 bg-white p-3">
+          <AbaJogadores campeonatoId={campeonatoId} canEdit={podeGerenciar} />
+        </section>
+      )}
+
+      {abaPrincipal === 'grupos' && (
+        <section className="border border-zinc-200 bg-white p-3">
+          <GerenciarGrupos campeonatoId={campeonatoId} canEdit={podeGerenciar} />
+        </section>
+      )}
+
+      {abaPrincipal === 'watchparty' && (
+        <section className="border border-zinc-200 bg-white p-3">
+          <GerenciarWatchParty campeonatoId={campeonatoId} />
+        </section>
+      )}
+
+      {abaPrincipal === 'regras' && (
+        <section className="border border-zinc-200 bg-white p-3">
+          <RegrasCampeonato campeonatoId={campeonatoId} />
+        </section>
       )}
 
       {slotModal && (

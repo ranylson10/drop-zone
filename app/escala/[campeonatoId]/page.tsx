@@ -24,10 +24,23 @@ import {
   UserRound,
   Users,
   XCircle,
+  Star,
+  Table2,
+  Youtube,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import FormCriarEquipe from "@/app/components/FormCriarEquipe";
 import AuthLinkCampeonato from "@/app/components/AuthLinkCampeonato";
+import SocialActions from "@/app/components/SocialActions";
+import AvaliacaoCampeonato from "@/app/components/AvaliacaoCampeonato";
+import AbaJogadores from "@/app/campeonatos/[id]/components/AbaJogadores";
+import GerenciarEquipes from "@/app/campeonatos/[id]/components/GerenciarEquipes";
+import GerenciarGrupos from "@/app/campeonatos/[id]/components/GerenciarGrupos";
+import GerenciarJogos from "@/app/campeonatos/[id]/components/GerenciarJogos";
+import GerenciarWatchParty from "@/app/campeonatos/[id]/components/GerenciarWatchParty";
+import RegrasCampeonato from "@/app/campeonatos/[id]/components/RegrasCampeonato";
+import { getCampeonatoHref } from "@/app/campeonatos/utils/getCampeonatoHref";
 
 type WhatsContato = { nome: string; numero: string };
 
@@ -167,6 +180,16 @@ type JogadorStats = {
   abates: number;
   posicaoMvp: number | null;
 };
+
+type AbaCampeonatoMobile =
+  | "resumo"
+  | "equipes"
+  | "jogadores"
+  | "grupos"
+  | "jogos"
+  | "tabela"
+  | "watchparty"
+  | "regras";
 
 const SERVIDORES_FREE_FIRE = [
   { value: "BR", label: "Brasil (BR)" },
@@ -397,6 +420,7 @@ export default function EscalaCampeonatoPage() {
   const [posicaoMvp, setPosicaoMvp] = useState<number | null>(null);
   const [tipoAcesso, setTipoAcesso] = useState<"jogador" | "equipe" | null>(null);
   const [aba, setAba] = useState<"escala" | "equipe" | "jogador">("escala");
+  const [abaCampeonato, setAbaCampeonato] = useState<AbaCampeonatoMobile>("resumo");
   const [equipeSelecionadaId, setEquipeSelecionadaId] = useState<string | null>(null);
   const [lineSelecionadaPorEquipe, setLineSelecionadaPorEquipe] = useState<Record<string, string>>({});
   const [managerBusca, setManagerBusca] = useState("");
@@ -1098,6 +1122,34 @@ export default function EscalaCampeonatoPage() {
     [campeonato],
   );
   const abertas = inscricoesAbertas(campeonato);
+  const tipoCampeonatoAtual = String(
+    campeonato?.tipo_campeonato || campeonato?.tipo || campeonato?.formato || "",
+  ).toLowerCase();
+  const isCopaMobile = tipoCampeonatoAtual.includes("copa");
+  const isLigaMobile = tipoCampeonatoAtual.includes("liga");
+  const isDiarioMobile = tipoCampeonatoAtual.includes("diario") || tipoCampeonatoAtual.includes("diario");
+  const abasCampeonatoMobile = useMemo(
+    () => [
+      { id: "resumo" as const, label: "Resumo", icon: Star },
+      { id: "equipes" as const, label: "Equipes", icon: Users },
+      { id: "jogadores" as const, label: "Jogadores", icon: Gamepad2 },
+      { id: "grupos" as const, label: "Grupos", icon: GitBranch },
+      ...(!isCopaMobile ? [{ id: "jogos" as const, label: isDiarioMobile ? "Horarios" : "Jogos", icon: CalendarDays }] : []),
+      { id: "tabela" as const, label: isLigaMobile ? "Tabela" : "Tabela/MVP", icon: Table2 },
+      { id: "watchparty" as const, label: "Watch", icon: Youtube },
+      { id: "regras" as const, label: "Regras", icon: FileText },
+    ],
+    [isCopaMobile, isDiarioMobile, isLigaMobile],
+  );
+  const hrefCampeonatoCompleto = campeonato?.id
+    ? getCampeonatoHref(campeonato.id, campeonato.tipo || campeonato.tipo_campeonato || campeonato.formato)
+    : "/campeonatos";
+
+  useEffect(() => {
+    if (!abasCampeonatoMobile.some((item) => item.id === abaCampeonato)) {
+      setAbaCampeonato("resumo");
+    }
+  }, [abaCampeonato, abasCampeonatoMobile]);
 
   useEffect(() => {
     const termo = buscaJogadorEquipe.trim();
@@ -2534,6 +2586,93 @@ export default function EscalaCampeonatoPage() {
           </div>
         </section>
         ) : null}
+
+        <section className="mt-2 overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50 p-1">
+            {abasCampeonatoMobile.map((item) => {
+              const Icone = item.icon;
+              const ativa = abaCampeonato === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setAbaCampeonato(item.id)}
+                  className={`flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3 text-[9px] font-black uppercase tracking-[0.10em] transition ${
+                    ativa
+                      ? "border-cyan-500 bg-cyan-500 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-cyan-700"
+                  }`}
+                >
+                  <Icone size={13} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="max-h-[62vh] overflow-y-auto bg-white p-2">
+            {abaCampeonato === "resumo" ? (
+              <div className="space-y-2">
+                <SocialActions
+                  entityId={campeonato.id}
+                  entityType="campeonato"
+                  variant="light"
+                  compact
+                  title="Torcida do campeonato"
+                />
+                <AvaliacaoCampeonato campeonatoId={campeonato.id} />
+              </div>
+            ) : null}
+
+            {abaCampeonato === "equipes" ? (
+              <GerenciarEquipes campeonatoId={campeonato.id} canEdit={false} />
+            ) : null}
+
+            {abaCampeonato === "jogadores" ? (
+              <AbaJogadores campeonatoId={campeonato.id} canEdit={false} />
+            ) : null}
+
+            {abaCampeonato === "grupos" ? (
+              <GerenciarGrupos campeonatoId={campeonato.id} canEdit={false} />
+            ) : null}
+
+            {abaCampeonato === "jogos" ? (
+              <GerenciarJogos campeonatoId={campeonato.id} />
+            ) : null}
+
+            {abaCampeonato === "tabela" ? (
+              <div className="space-y-2">
+                <div className="border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-600">
+                    Tabela do campeonato
+                  </p>
+                  <h2 className="mt-1 text-base font-black uppercase tracking-[-0.04em] text-slate-950">
+                    Classificacao, MVP e sumula
+                  </h2>
+                  <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">
+                    A visualizacao completa usa a tabela original do campeonato.
+                  </p>
+                </div>
+                <Link
+                  href={hrefCampeonatoCompleto}
+                  className="flex h-10 items-center justify-center gap-2 rounded-md border border-cyan-500 bg-cyan-500 text-[10px] font-black uppercase tracking-[0.12em] text-white"
+                >
+                  <Table2 size={14} />
+                  Abrir tabela completa
+                </Link>
+              </div>
+            ) : null}
+
+            {abaCampeonato === "watchparty" ? (
+              <GerenciarWatchParty campeonatoId={campeonato.id} />
+            ) : null}
+
+            {abaCampeonato === "regras" ? (
+              <RegrasCampeonato campeonatoId={campeonato.id} />
+            ) : null}
+          </div>
+        </section>
 
         {!userId ? (
           <div className="mt-3 overflow-hidden">

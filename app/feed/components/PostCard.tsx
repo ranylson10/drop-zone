@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { User, MessageSquare, Zap, Repeat2, Loader2 } from 'lucide-react'
+import { User, MessageSquare, Heart, Share2, Repeat2, Loader2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { usePerfil } from '../../contexts/PerfilContext'
 import ComentariosModal from './ComentariosModal'
@@ -206,7 +206,11 @@ export default function PostCard({
  }, [post.contagem_curtidas, post.contagem_comentarios, post.contagem_reposts])
 
  async function handleCurtida() {
- if (!user || loadingCurtida) return
+ if (!user) {
+ alert('Voce precisa estar logado para curtir.')
+ return
+ }
+ if (loadingCurtida) return
  setLoadingCurtida(true)
 
  try {
@@ -224,7 +228,10 @@ export default function PostCard({
  } else {
  const { error } = await supabase
  .from('curtidas_post')
- .insert([{ post_id: postAlvoInteracaoId, user_id: user.id }])
+ .upsert(
+ { post_id: postAlvoInteracaoId, user_id: user.id },
+ { onConflict: 'post_id,user_id' }
+ )
 
  if (error) throw error
 
@@ -240,7 +247,11 @@ export default function PostCard({
  }
 
  async function handleRemoverRepost() {
- if (!user || loadingRepost) return
+ if (!user) {
+ alert('Voce precisa estar logado para compartilhar.')
+ return
+ }
+ if (loadingRepost) return
  setLoadingRepost(true)
 
  try {
@@ -364,7 +375,13 @@ export default function PostCard({
 
  <div className="mt-3 flex items-center gap-2 text-zinc-500">
  <button
- onClick={() => setModalComentariosAberto(true)}
+ onClick={() => {
+ if (!user) {
+ alert('Voce precisa estar logado para comentar.')
+ return
+ }
+ setModalComentariosAberto(true)
+ }}
  className="inline-flex h-8 items-center gap-1.5 border border-slate-200 bg-white px-2.5 text-[10px] font-semibold uppercase transition hover:border-[#00E0FF] hover:text-[#0284C7]"
  title="Comentários"
  >
@@ -380,14 +397,18 @@ export default function PostCard({
  ? 'border-[#FDE68A] bg-[#FEF3C7] text-[#B45309]'
  : 'border-slate-200 bg-white hover:border-[#F59E0B] hover:text-[#B45309]'
  }`}
- title="Impulsionar"
+ title="Curtir"
  >
- {loadingCurtida ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} className={curtido ? 'fill-[#F59E0B]' : ''} />}
- <span>{totalCurtidas > 0 ? totalCurtidas : 'Impulso'}</span>
+ {loadingCurtida ? <Loader2 size={15} className="animate-spin" /> : <Heart size={15} className={curtido ? 'fill-[#F59E0B]' : ''} />}
+ <span>{totalCurtidas > 0 ? totalCurtidas : 'Curtir'}</span>
  </button>
 
  <button
  onClick={() => {
+ if (!user) {
+ alert('Voce precisa estar logado para compartilhar.')
+ return
+ }
  if (repostado) {
  handleRemoverRepost()
  } else {
@@ -400,10 +421,10 @@ export default function PostCard({
  ? 'border-[#BBF7D0] bg-[#DCFCE7] text-[#166534]'
  : 'border-slate-200 bg-white hover:border-[#22C55E] hover:text-[#166534]'
  }`}
- title="Repostar"
+ title="Compartilhar"
  >
- {loadingRepost ? <Loader2 size={15} className="animate-spin" /> : <Repeat2 size={15} />}
- <span>{totalReposts > 0 ? totalReposts : 'Repost'}</span>
+ {loadingRepost ? <Loader2 size={15} className="animate-spin" /> : <Share2 size={15} />}
+ <span>{totalReposts > 0 ? totalReposts : 'Compartilhar'}</span>
  </button>
  </div>
  </div>
@@ -412,7 +433,7 @@ export default function PostCard({
 
  {modalComentariosAberto && (
  <ComentariosModal
- postId={post.id}
+ postId={postAlvoInteracaoId}
  onClose={() => setModalComentariosAberto(false)}
  onComentarioCriado={async () => {
  setTotalComentarios((prev) => prev + 1)

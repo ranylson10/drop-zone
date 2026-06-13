@@ -1,0 +1,35 @@
+⨯ ./app/favicon.ico
+Processing image failed
+unable to decode image data
+
+Caused by:
+- failed to fill whole buffer
+
+
+Error: Can't resolve 'tailwindcss' in 'C:\Users\Administrator\Desktop'
+    [2m[at finishWithoutResolve (C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:565:18)][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:657:14][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m
+    [2m[at eval (eval at create (C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)][0m
+    [2m[at C:\Users\Administrator\Desktop\meu-projeto-supabase\node_modules\enhanced-resolve\lib\Resolver.js:718:5][0m {
+  details: "resolve 'tailwindcss' in 'C:\\Users\\Administrator\\Desktop'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\Administrator\\package.json (relative path: ./Desktop)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\Administrator\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\Administrator\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\Administrator\\package.json (relative path: ./node_modules/tailwindcss)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\Administrator\\node_modules\\tailwindcss doesn't exist\n" +
+    '            .css\n' +
+    "              C:\\Users\\Administrator\\node_modules\\tailwindcss.css doesn't exist\n" +
+    "        C:\\Users\\Administrator\\node_modules\\tailwindcss doesn't exist\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}

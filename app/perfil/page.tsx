@@ -9,6 +9,7 @@ import {
  useMemo,
 } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import {
  Camera,
@@ -29,14 +30,23 @@ import {
  BadgeCheck,
  Crown,
  BriefcaseBusiness,
+ Trophy,
 } from 'lucide-react'
 import Cropper from 'react-easy-crop'
 
 import TabGamer from './tabs/TabGamer'
 import TabEquipes from './tabs/TabEquipes'
+import TabLines from './tabs/TabLines'
 import TabProdutoras from './tabs/TabProdutoras'
+import TabCampeonatos from './tabs/TabCampeonatos'
 import SocialActions from '../components/SocialActions'
 import { resizeCroppedAreaToWebp } from '@/lib/imageOptimize'
+
+type PerfilTab = 'gamer' | 'equipes' | 'lines' | 'produtoras' | 'campeonatos'
+
+function isPerfilTab(value: string | null): value is PerfilTab {
+ return value === 'gamer' || value === 'equipes' || value === 'lines' || value === 'produtoras' || value === 'campeonatos'
+}
 
 type TipoCrop = 'avatar' | 'capa'
 
@@ -298,11 +308,12 @@ async function getCroppedImg(
 }
 
 function PerfilContent() {
+ const searchParams = useSearchParams()
  const fileInputAvatar = useRef<HTMLInputElement>(null)
  const fileInputCapa = useRef<HTMLInputElement>(null)
  const localidadeBoxRef = useRef<HTMLDivElement>(null)
 
- const [activeTab, setActiveTab] = useState<'gamer' | 'equipes' | 'produtoras'>('gamer')
+ const [activeTab, setActiveTab] = useState<PerfilTab>('gamer')
  const [loading, setLoading] = useState(false)
  const [uploading, setUploading] = useState(false)
  const [carregandoPerfil, setCarregandoPerfil] = useState(true)
@@ -479,8 +490,13 @@ function PerfilContent() {
  }, [])
 
  useEffect(() => {
- carregarDadosPerfil()
+  carregarDadosPerfil()
  }, [carregarDadosPerfil])
+
+ useEffect(() => {
+  const tab = searchParams.get('tab')
+  if (isPerfilTab(tab)) setActiveTab(tab)
+ }, [searchParams])
 
  const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>, tipo: TipoCrop) => {
  const arquivo = e.target.files?.[0]
@@ -889,48 +905,74 @@ function PerfilContent() {
  )}
  </section>
 
- <nav className="flex overflow-hidden border border-zinc-200 bg-white p-1">
+ <nav className="flex overflow-x-auto border border-zinc-200 bg-white p-1">
  <button
  onClick={() => setActiveTab('gamer')}
- className={`flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
+ className={`flex min-w-[132px] flex-1 items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
  activeTab === 'gamer'
  ? 'bg-[#eaf6ff] text-[#2563eb]'
  : 'text-zinc-500 hover:text-[#142340]'
  }`}
  >
  <Swords size={16} />
- Perfil gamer
+ Jogadores
  </button>
 
  <button
  onClick={() => setActiveTab('equipes')}
- className={`flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
+ className={`flex min-w-[132px] flex-1 items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
  activeTab === 'equipes'
  ? 'bg-[#eaf6ff] text-[#2563eb]'
  : 'text-zinc-500 hover:text-[#142340]'
  }`}
  >
  <UsersIcon size={16} />
- Organizações
+ Minhas equipes
+ </button>
+
+ <button
+ onClick={() => setActiveTab('lines')}
+ className={`flex min-w-[132px] flex-1 items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
+ activeTab === 'lines'
+ ? 'bg-[#eaf6ff] text-[#2563eb]'
+ : 'text-zinc-500 hover:text-[#142340]'
+ }`}
+ >
+ <UsersIcon size={16} />
+ Lines
  </button>
 
  <button
  onClick={() => setActiveTab('produtoras')}
- className={`flex-1 flex items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
+ className={`flex min-w-[132px] flex-1 items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
  activeTab === 'produtoras'
  ? 'bg-[#eaf6ff] text-[#2563eb]'
  : 'text-zinc-500 hover:text-[#142340]'
  }`}
  >
  <Building2 size={16} />
- Staff & mídia
+ Produtoras
+ </button>
+
+ <button
+ onClick={() => setActiveTab('campeonatos')}
+ className={`flex min-w-[132px] flex-1 items-center justify-center gap-2 py-3 text-[11px] font-medium uppercase tracking-wide transition-all ${
+ activeTab === 'campeonatos'
+ ? 'bg-[#eaf6ff] text-[#2563eb]'
+ : 'text-zinc-500 hover:text-[#142340]'
+ }`}
+ >
+ <Trophy size={16} />
+ Campeonatos
  </button>
  </nav>
 
  <main className="overflow-hidden border border-zinc-200 bg-white ">
  {activeTab === 'gamer' && <TabGamer />}
  {activeTab === 'equipes' && <TabEquipes />}
+ {activeTab === 'lines' && <TabLines />}
  {activeTab === 'produtoras' && <TabProdutoras />}
+ {activeTab === 'campeonatos' && <TabCampeonatos />}
  </main>
 
  {carregandoPerfil ? (

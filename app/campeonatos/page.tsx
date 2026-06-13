@@ -16,6 +16,7 @@ import {
  Users,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { usePerfil } from '@/app/contexts/PerfilContext'
 import { TIPOS_COMPETICAO, resolverTipoCompeticao } from './components/tiposCompeticao'
 import { getCampeonatoHref } from './utils/getCampeonatoHref'
 
@@ -340,6 +341,7 @@ function CampeonatoShowCard({
 }
 
 export default function ListaCampeonatos() {
+ const { produtoras } = usePerfil()
  const [campeonatos, setCampeonatos] = useState<any[]>([])
  const [loading, setLoading] = useState(true)
  const [busca, setBusca] = useState('')
@@ -350,6 +352,7 @@ export default function ListaCampeonatos() {
  const [premioMin, setPremioMin] = useState('')
  const [gratis, setGratis] = useState(false)
  const [tipoCompeticaoAtivo, setTipoCompeticaoAtivo] = useState('todos')
+ const [escopoCampeonatos, setEscopoCampeonatos] = useState<'gerais' | 'meus'>('gerais')
  const [selecionarContato, setSelecionarContato] = useState<{ camp: any; contatos: { nome: string; numero: string }[] } | null>(null)
 
  function abrirInscricao(camp: any) {
@@ -409,6 +412,10 @@ export default function ListaCampeonatos() {
  fetchCamps()
  }, [])
 
+ const produtoraIdsUsuario = useMemo(() => {
+ return new Set((produtoras || []).map((item: any) => String(item?.id || '')).filter(Boolean))
+ }, [produtoras])
+
  const campeonatosFiltrados = useMemo(() => {
  return campeonatos.filter((camp) => {
  const tipoCompeticao = resolverTipoCompeticao(camp)
@@ -429,6 +436,9 @@ export default function ListaCampeonatos() {
  const matchGratis = !gratis || Number(camp.valor_vaga || 0) === 0
  const matchTipoCompeticao =
  tipoCompeticaoAtivo === 'todos' || tipoCompeticao === tipoCompeticaoAtivo
+ const matchEscopo =
+ escopoCampeonatos === 'gerais' ||
+ produtoraIdsUsuario.has(String(camp.produtora_id || camp.produtora?.id || ''))
 
  return (
  matchBusca &&
@@ -438,11 +448,13 @@ export default function ListaCampeonatos() {
  matchCategoria &&
  matchPremio &&
  matchGratis &&
- matchTipoCompeticao
+ matchTipoCompeticao &&
+ matchEscopo
  )
  })
  }, [
  campeonatos,
+ produtoraIdsUsuario,
  busca,
  regiao,
  plataforma,
@@ -451,6 +463,7 @@ export default function ListaCampeonatos() {
  premioMin,
  gratis,
  tipoCompeticaoAtivo,
+ escopoCampeonatos,
  ])
 
  const resumo = useMemo(() => {
@@ -510,6 +523,27 @@ export default function ListaCampeonatos() {
  </p>
  </div>
 
+ <div className="flex flex-wrap items-center gap-2">
+ <button
+ onClick={() => setEscopoCampeonatos('gerais')}
+ className={`h-9 border px-4 text-[11px] font-semibold uppercase tracking-wide transition ${
+ escopoCampeonatos === 'gerais'
+ ? 'border-[#2563eb] bg-[#2563eb] text-[#142340]'
+ : 'border-zinc-200 bg-white text-zinc-600 hover:border-[#2563eb]'
+ }`}
+ >
+ Campeonatos gerais
+ </button>
+ <button
+ onClick={() => setEscopoCampeonatos('meus')}
+ className={`h-9 border px-4 text-[11px] font-semibold uppercase tracking-wide transition ${
+ escopoCampeonatos === 'meus'
+ ? 'border-[#2563eb] bg-[#2563eb] text-[#142340]'
+ : 'border-zinc-200 bg-white text-zinc-600 hover:border-[#2563eb]'
+ }`}
+ >
+ Meus campeonatos
+ </button>
  <Link
  href="/campeonatos/nova"
  className="inline-flex h-9 items-center justify-center gap-2 bg-[#2563eb] px-4 text-[12px] font-medium uppercase tracking-wide text-[#142340] transition hover:bg-[#1d4ed8]"
@@ -517,6 +551,7 @@ export default function ListaCampeonatos() {
  <Plus size={16} />
  Criar campeonato
  </Link>
+ </div>
  </section>
 
  <section className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -752,7 +787,7 @@ export default function ListaCampeonatos() {
  </div>
  ) : campeonatosFiltrados.length === 0 ? (
  <div className="py-16 text-center text-[12px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
- Nenhum campeonato encontrado.
+ {escopoCampeonatos === 'meus' ? 'Nenhum campeonato das suas produtoras encontrado.' : 'Nenhum campeonato encontrado.'}
  </div>
  ) : (
  <>

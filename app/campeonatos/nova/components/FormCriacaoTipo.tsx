@@ -30,6 +30,8 @@ type FaseEstrutura = {
   grupos: GrupoEstrutura[]
 }
 
+type WhatsContato = { nome: string; numero: string }
+
 const LETRAS_GRUPO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
 function extrairLetraGrupo(nome?: string | null) {
@@ -78,6 +80,42 @@ function formatarMoeda(valor: number) {
 function numeroSeguro(value: unknown) {
   const n = Number(value || 0)
   return Number.isFinite(n) ? n : 0
+}
+
+function limparNumeroWhatsApp(numero: string) {
+  return String(numero || '').replace(/\D/g, '')
+}
+
+function normalizarContatosWhatsApp(contatos: WhatsContato[]) {
+  return contatos
+    .slice(0, 3)
+    .map((contato) => ({
+      nome: String(contato.nome || '').trim(),
+      numero: limparNumeroWhatsApp(contato.numero),
+    }))
+    .filter((contato) => contato.nome && contato.numero)
+}
+
+function toIsoOrNull(value: string) {
+  if (!value) return null
+  const data = new Date(value)
+  if (Number.isNaN(data.getTime())) return null
+  return data.toISOString()
+}
+
+function toTimeOrNull(value: string) {
+  return String(value || '').trim() || null
+}
+
+function toNullableText(value: string) {
+  const texto = String(value || '').trim()
+  return texto ? texto : null
+}
+
+function toNullableNumber(value: string) {
+  if (String(value ?? '').trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
 }
 
 function FormCriacaoTipoInner({ tipo }: Props) {
@@ -165,13 +203,18 @@ function FormCriacaoTipoInner({ tipo }: Props) {
   const [form, setForm] = useState({
     nome: '',
     edicao: '1',
+    status: 'rascunho',
+    descricao: '',
     valor_vaga: '0',
     valor_premiacao: '0',
     vagas: isConfronto ? '16' : '12',
     plataforma: 'Mobile',
     categoria: isConfronto ? 'Squad' : 'Squad',
     regiao: 'Brasil (BR)',
-    data_inicio: '',
+    data_abertura_inscricoes: '',
+    data_encerramento_inscricoes: '',
+    horario_inicio: '',
+    fuso_horario: 'America/Belem',
     modo_jogo: isConfronto ? 'CS' : 'Battle Royale',
     quantidade_quedas: isConfronto ? '1' : '6',
     equipes_por_jogo: isConfronto ? '2' : '12',
@@ -186,6 +229,25 @@ function FormCriacaoTipoInner({ tipo }: Props) {
     pontos_por_abate: '1',
     formato_chave: 'mata_mata_simples',
     sistema_pontos_tipo: 'padrao',
+    forma_pagamento: 'pix',
+    limite_por_organizacao: '1',
+    checkin_obrigatorio: false,
+    horario_checkin: '',
+    jogadores_por_equipe: isConfronto ? '4' : '4',
+    reservas_permitidos: '1',
+    substitutos_permitidos: false,
+    idade_minima: '',
+    nivel_minimo_conta: '',
+    pro_players_proibidos: false,
+    guildas_restritas: '',
+    troca_jogadores: 'bloqueada_apos_checkin',
+    penalidade_wo: 'derrota_simples',
+    tipo_premiacao: 'dinheiro',
+    premiacao_garantida: false,
+    forma_pagamento_premiacao: 'pix',
+    prazo_pagamento_premiacao: 'ate_48h',
+    whatsapp_suporte: '',
+    whatsapp_contatos: [{ nome: '', numero: '' }] as WhatsContato[],
 
     modo_confronto: '4x4',
     estilo_confronto: 'ump',
@@ -458,30 +520,37 @@ function FormCriacaoTipoInner({ tipo }: Props) {
       const modeloCompeticaoFinal = isXtreinoContext ? 'xtreino' : modeloCompeticao
       const formatoFinal = isXtreinoContext ? 'Xtreino' : meta?.formatoBanco
 
+      const contatosWhatsApp = normalizarContatosWhatsApp(form.whatsapp_contatos)
+
       const payload: Record<string, unknown> = {
         produtora_id: produtoraResolvida.id,
         criado_por: user.id,
         nome: form.nome.trim(),
         slug: slugify(`${form.nome}-${meta?.slug}-${Date.now()}`),
+        descricao: toNullableText(form.descricao),
         edicao: String(form.edicao || '1'),
-        status: 'rascunho',
+        status: form.status || 'rascunho',
         jogo: 'Free Fire',
         logo_url: logoUrl,
         banner_url: bannerUrl,
         valor_premiacao: valorPremiacao,
         valor_vaga: valorVaga,
-        vagas: Number(form.vagas || 0),
+        vagas: isCopa ? 0 : Number(form.vagas || 0),
         moeda: 'BRL',
         plataforma: form.plataforma,
+        abrangencia: 'Brasil',
         regiao: form.regiao,
         categoria: form.categoria,
         modo_jogo: form.modo_jogo,
         formato: formatoFinal,
         tipo_competicao: tipoCompeticaoFinal,
         modelo_competicao: modeloCompeticaoFinal,
-        data_inicio: form.data_inicio
-          ? new Date(form.data_inicio).toISOString()
-          : null,
+        data_abertura_inscricoes: toIsoOrNull(form.data_abertura_inscricoes),
+        data_encerramento_inscricoes: toIsoOrNull(form.data_encerramento_inscricoes),
+        data_inicio: null,
+        data_fim: null,
+        horario_inicio: toTimeOrNull(form.horario_inicio),
+        fuso_horario: toNullableText(form.fuso_horario),
         quantidade_quedas: quantidadeQuedasPayload,
         equipes_por_jogo: equipesPorJogoPayload,
         quantidade_rodadas: Number(form.quantidade_rodadas || 0),
@@ -493,6 +562,25 @@ function FormCriacaoTipoInner({ tipo }: Props) {
           tipo === 'liga' || (isXtreino && xtreinoEhPontosCorridos)
             ? form.sistema_pontos_tipo
             : null,
+        forma_pagamento: toNullableText(form.forma_pagamento),
+        limite_por_organizacao: toNullableNumber(form.limite_por_organizacao),
+        checkin_obrigatorio: form.checkin_obrigatorio,
+        horario_checkin: form.checkin_obrigatorio ? toTimeOrNull(form.horario_checkin) : null,
+        jogadores_por_equipe: toNullableNumber(form.jogadores_por_equipe),
+        reservas_permitidos: toNullableNumber(form.reservas_permitidos),
+        substitutos_permitidos: form.substitutos_permitidos,
+        idade_minima: toNullableNumber(form.idade_minima),
+        nivel_minimo_conta: toNullableNumber(form.nivel_minimo_conta),
+        pro_players_proibidos: form.pro_players_proibidos,
+        guildas_restritas: toNullableText(form.guildas_restritas),
+        troca_jogadores: toNullableText(form.troca_jogadores),
+        penalidade_wo: toNullableText(form.penalidade_wo),
+        tipo_premiacao: toNullableText(form.tipo_premiacao),
+        premiacao_garantida: form.premiacao_garantida,
+        forma_pagamento_premiacao: toNullableText(form.forma_pagamento_premiacao),
+        prazo_pagamento_premiacao: toNullableText(form.prazo_pagamento_premiacao),
+        whatsapp_suporte: contatosWhatsApp[0]?.numero || toNullableText(form.whatsapp_suporte),
+        whatsapp_contatos: contatosWhatsApp,
       }
 
       const { data, error } = await supabase
@@ -910,24 +998,54 @@ function FormCriacaoTipoInner({ tipo }: Props) {
 
               <label className="space-y-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                  Vagas
+                  Status público
                 </span>
-                <input
-                  type="number"
-                  value={form.vagas}
-                  onChange={(e) => update('vagas', e.target.value)}
+                <select
+                  value={form.status}
+                  onChange={(e) => update('status', e.target.value)}
+                  className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                >
+                  <option value="rascunho">Rascunho</option>
+                  <option value="inscricoes">Inscrições abertas</option>
+                  <option value="em_andamento">Em andamento</option>
+                  <option value="finalizado">Finalizado</option>
+                  <option value="cancelado">Cancelado</option>
+                </select>
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Descrição
+                </span>
+                <textarea
+                  value={form.descricao}
+                  onChange={(e) => update('descricao', e.target.value)}
+                  rows={3}
+                  placeholder="Informações principais que aparecem nas listas públicas e no link de inscrição."
                   className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
 
               <label className="space-y-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                  Data de início
+                  Abertura inscrições
                 </span>
                 <input
                   type="datetime-local"
-                  value={form.data_inicio}
-                  onChange={(e) => update('data_inicio', e.target.value)}
+                  value={form.data_abertura_inscricoes}
+                  onChange={(e) => update('data_abertura_inscricoes', e.target.value)}
+                  className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Encerramento inscrições
+                </span>
+                <input
+                  type="datetime-local"
+                  value={form.data_encerramento_inscricoes}
+                  onChange={(e) => update('data_encerramento_inscricoes', e.target.value)}
                   className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
                 />
               </label>
@@ -1127,6 +1245,212 @@ function FormCriacaoTipoInner({ tipo }: Props) {
                   />
                 </label>
               )}
+            </div>
+
+            <div className="mt-6 border border-zinc-200 bg-white p-4">
+              <div className="mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
+                  Contatos
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">
+                  WhatsApps que aparecem para equipes comprarem vagas pelo link mobile.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {form.whatsapp_contatos.map((contato, index) => (
+                  <div key={`whatsapp-${index}`} className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                    <label className="space-y-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        Nome do vendedor
+                      </span>
+                      <input
+                        value={contato.nome}
+                        onChange={(event) => {
+                          const proximos = [...form.whatsapp_contatos]
+                          proximos[index] = { ...proximos[index], nome: event.target.value }
+                          update('whatsapp_contatos', proximos)
+                        }}
+                        className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                      />
+                    </label>
+
+                    <label className="space-y-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                        WhatsApp
+                      </span>
+                      <input
+                        value={contato.numero}
+                        onChange={(event) => {
+                          const proximos = [...form.whatsapp_contatos]
+                          proximos[index] = { ...proximos[index], numero: event.target.value }
+                          update('whatsapp_contatos', proximos)
+                          if (index === 0) update('whatsapp_suporte', event.target.value)
+                        }}
+                        placeholder="91999999999"
+                        className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const proximos = form.whatsapp_contatos.filter((_, i) => i !== index)
+                        update('whatsapp_contatos', proximos.length ? proximos : [{ nome: '', numero: '' }])
+                      }}
+                      className="mt-7 h-10 border border-red-200 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-red-500 hover:bg-red-50"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {form.whatsapp_contatos.length < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => update('whatsapp_contatos', [...form.whatsapp_contatos, { nome: '', numero: '' }])}
+                  className="mt-4 h-10 border border-zinc-200 bg-white px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#142340] hover:border-[#2563eb] hover:text-[#2563eb]"
+                >
+                  + Contato
+                </button>
+              ) : null}
+            </div>
+
+            <div className="mt-6 border border-zinc-200 bg-white p-4">
+              <div className="mb-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2563eb]">
+                  Regras e premiação
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-500">
+                  Campos iguais aos usados na edição do campeonato. Datas de início/fim, fases, grupos e número real de equipes ficam para a criação dos jogos/grupos.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Tipo de premiação</span>
+                  <select value={form.tipo_premiacao} onChange={(e) => update('tipo_premiacao', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="produto">Produto</option>
+                    <option value="mista">Mista</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Premiação garantida</span>
+                  <select value={form.premiacao_garantida ? 'sim' : 'nao'} onChange={(e) => update('premiacao_garantida', e.target.value === 'sim')} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Pagamento da vaga</span>
+                  <select value={form.forma_pagamento} onChange={(e) => update('forma_pagamento', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="pix">PIX</option>
+                    <option value="carteira">Carteira</option>
+                    <option value="pix_carteira">PIX + carteira</option>
+                    <option value="gratis">Grátis</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Pagamento da premiação</span>
+                  <select value={form.forma_pagamento_premiacao} onChange={(e) => update('forma_pagamento_premiacao', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="pix">PIX</option>
+                    <option value="carteira">Carteira</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Prazo pagamento premiação</span>
+                  <input value={form.prazo_pagamento_premiacao} onChange={(e) => update('prazo_pagamento_premiacao', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Check-in obrigatório</span>
+                  <select value={form.checkin_obrigatorio ? 'sim' : 'nao'} onChange={(e) => update('checkin_obrigatorio', e.target.value === 'sim')} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </label>
+
+                {form.checkin_obrigatorio ? (
+                  <label className="space-y-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Horário do check-in</span>
+                    <input type="time" value={form.horario_checkin} onChange={(e) => update('horario_checkin', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                  </label>
+                ) : null}
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Jogadores por equipe</span>
+                  <input type="number" value={form.jogadores_por_equipe} onChange={(e) => update('jogadores_por_equipe', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Reservas permitidos</span>
+                  <input type="number" value={form.reservas_permitidos} onChange={(e) => update('reservas_permitidos', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Substitutos permitidos</span>
+                  <select value={form.substitutos_permitidos ? 'sim' : 'nao'} onChange={(e) => update('substitutos_permitidos', e.target.value === 'sim')} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Idade mínima</span>
+                  <input type="number" value={form.idade_minima} onChange={(e) => update('idade_minima', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Nível mínimo da conta</span>
+                  <input type="number" value={form.nivel_minimo_conta} onChange={(e) => update('nivel_minimo_conta', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Pro players proibidos</span>
+                  <select value={form.pro_players_proibidos ? 'sim' : 'nao'} onChange={(e) => update('pro_players_proibidos', e.target.value === 'sim')} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="nao">Não</option>
+                    <option value="sim">Sim</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Troca de jogadores</span>
+                  <select value={form.troca_jogadores} onChange={(e) => update('troca_jogadores', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]">
+                    <option value="livre">Livre</option>
+                    <option value="bloqueada_apos_checkin">Bloqueada após check-in</option>
+                    <option value="bloqueada_apos_inicio">Bloqueada após início</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Penalidade WO</span>
+                  <input value={form.penalidade_wo} onChange={(e) => update('penalidade_wo', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Limite por organização</span>
+                  <input type="number" value={form.limite_por_organizacao} onChange={(e) => update('limite_por_organizacao', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Fuso horário</span>
+                  <input value={form.fuso_horario} onChange={(e) => update('fuso_horario', e.target.value)} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+
+                <label className="space-y-2 md:col-span-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Guildas restritas</span>
+                  <textarea value={form.guildas_restritas} onChange={(e) => update('guildas_restritas', e.target.value)} rows={2} className="w-full border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-[#142340] outline-none focus:border-[#2563eb]" />
+                </label>
+              </div>
             </div>
 
             </>

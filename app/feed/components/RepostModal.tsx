@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Image as ImageIcon, Loader2, Repeat2, User, X } from 'lucide-react'
+import { Image as ImageIcon, Loader2, Share2, User, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { usePerfil } from '../../contexts/PerfilContext'
 
@@ -125,17 +125,36 @@ export default function RepostModal({
  try {
  const payloadAutor = montarPayloadAutor(user.id, tipoPerfil, perfilAtivo)
 
- const { error: repostError } = await supabase.from('reposts').insert([
+ const { error: repostError } = await supabase.from('reposts').upsert(
  {
  post_id: postOriginalId,
  user_id: user.id,
  comentario: legenda.trim() || null,
  },
- ])
+ { onConflict: 'post_id,user_id' }
+ )
 
  if (repostError) throw repostError
 
- const { error: postError } = await supabase.from('posts').insert([
+ const { data: postExistente, error: buscaPostError } = await supabase
+ .from('posts')
+ .select('id')
+ .eq('post_compartilhado_id', postOriginalId)
+ .eq('autor_user_id', user.id)
+ .eq('ativo', true)
+ .maybeSingle()
+
+ if (buscaPostError) throw buscaPostError
+
+ const { error: postError } = postExistente
+ ? await supabase
+ .from('posts')
+ .update({
+ conteudo: legenda.trim() || '',
+ ...payloadAutor,
+ })
+ .eq('id', postExistente.id)
+ : await supabase.from('posts').insert([
  {
  conteudo: legenda.trim() || '',
  imagem_url: null,
@@ -172,8 +191,8 @@ export default function RepostModal({
  disabled={loading}
  className="px-6 py-1.5 font-semibold text-xs uppercase tracking-tighter transition-all hover:brightness-110 disabled:opacity-30 bg-emerald-500 text-[#142340] flex items-center gap-2"
  >
- {loading ? <Loader2 size={16} className="animate-spin" /> : <Repeat2 size={16} />}
- Repostar
+ {loading ? <Loader2 size={16} className="animate-spin" /> : <Share2 size={16} />}
+ Compartilhar
  </button>
  </div>
 

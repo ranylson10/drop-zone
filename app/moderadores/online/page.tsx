@@ -129,7 +129,7 @@ export default function ModeradoresOnlinePage() {
       let perfisData: PerfilRaw[] = []
       if (userIds.length > 0) {
         const { data } = await supabase
-          .from('perfil_jogo')
+          .from('perfis_jogo')
           .select('*')
           .in('user_id', userIds)
         perfisData = (data || []) as PerfilRaw[]

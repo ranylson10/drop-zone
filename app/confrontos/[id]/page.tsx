@@ -10,11 +10,15 @@ import {
   Trophy,
   Users,
   Star,
+  Youtube,
+  FileText,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import AvaliacaoCampeonato from '@/app/components/AvaliacaoCampeonato'
 import GerenciarEquipes from '@/app/campeonatos/[id]/components/GerenciarEquipes'
 import AbaJogadores from '@/app/campeonatos/[id]/components/AbaJogadores'
+import RegrasCampeonato from '@/app/campeonatos/[id]/components/RegrasCampeonato'
+import GerenciarWatchParty from '@/app/campeonatos/[id]/components/GerenciarWatchParty'
 import GerenciarConfrontos from './components/GerenciarConfrontos'
 import GerenciarResultadosConfronto from './components/GerenciarResultadosConfronto'
 
@@ -34,7 +38,7 @@ type Campeonato = {
   criado_por?: string | null
 }
 
-type Aba = 'avaliacoes' | 'equipes' | 'jogadores' | 'confrontos' | 'resultados'
+type Aba = 'avaliacoes' | 'equipes' | 'jogadores' | 'confrontos' | 'resultados' | 'watchparty' | 'regras'
 
 const CONFRONTO_COLOR = {
   border: 'border-red-500',
@@ -137,6 +141,8 @@ export default function Page() {
       { id: 'jogadores' as const, label: 'Jogadores', icon: Shield },
       { id: 'confrontos' as const, label: 'Confrontos', icon: Swords },
       { id: 'resultados' as const, label: 'Resultados', icon: Trophy },
+      { id: 'watchparty' as const, label: 'Watch Party', icon: Youtube },
+      { id: 'regras' as const, label: 'Regras', icon: FileText },
     ],
     []
   )
@@ -216,7 +222,7 @@ export default function Page() {
 
         <section className="mt-4 grid grid-cols-1 gap-4">
           <div className="min-w-0 border border-zinc-200 bg-white">
-            <div className="grid grid-cols-2 border-b border-zinc-200 md:grid-cols-5">
+            <div className="grid grid-cols-2 border-b border-zinc-200 md:grid-cols-7">
               {tabs.map((tab) => {
                 const Icon = tab.icon
                 const active = aba === tab.id
@@ -242,6 +248,8 @@ export default function Page() {
               {aba === 'jogadores' && <AbaJogadores campeonatoId={id} canEdit={canEdit} />}
               {aba === 'confrontos' && <GerenciarConfrontos campeonatoId={id} canEdit={canEdit} />}
               {aba === 'resultados' && <GerenciarResultadosConfronto campeonatoId={id} />}
+              {aba === 'watchparty' && <GerenciarWatchParty campeonatoId={id} />}
+              {aba === 'regras' && <RegrasCampeonato campeonatoId={id} />}
             </main>
           </div>
         </section>
