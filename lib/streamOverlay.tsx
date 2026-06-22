@@ -105,6 +105,7 @@ export type StreamOverlayConfig = {
     tableW?: number
     tableRowHeight?: number
     tableGap?: number
+    tableMaxRows?: number
     fontFamily?: string
     cardBackground?: string
     tableBackground?: string
@@ -542,27 +543,28 @@ function MvpGeralOverlayInternal({
 }) {
   const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
   const mvp = merged.mvpGeral || {}
-  const leaders = getMvpRows(rows, 8)
+  const maxMvpRows = Math.max(2, Number(mvp.tableMaxRows ?? merged.layout?.maxRows ?? 10))
+  const leaders = getMvpRows(rows, maxMvpRows)
   const top = leaders[0] || sampleRankingRows(1)[0]
-  const tableRows = fillRows(leaders.slice(1, 8), 7)
-  const primary = merged.theme?.primary || '#ef1b1b'
-  const accent = merged.theme?.accent || '#7ea51d'
+  const tableRows = fillRows(leaders.slice(1, maxMvpRows), maxMvpRows - 1)
+  const primary = merged.theme?.primary || '#d8ab4f'
+  const accent = merged.theme?.accent || '#8010c8'
   const text = merged.theme?.text || '#ffffff'
-  const darkText = merged.theme?.headerText || '#1f2933'
+  const darkText = merged.theme?.headerText || '#050505'
   const fontFamily = mvp.fontFamily || 'Impact, Haettenschweiler, Arial Narrow, sans-serif'
   const tableFont = 'Arial Black, Impact, sans-serif'
-  const photoX = Number(mvp.photoX ?? merged.brand?.x ?? 215)
-  const photoY = Number(mvp.photoY ?? merged.brand?.y ?? 110)
-  const photoW = Number(mvp.photoW ?? merged.brand?.w ?? 595)
-  const photoH = Number(mvp.photoH ?? merged.brand?.h ?? 585)
-  const infoX = Number(mvp.infoX ?? merged.brand?.textX ?? 215)
-  const infoY = Number(mvp.infoY ?? merged.brand?.textY ?? 695)
-  const infoW = Number(mvp.infoW ?? merged.brand?.textW ?? 595)
+  const photoX = Number(mvp.photoX ?? merged.brand?.x ?? 210)
+  const photoY = Number(mvp.photoY ?? merged.brand?.y ?? 56)
+  const photoW = Number(mvp.photoW ?? merged.brand?.w ?? 590)
+  const photoH = Number(mvp.photoH ?? merged.brand?.h ?? 642)
+  const infoX = Number(mvp.infoX ?? merged.brand?.textX ?? 210)
+  const infoY = Number(mvp.infoY ?? merged.brand?.textY ?? 698)
+  const infoW = Number(mvp.infoW ?? merged.brand?.textW ?? 590)
   const infoH = Number(mvp.infoH ?? merged.brand?.textH ?? 205)
   const tableX = Number(mvp.tableX ?? merged.layout?.x ?? 900)
-  const tableY = Number(mvp.tableY ?? merged.layout?.y ?? 165)
-  const tableW = Number(mvp.tableW ?? merged.layout?.w ?? 800)
-  const rowH = Number(mvp.tableRowHeight ?? merged.layout?.rowHeight ?? 74)
+  const tableY = Number(mvp.tableY ?? merged.layout?.y ?? 205)
+  const tableW = Number(mvp.tableW ?? merged.layout?.w ?? 862)
+  const rowH = Number(mvp.tableRowHeight ?? merged.layout?.rowHeight ?? 76)
   const gap = Number(mvp.tableGap ?? merged.layout?.rowGap ?? 12)
   const selectedStyle = (block: StreamOverlayBlock): CSSProperties => editable
     ? {
@@ -596,6 +598,7 @@ function MvpGeralOverlayInternal({
           width: photoW,
           height: photoH,
           background: photoUrl ? 'transparent' : 'rgba(255,255,255,0.03)',
+          border: `4px solid ${primary}`,
           ...selectedStyle('image'),
         }}
       >
@@ -618,26 +621,30 @@ function MvpGeralOverlayInternal({
           background: mvp.cardBackground || accent,
           color: text,
           fontFamily: tableFont,
+          border: `4px solid ${primary}`,
+          borderTopWidth: 0,
           ...selectedStyle('text'),
         }}
       >
         {blockLabel('INFO MVP')}
-        <div className="flex h-[42%] items-center" style={{ gap: 26, paddingLeft: 38, paddingRight: 38, borderBottom: '1px solid rgba(255,255,255,0.22)' }}>
-          <MvpLogo row={top} size={96} />
-          <div className="min-w-0 truncate text-[42px] font-black leading-none tracking-[-0.03em]">{top.nome}</div>
+        <div className="flex h-[48%] items-center" style={{ gap: 30, paddingLeft: 36, paddingRight: 36 }}>
+          <div className="flex h-[104px] w-[142px] items-center justify-center" style={{ background: primary }}>
+            <MvpLogo row={top} size={104} />
+          </div>
+          <div className="min-w-0 truncate text-[38px] font-black leading-none tracking-[-0.04em]" style={{ color: primary }}>{top.nome}</div>
         </div>
-        <div className="grid h-[58%] grid-cols-3 items-center text-center" style={{ paddingLeft: 30, paddingRight: 30 }}>
+        <div className="grid h-[52%] grid-cols-3 items-center text-center" style={{ paddingLeft: 28, paddingRight: 28 }}>
           <div>
-            <div className="text-[42px] font-black leading-none">{top.quedas}</div>
-            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">QUEDAS</div>
+            <div className="text-[34px] font-black leading-none">{top.kills}</div>
+            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">ABT</div>
           </div>
           <div style={{ borderLeft: '1px solid rgba(255,255,255,0.28)', borderRight: '1px solid rgba(255,255,255,0.28)' }}>
-            <div className="text-[42px] font-black leading-none">{formatMvpKd(top.kills, top.quedas)}</div>
-            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">K.D</div>
+            <div className="text-[34px] font-black leading-none">{formatMvpKd(top.kills, top.quedas)}</div>
+            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">K.D</div>
           </div>
           <div>
-            <div className="text-[42px] font-black leading-none">{top.kills}</div>
-            <div className="mt-2 text-[20px] font-black tracking-[0.04em]">ABATES</div>
+            <div className="text-[34px] font-black leading-none">{top.quedas}</div>
+            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">QD</div>
           </div>
         </div>
       </div>
@@ -655,10 +662,10 @@ function MvpGeralOverlayInternal({
         }}
       >
         {blockLabel('TABELA')}
-        <div className="text-center text-[82px] font-black leading-none tracking-[-0.06em]" style={{ color: darkText, marginBottom: 30 }}>
+        <div className="hidden text-center text-[82px] font-black leading-none tracking-[-0.06em]" style={{ color: darkText, marginBottom: 30 }}>
           {mvp.tableTitle || merged.title || 'LÍDERES DE ABATES'}
         </div>
-        <div className="grid items-end text-center text-[23px] font-black tracking-[0.08em]" style={{ gridTemplateColumns: '122px 1fr 88px 88px 96px 110px', color: darkText, marginBottom: 14 }}>
+        <div className="hidden items-end text-center text-[23px] font-black tracking-[0.08em]" style={{ gridTemplateColumns: '122px 1fr 88px 88px 96px 110px', color: darkText, marginBottom: 14 }}>
           <div />
           <div />
           <div>QD</div>
@@ -666,6 +673,11 @@ function MvpGeralOverlayInternal({
           <div>ABT</div>
           <div />
         </div>
+        {mvp.tableTitle ? (
+          <div className="text-center text-[64px] font-black leading-none tracking-[-0.06em]" style={{ color: primary, marginBottom: 24 }}>
+            {mvp.tableTitle}
+          </div>
+        ) : null}
         <div className="grid" style={{ gap }}>
           {tableRows.map((row, index) => {
             const rank = index + 2
@@ -675,22 +687,22 @@ function MvpGeralOverlayInternal({
                 className="grid items-center overflow-hidden font-black"
                 style={{
                   height: rowH,
-                  gridTemplateColumns: '62px 80px minmax(0, 1fr) 88px 88px 96px 110px',
-                  background: row.empty ? 'rgba(255,255,255,0.70)' : mvp.tableBackground || accent,
-                  border: `3px solid ${primary}`,
+                  gridTemplateColumns: '70px 88px minmax(0, 1fr) 100px 96px 112px',
+                  background: row.empty ? 'rgba(255,255,255,0.70)' : mvp.tableBackground || merged.theme?.rowBackground || accent,
                   color: row.empty ? 'transparent' : text,
                   fontFamily: tableFont,
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.12) inset',
                 }}
               >
-                <div className="flex h-full items-center justify-center bg-white text-[34px]" style={{ color: darkText }}>{row.empty ? '' : String(rank).padStart(2, '0')}</div>
-                <div className="flex h-full items-center justify-center bg-white"><MvpLogo row={row} size={58} /></div>
-                <div className="truncate text-[30px] tracking-[-0.04em]" style={{ paddingLeft: 24, paddingRight: 24 }}>{row.empty ? '' : row.nome}</div>
-                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : row.quedas}</div>
-                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : formatMvpKd(row.kills, row.quedas)}</div>
-                <div className="flex h-full items-center justify-center border-l border-white/45 text-[30px]">{row.empty ? '' : row.kills}</div>
-                <div className="flex h-full items-center justify-center bg-white" style={{ color: darkText }}>
+                <div className="flex h-full items-center justify-center text-[34px]" style={{ color: darkText }}>{row.empty ? '' : String(rank).padStart(2, '0')}</div>
+                <div className="flex h-full items-center justify-center"><MvpLogo row={row} size={58} /></div>
+                <div className="truncate text-[30px] tracking-[-0.04em]" style={{ paddingLeft: 22, paddingRight: 18 }}>{row.empty ? '' : row.nome}</div>
+                <div className="flex h-full items-center justify-center text-[24px]" style={{ background: primary, color: darkText }}>
                   {row.empty ? null : <MvpVariation value={row.variacao} fontSize={22} />}
                 </div>
+                <div className="flex h-full items-center justify-center border-l text-[30px]" style={{ borderColor: mvp.lineColor || primary }}>{row.empty ? '' : row.quedas}</div>
+                <div className="flex h-full items-center justify-center border-l text-[30px]" style={{ borderColor: mvp.lineColor || primary }}>{row.empty ? '' : formatMvpKd(row.kills, row.quedas)}</div>
+                <div className="flex h-full items-center justify-center border-l text-[30px]" style={{ borderColor: mvp.lineColor || primary, color: primary }}>{row.empty ? '' : row.kills}</div>
               </div>
             )
           })}

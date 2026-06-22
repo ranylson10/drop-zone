@@ -57,7 +57,7 @@ type BooyahBlock = 'texto' | 'logo' | 'equipe'
 type BooyahsDiaBlock = 'art' | 'cards'
 type VisualStyleTarget = 'primary' | 'accent' | 'background' | 'rowBackground' | 'text' | 'headerText' | 'border' | 'columnBackground' | 'columnText' | 'rowHighlightBackground' | 'rowHighlightText'
 
-const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'booyah', 'booyahs-do-dia'])
+const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'mvp-geral', 'booyah', 'booyahs-do-dia'])
 
 const blockLabels: Record<StreamOverlayBlock, string> = {
   image: 'Imagem',
@@ -1059,7 +1059,19 @@ export default function StreamOverlayEditorPage() {
     novo.brand = novo.brand || {}
     novo.layout = novo.layout || {}
 
-    if (block === 'image') {
+    if (isMvpGeralOverlay) {
+      novo.mvpGeral = novo.mvpGeral || {}
+      if (block === 'image') {
+        novo.mvpGeral.photoX = Math.round(x)
+        novo.mvpGeral.photoY = Math.round(y)
+      } else if (block === 'text') {
+        novo.mvpGeral.infoX = Math.round(x)
+        novo.mvpGeral.infoY = Math.round(y)
+      } else {
+        novo.mvpGeral.tableX = Math.round(x)
+        novo.mvpGeral.tableY = Math.round(y)
+      }
+    } else if (block === 'image') {
       novo.brand.x = Math.round(x)
       novo.brand.y = Math.round(y)
     } else if (block === 'text') {
@@ -1079,6 +1091,11 @@ export default function StreamOverlayEditorPage() {
   }
 
   function lerPosicaoBloco(block: StreamOverlayBlock) {
+    if (isMvpGeralOverlay) {
+      if (block === 'image') return { x: Number(config.mvpGeral?.photoX ?? config.brand?.x ?? 0), y: Number(config.mvpGeral?.photoY ?? config.brand?.y ?? 0) }
+      if (block === 'text') return { x: Number(config.mvpGeral?.infoX ?? config.brand?.textX ?? 0), y: Number(config.mvpGeral?.infoY ?? config.brand?.textY ?? 0) }
+      return { x: Number(config.mvpGeral?.tableX ?? config.layout?.x ?? 0), y: Number(config.mvpGeral?.tableY ?? config.layout?.y ?? 0) }
+    }
     if (block === 'image') return { x: Number(config.brand?.x || 0), y: Number(config.brand?.y || 0) }
     if (block === 'text') return { x: Number(config.brand?.textX || 0), y: Number(config.brand?.textY || 0) }
     if (block === 'infoImage') return { x: Number(config.tabelaGeral?.infoImage?.x || 0), y: Number(config.tabelaGeral?.infoImage?.y || 0) }
@@ -1674,31 +1691,60 @@ export default function StreamOverlayEditorPage() {
                           <EditorNumber label="Opacidade" value={config.tabelaGeral?.infoImage?.opacity || 100} onChange={(v) => atualizarCampo('tabelaGeral.infoImage.opacity', v)} />
                         </>
                       ) : selectedBlock === 'image' ? (
-                        <>
-                          <EditorNumber label="X" value={config.brand?.x || 0} onChange={(v) => atualizarCampo('brand.x', v)} />
-                          <EditorNumber label="Y" value={config.brand?.y || 0} onChange={(v) => atualizarCampo('brand.y', v)} />
-                          <EditorNumber label="Largura" value={config.brand?.w || 0} onChange={(v) => atualizarCampo('brand.w', v)} />
-                          <EditorNumber label="Altura" value={config.brand?.h || 0} onChange={(v) => atualizarCampo('brand.h', v)} />
-                          <EditorNumber label="Escala" value={config.brand?.scale || 100} onChange={(v) => atualizarCampo('brand.scale', v)} />
-                          <EditorNumber label="Opacidade" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
-                        </>
+                        isMvpGeralOverlay ? (
+                          <>
+                            <EditorNumber label="X" value={config.mvpGeral?.photoX ?? 210} onChange={(v) => atualizarCampo('mvpGeral.photoX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.photoY ?? 56} onChange={(v) => atualizarCampo('mvpGeral.photoY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.photoW ?? 590} onChange={(v) => atualizarCampo('mvpGeral.photoW', v)} />
+                            <EditorNumber label="Altura" value={config.mvpGeral?.photoH ?? 642} onChange={(v) => atualizarCampo('mvpGeral.photoH', v)} />
+                            <EditorNumber label="Opacidade" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
+                          </>
+                        ) : (
+                          <>
+                            <EditorNumber label="X" value={config.brand?.x || 0} onChange={(v) => atualizarCampo('brand.x', v)} />
+                            <EditorNumber label="Y" value={config.brand?.y || 0} onChange={(v) => atualizarCampo('brand.y', v)} />
+                            <EditorNumber label="Largura" value={config.brand?.w || 0} onChange={(v) => atualizarCampo('brand.w', v)} />
+                            <EditorNumber label="Altura" value={config.brand?.h || 0} onChange={(v) => atualizarCampo('brand.h', v)} />
+                            <EditorNumber label="Escala" value={config.brand?.scale || 100} onChange={(v) => atualizarCampo('brand.scale', v)} />
+                            <EditorNumber label="Opacidade" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
+                          </>
+                        )
                       ) : selectedBlock === 'text' ? (
-                        <>
-                          <EditorNumber label="X" value={config.brand?.textX || 0} onChange={(v) => atualizarCampo('brand.textX', v)} />
-                          <EditorNumber label="Y" value={config.brand?.textY || 0} onChange={(v) => atualizarCampo('brand.textY', v)} />
-                          <EditorNumber label="Largura" value={config.brand?.textW || 0} onChange={(v) => atualizarCampo('brand.textW', v)} />
-                          <EditorNumber label="Altura" value={config.brand?.textH || 0} onChange={(v) => atualizarCampo('brand.textH', v)} />
-                          <EditorNumber label="Escala" value={config.brand?.textScale || 100} onChange={(v) => atualizarCampo('brand.textScale', v)} />
-                          <EditorNumber label="Opacidade" value={config.brand?.textOpacity || 100} onChange={(v) => atualizarCampo('brand.textOpacity', v)} />
-                        </>
+                        isMvpGeralOverlay ? (
+                          <>
+                            <EditorNumber label="X" value={config.mvpGeral?.infoX ?? 210} onChange={(v) => atualizarCampo('mvpGeral.infoX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.infoY ?? 698} onChange={(v) => atualizarCampo('mvpGeral.infoY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.infoW ?? 590} onChange={(v) => atualizarCampo('mvpGeral.infoW', v)} />
+                            <EditorNumber label="Altura" value={config.mvpGeral?.infoH ?? 205} onChange={(v) => atualizarCampo('mvpGeral.infoH', v)} />
+                            <EditorNumber label="Opacidade" value={config.brand?.textOpacity || 100} onChange={(v) => atualizarCampo('brand.textOpacity', v)} />
+                          </>
+                        ) : (
+                          <>
+                            <EditorNumber label="X" value={config.brand?.textX || 0} onChange={(v) => atualizarCampo('brand.textX', v)} />
+                            <EditorNumber label="Y" value={config.brand?.textY || 0} onChange={(v) => atualizarCampo('brand.textY', v)} />
+                            <EditorNumber label="Largura" value={config.brand?.textW || 0} onChange={(v) => atualizarCampo('brand.textW', v)} />
+                            <EditorNumber label="Altura" value={config.brand?.textH || 0} onChange={(v) => atualizarCampo('brand.textH', v)} />
+                            <EditorNumber label="Escala" value={config.brand?.textScale || 100} onChange={(v) => atualizarCampo('brand.textScale', v)} />
+                            <EditorNumber label="Opacidade" value={config.brand?.textOpacity || 100} onChange={(v) => atualizarCampo('brand.textOpacity', v)} />
+                          </>
+                        )
                       ) : (
-                        <>
-                          <EditorNumber label="X" value={config.layout.x || 0} onChange={(v) => atualizarCampo('layout.x', v)} />
-                          <EditorNumber label="Y" value={config.layout.y || 0} onChange={(v) => atualizarCampo('layout.y', v)} />
-                          <EditorNumber label="Largura" value={config.layout.w || 0} onChange={(v) => atualizarCampo('layout.w', v)} />
-                          <EditorNumber label="Escala" value={config.layout.scale || 100} onChange={(v) => atualizarCampo('layout.scale', v)} />
-                          <EditorNumber label="Opacidade" value={config.layout.opacity || 100} onChange={(v) => atualizarCampo('layout.opacity', v)} />
-                        </>
+                        isMvpGeralOverlay ? (
+                          <>
+                            <EditorNumber label="X" value={config.mvpGeral?.tableX ?? 900} onChange={(v) => atualizarCampo('mvpGeral.tableX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.tableY ?? 205} onChange={(v) => atualizarCampo('mvpGeral.tableY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.tableW ?? 862} onChange={(v) => atualizarCampo('mvpGeral.tableW', v)} />
+                            <EditorNumber label="Opacidade" value={config.layout.opacity || 100} onChange={(v) => atualizarCampo('layout.opacity', v)} />
+                          </>
+                        ) : (
+                          <>
+                            <EditorNumber label="X" value={config.layout.x || 0} onChange={(v) => atualizarCampo('layout.x', v)} />
+                            <EditorNumber label="Y" value={config.layout.y || 0} onChange={(v) => atualizarCampo('layout.y', v)} />
+                            <EditorNumber label="Largura" value={config.layout.w || 0} onChange={(v) => atualizarCampo('layout.w', v)} />
+                            <EditorNumber label="Escala" value={config.layout.scale || 100} onChange={(v) => atualizarCampo('layout.scale', v)} />
+                            <EditorNumber label="Opacidade" value={config.layout.opacity || 100} onChange={(v) => atualizarCampo('layout.opacity', v)} />
+                          </>
+                        )
                       )}
                     </div>
                   ) : null}
@@ -1843,7 +1889,7 @@ export default function StreamOverlayEditorPage() {
                             <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">Imagem ate 1920x1080</span>
                             <input type="file" accept="image/*" onChange={(e) => uploadLogoCampeonato(e.target.files?.[0] || null)} className="w-full text-xs font-bold text-zinc-300 file:mr-3 file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-black file:uppercase file:text-white" />
                           </label>
-                          <EditorSelect label="Ajuste imagem" value={config.brand?.objectFit || 'contain'} onChange={(v) => atualizarCampo('brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
+                          <EditorSelect label="Ajuste imagem" value={isMvpGeralOverlay ? (config.mvpGeral?.photoFit || config.brand?.objectFit || 'cover') : (config.brand?.objectFit || 'contain')} onChange={(v) => atualizarCampo(isMvpGeralOverlay ? 'mvpGeral.photoFit' : 'brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
                           <EditorSelect label="Posicao imagem" value={config.brand?.objectPosition || 'center center'} onChange={(v) => atualizarCampo('brand.objectPosition', v)} options={objectPositionOptions} />
                           <div className="grid grid-cols-2 gap-2">
                             <button type="button" onClick={() => atualizarCampo('brand.imageEnabled', false)} className="h-9 border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-[0.14em]">
@@ -1883,7 +1929,7 @@ export default function StreamOverlayEditorPage() {
                         </>
                       ) : (
                         <>
-                          <EditorInput label={isTabelaOverlay ? 'Titulo da tabela' : 'Titulo da overlay'} value={config.title || ''} onChange={(v) => atualizarCampo('title', v)} />
+                          <EditorInput label={isMvpGeralOverlay ? 'Titulo opcional da tabela' : isTabelaOverlay ? 'Titulo da tabela' : 'Titulo da overlay'} value={isMvpGeralOverlay ? (config.mvpGeral?.tableTitle || '') : (config.title || '')} onChange={(v) => atualizarCampo(isMvpGeralOverlay ? 'mvpGeral.tableTitle' : 'title', v)} />
                         </>
                       )}
                     </div>
@@ -1977,21 +2023,29 @@ export default function StreamOverlayEditorPage() {
                           ) : null}
                         </>
                       ) : selectedBlock === 'image' ? (
-                        <EditorSelect label="Ajuste imagem" value={config.brand?.objectFit || 'contain'} onChange={(v) => atualizarCampo('brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
+                        <EditorSelect label="Ajuste imagem" value={isMvpGeralOverlay ? (config.mvpGeral?.photoFit || config.brand?.objectFit || 'cover') : (config.brand?.objectFit || 'contain')} onChange={(v) => atualizarCampo(isMvpGeralOverlay ? 'mvpGeral.photoFit' : 'brand.objectFit', v)} options={[['contain', 'Conter'], ['cover', 'Cobrir']]} />
                       ) : selectedBlock === 'text' ? (
-                        <>
-                          <EditorColor label="Cor fonte" value={config.brand?.textColor || '#ffffff'} onChange={(v) => atualizarCampo('brand.textColor', v)} />
-                          <EditorSelect label="Alinhamento" value={config.brand?.align || 'left'} onChange={(v) => atualizarCampo('brand.align', v)} options={[['left', 'Esquerda'], ['center', 'Centro'], ['right', 'Direita']]} />
-                          <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Fonte nome" value={config.brand?.nameSize || 54} onChange={(v) => atualizarCampo('brand.nameSize', v)} />
-                            <EditorNumber label="Fonte titulo" value={config.brand?.titleSize || 24} onChange={(v) => atualizarCampo('brand.titleSize', v)} />
-                            <EditorNumber label="Peso" value={config.brand?.fontWeight || 900} onChange={(v) => atualizarCampo('brand.fontWeight', v)} />
-                            <label className="flex items-end gap-2 pb-2 text-xs font-bold uppercase text-zinc-200">
-                              <input type="checkbox" checked={Boolean(config.brand?.italic)} onChange={(e) => atualizarCampo('brand.italic', e.target.checked)} />
-                              Italico
-                            </label>
-                          </div>
-                        </>
+                        isMvpGeralOverlay ? (
+                          <>
+                            <EditorBackgroundMode label="Fundo info MVP" value={config.mvpGeral?.cardBackground || config.theme?.accent || '#8010c8'} onChange={(v) => atualizarCampo('mvpGeral.cardBackground', v)} onImage={(file) => uploadBackgroundImage('mvpGeral.cardBackground', file)} />
+                            <EditorColor label="Texto info MVP" value={config.theme?.text || '#ffffff'} onChange={(v) => atualizarCampo('theme.text', v)} />
+                            <EditorColor label="Destaque info MVP" value={config.theme?.primary || '#d8ab4f'} onChange={(v) => atualizarCampo('theme.primary', v)} />
+                          </>
+                        ) : (
+                          <>
+                            <EditorColor label="Cor fonte" value={config.brand?.textColor || '#ffffff'} onChange={(v) => atualizarCampo('brand.textColor', v)} />
+                            <EditorSelect label="Alinhamento" value={config.brand?.align || 'left'} onChange={(v) => atualizarCampo('brand.align', v)} options={[['left', 'Esquerda'], ['center', 'Centro'], ['right', 'Direita']]} />
+                            <div className="grid grid-cols-2 gap-3">
+                              <EditorNumber label="Fonte nome" value={config.brand?.nameSize || 54} onChange={(v) => atualizarCampo('brand.nameSize', v)} />
+                              <EditorNumber label="Fonte titulo" value={config.brand?.titleSize || 24} onChange={(v) => atualizarCampo('brand.titleSize', v)} />
+                              <EditorNumber label="Peso" value={config.brand?.fontWeight || 900} onChange={(v) => atualizarCampo('brand.fontWeight', v)} />
+                              <label className="flex items-end gap-2 pb-2 text-xs font-bold uppercase text-zinc-200">
+                                <input type="checkbox" checked={Boolean(config.brand?.italic)} onChange={(e) => atualizarCampo('brand.italic', e.target.checked)} />
+                                Italico
+                              </label>
+                            </div>
+                          </>
+                        )
                       ) : (
                         <>
                           <VisualStyleSelector
@@ -2022,7 +2076,10 @@ export default function StreamOverlayEditorPage() {
                             <EditorBackgroundMode label="Fundo da tabela" value={config.theme.background || ''} onChange={(v) => atualizarCampo('theme.background', v)} onImage={(file) => uploadBackgroundImage('theme.background', file)} />
                           ) : null}
                           {selectedVisualStyle === 'rowBackground' ? (
-                            <EditorBackgroundMode label="Fundo unico das linhas" value={config.theme.rowBackground || ''} onChange={atualizarFundoUnicoLinhas} onImage={uploadFundoUnicoLinhas} />
+                            <EditorBackgroundMode label="Fundo unico das linhas" value={isMvpGeralOverlay ? (config.mvpGeral?.tableBackground || config.theme.rowBackground || '') : (config.theme.rowBackground || '')} onChange={(v) => {
+                              if (isMvpGeralOverlay) atualizarCampo('mvpGeral.tableBackground', v)
+                              else atualizarFundoUnicoLinhas(v)
+                            }} onImage={isMvpGeralOverlay ? (file) => uploadBackgroundImage('mvpGeral.tableBackground', file) : uploadFundoUnicoLinhas} />
                           ) : null}
                           {selectedVisualStyle === 'columnBackground' ? (
                             <div className="space-y-3">
@@ -2131,6 +2188,26 @@ export default function StreamOverlayEditorPage() {
                             <EditorNumber label="Largura card" value={Number(booyahsDiaConfig.cardWidth ?? 292)} onChange={(v) => atualizarCampo('booyahsDia.cardWidth', v)} />
                             <EditorNumber label="Altura card" value={Number(booyahsDiaConfig.cardHeight ?? 470)} onChange={(v) => atualizarCampo('booyahsDia.cardHeight', v)} />
                             <EditorNumber label="Logo" value={Number(booyahsDiaConfig.logoSize ?? 150)} onChange={(v) => atualizarCampo('booyahsDia.logoSize', v)} />
+                          </div>
+                        )
+                      ) : isMvpGeralOverlay ? (
+                        selectedBlock !== 'table' ? (
+                          <div className="text-xs font-semibold text-zinc-400">Selecione o bloco Tabela para editar linhas e espacamento do ranking 02-10.</div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            <EditorNumber label="Top total" value={config.mvpGeral?.tableMaxRows ?? config.layout?.maxRows ?? 10} onChange={(v) => atualizarConfigLocal((novo) => {
+                              const maxRows = Math.max(2, v)
+                              novo.mvpGeral = novo.mvpGeral || {}
+                              novo.layout = novo.layout || {}
+                              novo.mvpGeral.tableMaxRows = maxRows
+                              novo.layout.maxRows = maxRows
+                              novo.layout.rowsPerBlock = Math.max(1, maxRows - 1)
+                              return novo
+                            })} />
+                            <EditorNumber label="Altura linha" value={config.mvpGeral?.tableRowHeight ?? config.layout?.rowHeight ?? 76} onChange={(v) => atualizarCampo('mvpGeral.tableRowHeight', v)} />
+                            <EditorNumber label="Espaco linhas" value={config.mvpGeral?.tableGap ?? config.layout?.rowGap ?? 12} onChange={(v) => atualizarCampo('mvpGeral.tableGap', v)} />
+                            <EditorNumber label="Fonte base" value={config.layout?.fontSize || 30} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
+                            <EditorNumber label="Logo" value={config.layout?.logoSize || 58} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
                           </div>
                         )
                       ) : !isTabelaOverlay ? (
