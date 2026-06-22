@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ChevronRight, Loader2, Lock, Mail, ShieldCheck, User, UserPlus } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Facebook, Loader2, Lock, Mail, ShieldCheck, User, UserPlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedirect'
 
@@ -45,6 +45,7 @@ export default function Cadastro() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [redirectTo, setRedirectTo] = useState('/perfil')
@@ -57,6 +58,26 @@ export default function Cadastro() {
       window.localStorage.setItem('dropzone_auth_redirect', destinoSeguro)
     }
   }, [])
+
+
+  async function handleSocialCadastro(provider: 'google' | 'facebook' | 'discord') {
+    try {
+      setMessage(null)
+      setError(null)
+      setSocialLoading(provider)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('dropzone_auth_redirect', redirectTo)
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+      if (error) throw error
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao criar conta com login social.')
+      setSocialLoading(null)
+    }
+  }
 
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault()
@@ -114,6 +135,25 @@ export default function Cadastro() {
         <div className="relative mb-4 rounded-xl border border-white/20 bg-white/10 p-3">
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><ShieldCheck size={15} /> Codigo no e-mail</div>
           <p className="mt-1 text-xs font-semibold leading-5 text-white/70">Depois do cadastro voce recebe um codigo de 6 digitos para ativar a conta.</p>
+        </div>
+
+
+        <div className="relative mb-5 space-y-3">
+          <button type="button" onClick={() => handleSocialCadastro('google')} disabled={!!socialLoading || loading} className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/25 bg-white px-4 text-xs font-black uppercase tracking-[0.14em] text-slate-900 shadow-[0_14px_32px_rgba(2,6,23,0.18)] transition hover:bg-orange-100 disabled:opacity-50">
+            {socialLoading === 'google' ? <Loader2 className="animate-spin" size={17} /> : <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-950 text-white">G</span>}
+            Criar com Google
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => handleSocialCadastro('facebook')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+              {socialLoading === 'facebook' ? <Loader2 className="animate-spin" size={15} /> : <Facebook size={15} />}
+              Facebook
+            </button>
+            <button type="button" onClick={() => handleSocialCadastro('discord')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+              {socialLoading === 'discord' ? <Loader2 className="animate-spin" size={15} /> : <span className="text-sm font-black">◈</span>}
+              Discord
+            </button>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/60"><span className="h-px flex-1 bg-white/20" /> ou email <span className="h-px flex-1 bg-white/20" /></div>
         </div>
 
         <form onSubmit={handleCadastro} className="space-y-4">

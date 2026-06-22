@@ -168,6 +168,7 @@ export type StreamOverlayConfig = {
     lineByLine?: boolean
     lineDelay?: number
     testKey?: number
+    enterPx?: number
   }
 }
 
@@ -176,6 +177,7 @@ export type RankingRow = {
   nome: string
   tag: string | null
   logo: string | null
+  playerPhoto?: string | null
   grupo: string | null
   quedas: number
   booyahs: number
@@ -501,11 +503,11 @@ function getMvpRows(rows: RankingRow[], maxRows = 8) {
 
 function MvpVariation({ value, fontSize = 26 }: { value?: number | null; fontSize?: number }) {
   const variation = Number(value || 0)
-  const color = variation > 0 ? '#16a34a' : variation < 0 ? '#dc2626' : '#f97316'
+  const color = variation > 0 ? '#16a34a' : variation < 0 ? '#c00000' : '#dc922c'
   const label = variation > 0 ? `+${variation}` : `${variation}`
   const Icon = variation > 0 ? ArrowUp : variation < 0 ? ArrowDown : Minus
   return (
-    <div className="flex items-center justify-center gap-3 font-black" style={{ color, fontSize }}>
+    <div className="flex items-center justify-center gap-2 font-black" style={{ color, fontSize }}>
       <span>{label}</span>
       <Icon size={Math.max(18, fontSize * 0.82)} strokeWidth={4} />
     </div>
@@ -543,7 +545,7 @@ function MvpGeralOverlayInternal({
 }) {
   const merged = mergeOverlayConfig(defaultTabelaGeralConfig, config)
   const mvp = merged.mvpGeral || {}
-  const maxMvpRows = Math.max(2, Number(mvp.tableMaxRows ?? merged.layout?.maxRows ?? 10))
+  const maxMvpRows = Math.max(2, Number(mvp.tableMaxRows ?? merged.layout?.maxRows ?? 8))
   const leaders = getMvpRows(rows, maxMvpRows)
   const top = leaders[0] || sampleRankingRows(1)[0]
   const tableRows = fillRows(leaders.slice(1, maxMvpRows), maxMvpRows - 1)
@@ -553,19 +555,25 @@ function MvpGeralOverlayInternal({
   const darkText = merged.theme?.headerText || '#050505'
   const fontFamily = mvp.fontFamily || 'Impact, Haettenschweiler, Arial Narrow, sans-serif'
   const tableFont = 'Arial Black, Impact, sans-serif'
-  const photoX = Number(mvp.photoX ?? merged.brand?.x ?? 210)
-  const photoY = Number(mvp.photoY ?? merged.brand?.y ?? 56)
-  const photoW = Number(mvp.photoW ?? merged.brand?.w ?? 590)
-  const photoH = Number(mvp.photoH ?? merged.brand?.h ?? 642)
-  const infoX = Number(mvp.infoX ?? merged.brand?.textX ?? 210)
-  const infoY = Number(mvp.infoY ?? merged.brand?.textY ?? 698)
-  const infoW = Number(mvp.infoW ?? merged.brand?.textW ?? 590)
-  const infoH = Number(mvp.infoH ?? merged.brand?.textH ?? 205)
-  const tableX = Number(mvp.tableX ?? merged.layout?.x ?? 900)
-  const tableY = Number(mvp.tableY ?? merged.layout?.y ?? 205)
-  const tableW = Number(mvp.tableW ?? merged.layout?.w ?? 862)
-  const rowH = Number(mvp.tableRowHeight ?? merged.layout?.rowHeight ?? 76)
-  const gap = Number(mvp.tableGap ?? merged.layout?.rowGap ?? 12)
+  const photoX = Number(mvp.photoX ?? merged.brand?.x ?? 50)
+  const photoY = Number(mvp.photoY ?? merged.brand?.y ?? 120)
+  const photoW = Number(mvp.photoW ?? merged.brand?.w ?? 600)
+  const photoH = Number(mvp.photoH ?? merged.brand?.h ?? 850)
+  const infoX = Number(mvp.infoX ?? merged.brand?.textX ?? photoX)
+  const infoY = Number(mvp.infoY ?? merged.brand?.textY ?? photoY + 722)
+  const infoW = Number(mvp.infoW ?? merged.brand?.textW ?? 600)
+  const infoH = Number(mvp.infoH ?? merged.brand?.textH ?? 128)
+  const tableX = Number(mvp.tableX ?? merged.layout?.x ?? 730)
+  const tableY = Number(mvp.tableY ?? merged.layout?.y ?? 260)
+  const tableW = Number(mvp.tableW ?? merged.layout?.w ?? 1140)
+  const rowH = Number(mvp.tableRowHeight ?? merged.layout?.rowHeight ?? 86)
+  const gap = Number(mvp.tableGap ?? merged.layout?.rowGap ?? 10)
+  const opacity = Math.max(0, Math.min(100, Number(merged.layout?.opacity ?? 100))) / 100
+  const rawTransitionName = merged.animation?.transition || merged.animation?.enter || 'slide-up'
+  const transitionName = rawTransitionName === 'slide' ? 'slide-up' : rawTransitionName
+  const transitionDuration = Math.max(100, Number(merged.animation?.duration || 650))
+  const enterDistance = Number(merged.animation?.enterPx ?? 160)
+  const animationName = `mvp-enter-${String(transitionName).replace(/[^a-z0-9-]/gi, '')}`
   const selectedStyle = (block: StreamOverlayBlock): CSSProperties => editable
     ? {
         cursor: 'pointer',
@@ -585,10 +593,27 @@ function MvpGeralOverlayInternal({
     onSelectBlock?.(block)
     onStartDrag?.(block, event)
   }
-  const photoUrl = mvp.photoUrl || merged.brand?.logoDataUrl || top.logo || ''
+  const photoUrl = mvp.photoUrl || top.playerPhoto || merged.brand?.logoDataUrl || ''
+  const logoUrl = top.logo || ''
 
   return (
     <div className="absolute left-0 top-0 h-[1080px] w-[1920px] origin-top-left overflow-hidden bg-transparent" style={{ transform: previewScale ? `scale(${previewScale})` : undefined }}>
+      <style>{`
+        @keyframes mvp-enter-fade { from { opacity: 0; } to { opacity: ${opacity}; } }
+        @keyframes mvp-enter-slide-up { from { opacity: 0; transform: translateY(${enterDistance}px); } to { opacity: ${opacity}; transform: translateY(0); } }
+        @keyframes mvp-enter-slide-down { from { opacity: 0; transform: translateY(-${enterDistance}px); } to { opacity: ${opacity}; transform: translateY(0); } }
+        @keyframes mvp-enter-slide-left { from { opacity: 0; transform: translateX(${enterDistance}px); } to { opacity: ${opacity}; transform: translateX(0); } }
+        @keyframes mvp-enter-slide-right { from { opacity: 0; transform: translateX(-${enterDistance}px); } to { opacity: ${opacity}; transform: translateX(0); } }
+        @keyframes mvp-enter-zoom { from { opacity: 0; transform: scale(.96); } to { opacity: ${opacity}; transform: scale(1); } }
+      `}</style>
+      <div
+        key={`mvp-${merged.animation?.testKey || 0}`}
+        className="absolute inset-0"
+        style={{
+          opacity,
+          animation: `${animationName} ${transitionDuration}ms ease-out both`,
+        }}
+      >
       <div
         className="absolute overflow-hidden"
         onPointerDown={selectBlock('image')}
@@ -597,14 +622,13 @@ function MvpGeralOverlayInternal({
           top: photoY,
           width: photoW,
           height: photoH,
-          background: photoUrl ? 'transparent' : 'rgba(255,255,255,0.03)',
-          border: `4px solid ${primary}`,
+          background: photoUrl ? '#606059' : 'rgba(255,255,255,0.03)',
           ...selectedStyle('image'),
         }}
       >
         {blockLabel('FOTO MVP')}
         {photoUrl ? (
-          <img src={photoUrl} alt={top.nome} className="h-full w-full" style={{ objectFit: mvp.photoFit || merged.brand?.objectFit || 'cover', objectPosition: merged.brand?.objectPosition || 'center center' }} />
+          <img src={photoUrl} alt={top.nome} className="h-full w-full" style={{ objectFit: mvp.photoFit || merged.brand?.objectFit || 'cover', objectPosition: merged.brand?.objectPosition || 'center bottom' }} />
         ) : editable ? (
           <div className="flex h-full w-full items-center justify-center text-[34px] font-black uppercase tracking-[0.16em] text-white/35">foto mvp</div>
         ) : null}
@@ -621,30 +645,21 @@ function MvpGeralOverlayInternal({
           background: mvp.cardBackground || accent,
           color: text,
           fontFamily: tableFont,
-          border: `4px solid ${primary}`,
-          borderTopWidth: 0,
           ...selectedStyle('text'),
         }}
       >
         {blockLabel('INFO MVP')}
-        <div className="flex h-[48%] items-center" style={{ gap: 30, paddingLeft: 36, paddingRight: 36 }}>
-          <div className="flex h-[104px] w-[142px] items-center justify-center" style={{ background: primary }}>
-            <MvpLogo row={top} size={104} />
+        <div className="relative h-full">
+          <div className="absolute flex items-center justify-center overflow-hidden" style={{ left: 22, top: 18, width: 92, height: 92, background: '#606060' }}>
+            {logoUrl ? <img src={logoUrl} alt={top.tag || top.nome} className="h-full w-full object-contain" /> : <MvpLogo row={top} size={92} />}
           </div>
-          <div className="min-w-0 truncate text-[38px] font-black leading-none tracking-[-0.04em]" style={{ color: primary }}>{top.nome}</div>
-        </div>
-        <div className="grid h-[52%] grid-cols-3 items-center text-center" style={{ paddingLeft: 28, paddingRight: 28 }}>
-          <div>
-            <div className="text-[34px] font-black leading-none">{top.kills}</div>
-            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">ABT</div>
+          <div className="absolute truncate text-[35px] font-black leading-none uppercase" style={{ left: 170, top: 30, maxWidth: Math.max(40, infoW - 190), color: primary }}>
+            {top.nome}
           </div>
-          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.28)', borderRight: '1px solid rgba(255,255,255,0.28)' }}>
-            <div className="text-[34px] font-black leading-none">{formatMvpKd(top.kills, top.quedas)}</div>
-            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">K.D</div>
-          </div>
-          <div>
-            <div className="text-[34px] font-black leading-none">{top.quedas}</div>
-            <div className="mt-2 text-[28px] font-black tracking-[0.02em]">QD</div>
+          <div className="absolute flex items-center gap-[70px] text-[30px] font-black leading-none uppercase" style={{ left: 120, top: 86, color: text }}>
+            <span>{top.kills} ABT</span>
+            <span>{formatMvpKd(top.kills, top.quedas)} K.D</span>
+            <span>{top.quedas} QD</span>
           </div>
         </div>
       </div>
@@ -687,7 +702,7 @@ function MvpGeralOverlayInternal({
                 className="grid items-center overflow-hidden font-black"
                 style={{
                   height: rowH,
-                  gridTemplateColumns: '70px 88px minmax(0, 1fr) 100px 96px 112px',
+                  gridTemplateColumns: '70px 74px minmax(0, 1fr) 94px 90px 90px 100px',
                   background: row.empty ? 'rgba(255,255,255,0.70)' : mvp.tableBackground || merged.theme?.rowBackground || accent,
                   color: row.empty ? 'transparent' : text,
                   fontFamily: tableFont,
@@ -697,7 +712,7 @@ function MvpGeralOverlayInternal({
                 <div className="flex h-full items-center justify-center text-[34px]" style={{ color: darkText }}>{row.empty ? '' : String(rank).padStart(2, '0')}</div>
                 <div className="flex h-full items-center justify-center"><MvpLogo row={row} size={58} /></div>
                 <div className="truncate text-[30px] tracking-[-0.04em]" style={{ paddingLeft: 22, paddingRight: 18 }}>{row.empty ? '' : row.nome}</div>
-                <div className="flex h-full items-center justify-center text-[24px]" style={{ background: primary, color: darkText }}>
+                <div className="flex h-full items-center justify-center text-[22px]" style={{ background: primary, color: darkText }}>
                   {row.empty ? null : <MvpVariation value={row.variacao} fontSize={22} />}
                 </div>
                 <div className="flex h-full items-center justify-center border-l text-[30px]" style={{ borderColor: mvp.lineColor || primary }}>{row.empty ? '' : row.quedas}</div>
@@ -707,6 +722,7 @@ function MvpGeralOverlayInternal({
             )
           })}
         </div>
+      </div>
       </div>
     </div>
   )

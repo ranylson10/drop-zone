@@ -489,6 +489,109 @@ async function carregarRankingTabelaGeral(campeonatoId: string): Promise<Ranking
   return montarRankingComVariacao(equipesLista, gruposMap, publicToCampeonato, resultados)
 }
 
+async function carregarRankingMvpEditor(campeonatoId: string): Promise<RankingRow[]> {
+  const [{ data: equipes }, { data: grupos }, { data: resultados }] = await Promise.all([
+    supabase
+      .from('campeonato_equipes')
+      .select(`
+        id,
+        equipe_id,
+        equipe_avulsa_id,
+        nome_exibicao,
+        grupo_id,
+        equipes ( nome, tag, logo_url ),
+        equipe_avulsa:equipes_avulsas_campeonato ( nome, tag, logo_url )
+      `)
+      .eq('campeonato_id', campeonatoId)
+      .order('created_at', { ascending: true }),
+    supabase.from('campeonato_grupos').select('id, nome').eq('campeonato_id', campeonatoId),
+    supabase
+      .from('resultados_mvp')
+      .select('jogador_campeonato_id, perfil_jogo_id, equipe_id, campeonato_equipe_id, equipe_avulsa_id, nick_snapshot, uid_jogo_snapshot, abates, partida_id, jogo_id, mapa')
+      .eq('campeonato_id', campeonatoId),
+  ])
+
+  const equipesLista = (equipes || []) as CampeonatoEquipeRow[]
+  const gruposMap = new Map(((grupos || []) as any[]).map((grupo) => [textoSeguro(grupo.id), textoSeguro(grupo.nome, '-')]))
+  const equipesMap = new Map<string, CampeonatoEquipeRow>()
+  equipesLista.forEach((equipe) => {
+    ;[equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id].map((item) => textoSeguro(item)).filter(Boolean).forEach((ref) => equipesMap.set(ref, equipe))
+  })
+  const rows = (resultados || []) as any[]
+  const jogadorIds = Array.from(new Set(rows.map((row) => textoSeguro(row.jogador_campeonato_id)).filter(Boolean)))
+  const { data: jogadores } = jogadorIds.length > 0
+    ? await supabase.from('jogadores_campeonato').select('id, perfil_jogo_id, equipe_id, campeonato_equipe_id, equipe_avulsa_id, jogador_avulso_id').in('id', jogadorIds)
+    : { data: [] }
+  const jogadoresMap = new Map(((jogadores || []) as any[]).map((row) => [String(row.id), row]))
+  const avulsoIds = Array.from(new Set(((jogadores || []) as any[]).map((row) => textoSeguro(row.jogador_avulso_id)).filter(Boolean)))
+  const { data: avulsos } = avulsoIds.length > 0
+    ? await supabase.from('jogadores_avulsos_campeonato').select('id, nick, uid_jogo, foto_url, equipe_id, equipe_avulsa_id').in('id', avulsoIds)
+    : { data: [] }
+  const avulsosMap = new Map(((avulsos || []) as any[]).map((row) => [String(row.id), row]))
+  const perfilIds = Array.from(new Set(rows.map((row) => {
+    const jogador = row.jogador_campeonato_id ? jogadoresMap.get(String(row.jogador_campeonato_id)) : null
+    return textoSeguro(row.perfil_jogo_id || jogador?.perfil_jogo_id)
+  }).filter(Boolean)))
+  const uids = Array.from(new Set(rows.map((row) => {
+    const jogador = row.jogador_campeonato_id ? jogadoresMap.get(String(row.jogador_campeonato_id)) : null
+    const avulso = jogador?.jogador_avulso_id ? avulsosMap.get(String(jogador.jogador_avulso_id)) : null
+    const perfilId = textoSeguro(row.perfil_jogo_id || jogador?.perfil_jogo_id)
+    return perfilId ? '' : textoSeguro(row.uid_jogo_snapshot || avulso?.uid_jogo)
+  }).filter(Boolean)))
+  const [{ data: perfis }, { data: perfisUid }] = await Promise.all([
+    perfilIds.length > 0 ? supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa').in('id', perfilIds) : Promise.resolve({ data: [] }),
+    uids.length > 0 ? supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa').in('uid_jogo', uids) : Promise.resolve({ data: [] }),
+  ])
+  const perfisMap = new Map(((perfis || []) as any[]).map((row) => [String(row.id), row]))
+  const perfisUidMap = new Map(((perfisUid || []) as any[]).map((row) => [textoSeguro(row.uid_jogo), row]))
+  const acumulado = new Map<string, RankingRow & { partidasSet: Set<string> }>()
+
+  rows.forEach((row) => {
+    const jogador = row.jogador_campeonato_id ? jogadoresMap.get(String(row.jogador_campeonato_id)) : null
+    const avulso = jogador?.jogador_avulso_id ? avulsosMap.get(String(jogador.jogador_avulso_id)) : null
+    const perfilId = textoSeguro(row.perfil_jogo_id || jogador?.perfil_jogo_id)
+    const uid = textoSeguro(row.uid_jogo_snapshot || avulso?.uid_jogo)
+    const perfil = perfilId ? perfisMap.get(perfilId) : null
+    const perfilUid = !perfilId && uid ? perfisUidMap.get(uid) : null
+    const equipeId = textoSeguro(row.campeonato_equipe_id || jogador?.campeonato_equipe_id || row.equipe_id || jogador?.equipe_id || avulso?.equipe_id || row.equipe_avulsa_id || jogador?.equipe_avulsa_id || avulso?.equipe_avulsa_id)
+    const equipe = equipeId ? equipesMap.get(equipeId) : null
+    const nome = textoSeguro(row.nick_snapshot || avulso?.nick || perfil?.nick || perfilUid?.nick || uid, 'SEM NICK')
+    const playerPhoto = perfil?.foto_capa || perfilUid?.foto_capa || avulso?.foto_url || null
+    const key = `${textoSeguro(row.jogador_campeonato_id || perfilId || uid || row.nick_snapshot)}::${equipeId}`
+    if (!key.trim()) return
+    const atual = acumulado.get(key) || {
+      id: key,
+      nome,
+      tag: equipe ? getEquipeTag(equipe) : null,
+      logo: equipe ? getEquipeLogo(equipe) : null,
+      playerPhoto,
+      grupo: equipe?.grupo_id ? gruposMap.get(textoSeguro(equipe.grupo_id)) || '-' : '-',
+      quedas: 0,
+      booyahs: 0,
+      kills: 0,
+      pontos: 0,
+      variacao: 0,
+      partidasSet: new Set<string>(),
+    }
+    atual.kills += numero(row.abates)
+    atual.pontos = atual.kills
+    if (!atual.playerPhoto && playerPhoto) atual.playerPhoto = playerPhoto
+    const partidaKey = textoSeguro(row.partida_id || `${row.jogo_id || ''}:${row.mapa || ''}`)
+    if (partidaKey) atual.partidasSet.add(partidaKey)
+    atual.quedas = atual.partidasSet.size
+    acumulado.set(key, atual)
+  })
+
+  return Array.from(acumulado.values())
+    .map((item) => {
+      const { partidasSet: _partidasSet, ...row } = item
+      void _partidasSet
+      return row
+    })
+    .sort((a, b) => b.kills - a.kills || b.quedas - a.quedas || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((row, index) => ({ ...row, variacao: index % 3 === 0 ? 0 : index % 3 === 1 ? -1 : 1 }))
+}
+
 async function carregarBooyahsDiaPreview(campeonatoId: string) {
   const [{ data: equipes }, { data: resultados }, { data: jogos }] = await Promise.all([
     supabase
@@ -539,6 +642,7 @@ export default function StreamOverlayEditorPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [overlays, setOverlays] = useState<Overlay[]>([])
   const [rankingRows, setRankingRows] = useState<RankingRow[]>([])
+  const [mvpRankingRows, setMvpRankingRows] = useState<RankingRow[]>([])
   const [booyahsDiaRows, setBooyahsDiaRows] = useState<RankingRow[]>([])
   const [booyahsDiaContext, setBooyahsDiaContext] = useState<any>({})
   const [campeonatoInfo, setCampeonatoInfo] = useState<CampeonatoInfo | null>(null)
@@ -587,6 +691,7 @@ export default function StreamOverlayEditorPage() {
       : `${origem}/stream/render/${overlayAtual.id}`
     : ''
   const previewRows = useMemo(() => {
+    if (isMvpGeralOverlay) return mvpRankingRows.length > 0 ? mvpRankingRows : sampleRankingRows(Number(config.mvpGeral?.tableMaxRows || config.layout?.maxRows || 8))
     if (!['booyah', 'booyahs-do-dia'].includes(String(overlayAtual?.template_id || ''))) return rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
     if (booyahsDiaRows.length > 0) return booyahsDiaRows
 
@@ -600,7 +705,7 @@ export default function StreamOverlayEditorPage() {
       quedaNumero: index + 1,
       concluida: index < Math.min(4, baseRows.length),
     }))
-  }, [booyahsDiaRows, config.layout?.maxRows, overlayAtual?.template_id, rankingRows])
+  }, [booyahsDiaRows, config.layout?.maxRows, config.mvpGeral?.tableMaxRows, isMvpGeralOverlay, mvpRankingRows, overlayAtual?.template_id, rankingRows])
   const orderedColumnKeys = useMemo(() => {
     const savedOrder = ((config.columnsOrder || []) as string[]).filter((key) => tabelaGeralColumnKeys.includes(key))
     const orderedKeys = [...savedOrder]
@@ -697,6 +802,7 @@ export default function StreamOverlayEditorPage() {
   useEffect(() => {
     if (!projeto?.campeonato_id) {
       setRankingRows([])
+      setMvpRankingRows([])
       setBooyahsDiaRows([])
       setBooyahsDiaContext({})
       setCampeonatoInfo(null)
@@ -705,12 +811,14 @@ export default function StreamOverlayEditorPage() {
 
     async function carregarRanking() {
       if (!projeto?.campeonato_id) return
-      const [ranking, booyahsDia, campeonatoRes] = await Promise.all([
+      const [ranking, mvpRanking, booyahsDia, campeonatoRes] = await Promise.all([
         carregarRankingTabelaGeral(projeto.campeonato_id),
+        carregarRankingMvpEditor(projeto.campeonato_id),
         carregarBooyahsDiaPreview(projeto.campeonato_id),
         supabase.from('campeonatos').select('nome, logo_url').eq('id', projeto.campeonato_id).maybeSingle(),
       ])
       setRankingRows(ranking)
+      setMvpRankingRows(mvpRanking)
       setBooyahsDiaRows(booyahsDia.rows)
       setBooyahsDiaContext(booyahsDia.context)
       setCampeonatoInfo((campeonatoRes.data as CampeonatoInfo) || null)
@@ -1693,10 +1801,10 @@ export default function StreamOverlayEditorPage() {
                       ) : selectedBlock === 'image' ? (
                         isMvpGeralOverlay ? (
                           <>
-                            <EditorNumber label="X" value={config.mvpGeral?.photoX ?? 210} onChange={(v) => atualizarCampo('mvpGeral.photoX', v)} />
-                            <EditorNumber label="Y" value={config.mvpGeral?.photoY ?? 56} onChange={(v) => atualizarCampo('mvpGeral.photoY', v)} />
-                            <EditorNumber label="Largura" value={config.mvpGeral?.photoW ?? 590} onChange={(v) => atualizarCampo('mvpGeral.photoW', v)} />
-                            <EditorNumber label="Altura" value={config.mvpGeral?.photoH ?? 642} onChange={(v) => atualizarCampo('mvpGeral.photoH', v)} />
+                            <EditorNumber label="X" value={config.mvpGeral?.photoX ?? 50} onChange={(v) => atualizarCampo('mvpGeral.photoX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.photoY ?? 120} onChange={(v) => atualizarCampo('mvpGeral.photoY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.photoW ?? 600} onChange={(v) => atualizarCampo('mvpGeral.photoW', v)} />
+                            <EditorNumber label="Altura" value={config.mvpGeral?.photoH ?? 850} onChange={(v) => atualizarCampo('mvpGeral.photoH', v)} />
                             <EditorNumber label="Opacidade" value={config.brand?.opacity || 100} onChange={(v) => atualizarCampo('brand.opacity', v)} />
                           </>
                         ) : (
@@ -1712,10 +1820,10 @@ export default function StreamOverlayEditorPage() {
                       ) : selectedBlock === 'text' ? (
                         isMvpGeralOverlay ? (
                           <>
-                            <EditorNumber label="X" value={config.mvpGeral?.infoX ?? 210} onChange={(v) => atualizarCampo('mvpGeral.infoX', v)} />
-                            <EditorNumber label="Y" value={config.mvpGeral?.infoY ?? 698} onChange={(v) => atualizarCampo('mvpGeral.infoY', v)} />
-                            <EditorNumber label="Largura" value={config.mvpGeral?.infoW ?? 590} onChange={(v) => atualizarCampo('mvpGeral.infoW', v)} />
-                            <EditorNumber label="Altura" value={config.mvpGeral?.infoH ?? 205} onChange={(v) => atualizarCampo('mvpGeral.infoH', v)} />
+                            <EditorNumber label="X" value={config.mvpGeral?.infoX ?? 50} onChange={(v) => atualizarCampo('mvpGeral.infoX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.infoY ?? 842} onChange={(v) => atualizarCampo('mvpGeral.infoY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.infoW ?? 600} onChange={(v) => atualizarCampo('mvpGeral.infoW', v)} />
+                            <EditorNumber label="Altura" value={config.mvpGeral?.infoH ?? 128} onChange={(v) => atualizarCampo('mvpGeral.infoH', v)} />
                             <EditorNumber label="Opacidade" value={config.brand?.textOpacity || 100} onChange={(v) => atualizarCampo('brand.textOpacity', v)} />
                           </>
                         ) : (
@@ -1731,9 +1839,9 @@ export default function StreamOverlayEditorPage() {
                       ) : (
                         isMvpGeralOverlay ? (
                           <>
-                            <EditorNumber label="X" value={config.mvpGeral?.tableX ?? 900} onChange={(v) => atualizarCampo('mvpGeral.tableX', v)} />
-                            <EditorNumber label="Y" value={config.mvpGeral?.tableY ?? 205} onChange={(v) => atualizarCampo('mvpGeral.tableY', v)} />
-                            <EditorNumber label="Largura" value={config.mvpGeral?.tableW ?? 862} onChange={(v) => atualizarCampo('mvpGeral.tableW', v)} />
+                            <EditorNumber label="X" value={config.mvpGeral?.tableX ?? 730} onChange={(v) => atualizarCampo('mvpGeral.tableX', v)} />
+                            <EditorNumber label="Y" value={config.mvpGeral?.tableY ?? 260} onChange={(v) => atualizarCampo('mvpGeral.tableY', v)} />
+                            <EditorNumber label="Largura" value={config.mvpGeral?.tableW ?? 1140} onChange={(v) => atualizarCampo('mvpGeral.tableW', v)} />
                             <EditorNumber label="Opacidade" value={config.layout.opacity || 100} onChange={(v) => atualizarCampo('layout.opacity', v)} />
                           </>
                         ) : (
@@ -2027,7 +2135,7 @@ export default function StreamOverlayEditorPage() {
                       ) : selectedBlock === 'text' ? (
                         isMvpGeralOverlay ? (
                           <>
-                            <EditorBackgroundMode label="Fundo info MVP" value={config.mvpGeral?.cardBackground || config.theme?.accent || '#8010c8'} onChange={(v) => atualizarCampo('mvpGeral.cardBackground', v)} onImage={(file) => uploadBackgroundImage('mvpGeral.cardBackground', file)} />
+                            <EditorBackgroundMode label="Fundo info MVP" value={config.mvpGeral?.cardBackground || config.theme?.accent || '#5318f0'} onChange={(v) => atualizarCampo('mvpGeral.cardBackground', v)} onImage={(file) => uploadBackgroundImage('mvpGeral.cardBackground', file)} />
                             <EditorColor label="Texto info MVP" value={config.theme?.text || '#ffffff'} onChange={(v) => atualizarCampo('theme.text', v)} />
                             <EditorColor label="Destaque info MVP" value={config.theme?.primary || '#d8ab4f'} onChange={(v) => atualizarCampo('theme.primary', v)} />
                           </>
@@ -2192,10 +2300,10 @@ export default function StreamOverlayEditorPage() {
                         )
                       ) : isMvpGeralOverlay ? (
                         selectedBlock !== 'table' ? (
-                          <div className="text-xs font-semibold text-zinc-400">Selecione o bloco Tabela para editar linhas e espacamento do ranking 02-10.</div>
+                          <div className="text-xs font-semibold text-zinc-400">Selecione o bloco Tabela para editar linhas e espacamento do ranking 02-08.</div>
                         ) : (
                           <div className="grid grid-cols-2 gap-3">
-                            <EditorNumber label="Top total" value={config.mvpGeral?.tableMaxRows ?? config.layout?.maxRows ?? 10} onChange={(v) => atualizarConfigLocal((novo) => {
+                            <EditorNumber label="Top total" value={config.mvpGeral?.tableMaxRows ?? config.layout?.maxRows ?? 8} onChange={(v) => atualizarConfigLocal((novo) => {
                               const maxRows = Math.max(2, v)
                               novo.mvpGeral = novo.mvpGeral || {}
                               novo.layout = novo.layout || {}
@@ -2204,8 +2312,8 @@ export default function StreamOverlayEditorPage() {
                               novo.layout.rowsPerBlock = Math.max(1, maxRows - 1)
                               return novo
                             })} />
-                            <EditorNumber label="Altura linha" value={config.mvpGeral?.tableRowHeight ?? config.layout?.rowHeight ?? 76} onChange={(v) => atualizarCampo('mvpGeral.tableRowHeight', v)} />
-                            <EditorNumber label="Espaco linhas" value={config.mvpGeral?.tableGap ?? config.layout?.rowGap ?? 12} onChange={(v) => atualizarCampo('mvpGeral.tableGap', v)} />
+                            <EditorNumber label="Altura linha" value={config.mvpGeral?.tableRowHeight ?? config.layout?.rowHeight ?? 86} onChange={(v) => atualizarCampo('mvpGeral.tableRowHeight', v)} />
+                            <EditorNumber label="Espaco linhas" value={config.mvpGeral?.tableGap ?? config.layout?.rowGap ?? 10} onChange={(v) => atualizarCampo('mvpGeral.tableGap', v)} />
                             <EditorNumber label="Fonte base" value={config.layout?.fontSize || 30} onChange={(v) => atualizarCampo('layout.fontSize', v)} />
                             <EditorNumber label="Logo" value={config.layout?.logoSize || 58} onChange={(v) => atualizarCampo('layout.logoSize', v)} />
                           </div>

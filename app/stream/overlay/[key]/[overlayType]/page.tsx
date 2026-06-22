@@ -71,12 +71,39 @@ type MvpRow = {
   jogo_id?: string | null
   partida_id?: string | null
   mapa?: string | null
+  jogador_campeonato_id?: string | null
+  perfil_jogo_id?: string | null
   campeonato_equipe_id?: string | null
   equipe_id?: string | null
   equipe_avulsa_id?: string | null
   nick_snapshot?: string | null
   uid_jogo_snapshot?: string | null
   abates?: number | null
+}
+
+type JogadorCampeonatoRow = {
+  id: string
+  perfil_jogo_id?: string | null
+  equipe_id?: string | null
+  campeonato_equipe_id?: string | null
+  equipe_avulsa_id?: string | null
+  jogador_avulso_id?: string | null
+}
+
+type JogadorAvulsoRow = {
+  id: string
+  nick?: string | null
+  uid_jogo?: string | null
+  foto_url?: string | null
+  equipe_id?: string | null
+  equipe_avulsa_id?: string | null
+}
+
+type PerfilJogoRow = {
+  id: string
+  nick?: string | null
+  uid_jogo?: string | null
+  foto_capa?: string | null
 }
 
 type JogoRow = {
@@ -331,15 +358,81 @@ function montarRowsEquipes(
   return rankingAtual.map((row, index) => ({ ...row, variacao: (posicaoAnterior.get(row.id) || index + 1) - (index + 1) }))
 }
 
-function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[], gruposMap: Map<string, string>): RankingRow[] {
-  const equipesMap = new Map(equipesLista.map((equipe) => [equipe.id, equipe]))
+async function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[], gruposMap: Map<string, string>): Promise<RankingRow[]> {
+  const equipesMap = new Map<string, CampeonatoEquipeRow>()
+  equipesLista.forEach((equipe) => {
+    ;[equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id].map((item) => textoSeguro(item)).filter(Boolean).forEach((ref) => equipesMap.set(ref, equipe))
+  })
+
+  const jogadorCampeonatoIds = Array.from(new Set(rows.map((row) => textoSeguro(row.jogador_campeonato_id)).filter(Boolean)))
+  const { data: jogadoresCampeonatoRows } = jogadorCampeonatoIds.length > 0
+    ? await supabase
+      .from('jogadores_campeonato')
+      .select('id, perfil_jogo_id, equipe_id, campeonato_equipe_id, equipe_avulsa_id, jogador_avulso_id')
+      .in('id', jogadorCampeonatoIds)
+    : { data: [] }
+
+  const jogadoresCampeonatoMap = new Map<string, JogadorCampeonatoRow>(
+    ((jogadoresCampeonatoRows || []) as JogadorCampeonatoRow[]).map((row) => [String(row.id), row])
+  )
+  const jogadorAvulsoIds = Array.from(new Set(
+    ((jogadoresCampeonatoRows || []) as JogadorCampeonatoRow[])
+      .map((row) => textoSeguro(row.jogador_avulso_id))
+      .filter(Boolean)
+  ))
+  const { data: jogadoresAvulsosRows } = jogadorAvulsoIds.length > 0
+    ? await supabase
+      .from('jogadores_avulsos_campeonato')
+      .select('id, nick, uid_jogo, foto_url, equipe_id, equipe_avulsa_id')
+      .in('id', jogadorAvulsoIds)
+    : { data: [] }
+
+  const jogadoresAvulsosMap = new Map<string, JogadorAvulsoRow>(
+    ((jogadoresAvulsosRows || []) as JogadorAvulsoRow[]).map((row) => [String(row.id), row])
+  )
+  const perfilIds = Array.from(new Set(
+    rows
+      .map((row) => {
+        const jogador = row.jogador_campeonato_id ? jogadoresCampeonatoMap.get(String(row.jogador_campeonato_id)) : null
+        return textoSeguro(row.perfil_jogo_id || jogador?.perfil_jogo_id)
+      })
+      .filter(Boolean)
+  ))
+  const uidSemPerfil = Array.from(new Set(
+    rows
+      .map((row) => {
+        const jogador = row.jogador_campeonato_id ? jogadoresCampeonatoMap.get(String(row.jogador_campeonato_id)) : null
+        const avulso = jogador?.jogador_avulso_id ? jogadoresAvulsosMap.get(String(jogador.jogador_avulso_id)) : null
+        const perfilId = textoSeguro(row.perfil_jogo_id || jogador?.perfil_jogo_id)
+        return perfilId ? '' : textoSeguro(row.uid_jogo_snapshot || avulso?.uid_jogo)
+      })
+      .filter(Boolean)
+  ))
+  const [{ data: perfisRows }, { data: perfisPorUidRows }] = await Promise.all([
+    perfilIds.length > 0
+      ? supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa').in('id', perfilIds)
+      : Promise.resolve({ data: [] }),
+    uidSemPerfil.length > 0
+      ? supabase.from('perfis_jogo').select('id, nick, uid_jogo, foto_capa').in('uid_jogo', uidSemPerfil)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const perfisMap = new Map<string, PerfilJogoRow>(((perfisRows || []) as PerfilJogoRow[]).map((row) => [String(row.id), row]))
+  const perfisPorUidMap = new Map<string, PerfilJogoRow>(((perfisPorUidRows || []) as PerfilJogoRow[]).map((row) => [textoSeguro(row.uid_jogo), row]))
   const acumulado = new Map<string, RankingRow & { partidasSet: Set<string> }>()
 
   rows.forEach((row) => {
-    const nome = textoSeguro(row.nick_snapshot || row.uid_jogo_snapshot, 'SEM NICK')
-    const equipeId = textoSeguro(row.campeonato_equipe_id || row.equipe_id)
+    const jogadorCampeonato = row.jogador_campeonato_id ? jogadoresCampeonatoMap.get(String(row.jogador_campeonato_id)) : null
+    const jogadorAvulso = jogadorCampeonato?.jogador_avulso_id ? jogadoresAvulsosMap.get(String(jogadorCampeonato.jogador_avulso_id)) : null
+    const perfilId = textoSeguro(row.perfil_jogo_id || jogadorCampeonato?.perfil_jogo_id)
+    const uid = textoSeguro(row.uid_jogo_snapshot || jogadorAvulso?.uid_jogo)
+    const perfil = perfilId ? perfisMap.get(perfilId) : null
+    const perfilPorUid = !perfilId && uid ? perfisPorUidMap.get(uid) : null
+    const nome = textoSeguro(row.nick_snapshot || jogadorAvulso?.nick || perfil?.nick || perfilPorUid?.nick || uid, 'SEM NICK')
+    const equipeId = textoSeguro(row.campeonato_equipe_id || jogadorCampeonato?.campeonato_equipe_id || row.equipe_id || jogadorCampeonato?.equipe_id || jogadorAvulso?.equipe_id || row.equipe_avulsa_id || jogadorCampeonato?.equipe_avulsa_id || jogadorAvulso?.equipe_avulsa_id)
     const equipe = equipeId ? equipesMap.get(equipeId) : null
-    const key = `${textoSeguro(row.uid_jogo_snapshot || row.nick_snapshot)}::${equipeId}`
+    const playerPhoto = (perfil?.foto_capa as string | null) || (perfilPorUid?.foto_capa as string | null) || (jogadorAvulso?.foto_url as string | null) || null
+    const key = `${textoSeguro(row.jogador_campeonato_id || perfilId || uid || row.nick_snapshot)}::${equipeId}`
     if (!key.trim()) return
 
     const atual = acumulado.get(key) || {
@@ -347,6 +440,7 @@ function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[], grup
       nome,
       tag: equipe ? getEquipeTag(equipe) : null,
       logo: equipe ? getEquipeLogo(equipe) : null,
+      playerPhoto,
       grupo: equipe?.grupo_id ? gruposMap.get(textoSeguro(equipe.grupo_id)) || '-' : '-',
       quedas: 0,
       booyahs: 0,
@@ -357,6 +451,9 @@ function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[], grup
 
     atual.kills += numero(row.abates)
     atual.pontos = atual.kills
+    if (!atual.playerPhoto && playerPhoto) atual.playerPhoto = playerPhoto
+    if (!atual.logo && equipe) atual.logo = getEquipeLogo(equipe)
+    if ((!atual.nome || atual.nome === 'SEM NICK') && nome) atual.nome = nome
     const partidaKey = textoSeguro(row.partida_id || `${row.jogo_id || ''}:${row.mapa || ''}`)
     if (partidaKey) atual.partidasSet.add(partidaKey)
     atual.quedas = atual.partidasSet.size
@@ -421,7 +518,7 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
       .eq('campeonato_id', campeonatoId),
     supabase
       .from('resultados_mvp')
-      .select('id, campeonato_id, fase_id, jogo_id, partida_id, mapa, campeonato_equipe_id, equipe_id, equipe_avulsa_id, nick_snapshot, uid_jogo_snapshot, abates')
+      .select('id, campeonato_id, fase_id, jogo_id, partida_id, mapa, jogador_campeonato_id, perfil_jogo_id, campeonato_equipe_id, equipe_id, equipe_avulsa_id, nick_snapshot, uid_jogo_snapshot, abates')
       .eq('campeonato_id', campeonatoId),
   ])
 
@@ -509,16 +606,16 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
       if (!partida?.id && mapaAlvo && textoSeguro(row.mapa).toLowerCase() !== mapaAlvo.toLowerCase()) return false
       return true
     })
-    return montarRowsMvp(rowsDaQueda, equipesLista, gruposMap)
+    return await montarRowsMvp(rowsDaQueda, equipesLista, gruposMap)
   }
 
   if (templateId === 'mvp-do-dia') {
     const rowsDoJogo = mvpRows.filter((row) => !jogo?.id || textoSeguro(row.jogo_id) === jogo.id)
-    return montarRowsMvp(rowsDoJogo, equipesLista, gruposMap)
+    return await montarRowsMvp(rowsDoJogo, equipesLista, gruposMap)
   }
 
   if (templateId === 'mvp-geral') {
-    return montarRowsMvp(mvpRows, equipesLista, gruposMap)
+    return await montarRowsMvp(mvpRows, equipesLista, gruposMap)
   }
 
   return montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, resultados)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
+import { ChevronRight, Facebook, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
 
@@ -43,6 +43,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -58,6 +59,23 @@ export default function Login() {
     verificarSessao()
     return () => { ativo = false }
   }, [router])
+
+
+  async function handleSocialLogin(provider: 'google' | 'facebook' | 'discord') {
+    try {
+      setError(null)
+      setSocialLoading(provider)
+      const redirectTo = `${window.location.origin}/auth/callback`
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      })
+      if (error) throw error
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao entrar com conta social.')
+      setSocialLoading(null)
+    }
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -95,6 +113,25 @@ export default function Login() {
           <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-200">Drop Zone</div>
           <h1 className="mt-2 text-4xl font-black uppercase text-white">Entrar</h1>
           <p className="mx-auto mt-2 max-w-[260px] text-sm font-semibold leading-5 text-white/72">Acesse sua conta competitiva para continuar.</p>
+        </div>
+
+
+        <div className="relative mb-5 space-y-3">
+          <button type="button" onClick={() => handleSocialLogin('google')} disabled={!!socialLoading || loading} className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/25 bg-white px-4 text-xs font-black uppercase tracking-[0.14em] text-slate-900 shadow-[0_14px_32px_rgba(2,6,23,0.18)] transition hover:bg-orange-100 disabled:opacity-50">
+            {socialLoading === 'google' ? <Loader2 className="animate-spin" size={17} /> : <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-950 text-white">G</span>}
+            Entrar com Google
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => handleSocialLogin('facebook')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+              {socialLoading === 'facebook' ? <Loader2 className="animate-spin" size={15} /> : <Facebook size={15} />}
+              Facebook
+            </button>
+            <button type="button" onClick={() => handleSocialLogin('discord')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+              {socialLoading === 'discord' ? <Loader2 className="animate-spin" size={15} /> : <span className="text-sm font-black">◈</span>}
+              Discord
+            </button>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/60"><span className="h-px flex-1 bg-white/20" /> ou email <span className="h-px flex-1 bg-white/20" /></div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
