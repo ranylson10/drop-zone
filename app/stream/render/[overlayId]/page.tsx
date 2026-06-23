@@ -220,6 +220,39 @@ function montarRowsEquipes(equipesLista: CampeonatoEquipeRow[], gruposMap: Map<s
   }).filter((row) => row.quedas > 0 || row.pontos > 0).sort((a, b) => b.pontos - a.pontos || b.booyahs - a.booyahs || b.kills - a.kills || a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
+
+function montarRowsTabelaQueda(equipesLista: CampeonatoEquipeRow[], gruposMap: Map<string, string>, publicToCampeonato: Map<string, string>, resultados: ResultadoRow[]) {
+  const equipesMap = new Map(equipesLista.map((equipe) => [equipe.id, equipe]))
+  equipesLista.forEach((equipe) => {
+    ;[equipe.id, equipe.equipe_id, equipe.equipe_avulsa_id]
+      .map((item) => textoSeguro(item))
+      .filter(Boolean)
+      .forEach((ref) => equipesMap.set(ref, equipe))
+  })
+
+  return [...resultados]
+    .sort((a, b) => numero(a.posicao ?? a.colocacao) - numero(b.posicao ?? b.colocacao) || numero(b.total_pontos ?? b.pontos_total ?? b.pontos) - numero(a.total_pontos ?? a.pontos_total ?? a.pontos))
+    .map((resultado) => {
+      const ref = textoSeguro(resultado.equipe_id)
+      const id = publicToCampeonato.get(ref) || ref
+      const equipe = equipesMap.get(id) || equipesMap.get(ref)
+      const grupoId = textoSeguro(resultado.grupo_id || equipe?.grupo_id)
+      const posicao = numero(resultado.posicao ?? resultado.colocacao)
+      return {
+        id: `${id}-${textoSeguro(resultado.mapa)}-${posicao}`,
+        nome: equipe ? getEquipeNome(equipe) : `Equipe ${id.slice(0, 6)}`,
+        tag: equipe ? getEquipeTag(equipe) : null,
+        logo: equipe ? getEquipeLogo(equipe) : null,
+        grupo: grupoId ? gruposMap.get(grupoId) || '-' : '-',
+        quedas: 1,
+        booyahs: posicao,
+        kills: numero(resultado.abates),
+        pontos: numero(resultado.total_pontos ?? resultado.pontos_total ?? resultado.pontos),
+        variacao: null,
+      }
+    })
+}
+
 async function montarRowsTabelaGeral(campeonatoId: string): Promise<RankingRow[]> {
   const { data } = await supabase.from('classificacao_geral').select('*').eq('campeonato_id', campeonatoId)
   return ((data || []) as any[]).map((row) => ({
@@ -296,6 +329,7 @@ async function montarRowsMvp(rows: MvpRow[], equipesLista: CampeonatoEquipeRow[]
     const partidaKey = textoSeguro(row.partida_id || `${row.jogo_id || ''}:${row.mapa || ''}`)
     if (partidaKey) atual.partidasSet.add(partidaKey)
     atual.quedas = atual.partidasSet.size
+    atual.pontos = atual.quedas > 0 ? Math.round((atual.kills / atual.quedas) * 10) / 10 : atual.kills
     acumulado.set(key, atual)
   })
 
@@ -348,7 +382,13 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
   const resultados = [...((resultadosData || []) as ResultadoRow[]), ...resultadosAoVivo(config)]
   const mvpRows = (mvpData || []) as MvpRow[]
   const jogo = escolherJogo(base.jogosLista, resultados, config)
-  const mapaAlvo = mapaConfigurado(config) || getQuedaMapaNome(Array.isArray(jogo?.quedas) ? jogo?.quedas?.[0] : null) || textoSeguro(jogo?.mapa)
+  const fonteMapa = String(templateId || '').toLowerCase().includes('mvp') ? mvpRows : resultados
+  const mapaComResultado = fonteMapa
+    .filter((row) => !jogo?.id || textoSeguro(row.jogo_id) === jogo.id)
+    .map((row) => textoSeguro(row.mapa))
+    .filter(Boolean)
+    .pop()
+  const mapaAlvo = mapaConfigurado(config) || mapaComResultado || getQuedaMapaNome(Array.isArray(jogo?.quedas) ? jogo?.quedas?.[0] : null) || textoSeguro(jogo?.mapa)
   const grupoAlvo = grupoConfigurado(config) || textoSeguro(jogo?.grupo_id)
   const lowerTemplate = String(templateId || '').toLowerCase()
   const context: StreamOverlayContext = {
@@ -378,14 +418,14 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
     return { rows: montarRowsEquipes(base.equipesLista, base.gruposMap, base.publicToCampeonato, resultados.filter((row) => !jogo?.id || textoSeguro(row.jogo_id) === jogo.id)), context }
   }
   if (['tabela-queda', 'tabela-da-queda'].includes(lowerTemplate)) {
-    return { rows: montarRowsEquipes(base.equipesLista, base.gruposMap, base.publicToCampeonato, resultados.filter((row) => (!jogo?.id || textoSeguro(row.jogo_id) === jogo.id) && (!mapaAlvo || normalizeFreeFireMapName(row.mapa) === normalizeFreeFireMapName(mapaAlvo)))), context }
+    return { rows: montarRowsTabelaQueda(base.equipesLista, base.gruposMap, base.publicToCampeonato, resultados.filter((row) => (!jogo?.id || textoSeguro(row.jogo_id) === jogo.id) && (!mapaAlvo || normalizeFreeFireMapName(row.mapa) === normalizeFreeFireMapName(mapaAlvo)))), context }
   }
   if (['booyahs-dia', 'booyahs-do-dia'].includes(lowerTemplate) || (lowerTemplate === 'booyah' && config?.booyahsDia)) {
     return { rows: montarRowsBooyahsDia(jogo, resultados, base.equipesLista, base.publicToCampeonato), context }
   }
   if (lowerTemplate === 'booyah') {
-    const rows = montarRowsEquipes(base.equipesLista, base.gruposMap, base.publicToCampeonato, resultados.filter((row) => (!jogo?.id || textoSeguro(row.jogo_id) === jogo.id) && (!mapaAlvo || normalizeFreeFireMapName(row.mapa) === normalizeFreeFireMapName(mapaAlvo))))
-    return { rows: rows.filter((row) => row.booyahs > 0).slice(0, 1), context }
+    const rows = montarRowsTabelaQueda(base.equipesLista, base.gruposMap, base.publicToCampeonato, resultados.filter((row) => (!jogo?.id || textoSeguro(row.jogo_id) === jogo.id) && (!mapaAlvo || normalizeFreeFireMapName(row.mapa) === normalizeFreeFireMapName(mapaAlvo))))
+    return { rows: rows.filter((row) => row.booyahs === 1).slice(0, 1), context }
   }
   if (['mvp-queda', 'mvp-da-queda'].includes(lowerTemplate)) {
     return { rows: await montarRowsMvp(mvpRows.filter((row) => (!jogo?.id || textoSeguro(row.jogo_id) === jogo.id) && (!mapaAlvo || normalizeFreeFireMapName(row.mapa) === normalizeFreeFireMapName(mapaAlvo))), base.equipesLista, base.gruposMap), context }
