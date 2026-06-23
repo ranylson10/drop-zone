@@ -261,10 +261,14 @@ export default function BooyahsDiaOverlayView({ config, rows, context }: StreamO
           return (
             <div
               key={`${row.id || index}-${config.animation?.testKey || 0}`}
-              className="overflow-hidden border border-black/15 bg-white"
+              className="overflow-hidden border bg-white"
               style={{
                 width: cardWidth,
                 height: cardHeight,
+                borderColor: cfg.cardBorderColor || 'rgba(0,0,0,0.15)',
+                borderWidth: num(cfg.cardBorderWidth, 1),
+                borderRadius: num(cfg.cardRadius, 0),
+                background: cfg.cardBackground || '#ffffff',
                 ...getCardAnimation(index),
               }}
             >
@@ -276,7 +280,13 @@ export default function BooyahsDiaOverlayView({ config, rows, context }: StreamO
                     src={row.logo}
                     alt={row.nome}
                     className="absolute left-1/2 top-1/2 object-contain"
-                    style={{ width: logoSize, height: logoSize, transform: 'translate(-50%, -50%)' }}
+                    style={{
+                      width: logoSize,
+                      height: logoSize,
+                      left: num(cfg.logoX, 0) > 0 ? num(cfg.logoX, cardWidth / 2) : '50%',
+                      top: num(cfg.logoY, 0) > 0 ? num(cfg.logoY, mapHeight / 2) : '50%',
+                      transform: num(cfg.logoX, 0) > 0 || num(cfg.logoY, 0) > 0 ? 'translate(0, 0)' : 'translate(-50%, -50%)',
+                    }}
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-5xl font-black text-white/65">?</div>
@@ -292,14 +302,17 @@ export default function BooyahsDiaOverlayView({ config, rows, context }: StreamO
                   backgroundSize: '100% 100%',
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'center',
-                  fontSize: Math.max(24, Math.min(38, cardWidth * 0.105)),
+                  fontSize: num(cfg.titleFontSize, Math.max(24, Math.min(38, cardWidth * 0.105))),
+                  color: cfg.titleText || '#ffffff',
+                  paddingLeft: num(cfg.titlePaddingX, 16),
+                  paddingRight: num(cfg.titlePaddingX, 16),
                 }}
               >
                 {matchLabel}
               </div>
 
               <div
-                className="grid grid-cols-2 items-center px-5 font-black leading-none"
+                className="grid grid-cols-2 items-center font-black leading-none"
                 style={{
                   height: statsHeight,
                   color: statsText,
@@ -308,7 +321,9 @@ export default function BooyahsDiaOverlayView({ config, rows, context }: StreamO
                   backgroundSize: '100% 100%',
                   backgroundRepeat: 'no-repeat',
                   backgroundPosition: 'center',
-                  fontSize: Math.max(21, Math.min(30, cardWidth * 0.08)),
+                  fontSize: num(cfg.statsFontSize, Math.max(21, Math.min(30, cardWidth * 0.08))),
+                  paddingLeft: num(cfg.statsPaddingX, 20),
+                  paddingRight: num(cfg.statsPaddingX, 20),
                 }}
               >
                 <div>{concluded ? `${row.pontos} PTS` : '-'}</div>

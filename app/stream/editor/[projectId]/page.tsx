@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { Columns3, Copy, Eye, EyeOff, ImageIcon, Loader2, MonitorUp, Move, Palette, Play, Plus, RefreshCw, Save, SlidersHorizontal, Table2, Trash2, Type } from 'lucide-react'
 import { getStreamOverlayDefinition, streamOverlayDefinitions } from '@/app/components/stream/overlays/registry'
 import { getFreeFireMapImage, normalizeFreeFireMapName } from '@/app/components/stream/overlays/mapas-freefire'
+import SmartOverlayInspector from '@/app/components/stream/editor/SmartOverlayInspector'
 import {
   RankingRow,
   StreamOverlayBlock,
@@ -1639,13 +1640,27 @@ export default function StreamOverlayEditorPage() {
               <div className="text-sm font-semibold text-zinc-400">Crie ou selecione uma overlay.</div>
             ) : (
               <div className="space-y-4">
+                <SmartOverlayInspector
+                  templateId={overlayAtual?.template_id}
+                  config={config}
+                  onChange={atualizarCampo}
+                  onUploadImage={(path, file) => salvarImagemNoCampo(path, file, 'background')}
+                />
+
                 {CustomOverlayEditor ? (
-                  <CustomOverlayEditor
-                    config={config}
-                    onChange={atualizarCampo}
-                    onChangeConfig={(mutator) => atualizarConfigLocal((atual) => mutator(atual))}
-                    onUploadImage={(path, file) => salvarImagemNoCampo(path, file, 'background')}
-                  />
+                  <details className="border border-white/10 bg-[#0b1220] p-3">
+                    <summary className="cursor-pointer text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                      Presets rapidos / ferramentas antigas
+                    </summary>
+                    <div className="mt-3">
+                      <CustomOverlayEditor
+                        config={config}
+                        onChange={atualizarCampo}
+                        onChangeConfig={(mutator) => atualizarConfigLocal((atual) => mutator(atual))}
+                        onUploadImage={(path, file) => salvarImagemNoCampo(path, file, 'background')}
+                      />
+                    </div>
+                  </details>
                 ) : null}
 
                 {isBooyahsDiaOverlay ? (
