@@ -341,7 +341,7 @@ export default function OverlayRenderPage() {
     () => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(template?.config_padrao || {}, overlay?.config || {})),
     [overlay, template]
   )
-  const overlayDefinition = getStreamOverlayDefinition(overlay?.template_id)
+  const overlayDefinition = getStreamOverlayDefinition(overlay?.template_id, config as any)
   const RenderOverlay = overlayDefinition?.Render
 
   const carregarOverlay = useCallback(async () => {
@@ -367,7 +367,7 @@ export default function OverlayRenderPage() {
 
   const carregarRanking = useCallback(async () => {
     if (!campeonatoId) return
-    if (overlay?.template_id === 'booyahs-do-dia' || (overlay?.template_id === 'booyah' && config.booyahsDia)) {
+    if (['booyahs-dia', 'booyahs-do-dia'].includes(String(overlay?.template_id || '')) || (overlay?.template_id === 'booyah' && config.booyahsDia)) {
       const data = await carregarBooyahsDia(campeonatoId, config)
       setRows(data.rows)
       setOverlayContext(data.context)

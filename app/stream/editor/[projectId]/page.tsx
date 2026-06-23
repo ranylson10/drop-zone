@@ -58,7 +58,25 @@ type BooyahBlock = 'texto' | 'logo' | 'equipe'
 type BooyahsDiaBlock = 'art' | 'cards'
 type VisualStyleTarget = 'primary' | 'accent' | 'background' | 'rowBackground' | 'text' | 'headerText' | 'border' | 'columnBackground' | 'columnText' | 'rowHighlightBackground' | 'rowHighlightText'
 
-const OVERLAY_EDITOR_FOCUS = new Set(['tabela-geral', 'mvp-geral', 'booyah', 'booyahs-do-dia'])
+const OVERLAY_EDITOR_FOCUS = new Set([
+  'agradecimentos',
+  'booyah',
+  'booyahs-dia',
+  'booyahs-do-dia',
+  'countdown',
+  'mvp-dia',
+  'mvp-do-dia',
+  'mvp-geral',
+  'mvp-queda',
+  'mvp-da-queda',
+  'tabela-dia',
+  'tabela-do-dia',
+  'tabela-geral',
+  'tabela-queda',
+  'tabela-da-queda',
+  'tela-espera',
+  'tela-de-espera',
+])
 
 const blockLabels: Record<StreamOverlayBlock, string> = {
   image: 'Imagem',
@@ -670,13 +688,13 @@ export default function StreamOverlayEditorPage() {
   const templateAtual = useMemo(() => templates.find((item) => item.id === overlayAtual?.template_id) || null, [templates, overlayAtual])
   const configSalva = useMemo(() => mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(templateAtual?.config_padrao || {}, overlayAtual?.config || {})), [templateAtual, overlayAtual])
   const config = draftConfig || configSalva
-  const previewOverlayDefinition = getStreamOverlayDefinition(overlayAtual?.template_id)
+  const previewOverlayDefinition = getStreamOverlayDefinition(overlayAtual?.template_id, config as any)
   const PreviewOverlay = previewOverlayDefinition?.Render
   const CustomOverlayEditor = previewOverlayDefinition?.Editor
-  const isTabelaOverlay = Boolean(overlayAtual?.template_id && ['tabela-geral', 'tabela-do-dia', 'tabela-da-queda', 'mvp-geral', 'mvp-do-dia', 'mvp-da-queda'].includes(overlayAtual.template_id))
+  const isTabelaOverlay = Boolean(overlayAtual?.template_id && ['tabela-geral', 'tabela-dia', 'tabela-do-dia', 'tabela-queda', 'tabela-da-queda', 'mvp-geral', 'mvp-dia', 'mvp-do-dia', 'mvp-queda', 'mvp-da-queda'].includes(overlayAtual.template_id))
   const isMvpGeralOverlay = overlayAtual?.template_id === 'mvp-geral' || Boolean(config.mvpGeral?.enabled)
   const isCountdownOverlay = overlayAtual?.template_id === 'countdown'
-  const isBooyahsDiaOverlay = Boolean(config.booyahsDia || previewOverlayDefinition?.slug === 'booyahs-do-dia')
+  const isBooyahsDiaOverlay = Boolean(config.booyahsDia || ['booyahs-dia', 'booyahs-do-dia'].includes(String(previewOverlayDefinition?.slug || overlayAtual?.template_id || '')))
   const isBooyahOverlay = overlayAtual?.template_id === 'booyah' && !isBooyahsDiaOverlay
   const booyahsDiaConfig = (config.booyahsDia || {}) as any
   const booyahsDiaMode = String(booyahsDiaConfig.mode || 'cards')
@@ -693,7 +711,7 @@ export default function StreamOverlayEditorPage() {
     : ''
   const previewRows = useMemo(() => {
     if (isMvpGeralOverlay) return mvpRankingRows.length > 0 ? mvpRankingRows : sampleRankingRows(Number(config.mvpGeral?.tableMaxRows || config.layout?.maxRows || 8))
-    if (!['booyah', 'booyahs-do-dia'].includes(String(overlayAtual?.template_id || ''))) return rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
+    if (!['booyah', 'booyahs-dia', 'booyahs-do-dia'].includes(String(overlayAtual?.template_id || ''))) return rankingRows.length > 0 ? rankingRows : sampleRankingRows(Number(config.layout?.maxRows || 12))
     if (booyahsDiaRows.length > 0) return booyahsDiaRows
 
     const mapas = ['Bermuda', 'Purgatorio', 'Alpine', 'Kalahari']

@@ -65,6 +65,7 @@ export type StreamOverlayConfig = {
   columnStyles?: Record<string, { background?: string; text?: string }>
   rowStyles?: Record<string, { background?: string; text?: string }>
   columnWidths?: Record<string, number>
+  columnPixelWidths?: Record<string, number>
   columnsOrder?: string[]
   layout?: {
     x?: number
@@ -351,6 +352,7 @@ export function mergeOverlayConfig(base?: StreamOverlayConfig | null, override?:
     columnStyles: { ...(base?.columnStyles || {}), ...(override?.columnStyles || {}) },
     rowStyles: { ...(base?.rowStyles || {}), ...(override?.rowStyles || {}) },
     columnWidths: { ...(base?.columnWidths || {}), ...(override?.columnWidths || {}) },
+    columnPixelWidths: { ...(base?.columnPixelWidths || {}), ...(override?.columnPixelWidths || {}) },
     columnsOrder: override?.columnsOrder || base?.columnsOrder,
     layout: { ...(base?.layout || {}), ...(override?.layout || {}) },
     columns: { ...(base?.columns || {}), ...(override?.columns || {}) },
@@ -397,6 +399,22 @@ export function buildTabelaGrid(columns: string[], config?: StreamOverlayConfig)
   const blockWidth = blockDirection === 'horizontal'
     ? (baseTableWidth - blockGap * (blockCount - 1)) / blockCount
     : baseTableWidth
+  const pixelWidths = config?.columnPixelWidths || {}
+  const hasPixelWidths = columns.some((key) => Number(pixelWidths[key]) > 0)
+
+  if (hasPixelWidths) {
+    return columns
+      .map((key) => {
+        const fallbackRatio = Number(config?.columnWidths?.[key] ?? defaultTabelaGeralColumnWidths[key] ?? 1)
+        const defaultTotal = columns.reduce((sum, columnKey) => sum + Number(config?.columnWidths?.[columnKey] ?? defaultTabelaGeralColumnWidths[columnKey] ?? 1), 0) || 1
+        const unit = Math.max(1, blockWidth / defaultTotal)
+        const fallbackPx = Math.round(Math.max(0.2, fallbackRatio) * unit)
+        const px = Number(pixelWidths[key] ?? fallbackPx)
+        return `${Math.max(12, Math.round(Number.isFinite(px) ? px : fallbackPx))}px`
+      })
+      .join(' ')
+  }
+
   const defaultTotal = columns.reduce((sum, key) => sum + Number(defaultTabelaGeralColumnWidths[key] ?? 1), 0) || 1
   const unit = Math.max(1, blockWidth / defaultTotal)
 

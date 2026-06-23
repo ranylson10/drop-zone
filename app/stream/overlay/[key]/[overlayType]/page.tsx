@@ -529,7 +529,7 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
   const mapaAlvo = mapaConfigurado(config) || textoSeguro(partida?.mapa || jogo?.mapa)
   const grupoAlvo = grupoConfigurado(config) || textoSeguro(jogo?.grupo_id)
 
-  if (templateId === 'tela-de-espera') {
+  if (templateId === 'tela-de-espera' || templateId === 'tela-espera') {
     return equipesLista
       .filter((equipe) => !grupoAlvo || textoSeguro(equipe.grupo_id) === grupoAlvo)
       .map((equipe) => ({
@@ -581,7 +581,7 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
     return []
   }
 
-  if (templateId === 'tabela-da-queda') {
+  if (templateId === 'tabela-da-queda' || templateId === 'tabela-queda') {
     const rowsDaQueda = resultados.filter((row) => {
       if (jogo?.id && textoSeguro(row.jogo_id) !== jogo.id) return false
       if (mapaAlvo && textoSeguro(row.mapa).toLowerCase() !== mapaAlvo.toLowerCase()) return false
@@ -590,16 +590,16 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
     return montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, rowsDaQueda)
   }
 
-  if (templateId === 'tabela-do-dia') {
+  if (templateId === 'tabela-do-dia' || templateId === 'tabela-dia') {
     const rowsDoJogo = resultados.filter((row) => !jogo?.id || textoSeguro(row.jogo_id) === jogo.id)
     return montarRowsEquipes(equipesLista, gruposMap, publicToCampeonato, rowsDoJogo)
   }
 
-  if (templateId === 'booyahs-do-dia') {
+  if (templateId === 'booyahs-do-dia' || templateId === 'booyahs-dia') {
     return montarRowsBooyahsDia(jogo, resultados, equipesLista, publicToCampeonato)
   }
 
-  if (templateId === 'mvp-da-queda') {
+  if (templateId === 'mvp-da-queda' || templateId === 'mvp-queda') {
     const rowsDaQueda = mvpRows.filter((row) => {
       if (jogo?.id && textoSeguro(row.jogo_id) !== jogo.id) return false
       if (partida?.id && textoSeguro(row.partida_id) !== partida.id) return false
@@ -609,7 +609,7 @@ async function carregarDadosOverlay(campeonatoId: string, templateId: string, co
     return await montarRowsMvp(rowsDaQueda, equipesLista, gruposMap)
   }
 
-  if (templateId === 'mvp-do-dia') {
+  if (templateId === 'mvp-do-dia' || templateId === 'mvp-dia') {
     const rowsDoJogo = mvpRows.filter((row) => !jogo?.id || textoSeguro(row.jogo_id) === jogo.id)
     return await montarRowsMvp(rowsDoJogo, equipesLista, gruposMap)
   }
@@ -679,7 +679,6 @@ export default function FixedOverlayRenderPage() {
   const streamKey = params?.key
   const overlayType = params?.overlayType
   const fixedTemplate = getStreamOverlayTemplate(overlayType)
-  const overlayDefinition = getStreamOverlayDefinition(fixedTemplate?.id || overlayType)
 
   const [project, setProject] = useState<Projeto | null>(null)
   const [overlay, setOverlay] = useState<Overlay | null>(null)
@@ -693,6 +692,8 @@ export default function FixedOverlayRenderPage() {
     const fallbackConfig = fixedTemplate?.config_padrao || mergeOverlayConfig(defaultTabelaGeralConfig, { title: String(overlayType || 'OVERLAY').toUpperCase() })
     return mergeOverlayConfig(defaultTabelaGeralConfig, mergeOverlayConfig(fallbackConfig, overlay?.config || {}))
   }, [fixedTemplate, overlay, overlayType])
+
+  const overlayDefinition = getStreamOverlayDefinition(fixedTemplate?.id || overlayType, config as any)
 
   const carregarPorStreamKey = useCallback(async (keyToLoad: string) => {
     const { data: projectData } = await supabase

@@ -4,8 +4,10 @@ import { useMemo, useState } from 'react'
 import { ImageIcon, Layers, Palette, Rows3, Table2, Type } from 'lucide-react'
 import type { StreamOverlayConfig } from '@/lib/streamOverlay'
 
-type ControlKind = 'position' | 'size' | 'number' | 'color' | 'text' | 'select' | 'checkbox' | 'image'
-type OverlayFamily = 'cards' | 'table' | 'card-table' | 'generic'
+type ControlKind = 'position' | 'size' | 'number' | 'color' | 'text' | 'select' | 'checkbox' | 'image' | 'columns'
+type OverlayFamily = 'cards' | 'table' | 'card-table' | 'booyah' | 'countdown' | 'waiting' | 'screen' | 'generic'
+
+type ColumnEditorDef = { key: string; label: string; widthFallback: number }
 
 type ControlDef = {
   kind: ControlKind
@@ -17,6 +19,7 @@ type ControlDef = {
   step?: number
   options?: Array<[string, string]>
   hint?: string
+  columns?: ColumnEditorDef[]
 }
 
 type LayerDef = {
@@ -34,9 +37,13 @@ type SmartOverlayInspectorProps = {
   onUploadImage?: (path: string, file: File) => Promise<void>
 }
 
-const tableTemplateIds = new Set(['tabela-geral', 'tabela-do-dia', 'tabela-da-queda', 'mvp-do-dia', 'mvp-da-queda', 'mvp-queda'])
-const booyahsTemplateIds = new Set(['booyah', 'booyahs-do-dia'])
+const tableTemplateIds = new Set(['tabela-geral', 'tabela-dia', 'tabela-do-dia', 'tabela-queda', 'tabela-da-queda', 'mvp-dia', 'mvp-do-dia', 'mvp-da-queda', 'mvp-queda'])
+const booyahsTemplateIds = new Set(['booyahs-dia', 'booyahs-do-dia'])
+const booyahTemplateIds = new Set(['booyah'])
 const mvpGeralTemplateIds = new Set(['mvp-geral'])
+const countdownTemplateIds = new Set(['countdown'])
+const waitingTemplateIds = new Set(['tela-espera', 'tela-de-espera'])
+const screenTemplateIds = new Set(['agradecimentos'])
 
 const objectFitOptions: Array<[string, string]> = [
   ['contain', 'Conter'],
@@ -55,6 +62,116 @@ const booleanOptions: Array<[string, string]> = [
   ['false', 'Não'],
 ]
 
+
+const allColumnLabels: Record<string, string> = {
+  rank: 'Rank / posição',
+  logo: 'Logo da equipe',
+  nome: 'Nome / nick',
+  tag: 'Tag',
+  grupo: 'Grupo',
+  variacao: 'Setas / variação',
+  quedas: 'Quedas',
+  booyahs: 'Booyahs',
+  kills: 'Kill / abates',
+  pontos: 'Pontos',
+}
+
+const tableColumnsByTemplate: Record<string, ColumnEditorDef[]> = {
+  'tabela-geral': [
+    { key: 'rank', label: 'Rank', widthFallback: 52 },
+    { key: 'logo', label: 'Logos da equipe', widthFallback: 70 },
+    { key: 'nome', label: 'Nome da equipe', widthFallback: 260 },
+    { key: 'variacao', label: 'Setas', widthFallback: 72 },
+    { key: 'grupo', label: 'Grupos', widthFallback: 72 },
+    { key: 'quedas', label: 'Quedas', widthFallback: 72 },
+    { key: 'booyahs', label: 'Booyahs', widthFallback: 78 },
+    { key: 'kills', label: 'Kill', widthFallback: 90 },
+    { key: 'pontos', label: 'Pontos', widthFallback: 100 },
+  ],
+  'mvp-geral': [
+    { key: 'rank', label: 'Rank', widthFallback: 52 },
+    { key: 'logo', label: 'Logos da equipe', widthFallback: 70 },
+    { key: 'nome', label: 'Nick do jogador', widthFallback: 260 },
+    { key: 'variacao', label: 'Setas', widthFallback: 72 },
+    { key: 'quedas', label: 'Quedas', widthFallback: 72 },
+    { key: 'pontos', label: 'K.D', widthFallback: 92 },
+    { key: 'kills', label: 'Kill', widthFallback: 85 },
+  ],
+  'tabela-da-queda': [
+    { key: 'rank', label: 'Rank', widthFallback: 62 },
+    { key: 'logo', label: 'Logos da equipe', widthFallback: 66 },
+    { key: 'nome', label: 'Nome da equipe', widthFallback: 235 },
+    { key: 'booyahs', label: 'Posição', widthFallback: 78 },
+    { key: 'kills', label: 'Kill', widthFallback: 90 },
+    { key: 'pontos', label: 'Pontos', widthFallback: 100 },
+  ],
+  'mvp-da-queda': [
+    { key: 'rank', label: 'Rank', widthFallback: 62 },
+    { key: 'logo', label: 'Logos da equipe', widthFallback: 66 },
+    { key: 'nome', label: 'Nick do jogador', widthFallback: 235 },
+    { key: 'kills', label: 'Kill', widthFallback: 90 },
+  ],
+  'mvp-queda': [
+    { key: 'rank', label: 'Rank', widthFallback: 62 },
+    { key: 'logo', label: 'Logos da equipe', widthFallback: 66 },
+    { key: 'nome', label: 'Nick do jogador', widthFallback: 235 },
+    { key: 'kills', label: 'Kill', widthFallback: 90 },
+  ],
+}
+
+tableColumnsByTemplate['tabela-dia'] = tableColumnsByTemplate['tabela-geral']
+tableColumnsByTemplate['tabela-do-dia'] = tableColumnsByTemplate['tabela-geral']
+tableColumnsByTemplate['tabela-queda'] = tableColumnsByTemplate['tabela-da-queda']
+tableColumnsByTemplate['mvp-dia'] = tableColumnsByTemplate['mvp-geral']
+tableColumnsByTemplate['mvp-do-dia'] = tableColumnsByTemplate['mvp-geral']
+
+function getColumnDefinitions(templateId?: string | null): ColumnEditorDef[] {
+  if (templateId && tableColumnsByTemplate[templateId]) return tableColumnsByTemplate[templateId]
+  return tableColumnsByTemplate['tabela-geral']
+}
+
+function ratioToPixelWidth(config: any, columnKey: string, fallbackPx: number) {
+  const explicit = Number(config?.columnPixelWidths?.[columnKey])
+  if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit)
+
+  const columns = getVisibleColumnKeys(config)
+  const blockCount = Math.max(1, Math.min(4, Number(config?.layout?.blockCount || 1)))
+  const blockGap = Number(config?.layout?.blockGap || 36)
+  const blockDirection = config?.layout?.blockDirection || 'horizontal'
+  const baseTableWidth = Number(config?.layout?.w || 1560)
+  const blockWidth = blockDirection === 'horizontal'
+    ? (baseTableWidth - blockGap * (blockCount - 1)) / blockCount
+    : baseTableWidth
+  const defaultRatios: Record<string, number> = {
+    rank: 0.62,
+    logo: 0.66,
+    nome: 2.35,
+    tag: 0.9,
+    grupo: 0.72,
+    variacao: 0.72,
+    quedas: 0.72,
+    booyahs: 0.78,
+    kills: 0.9,
+    pontos: 1,
+  }
+  const total = columns.reduce((sum, key) => sum + Number(config?.columnWidths?.[key] ?? defaultRatios[key] ?? 1), 0) || 1
+  const unit = Math.max(1, blockWidth / total)
+  const ratio = Number(config?.columnWidths?.[columnKey] ?? defaultRatios[columnKey] ?? 1)
+  const px = Math.round(Math.max(0.2, ratio) * unit)
+  return Number.isFinite(px) && px > 0 ? px : fallbackPx
+}
+
+function getVisibleColumnKeys(config: any) {
+  const order = Array.isArray(config?.columnsOrder) && config.columnsOrder.length
+    ? config.columnsOrder
+    : ['rank', 'logo', 'nome', 'tag', 'grupo', 'variacao', 'quedas', 'booyahs', 'kills', 'pontos']
+  return order.filter((key: string) => config?.columns?.[key] !== false)
+}
+
+function columnsControl(label: string, columns: ColumnEditorDef[], hint?: string): ControlDef {
+  return { kind: 'columns', label, path: 'columns', columns, hint }
+}
+
 function getValue(config: any, path: string, fallback?: unknown) {
   const parts = path.split('.')
   let current = config
@@ -66,11 +183,18 @@ function getValue(config: any, path: string, fallback?: unknown) {
 }
 
 function getFamily(templateId: string | null | undefined, config: StreamOverlayConfig): OverlayFamily {
-  if (templateId && mvpGeralTemplateIds.has(templateId)) return 'card-table'
-  if (templateId && booyahsTemplateIds.has(templateId) && (config as any).booyahsDia) return 'cards'
-  if (templateId && tableTemplateIds.has(templateId)) return 'table'
+  const key = String(templateId || '').trim().toLowerCase()
+  if (mvpGeralTemplateIds.has(key)) return 'card-table'
+  if (booyahsTemplateIds.has(key) || (key === 'booyah' && (config as any).booyahsDia)) return 'cards'
+  if (booyahTemplateIds.has(key)) return 'booyah'
+  if (tableTemplateIds.has(key)) return 'table'
+  if (countdownTemplateIds.has(key)) return 'countdown'
+  if (waitingTemplateIds.has(key)) return 'waiting'
+  if (screenTemplateIds.has(key)) return 'screen'
   if ((config as any).mvpGeral?.enabled) return 'card-table'
   if ((config as any).booyahsDia) return 'cards'
+  if ((config as any).countdown) return 'countdown'
+  if ((config as any).booyah) return 'booyah'
   return 'generic'
 }
 
@@ -103,7 +227,7 @@ function img(label: string, path: string, hint?: string): ControlDef {
   return { kind: 'image', label, path, hint }
 }
 
-function buildTableLayers(config: StreamOverlayConfig): LayerDef[] {
+function buildTableLayers(config: StreamOverlayConfig, templateId?: string | null): LayerDef[] {
   const hasInfoImage = Boolean((config as any).tabelaGeral?.infoImage)
 
   return [
@@ -145,14 +269,7 @@ function buildTableLayers(config: StreamOverlayConfig): LayerDef[] {
       description: 'Largura das colunas e tamanho dos elementos internos.',
       icon: 'table',
       controls: [
-        n('Coluna rank', 'columnWidths.rank', 0.52, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna logo', 'columnWidths.logo', 0.7, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna nome', 'columnWidths.nome', 2.6, { step: 0.05, min: 0, max: 8 }),
-        n('Coluna variação', 'columnWidths.variacao', 0.72, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna quedas', 'columnWidths.quedas', 0.72, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna booyahs', 'columnWidths.booyahs', 0.72, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna abates', 'columnWidths.kills', 0.85, { step: 0.05, min: 0, max: 5 }),
-        n('Coluna pontos', 'columnWidths.pontos', 0.92, { step: 0.05, min: 0, max: 5 }),
+        columnsControl('Colunas da tabela', getColumnDefinitions(templateId), 'Marque para mostrar/remover. Ajuste a largura em pixels reais.'),
         n('Fonte base', 'layout.fontSize', 24, { min: 8, max: 80 }),
         n('Logo', 'layout.logoSize', 44, { min: 0, max: 160 }),
       ],
@@ -280,12 +397,7 @@ function buildMvpGeralLayers(): LayerDef[] {
       description: 'Larguras da tabela do MVP geral.',
       icon: 'table',
       controls: [
-        n('Rank', 'columnWidths.rank', 0.52, { step: 0.05 }),
-        n('Logo', 'columnWidths.logo', 0.7, { step: 0.05 }),
-        n('Nome', 'columnWidths.nome', 2.6, { step: 0.05 }),
-        n('Variação', 'columnWidths.variacao', 0.72, { step: 0.05 }),
-        n('Quedas', 'columnWidths.quedas', 0.72, { step: 0.05 }),
-        n('Abates', 'columnWidths.kills', 0.85, { step: 0.05 }),
+        columnsControl('Colunas MVP', getColumnDefinitions('mvp-geral'), 'Marque para mostrar/remover. Ajuste a largura em pixels reais.'),
       ],
     },
   ]
@@ -384,6 +496,204 @@ function buildBooyahsDiaLayers(): LayerDef[] {
   ]
 }
 
+
+function buildBooyahLayers(): LayerDef[] {
+  return [
+    {
+      id: 'booyah-text',
+      label: 'Texto BOOYAH',
+      description: 'Texto principal da chamada animada.',
+      icon: 'text',
+      controls: [
+        t('Texto', 'booyah.texto', 'BOOYAH'),
+        n('X', 'booyah.textoBlock.x', 630),
+        n('Y', 'booyah.textoBlock.y', 330),
+        n('Largura', 'booyah.textoBlock.w', 880),
+        n('Altura', 'booyah.textoBlock.h', 190),
+        n('Escala', 'booyah.textoBlock.scale', 100, { min: 10, max: 200 }),
+        n('Fonte', 'booyah.textoBlock.fontSize', 132, { min: 20, max: 260 }),
+        c('Cor texto', 'booyah.textoBlock.color', '#f6c453'),
+        c('Sombra', 'booyah.textoBlock.shadowColor', 'rgba(0,0,0,0.35)'),
+      ],
+    },
+    {
+      id: 'booyah-logo',
+      label: 'Logo vencedora',
+      description: 'Bloco da logo da equipe vencedora.',
+      icon: 'image',
+      controls: [
+        n('X', 'booyah.logoBlock.x', 300),
+        n('Y', 'booyah.logoBlock.y', 360),
+        n('Largura', 'booyah.logoBlock.w', 230),
+        n('Altura', 'booyah.logoBlock.h', 230),
+        n('Escala', 'booyah.logoBlock.scale', 100, { min: 10, max: 200 }),
+        n('Delay entrada ms', 'booyah.logoBlock.delay', 2000, { min: 0, max: 10000 }),
+        s('Ajuste logo', 'booyah.logoBlock.fit', objectFitOptions, 'contain'),
+        s('Posição logo', 'booyah.logoBlock.position', [
+          ['center center', 'Centro'],
+          ['center top', 'Centro cima'],
+          ['center bottom', 'Centro baixo'],
+          ['left center', 'Esquerda'],
+          ['right center', 'Direita'],
+        ], 'center center'),
+        t('Fundo', 'booyah.logoBlock.background', 'transparent'),
+        n('Cantos', 'booyah.logoBlock.radius', 0, { min: 0, max: 120 }),
+      ],
+    },
+    {
+      id: 'booyah-team',
+      label: 'Nome da equipe',
+      description: 'Nome da equipe vencedora.',
+      icon: 'text',
+      controls: [
+        n('X', 'booyah.equipeBlock.x', 620),
+        n('Y', 'booyah.equipeBlock.y', 530),
+        n('Largura', 'booyah.equipeBlock.w', 760),
+        n('Altura', 'booyah.equipeBlock.h', 80),
+        n('Escala', 'booyah.equipeBlock.scale', 100, { min: 10, max: 200 }),
+        n('Delay entrada ms', 'booyah.equipeBlock.delay', 2200, { min: 0, max: 10000 }),
+        n('Fonte', 'booyah.equipeBlock.fontSize', 42, { min: 10, max: 140 }),
+        c('Cor nome', 'booyah.equipeBlock.color', '#ffffff'),
+        c('Sombra', 'booyah.equipeBlock.shadowColor', 'rgba(0,0,0,0.35)'),
+        s('Alinhamento', 'booyah.equipeBlock.align', alignOptions, 'left'),
+      ],
+    },
+  ]
+}
+
+function buildCountdownLayers(): LayerDef[] {
+  return [
+    {
+      id: 'timer',
+      label: 'Timer',
+      description: 'Relógio, título e subtítulo da contagem.',
+      icon: 'text',
+      controls: [
+        t('Título', 'countdown.titulo', 'A LIVE COMEÇA EM'),
+        t('Subtítulo', 'countdown.subtitulo', ''),
+        n('Tempo segundos', 'countdown.seconds', 900, { min: 0, max: 86400 }),
+        n('X', 'countdown.timerBlock.x', 585),
+        n('Y', 'countdown.timerBlock.y', 110),
+        n('Largura', 'countdown.timerBlock.w', 750),
+        n('Escala', 'countdown.timerBlock.scale', 100, { min: 10, max: 200 }),
+        n('Tamanho relógio', 'countdown.timerBlock.clockSize', 160, { min: 24, max: 260 }),
+        c('Cor relógio', 'countdown.timerBlock.clockColor', '#ffffff'),
+        c('Fundo', 'countdown.timerBlock.background', 'rgba(0,0,0,0.55)'),
+      ],
+    },
+    {
+      id: 'teams',
+      label: 'Equipes',
+      description: 'Grade/lista de equipes no countdown.',
+      icon: 'layers',
+      controls: [
+        n('X', 'countdown.equipesBlock.x', 95),
+        n('Y', 'countdown.equipesBlock.y', 380),
+        n('Largura', 'countdown.equipesBlock.w', 760),
+        n('Colunas', 'countdown.equipesBlock.columns', 3, { min: 1, max: 24 }),
+        n('Largura card', 'countdown.equipesBlock.cardWidth', 190, { min: 40, max: 400 }),
+        n('Altura card', 'countdown.equipesBlock.cardHeight', 142, { min: 40, max: 400 }),
+        n('Logo', 'countdown.equipesBlock.logoSize', 155, { min: 0, max: 260 }),
+        n('Espaço colunas', 'countdown.equipesBlock.columnGap', 20, { min: 0, max: 120 }),
+        n('Espaço linhas', 'countdown.equipesBlock.rowGap', 20, { min: 0, max: 120 }),
+        c('Fundo card', 'countdown.equipesBlock.cardStyle.background', '#f6c453'),
+      ],
+    },
+    {
+      id: 'maps',
+      label: 'Mapas / quedas',
+      description: 'Bloco de mapas/quedas do countdown.',
+      icon: 'rows',
+      controls: [
+        n('X', 'countdown.mapasBlock.x', 1120),
+        n('Y', 'countdown.mapasBlock.y', 405),
+        n('Largura', 'countdown.mapasBlock.w', 620),
+        n('Altura', 'countdown.mapasBlock.h', 701),
+        n('Altura linha', 'countdown.mapasBlock.rowHeight', 118, { min: 20, max: 220 }),
+        n('Fonte', 'countdown.mapasBlock.fontSize', 28, { min: 8, max: 90 }),
+        c('Fundo', 'countdown.mapasBlock.background', '#f6c453'),
+        c('Fundo linha', 'countdown.mapasBlock.rowBackground', '#101827'),
+        c('Texto linha', 'countdown.mapasBlock.rowTextColor', 'rgba(255,255,255,0.88)'),
+      ],
+    },
+    {
+      id: 'image',
+      label: 'Imagem extra',
+      description: 'Imagem opcional do countdown.',
+      icon: 'image',
+      controls: [
+        img('Imagem', 'countdown.imagemUrl'),
+        n('X', 'countdown.imagemBlock.x', 80),
+        n('Y', 'countdown.imagemBlock.y', 60),
+        n('Largura', 'countdown.imagemBlock.w', 260),
+        n('Altura', 'countdown.imagemBlock.h', 180),
+        n('Opacidade', 'countdown.imagemBlock.opacity', 100, { min: 0, max: 100 }),
+      ],
+    },
+  ]
+}
+
+function buildWaitingLayers(): LayerDef[] {
+  return [
+    {
+      id: 'waiting-main',
+      label: 'Tela de espera',
+      description: 'Título e grade de equipes da espera.',
+      icon: 'layers',
+      controls: [
+        t('Título', 'title', 'TELA DE ESPERA'),
+        n('Máximo de equipes', 'layout.maxRows', 18, { min: 1, max: 48 }),
+        n('Fonte título', 'layout.titleSize', 58, { min: 20, max: 140 }),
+        n('Largura bloco', 'layout.w', 1500, { min: 400, max: 1920 }),
+        n('Colunas', 'layout.columns', 6, { min: 1, max: 12 }),
+        n('Logo', 'layout.logoSize', 96, { min: 20, max: 220 }),
+        c('Fundo', 'theme.background', 'rgba(0,0,0,0.55)'),
+        c('Texto', 'theme.text', '#ffffff'),
+      ],
+    },
+  ]
+}
+
+function buildScreenLayers(): LayerDef[] {
+  return [
+    {
+      id: 'screen-main',
+      label: 'Tela final',
+      description: 'Ajustes gerais da tela de transmissão.',
+      icon: 'layers',
+      controls: [
+        t('Título', 'title', 'AGRADECIMENTOS'),
+        n('X', 'layout.x', 180),
+        n('Y', 'layout.y', 140),
+        n('Largura', 'layout.w', 1560),
+        n('Altura bloco', 'layout.rowHeight', 90),
+        n('Fonte', 'layout.fontSize', 24),
+        n('Opacidade', 'layout.opacity', 100, { min: 0, max: 100 }),
+        c('Fundo', 'theme.background', 'rgba(5, 8, 18, 0.78)'),
+        c('Texto', 'theme.text', '#ffffff'),
+        c('Destaque', 'theme.accent', '#f6c453'),
+      ],
+    },
+    {
+      id: 'screen-brand',
+      label: 'Logo / título',
+      description: 'Imagem e textos da tela final.',
+      icon: 'text',
+      controls: [
+        { kind: 'checkbox', label: 'Mostrar bloco', path: 'brand.enabled', fallback: true },
+        img('Logo/imagem', 'brand.logoDataUrl'),
+        t('Nome', 'brand.name', 'AGRADECIMENTOS'),
+        t('Título', 'brand.title', 'AGRADECIMENTOS'),
+        n('Imagem X', 'brand.x', 180),
+        n('Imagem Y', 'brand.y', 54),
+        n('Imagem Largura', 'brand.w', 1560),
+        n('Imagem Altura', 'brand.h', 120),
+        c('Cor texto', 'brand.textColor', '#ffffff'),
+      ],
+    },
+  ]
+}
+
 function buildGenericLayers(): LayerDef[] {
   return [
     {
@@ -404,10 +714,14 @@ function buildGenericLayers(): LayerDef[] {
   ]
 }
 
-function buildLayers(family: OverlayFamily, config: StreamOverlayConfig): LayerDef[] {
+function buildLayers(family: OverlayFamily, config: StreamOverlayConfig, templateId?: string | null): LayerDef[] {
   if (family === 'cards') return buildBooyahsDiaLayers()
   if (family === 'card-table') return buildMvpGeralLayers()
-  if (family === 'table') return buildTableLayers(config)
+  if (family === 'table') return buildTableLayers(config, templateId)
+  if (family === 'booyah') return buildBooyahLayers()
+  if (family === 'countdown') return buildCountdownLayers()
+  if (family === 'waiting') return buildWaitingLayers()
+  if (family === 'screen') return buildScreenLayers()
   return buildGenericLayers()
 }
 
@@ -415,11 +729,64 @@ function familyLabel(family: OverlayFamily) {
   if (family === 'cards') return 'Cards'
   if (family === 'card-table') return 'Card + tabela'
   if (family === 'table') return 'Tabela'
+  if (family === 'booyah') return 'Booyah'
+  if (family === 'countdown') return 'Countdown'
+  if (family === 'waiting') return 'Tela de espera'
+  if (family === 'screen') return 'Tela final'
   return 'Geral'
+}
+
+
+function ColumnsControl({ control, config, onChange }: { control: ControlDef; config: StreamOverlayConfig; onChange: (path: string, value: unknown) => void }) {
+  const columns = control.columns || []
+  return (
+    <div className="col-span-2 space-y-2 border border-white/10 bg-white/[0.03] p-3">
+      <div>
+        <div className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400">{control.label}</div>
+        {control.hint ? <div className="mt-1 text-[10px] font-semibold leading-4 text-zinc-500">{control.hint}</div> : null}
+      </div>
+      <div className="space-y-2">
+        {columns.map((column) => {
+          const enabled = getValue(config, `columns.${column.key}`, true) !== false
+          const px = ratioToPixelWidth(config, column.key, column.widthFallback)
+          return (
+            <div key={column.key} className={`grid grid-cols-[1fr_92px] items-center gap-2 border px-2 py-2 ${enabled ? 'border-white/10 bg-[#0b1220]' : 'border-white/5 bg-black/20 opacity-60'}`}>
+              <label className="flex min-w-0 items-center gap-2 text-[10px] font-black uppercase tracking-[0.10em] text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(event) => onChange(`columns.${column.key}`, event.target.checked)}
+                  className="h-4 w-4 accent-red-600"
+                />
+                <span className="truncate">{column.label || allColumnLabels[column.key] || column.key}</span>
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={12}
+                  max={900}
+                  step={1}
+                  value={px}
+                  disabled={!enabled}
+                  onChange={(event) => onChange(`columnPixelWidths.${column.key}`, Number(event.target.value))}
+                  className="h-9 min-w-0 flex-1 border border-white/10 bg-white px-2 text-xs font-black text-[#101827] outline-none disabled:opacity-50"
+                />
+                <span className="text-[10px] font-black uppercase text-zinc-500">px</span>
+              </label>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function ControlField({ control, config, onChange, onUploadImage }: { control: ControlDef; config: StreamOverlayConfig; onChange: (path: string, value: unknown) => void; onUploadImage?: (path: string, file: File) => Promise<void> }) {
   const value = getValue(config, control.path, control.fallback)
+
+  if (control.kind === 'columns') {
+    return <ColumnsControl control={control} config={config} onChange={onChange} />
+  }
 
   if (control.kind === 'checkbox') {
     return (
@@ -533,7 +900,7 @@ function ControlField({ control, config, onChange, onUploadImage }: { control: C
 
 export default function SmartOverlayInspector({ templateId, config, onChange, onUploadImage }: SmartOverlayInspectorProps) {
   const family = getFamily(templateId, config)
-  const layers = useMemo(() => buildLayers(family, config), [family, config])
+  const layers = useMemo(() => buildLayers(family, config, templateId), [family, config, templateId])
   const [selectedLayerId, setSelectedLayerId] = useState(layers[0]?.id || '')
   const selectedLayer = layers.find((layer) => layer.id === selectedLayerId) || layers[0]
 
