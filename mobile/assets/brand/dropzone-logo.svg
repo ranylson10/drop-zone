@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3024.12" height="2385.97" viewBox="0 0 3024.12 2385.97" fill="none">
+  <defs>
+    <linearGradient id="dzLogoGradient" x1="0" y1="0" x2="3024.12" y2="2385.97" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="0.42" stop-color="#2563FF"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <polygon points="1357.9,2.21 1.48,562.06 1.48,1787.87 1357.9,1228.03" fill="url(#dzLogoGradient)"/>
+  <polygon points="1666.22,2.21 3022.64,562.06 3022.64,1787.87 1666.22,1228.03" fill="url(#dzLogoGradient)"/>
+  <polygon points="1511.9,1498.61 402.95,1956.32 1597.67,2384.38 2621.78,1956.36" fill="url(#dzLogoGradient)"/>
+</svg>

@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Drop Zone",
+    "slug": "drop-zone-app",
+    "scheme": "dropzone",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dropzone.app"
+    },
+    "android": {
+      "package": "com.dropzone.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080B16"
+      },
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "trocar-no-eas"
+      }
+    }
+  }
+}

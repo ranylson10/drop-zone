@@ -1,78 +1,30 @@
-# LEALT - Escrow completo dos apostados + taxa automática do site
+# Meu Sistema
 
-## O que cria
+Monorepo com um backend/API central, um frontend web e um app mobile.
 
-- `lealt_taxas_operacionais`: configura taxa dos apostados.
-- `lealt_apostados_escrow`: guarda valor retido por usuário/confronto/lado.
-- `lealt_site_receitas`: registra a receita do site.
-- Funções seguras para reter, reembolsar, finalizar e consultar resumo.
+## Estrutura
 
-## Fluxo
-
-1. Usuário deposita saldo via Pix.
-2. Ao entrar no apostado, chama `lealt_apostado_reter_saldo`.
-3. O valor sai de `saldo` e vai para `saldo_retido`.
-4. Ao finalizar, chama `lealt_apostado_finalizar_com_escrow`.
-5. O sistema calcula taxa do site, paga vencedor e registra receita.
-6. Se cancelar, chama `lealt_apostado_reembolsar_confronto`.
-
-## Exemplo
-
-Aposta 1x1:
-- Lado A: R$ 5
-- Lado B: R$ 5
-- Total: R$ 10
-- Taxa 10%: R$ 1
-- Prêmio vencedor: R$ 9
-
-## RPCs para frontend
-
-Entrar:
-
-```ts
-await supabase.rpc('lealt_apostado_reter_saldo', {
-  p_confronto_id: confrontoId,
-  p_user_id: user.id,
-  p_lado: 'a',
-  p_valor: 5
-})
+```text
+backend/
+web/
+mobile/
 ```
 
-Finalizar:
+- `web/`: site Next.js, painel administrativo, formulários e rotas API em `web/app/api`.
+- `mobile/`: app Expo/React Native consumindo a mesma API via `EXPO_PUBLIC_API_URL`.
+- `backend/`: contratos, convenções e configuração do backend compartilhado. Hoje o runtime do backend está nas API Routes do Next em `web/app/api`.
 
-```ts
-await supabase.rpc('lealt_apostado_finalizar_com_escrow', {
-  p_confronto_id: confrontoId,
-  p_vencedor_lado: 'a',
-  p_rake_percent: null
-})
+## Rodar
+
+```bash
+npm run dev:web
+npm run dev:mobile
 ```
 
-Reembolsar:
+No emulador Android, use uma URL acessível pelo dispositivo para a API, por exemplo:
 
-```ts
-await supabase.rpc('lealt_apostado_reembolsar_confronto', {
-  p_confronto_id: confrontoId,
-  p_motivo: 'Cancelado pela moderação'
-})
+```env
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3000
 ```
 
-Resumo:
-
-```ts
-await supabase.rpc('lealt_apostado_resumo_escrow', {
-  p_confronto_id: confrontoId
-})
-```
-
-## Segurança
-
-- Usuário comum só retém saldo dele mesmo.
-- Só admin/moderador do confronto finaliza/reembolsa.
-- Antifraude bloqueia antes da retenção/finalização.
-- Tudo gera auditoria.
-- Frontend não altera `wallet_saldo` direto.
-
-## Observação
-
-Apostados envolvendo dinheiro real podem depender de regras legais e regulatórias. Valide isso antes de operar publicamente.
+Em produção, `EXPO_PUBLIC_API_URL` deve apontar para o domínio onde o backend/API está hospedado.
