@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronRight, Facebook, Loader2, Lock, Mail, ShieldCheck, Us
 import { supabase } from '@/lib/supabase'
 import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedirect'
 import { normalizeUsername } from '@/lib/profileBootstrap'
+import { IDENTITY_ONBOARDING_PATH } from '@/lib/identity'
 
 function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
@@ -49,11 +50,11 @@ export default function Cadastro() {
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [redirectTo, setRedirectTo] = useState('/perfil')
+  const [redirectTo, setRedirectTo] = useState(IDENTITY_ONBOARDING_PATH)
   const router = useRouter()
 
   useEffect(() => {
-    const destinoSeguro = getRedirectParamFromBrowser('/perfil')
+    const destinoSeguro = getRedirectParamFromBrowser(IDENTITY_ONBOARDING_PATH)
     setRedirectTo(destinoSeguro)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('dropzone_auth_redirect', destinoSeguro)

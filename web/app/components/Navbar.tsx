@@ -4,12 +4,14 @@ import { Bell, Search, User, Menu, LogIn, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { usePerfil } from '../contexts/PerfilContext'
 import { DropZoneLogo } from './DropZoneLogo'
+import { getIdentityImage, getIdentityName } from '@/lib/identity'
 
 
 export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  const { user, perfilAtivo, tipoPerfil, loading } = usePerfil()
  const router = useRouter()
  const usuarioLogado = Boolean(user)
+ const identityImage = getIdentityImage(perfilAtivo)
 
  const corDestaque =
  tipoPerfil === 'produtora'
@@ -70,11 +72,11 @@ export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  <button
  type="button"
  className="flex items-center gap-2 border border-slate-200 bg-white px-2 py-1.5 "
- onClick={() => router.push('/perfil')}
+ onClick={() => router.push('/identidade')}
  >
  <div className="hidden text-right leading-none sm:block">
  <div className="max-w-[150px] truncate text-[11px] font-extrabold text-slate-950">
- {loading ? 'CARREGANDO...' : perfilAtivo?.nome || perfilAtivo?.username || 'USUÁRIO'}
+ {loading ? 'CARREGANDO...' : getIdentityName(perfilAtivo, 'USUARIO')}
  </div>
  <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: corDestaque }}>
  {tipoPerfil === 'usuario' ? 'Conta pessoal' : tipoPerfil}
@@ -82,8 +84,8 @@ export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  </div>
 
  <div className="grid h-9 w-9 place-items-center overflow-hidden border bg-slate-50" style={{ borderColor: `${corDestaque}55` }}>
- {perfilAtivo?.avatar_url ? (
- <img src={perfilAtivo.avatar_url} className="h-full w-full object-cover" alt="Avatar" />
+ {identityImage ? (
+ <img src={identityImage} className="h-full w-full object-cover" alt="Avatar" />
  ) : (
  <User className="text-zinc-500" size={17} />
  )}

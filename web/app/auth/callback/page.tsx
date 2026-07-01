@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { getSafeRedirectTo } from '@/lib/authRedirect'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
+import { IDENTITY_ONBOARDING_PATH } from '@/lib/identity'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function AuthCallbackPage() {
         const params = new URLSearchParams(window.location.search)
         const code = params.get('code')
         const redirectSalvo = window.localStorage.getItem('dropzone_auth_redirect')
-        const redirect = getSafeRedirectTo(params.get('redirect') || redirectSalvo, '/feed')
+        const redirect = getSafeRedirectTo(params.get('redirect') || redirectSalvo, IDENTITY_ONBOARDING_PATH)
 
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)

@@ -9,6 +9,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCcw, ShieldCheck } from 
 import { supabase } from '@/lib/supabase'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
 import { getSafeRedirectTo, withRedirectParam } from '@/lib/authRedirect'
+import { IDENTITY_ONBOARDING_PATH } from '@/lib/identity'
 
 const CODE_LENGTH = 6
 
@@ -23,7 +24,7 @@ function ConfirmarContaPageInner() {
   const [resending, setResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [redirectTo, setRedirectTo] = useState('/perfil')
+  const [redirectTo, setRedirectTo] = useState(IDENTITY_ONBOARDING_PATH)
   const inputsRef = useRef<Array<HTMLInputElement | null>>([])
 
   const codigo = useMemo(() => digits.join(''), [digits])
@@ -35,7 +36,7 @@ function ConfirmarContaPageInner() {
       typeof window !== 'undefined'
         ? window.localStorage.getItem('dropzone_auth_redirect')
         : ''
-    const redirectUrl = getSafeRedirectTo(searchParams.get('redirect') || redirectStorage, '/perfil')
+    const redirectUrl = getSafeRedirectTo(searchParams.get('redirect') || redirectStorage, IDENTITY_ONBOARDING_PATH)
 
     const emailStorage =
       typeof window !== 'undefined'

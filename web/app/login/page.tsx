@@ -7,6 +7,7 @@ import { ChevronRight, Facebook, Loader2, Lock, Mail, ShieldCheck } from 'lucide
 import { supabase } from '@/lib/supabase'
 import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedirect'
 import { ensureUserProfile } from '@/lib/profileBootstrap'
+import { IDENTITY_ONBOARDING_PATH } from '@/lib/identity'
 
 function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
@@ -47,13 +48,13 @@ export default function Login() {
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [redirectTo, setRedirectTo] = useState('/feed')
+  const [redirectTo, setRedirectTo] = useState(IDENTITY_ONBOARDING_PATH)
   const router = useRouter()
 
   useEffect(() => {
     let ativo = true
     async function verificarSessao() {
-      const destinoSeguro = getRedirectParamFromBrowser('/feed')
+      const destinoSeguro = getRedirectParamFromBrowser(IDENTITY_ONBOARDING_PATH)
       setRedirectTo(destinoSeguro)
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('dropzone_auth_redirect', destinoSeguro)
