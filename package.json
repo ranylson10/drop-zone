@@ -7,7 +7,9 @@
     "mobile"
   ],
   "scripts": {
+    "vercel-build": "npm --prefix web run build",
     "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
     "build:web": "npm --prefix web run build",
     "start:web": "npm --prefix web run start",
     "lint:web": "npm --prefix web run lint",

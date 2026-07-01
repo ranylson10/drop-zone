@@ -1,16 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL
+function createServerClient(supabaseUrl: string, key: string) {
+  return createClient(supabaseUrl, key, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+type SupabaseClient = ReturnType<typeof createServerClient>
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Variáveis do Supabase ausentes. Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-  )
+let adminClient: SupabaseClient | null = null
+
+function getSupabaseConfig() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Variaveis do Supabase ausentes. Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+    )
+  }
+
+  return { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey }
 }
 
 function extrairBearerToken(authHeader?: string | null) {
@@ -18,32 +34,28 @@ function extrairBearerToken(authHeader?: string | null) {
   return token || null
 }
 
-/**
- * Client "admin" real quando a service role existir.
- * Se não existir, cai para anon key sem derrubar o servidor.
- */
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  supabaseServiceRoleKey || supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  }
-)
+export function getSupabaseAdminClient() {
+  if (!adminClient) {
+    const { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey } = getSupabaseConfig()
 
-/**
- * Client por requisição.
- * - se existir service role, usa service role
- * - se não existir, usa anon key
- * - se vier token do usuário, envia o Authorization nas queries
- */
+    adminClient = createServerClient(supabaseUrl, supabaseServiceRoleKey || supabaseAnonKey)
+  }
+
+  return adminClient
+}
+
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getSupabaseAdminClient(), prop, receiver)
+  },
+})
+
 export function getServerSupabaseClient(authHeader?: string | null) {
+  const { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey } = getSupabaseConfig()
   const token = extrairBearerToken(authHeader)
   const key = supabaseServiceRoleKey || supabaseAnonKey
 
-  return createClient(supabaseUrl!, key!, {
+  return createClient(supabaseUrl, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -65,17 +77,8 @@ export async function getUserFromBearerToken(authHeader?: string | null) {
     return null
   }
 
-  const client = createClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  })
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  const client = createServerClient(supabaseUrl, supabaseAnonKey)
 
   const { data, error } = await client.auth.getUser(token)
 

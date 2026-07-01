@@ -28,7 +28,7 @@ function getAdminClient() {
   })
 }
 
-async function generateUniqueUsername(admin: ReturnType<typeof createClient>, base: string, currentUserId: string) {
+async function generateUniqueUsername(admin: ReturnType<typeof getAdminClient>, base: string, currentUserId: string) {
   const originalBase = normalizeUsername(base)
   let candidate = originalBase
 
@@ -41,7 +41,7 @@ async function generateUniqueUsername(admin: ReturnType<typeof createClient>, ba
       .maybeSingle()
 
     if (error) throw error
-    if (!data || data.id === currentUserId) return candidate
+    if (!data || String(data.id) === currentUserId) return candidate
 
     candidate = `${originalBase}_${Math.random().toString(36).slice(2, 6)}`
   }
