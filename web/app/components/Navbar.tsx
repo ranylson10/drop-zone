@@ -4,7 +4,7 @@ import { Bell, Search, User, Menu, LogIn, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { usePerfil } from '../contexts/PerfilContext'
 import { DropZoneLogo } from './DropZoneLogo'
-import { getIdentityImage, getIdentityName } from '@/lib/identity'
+import { getIdentityImage, getIdentityName, getModeDashboardPath, tipoIdentidadeParaModo } from '@/lib/identity'
 
 
 export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
@@ -37,7 +37,7 @@ export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  <button
  type="button"
  className="flex min-w-0 items-center gap-3"
- onClick={() => router.push('/')}
+ onClick={() => router.push(usuarioLogado ? getModeDashboardPath(tipoIdentidadeParaModo(tipoPerfil as any)) : '/')}
  >
  <div className="grid h-10 w-10 shrink-0 place-items-center border border-slate-200 bg-white ">
  <DropZoneLogo size="sm" animated />
@@ -79,7 +79,7 @@ export default function Navbar({ onOpenMenu }: { onOpenMenu?: () => void }) {
  {loading ? 'CARREGANDO...' : getIdentityName(perfilAtivo, 'USUARIO')}
  </div>
  <div className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: corDestaque }}>
- {tipoPerfil === 'usuario' ? 'Conta pessoal' : tipoPerfil}
+ {tipoPerfil === 'jogo' ? 'Jogador' : tipoPerfil === 'equipe' ? 'Minha equipe' : tipoPerfil === 'produtora' ? 'Minha produtora' : 'Conta pessoal'}
  </div>
  </div>
 

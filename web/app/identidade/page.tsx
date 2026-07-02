@@ -8,6 +8,7 @@ import {
   Check,
   Gamepad2,
   Loader2,
+  Medal,
   Plus,
   Shield,
   User,
@@ -19,11 +20,16 @@ import ServidorSelect from '@/app/components/ServidorSelect'
 import { usePerfil } from '@/app/contexts/PerfilContext'
 import { supabase } from '@/lib/supabase'
 import {
-  getIdentityHome,
   getIdentityImage,
   getIdentityLabel,
   getIdentityName,
+  getModeDashboardPath,
+  getModoUsoLabel,
+  MODE_INTENT_STORAGE_KEY,
+  MODE_STORAGE_KEY,
+  normalizarModoUso,
   type TipoIdentidade,
+  type TipoModoUso,
 } from '@/lib/identity'
 
 type CreateMode = null | 'jogo' | 'equipe' | 'produtora'
@@ -215,27 +221,52 @@ function IdentidadeContent() {
   const [createMode, setCreateMode] = useState<CreateMode>(null)
 
   const redirectTo = searchParams.get('redirect') || ''
+  const modoEscolhido = normalizarModoUso(searchParams.get('modo') || searchParams.get('novo'))
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login?redirect=/identidade')
-  }, [loading, router, user])
+    if (!loading && !user) {
+      const destino = modoEscolhido ? `/identidade?modo=${modoEscolhido}` : '/identidade'
+      router.replace(`/login?redirect=${encodeURIComponent(destino)}`)
+    }
+  }, [loading, modoEscolhido, router, user])
+
+  useEffect(() => {
+    if (!modoEscolhido || !user) return
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MODE_INTENT_STORAGE_KEY, modoEscolhido)
+      window.localStorage.setItem(MODE_STORAGE_KEY, modoEscolhido)
+    }
+
+    if (modoEscolhido === 'jogador' && perfisJogo.length === 0) setCreateMode('jogo')
+    if (modoEscolhido === 'equipe' && equipes.length === 0) setCreateMode('equipe')
+    if (modoEscolhido === 'produtora' && produtoras.length === 0) setCreateMode('produtora')
+    if (modoEscolhido === 'manager') setCreateMode(null)
+  }, [equipes.length, modoEscolhido, perfisJogo.length, produtoras.length, user])
 
   const totalIdentidades = useMemo(
     () => 1 + perfisJogo.length + equipes.length + produtoras.length,
     [equipes.length, perfisJogo.length, produtoras.length]
   )
 
-  async function selecionar(tipo: TipoIdentidade, id?: string | null) {
+  async function selecionar(tipo: TipoIdentidade, id?: string | null, modoManual?: TipoModoUso) {
+    const modo = modoManual || (tipo === 'jogo' ? 'jogador' : tipo === 'equipe' ? 'equipe' : tipo === 'produtora' ? 'produtora' : 'visitante')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MODE_STORAGE_KEY, modo)
+      window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
+    }
     setPerfilAtivoByTipo(tipo, id)
-    const destino = redirectTo && redirectTo !== '/identidade' ? redirectTo : getIdentityHome(tipo, id)
+    const destino = redirectTo && redirectTo !== '/identidade' ? redirectTo : getModeDashboardPath(modo)
     router.push(destino)
   }
 
   async function ativarAposCriar(tipo: Exclude<TipoIdentidade, 'usuario'>, id: string) {
+    const modo = tipo === 'jogo' ? 'jogador' : tipo === 'equipe' ? 'equipe' : 'produtora'
     window.localStorage.setItem('ff_tipo_perfil_ativo', tipo)
     window.localStorage.setItem('ff_id_perfil_ativo', id)
+    window.localStorage.setItem(MODE_STORAGE_KEY, modo)
+    window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
     await recarregarPerfis()
-    router.push(getIdentityHome(tipo, id))
+    router.push(getModeDashboardPath(modo))
   }
 
   if (loading || !user) {
@@ -258,10 +289,10 @@ function IdentidadeContent() {
                 <Users size={15} /> Central de identidade
               </div>
               <h1 className="mt-2 text-3xl font-black uppercase tracking-[-0.05em] text-slate-950">
-                Entrar como
+                Configurar modo de uso
               </h1>
               <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-                Escolha se vai navegar como usuario, perfil de jogo, equipe ou produtora. Depois voce pode trocar essa funcao pelo menu do site.
+                Escolha como quer usar a plataforma agora. O painel, menu e atalhos ficam moldados para esse modo.
               </p>
             </div>
             <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
@@ -270,13 +301,21 @@ function IdentidadeContent() {
           </div>
         </section>
 
+        {modoEscolhido ? (
+          <section className="border border-blue-200 bg-blue-50 p-4 text-blue-950">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Modo escolhido</div>
+            <div className="mt-1 text-lg font-black uppercase">{getModoUsoLabel(modoEscolhido)}</div>
+            <p className="mt-1 text-xs font-semibold leading-5 text-blue-900/70">Vamos deixar a tela inicial e os atalhos focados nesse tipo de uso.</p>
+          </section>
+        ) : null}
+
         <section className="grid gap-3 md:grid-cols-2">
           {perfilUsuario ? (
             <IdentityCard
               tipo="usuario"
               perfil={perfilUsuario}
               active={tipoPerfil === 'usuario' && perfilAtivo?.id === perfilUsuario.id}
-              onSelect={() => selecionar('usuario', perfilUsuario.id)}
+              onSelect={() => selecionar('usuario', perfilUsuario.id, 'visitante')}
             />
           ) : null}
 
@@ -311,7 +350,7 @@ function IdentidadeContent() {
           ))}
         </section>
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-4">
           <button type="button" onClick={() => setCreateMode('jogo')} className="border border-cyan-200 bg-cyan-50 p-4 text-left text-cyan-900 transition hover:border-cyan-400">
             <Gamepad2 size={22} />
             <div className="mt-3 text-sm font-black uppercase">Criar perfil de jogo</div>
@@ -326,6 +365,12 @@ function IdentidadeContent() {
             <Building2 size={22} />
             <div className="mt-3 text-sm font-black uppercase">Criar produtora</div>
             <p className="mt-1 text-xs font-semibold leading-5 text-orange-900/65">Crie identidade de produtora para eventos e campeonatos.</p>
+          </button>
+
+          <button type="button" onClick={() => selecionar('usuario', perfilUsuario?.id, 'manager')} className="border border-emerald-200 bg-emerald-50 p-4 text-left text-emerald-900 transition hover:border-emerald-400">
+            <Medal size={22} />
+            <div className="mt-3 text-sm font-black uppercase">Entrar como manager</div>
+            <p className="mt-1 text-xs font-semibold leading-5 text-emerald-900/65">Use esse modo para gerenciar equipes, lines e pendências operacionais.</p>
           </button>
         </section>
 

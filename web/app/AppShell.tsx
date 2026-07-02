@@ -17,7 +17,7 @@ export default function AppShell({
   const pathname = usePathname() || ''
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`))
-  const isCleanRoute = pathname.startsWith('/escala/') || pathname === '/stream' || pathname.startsWith('/stream/')
+  const isCleanRoute = pathname === '/' || pathname.startsWith('/escala/') || pathname === '/stream' || pathname.startsWith('/stream/')
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow

@@ -19,7 +19,9 @@ import {
   Plus,
   Repeat2,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { usePerfil } from '@/app/contexts/PerfilContext'
+import { getModeDashboardPath, MODE_STORAGE_KEY, normalizarModoUso, tipoIdentidadeParaModo, type TipoModoUso } from '@/lib/identity'
 
 type NavChild = {
   href: string
@@ -178,19 +180,103 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
   )
 }
 
+
+function useModoAtual(): TipoModoUso {
+  const { tipoPerfil } = usePerfil()
+  const [modoLocal, setModoLocal] = useState<TipoModoUso | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const sync = () => setModoLocal(normalizarModoUso(window.localStorage.getItem(MODE_STORAGE_KEY)))
+    sync()
+    window.addEventListener('storage', sync)
+    window.addEventListener('focus', sync)
+    return () => {
+      window.removeEventListener('storage', sync)
+      window.removeEventListener('focus', sync)
+    }
+  }, [])
+
+  return modoLocal || tipoIdentidadeParaModo(tipoPerfil)
+}
+
+function getModeItems(modo: TipoModoUso, perfilAtivo?: any): NavItem[] {
+  const equipeHref = perfilAtivo?.id && modo === 'equipe' ? `/equipe/${perfilAtivo.id}` : '/equipe'
+  const produtoraHref = perfilAtivo?.id && modo === 'produtora' ? `/produtora/${perfilAtivo.id}` : '/produtora'
+
+  if (modo === 'jogador') {
+    return [
+      { href: getModeDashboardPath('jogador'), label: 'Início', icon: <Home size={18} /> },
+      { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
+      { href: '/perfil?tab=gamer', label: 'Meu perfil de jogo', icon: <User size={18} /> },
+      { href: '/equipe', label: 'Minha equipe', icon: <Shield size={18} /> },
+      { href: '/equipe/convites', label: 'Convites', icon: <Users size={18} /> },
+      { href: '/ranking', label: 'Ranking', icon: <BarChart3 size={18} /> },
+      { href: '/identidade', label: 'Trocar modo', icon: <Repeat2 size={18} /> },
+    ]
+  }
+
+  if (modo === 'equipe') {
+    return [
+      { href: getModeDashboardPath('equipe'), label: 'Início', icon: <Home size={18} /> },
+      { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
+      { href: equipeHref, label: 'Minha equipe', icon: <Shield size={18} /> },
+      { href: equipeHref, label: 'Elenco', icon: <Users size={18} /> },
+      { href: equipeHref, label: 'Lines', icon: <Medal size={18} /> },
+      { href: '/ranking', label: 'Estatísticas', icon: <BarChart3 size={18} /> },
+      { href: '/identidade', label: 'Trocar modo', icon: <Repeat2 size={18} /> },
+    ]
+  }
+
+  if (modo === 'produtora') {
+    return [
+      { href: getModeDashboardPath('produtora'), label: 'Início', icon: <Home size={18} /> },
+      { href: produtoraHref, label: 'Minha produtora', icon: <Radio size={18} /> },
+      { href: '/campeonatos/nova', label: 'Criar campeonato', icon: <Plus size={18} /> },
+      { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
+      { href: '/admin/configuracoes/pagamentos', label: 'Pagamentos PIX', icon: <BarChart3 size={18} /> },
+      { href: '/stream/projects', label: 'Stream', icon: <Radio size={18} /> },
+      { href: '/identidade', label: 'Trocar modo', icon: <Repeat2 size={18} /> },
+    ]
+  }
+
+  if (modo === 'manager') {
+    return [
+      { href: getModeDashboardPath('manager'), label: 'Início', icon: <Home size={18} /> },
+      { href: '/manager', label: 'Manager', icon: <Medal size={18} />, badge: 'HUB' },
+      { href: '/equipe', label: 'Equipes', icon: <Shield size={18} /> },
+      { href: '/jogadores', label: 'Jogadores', icon: <Users size={18} /> },
+      { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
+      { href: '/ranking', label: 'Estatísticas', icon: <BarChart3 size={18} /> },
+      { href: '/identidade', label: 'Trocar modo', icon: <Repeat2 size={18} /> },
+    ]
+  }
+
+  return [
+    { href: getModeDashboardPath('visitante'), label: 'Início', icon: <Home size={18} /> },
+    { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
+    { href: '/equipe', label: 'Equipes', icon: <Shield size={18} /> },
+    { href: '/produtora', label: 'Produtoras', icon: <Radio size={18} /> },
+    { href: '/ranking', label: 'Ranking', icon: <BarChart3 size={18} /> },
+    { href: '/login?redirect=%2Fidentidade', label: 'Entrar', icon: <User size={18} /> },
+  ]
+}
+
 export default function SidebarNavigation({ isSiteAdmin = false, isModerador = false, isManager = false, onNavigate }: SidebarNavigationProps) {
+  const { perfilAtivo } = usePerfil()
+  const modo = useModoAtual()
   const items = useMemo(() => {
-    const lista = [...baseItems]
-    if (isManager) lista.push(managerItem)
+    const lista = getModeItems(modo, perfilAtivo)
+    if (isManager && modo !== 'manager') lista.push(managerItem)
     if (isSiteAdmin) lista.push(adminItem)
     return lista
-  }, [isManager, isModerador, isSiteAdmin])
+  }, [isManager, isModerador, isSiteAdmin, modo, perfilAtivo])
 
   return (
     <aside className="flex h-full flex-col border-r border-slate-200 bg-[#f8fafc] text-slate-950">
       <div className="border-b border-slate-200 px-3 py-3">
         <Link
-          href="/feed"
+          href={getModeDashboardPath(modo)}
           onClick={onNavigate}
           className="group flex min-h-[118px] flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-slate-200 bg-white px-3 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition hover:border-blue-200"
         >
@@ -221,12 +307,16 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
 
 export function MobileBottomNavigation() {
   const pathname = usePathname()
+  const { perfilAtivo } = usePerfil()
+  const modo = useModoAtual()
+  const modeItems = getModeItems(modo, perfilAtivo)
+  const primaryHref = modo === 'produtora' ? '/campeonatos/nova' : modo === 'equipe' ? '/campeonatos' : modo === 'jogador' ? '/identidade?modo=jogador' : '/identidade'
   const items = [
-    { href: '/feed', label: 'Inicio', icon: <Home size={20} /> },
+    { href: getModeDashboardPath(modo), label: 'Inicio', icon: <Home size={20} /> },
     { href: '/campeonatos', label: 'Comp', icon: <Trophy size={20} /> },
-    { href: '/campeonatos/nova', label: 'Criar', icon: <Plus size={22} />, primary: true },
-    { href: '/chat', label: 'Chat', icon: <MessageCircle size={20} /> },
-    { href: '/perfil', label: 'Perfil', icon: <User size={20} /> },
+    { href: primaryHref, label: modo === 'produtora' ? 'Criar' : modo === 'equipe' ? 'Vagas' : 'Perfil', icon: <Plus size={22} />, primary: true },
+    { href: modeItems[2]?.href || '/chat', label: modeItems[2]?.label?.slice(0, 8) || 'Chat', icon: <MessageCircle size={20} /> },
+    { href: '/identidade', label: 'Modo', icon: <Repeat2 size={20} /> },
   ]
 
   return (
