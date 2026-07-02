@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { usePerfil } from '@/app/contexts/PerfilContext'
 import Image from 'next/image'
 import {
@@ -387,6 +387,7 @@ async function carregarEstatisticasEquipe(equipeId: string): Promise<Estatistica
 export default function PerfilEquipePage() {
  const params = useParams()
  const router = useRouter()
+ const searchParams = useSearchParams()
  const { user } = usePerfil()
  const equipeId = String(params?.id || '')
 
@@ -398,6 +399,18 @@ export default function PerfilEquipePage() {
  const [eventosCount, setEventosCount] = useState(0)
  const [estatisticas, setEstatisticas] = useState<EstatisticasEquipe>(estatisticasVazias)
  const [historicoAberto, setHistoricoAberto] = useState<'titulos' | 'historico' | null>(null)
+
+ useEffect(() => {
+   const tabParam = searchParams.get('tab') as TabKey | null
+   if (tabParam && ['lideres', 'jogadores', 'lines', 'campeonatos', 'agenda'].includes(tabParam)) {
+     setTabAtiva(tabParam)
+   }
+ }, [searchParams])
+
+ const mudarTab = useCallback((tab: TabKey) => {
+   setTabAtiva(tab)
+   router.replace(`/equipe/${equipeId}?tab=${tab}`, { scroll: false })
+ }, [equipeId, router])
 
  const carregarDados = useCallback(async () => {
  if (!equipeId) return
@@ -690,7 +703,7 @@ export default function PerfilEquipePage() {
  </div>
  </section>
 
- <section className="border-b border-zinc-200 px-6 py-6 md:px-10 max-md:px-4 max-md:py-4">
+ <section id="estatisticas" className="scroll-mt-24 border-b border-zinc-200 px-6 py-6 md:px-10 max-md:px-4 max-md:py-4">
  <div className="border border-zinc-200 bg-white p-4 max-md:border-0 max-md:p-0">
  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between max-md:mb-3">
  <div>
@@ -802,10 +815,10 @@ export default function PerfilEquipePage() {
  <div className="flex flex-wrap gap-8 py-5">
  {[
  { key: 'lideres', label: 'Comando', icon: Shield },
- { key: 'jogadores', label: 'Atletas', icon: Users },
+ { key: 'jogadores', label: 'Elenco', icon: Users },
  { key: 'lines', label: 'Lines', icon: Layers3 },
- { key: 'campeonatos', label: 'Pro-Leagues', icon: Trophy },
- { key: 'agenda', label: 'Calendário', icon: CalendarDays },
+ { key: 'campeonatos', label: 'Meus campeonatos', icon: Trophy },
+ { key: 'agenda', label: 'Cronograma', icon: CalendarDays },
  ].map((tab) => {
  const Icon = tab.icon
  const ativa = tabAtiva === tab.key
@@ -813,7 +826,7 @@ export default function PerfilEquipePage() {
  return (
  <button
  key={tab.key}
- onClick={() => setTabAtiva(tab.key as TabKey)}
+ onClick={() => mudarTab(tab.key as TabKey)}
  className={`relative inline-flex items-center gap-2 pb-4 text-[16px] font-semibold uppercase tracking-[0.2em] transition ${
  ativa ? 'text-[#2563eb]' : 'text-[#8ea0be] hover:text-[#142340]'
  }`}

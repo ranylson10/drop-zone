@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation'
 import {
   BarChart3,
   CalendarDays,
+  ClipboardList,
   ChevronDown,
   Home,
   Medal,
   MonitorCog,
   Shield,
+  Target,
   Trophy,
   Users,
   Gavel,
@@ -109,8 +111,9 @@ const adminItem: NavItem = {
 
 function isActivePath(pathname: string | null, href: string) {
   if (!pathname) return false
-  if (href === '/feed') return pathname === '/' || pathname === '/feed'
-  return pathname === href || pathname.startsWith(`${href}/`)
+  const cleanHref = href.split('?')[0]
+  if (cleanHref === '/feed') return pathname === '/' || pathname === '/feed'
+  return pathname === cleanHref || pathname.startsWith(`${cleanHref}/`)
 }
 
 function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
@@ -162,7 +165,7 @@ function NavRow({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }
             const ativoChild = isActivePath(pathname, child.href)
             return (
               <Link
-                key={child.href}
+                key={`${child.href}-${child.label}`}
                 href={child.href}
                 onClick={onNavigate}
                 className={[
@@ -217,13 +220,25 @@ function getModeItems(modo: TipoModoUso, perfilAtivo?: any): NavItem[] {
   }
 
   if (modo === 'equipe') {
+    const equipeTabs = [
+      { href: `${equipeHref}?tab=lideres`, label: 'Comando' },
+      { href: `${equipeHref}?tab=jogadores`, label: 'Elenco' },
+      { href: `${equipeHref}?tab=lines`, label: 'Lines' },
+      { href: `${equipeHref}?tab=campeonatos`, label: 'Meus campeonatos' },
+      { href: `${equipeHref}?tab=agenda`, label: 'Cronograma' },
+      { href: `${equipeHref}#estatisticas`, label: 'Estatísticas' },
+    ]
+
     return [
       { href: getModeDashboardPath('equipe'), label: 'Início', icon: <Home size={18} /> },
-      { href: '/campeonatos', label: 'Campeonatos', icon: <Trophy size={18} /> },
-      { href: equipeHref, label: 'Minha equipe', icon: <Shield size={18} /> },
-      { href: equipeHref, label: 'Elenco', icon: <Users size={18} /> },
-      { href: equipeHref, label: 'Lines', icon: <Medal size={18} /> },
-      { href: '/ranking', label: 'Estatísticas', icon: <BarChart3 size={18} /> },
+      { href: '/campeonatos', label: 'Campeonatos disponíveis', icon: <Trophy size={18} /> },
+      { href: equipeHref, label: 'Minha equipe', icon: <Shield size={18} />, children: equipeTabs },
+      { href: `${equipeHref}?tab=lideres`, label: 'Comando', icon: <Shield size={18} /> },
+      { href: `${equipeHref}?tab=jogadores`, label: 'Elenco', icon: <Users size={18} /> },
+      { href: `${equipeHref}?tab=lines`, label: 'Lines', icon: <Medal size={18} /> },
+      { href: `${equipeHref}?tab=campeonatos`, label: 'Meus campeonatos', icon: <Trophy size={18} /> },
+      { href: `${equipeHref}?tab=agenda`, label: 'Cronograma', icon: <CalendarDays size={18} /> },
+      { href: `${equipeHref}#estatisticas`, label: 'Estatísticas', icon: <BarChart3 size={18} /> },
       { href: '/identidade', label: 'Trocar modo', icon: <Repeat2 size={18} /> },
     ]
   }
@@ -293,8 +308,8 @@ export default function SidebarNavigation({ isSiteAdmin = false, isModerador = f
       </div>
 
       <nav className="custom-scrollbar flex-1 space-y-1.5 overflow-y-auto p-3">
-        {items.map((item) => (
-          <NavRow key={item.href} item={item} onNavigate={onNavigate} />
+        {items.map((item, index) => (
+          <NavRow key={`${item.href}-${item.label}-${index}`} item={item} onNavigate={onNavigate} />
         ))}
       </nav>
 
@@ -325,7 +340,7 @@ export function MobileBottomNavigation() {
         const ativo = isActivePath(pathname, item.href)
         return (
           <Link
-            key={item.href}
+            key={`${item.href}-${item.label}`}
             href={item.href}
             className={[
               'flex min-h-12 flex-col items-center justify-center gap-1 text-[9px] font-black uppercase tracking-[0.08em]',

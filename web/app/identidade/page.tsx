@@ -219,6 +219,7 @@ function IdentidadeContent() {
     recarregarPerfis,
   } = usePerfil()
   const [createMode, setCreateMode] = useState<CreateMode>(null)
+  const [autoRedirecting, setAutoRedirecting] = useState(false)
 
   const redirectTo = searchParams.get('redirect') || ''
   const modoEscolhido = normalizarModoUso(searchParams.get('modo') || searchParams.get('novo'))
@@ -231,17 +232,76 @@ function IdentidadeContent() {
   }, [loading, modoEscolhido, router, user])
 
   useEffect(() => {
-    if (!modoEscolhido || !user) return
+    if (loading || !modoEscolhido || !user || autoRedirecting) return
+
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(MODE_INTENT_STORAGE_KEY, modoEscolhido)
       window.localStorage.setItem(MODE_STORAGE_KEY, modoEscolhido)
     }
 
-    if (modoEscolhido === 'jogador' && perfisJogo.length === 0) setCreateMode('jogo')
-    if (modoEscolhido === 'equipe' && equipes.length === 0) setCreateMode('equipe')
-    if (modoEscolhido === 'produtora' && produtoras.length === 0) setCreateMode('produtora')
-    if (modoEscolhido === 'manager') setCreateMode(null)
-  }, [equipes.length, modoEscolhido, perfisJogo.length, produtoras.length, user])
+    const perfilJogoAtual = tipoPerfil === 'jogo' ? perfilAtivo : null
+    const equipeAtual = tipoPerfil === 'equipe' ? perfilAtivo : null
+    const produtoraAtual = tipoPerfil === 'produtora' ? perfilAtivo : null
+
+    if (modoEscolhido === 'jogador') {
+      const perfil = perfilJogoAtual || perfisJogo[0]
+      if (!perfil?.id) {
+        setCreateMode('jogo')
+        return
+      }
+      setAutoRedirecting(true)
+      setPerfilAtivoByTipo('jogo', perfil.id)
+      window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
+      router.replace(getModeDashboardPath('jogador'))
+      return
+    }
+
+    if (modoEscolhido === 'equipe') {
+      const equipe = equipeAtual || equipes[0]
+      if (!equipe?.id) {
+        setCreateMode('equipe')
+        return
+      }
+      setAutoRedirecting(true)
+      setPerfilAtivoByTipo('equipe', equipe.id)
+      window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
+      router.replace(getModeDashboardPath('equipe'))
+      return
+    }
+
+    if (modoEscolhido === 'produtora') {
+      const produtora = produtoraAtual || produtoras[0]
+      if (!produtora?.id) {
+        setCreateMode('produtora')
+        return
+      }
+      setAutoRedirecting(true)
+      setPerfilAtivoByTipo('produtora', produtora.id)
+      window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
+      router.replace(getModeDashboardPath('produtora'))
+      return
+    }
+
+    if (modoEscolhido === 'manager' || modoEscolhido === 'visitante') {
+      setAutoRedirecting(true)
+      if (perfilUsuario?.id) setPerfilAtivoByTipo('usuario', perfilUsuario.id)
+      window.localStorage.removeItem(MODE_INTENT_STORAGE_KEY)
+      router.replace(getModeDashboardPath(modoEscolhido))
+    }
+  }, [
+    autoRedirecting,
+    equipes,
+    loading,
+    modoEscolhido,
+    perfilAtivo,
+    perfilUsuario,
+    perfisJogo,
+    produtoras,
+    router,
+    setPerfilAtivoByTipo,
+    tipoPerfil,
+    user,
+  ])
 
   const totalIdentidades = useMemo(
     () => 1 + perfisJogo.length + equipes.length + produtoras.length,
@@ -269,7 +329,7 @@ function IdentidadeContent() {
     router.push(getModeDashboardPath(modo))
   }
 
-  if (loading || !user) {
+  if (loading || !user || autoRedirecting) {
     return (
       <main className="grid min-h-[70vh] place-items-center text-slate-950">
         <div className="inline-flex items-center gap-2 border border-slate-200 bg-white px-5 py-4 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">

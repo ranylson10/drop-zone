@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Facebook, Loader2, Lock, Mail, ShieldCheck, User, UserPlus } from 'lucide-react'
@@ -9,21 +9,56 @@ import { getRedirectParamFromBrowser, withRedirectParam } from '@/lib/authRedire
 import { normalizeUsername } from '@/lib/profileBootstrap'
 import { IDENTITY_ONBOARDING_PATH } from '@/lib/identity'
 
+type IntentKey = 'jogador' | 'equipe' | 'produtora' | 'manager' | 'visitante'
+
+const intentData: Record<IntentKey, { titulo: string; descricao: string; cor: string }> = {
+  jogador: {
+    titulo: 'Criar conta de jogador',
+    descricao: 'Crie a conta base. Depois você completa seu perfil de jogo.',
+    cor: 'text-cyan-600',
+  },
+  equipe: {
+    titulo: 'Criar conta de líder',
+    descricao: 'Crie a conta base. Depois você cria ou gerencia sua equipe.',
+    cor: 'text-blue-600',
+  },
+  produtora: {
+    titulo: 'Criar conta de produtora',
+    descricao: 'Crie a conta base. Depois você configura a produtora e seus eventos.',
+    cor: 'text-orange-600',
+  },
+  manager: {
+    titulo: 'Criar conta de manager',
+    descricao: 'Crie a conta base. Depois você acessa suas gestões e permissões.',
+    cor: 'text-emerald-600',
+  },
+  visitante: {
+    titulo: 'Criar conta',
+    descricao: 'Crie sua conta Drop Zone para continuar.',
+    cor: 'text-slate-700',
+  },
+}
+
+function getIntentFromBrowser(): IntentKey {
+  if (typeof window === 'undefined') return 'visitante'
+  const intent = new URLSearchParams(window.location.search).get('intent') as IntentKey | null
+  if (intent && intent in intentData) return intent
+  return 'visitante'
+}
+
 function AuthBackground({ children }: { children: React.ReactNode }) {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#111827] px-4 py-8 text-white">
-      <div className="absolute inset-0 bg-[linear-gradient(145deg,#101827_0%,#1d2942_42%,#2563eb_100%)]" />
-      <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.10)_1px,transparent_1px)] [background-size:32px_32px]" />
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/10 to-transparent" />
-      <div className="relative w-full max-w-[380px]">{children}</div>
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f6f8fc] px-4 py-8 text-slate-950">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.65] [background-image:linear-gradient(rgba(15,23,42,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] [background-size:24px_24px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[230px] bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.14),transparent_58%)]" />
+      <div className="relative w-full max-w-[430px]">{children}</div>
     </section>
   )
 }
 
 function AuthCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative overflow-hidden rounded-[36px] border border-white/20 bg-[linear-gradient(160deg,rgba(124,58,237,0.94)_0%,rgba(37,99,235,0.96)_58%,rgba(17,24,39,0.94)_100%)] p-6 shadow-[0_28px_90px_rgba(2,6,23,0.58)] sm:p-7">
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(125deg,rgba(255,255,255,0.16),transparent_36%,rgba(249,115,22,0.14))]" />
+    <div className="border border-slate-200 bg-white p-6 shadow-[7px_7px_0px_rgba(15,23,42,0.10)] sm:p-7">
       {children}
     </div>
   )
@@ -32,10 +67,10 @@ function AuthCard({ children }: { children: React.ReactNode }) {
 function Field({ icon: Icon, label, ...props }: any) {
   return (
     <label className="block">
-      <span className="sr-only">{label}</span>
-      <div className="flex h-12 items-center rounded-xl border border-white/45 bg-white text-slate-950 shadow-[0_12px_30px_rgba(2,6,23,0.12)] transition focus-within:border-orange-300 focus-within:ring-4 focus-within:ring-white/20">
-        <div className="grid h-full w-11 place-items-center text-blue-600"><Icon size={17} /></div>
-        <input {...props} className="h-full min-w-0 flex-1 border-0 bg-transparent px-2 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
+      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</span>
+      <div className="flex h-12 items-center border border-slate-300 bg-white text-slate-950 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-100">
+        <div className="grid h-full w-11 place-items-center border-r border-slate-200 text-blue-600"><Icon size={17} /></div>
+        <input {...props} className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400" />
       </div>
     </label>
   )
@@ -51,16 +86,21 @@ export default function Cadastro() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [redirectTo, setRedirectTo] = useState(IDENTITY_ONBOARDING_PATH)
+  const [intent, setIntent] = useState<IntentKey>('visitante')
   const router = useRouter()
+
+  const dadosIntent = useMemo(() => intentData[intent] || intentData.visitante, [intent])
 
   useEffect(() => {
     const destinoSeguro = getRedirectParamFromBrowser(IDENTITY_ONBOARDING_PATH)
+    const modo = getIntentFromBrowser()
     setRedirectTo(destinoSeguro)
+    setIntent(modo)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('dropzone_auth_redirect', destinoSeguro)
+      window.localStorage.setItem('dropzone_modo_uso', modo)
     }
   }, [])
-
 
   async function handleSocialCadastro(provider: 'google' | 'facebook' | 'discord') {
     try {
@@ -69,6 +109,7 @@ export default function Cadastro() {
       setSocialLoading(provider)
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('dropzone_auth_redirect', redirectTo)
+        window.localStorage.setItem('dropzone_modo_uso', intent)
       }
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -105,6 +146,7 @@ export default function Cadastro() {
         window.localStorage.setItem('dropzone_pending_email', emailLimpo)
         window.localStorage.setItem('dropzone_pending_username', usernameLimpo)
         window.localStorage.setItem('dropzone_auth_redirect', redirectTo)
+        window.localStorage.setItem('dropzone_modo_uso', intent)
       }
       setMessage('Conta criada. Enviamos um código de 6 dígitos para seu e-mail.')
       if (data.session) {
@@ -123,39 +165,43 @@ export default function Cadastro() {
   return (
     <AuthBackground>
       <AuthCard>
-        <Link href="/" className="relative mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/65 hover:text-white"><ArrowLeft size={14} /> Inicio</Link>
+        <Link href="/" className="mb-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 hover:text-blue-700"><ArrowLeft size={14} /> Trocar modo</Link>
 
-        <div className="relative mb-6 text-center">
-          <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[30px] border border-white/25 bg-slate-950/28 p-3 shadow-[0_18px_50px_rgba(2,6,23,0.32)]">
-            <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
+        <div className="mb-6 border-b border-slate-200 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="grid h-14 w-14 place-items-center border border-slate-200 bg-slate-50 p-2">
+              <img src="/brand/dropzone-logo.svg" alt="Drop Zone" className="h-full w-full object-contain" />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Drop Zone</div>
+              <h1 className="text-2xl font-black uppercase tracking-[-0.05em] text-slate-950">{dadosIntent.titulo}</h1>
+            </div>
           </div>
-          <div className="mt-4 text-[11px] font-black uppercase tracking-[0.28em] text-orange-200">Drop Zone</div>
-          <h1 className="mt-2 text-4xl font-black uppercase text-white">Nova conta</h1>
-          <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-5 text-white/72">Crie seu acesso competitivo com verificacao por codigo.</p>
+          <p className="mt-4 text-sm font-semibold leading-6 text-slate-600">{dadosIntent.descricao}</p>
+          <div className={`mt-3 inline-flex border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.15em] ${dadosIntent.cor}`}>Modo selecionado: {intent}</div>
         </div>
 
-        <div className="relative mb-4 rounded-xl border border-white/20 bg-white/10 p-3">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-white"><ShieldCheck size={15} /> Codigo no e-mail</div>
-          <p className="mt-1 text-xs font-semibold leading-5 text-white/70">Depois do cadastro voce recebe um codigo de 6 digitos para ativar a conta.</p>
+        <div className="mb-4 border border-blue-100 bg-blue-50 p-3">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-700"><ShieldCheck size={15} /> Código no e-mail</div>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">Depois do cadastro você recebe um código de 6 dígitos para ativar a conta.</p>
         </div>
 
-
-        <div className="relative mb-5 space-y-3">
-          <button type="button" onClick={() => handleSocialCadastro('google')} disabled={!!socialLoading || loading} className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-white/25 bg-white px-4 text-xs font-black uppercase tracking-[0.14em] text-slate-900 shadow-[0_14px_32px_rgba(2,6,23,0.18)] transition hover:bg-orange-100 disabled:opacity-50">
-            {socialLoading === 'google' ? <Loader2 className="animate-spin" size={17} /> : <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-950 text-white">G</span>}
+        <div className="mb-5 space-y-3">
+          <button type="button" onClick={() => handleSocialCadastro('google')} disabled={!!socialLoading || loading} className="flex h-12 w-full items-center justify-center gap-3 border border-slate-300 bg-white px-4 text-xs font-black uppercase tracking-[0.14em] text-slate-900 transition hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50">
+            {socialLoading === 'google' ? <Loader2 className="animate-spin" size={17} /> : <span className="grid h-6 w-6 place-items-center bg-slate-950 text-white">G</span>}
             Criar com Google
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => handleSocialCadastro('facebook')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+            <button type="button" onClick={() => handleSocialCadastro('facebook')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 border border-slate-300 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 transition hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50">
               {socialLoading === 'facebook' ? <Loader2 className="animate-spin" size={15} /> : <Facebook size={15} />}
               Facebook
             </button>
-            <button type="button" onClick={() => handleSocialCadastro('discord')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/12 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white transition hover:bg-white/20 disabled:opacity-50">
+            <button type="button" onClick={() => handleSocialCadastro('discord')} disabled={!!socialLoading || loading} className="flex h-11 items-center justify-center gap-2 border border-slate-300 bg-white px-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 transition hover:border-blue-500 hover:bg-blue-50 disabled:opacity-50">
               {socialLoading === 'discord' ? <Loader2 className="animate-spin" size={15} /> : <span className="text-sm font-black">◈</span>}
               Discord
             </button>
           </div>
-          <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/60"><span className="h-px flex-1 bg-white/20" /> ou email <span className="h-px flex-1 bg-white/20" /></div>
+          <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><span className="h-px flex-1 bg-slate-200" /> ou email <span className="h-px flex-1 bg-slate-200" /></div>
         </div>
 
         <form onSubmit={handleCadastro} className="space-y-4">
@@ -164,15 +210,15 @@ export default function Cadastro() {
           <Field icon={Lock} label="Senha" value={password} type="password" placeholder="Mínimo 6 caracteres" onChange={(e: any) => setPassword(e.target.value)} autoComplete="new-password" required />
           <Field icon={Lock} label="Confirmar senha" value={confirmPassword} type="password" placeholder="Repita a senha" onChange={(e: any) => setConfirmPassword(e.target.value)} autoComplete="new-password" required />
 
-          {error ? <div className="rounded-xl border border-white/25 bg-red-500/20 px-4 py-3 text-xs font-bold text-white">{error}</div> : null}
-          {message ? <div className="rounded-xl border border-white/25 bg-emerald-500/20 px-4 py-3 text-xs font-bold text-white">{message}</div> : null}
+          {error ? <div className="border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700">{error}</div> : null}
+          {message ? <div className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">{message}</div> : null}
 
-          <button disabled={loading} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-xs font-black uppercase tracking-[0.18em] text-blue-700 shadow-[0_16px_36px_rgba(2,6,23,0.22)] transition hover:bg-orange-100 disabled:opacity-50">
+          <button disabled={loading} className="flex h-12 w-full items-center justify-center gap-2 bg-blue-600 px-4 text-xs font-black uppercase tracking-[0.18em] text-white transition hover:bg-blue-700 disabled:opacity-50">
             {loading ? <Loader2 className="animate-spin" size={18} /> : <><UserPlus size={18} /><span>Criar conta</span><ChevronRight size={18} /></>}
           </button>
         </form>
 
-        <div className="relative mt-5 text-center text-xs font-semibold text-white/68">Ja tem conta? <Link href={withRedirectParam('/login', redirectTo)} className="font-black uppercase tracking-[0.12em] text-white hover:text-orange-100">Entrar</Link></div>
+        <div className="mt-5 text-center text-xs font-semibold text-slate-500">Já tem conta? <Link href={`${withRedirectParam('/login', redirectTo)}&intent=${intent}`} className="font-black uppercase tracking-[0.12em] text-blue-700 hover:text-blue-900">Entrar</Link></div>
       </AuthCard>
     </AuthBackground>
   )
